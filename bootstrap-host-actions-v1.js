@@ -20,7 +20,7 @@ const EXPECTED = Object.freeze({
   policy: '0b841879c7e63f60628c8df377038f88de8feb52ffe2462782eaaf44a629e2b1',
   base: 'd28029d952809b643ee9796cd0be05f230c9a74b1050fe43952507f51ed2f4fb',
   exec: 'c8e83f6f2c5fbc53882eae5d4344e492a7c9d050b35d68fdd439a2ad292e53f8',
-  mcp: 'e99dd78fe3ce70ab110f0694962800dd6b2e92a5837930999da82ec823cf8f75'
+  mcp: '513411bd8c9ab1c5aba6cce0d23f41d8f24e3a50bb614cb45d3123c6ec0b2fc8'
 });
 
 const SERVICES = Object.freeze([
@@ -171,12 +171,16 @@ function patchExec(input) {
 
 function patchMcp(input) {
   if (input.includes('HOST_ACTIONS_V1_MCP_MARKER')) throw new Error('mcp_already_patched');
-  let out = replaceOnce(
-    input,
+  const anchors = [
     "const Confirmation = z.literal('CONFIRM_LEVEL_4_CRITICAL');",
-    "const Confirmation = z.literal('CONFIRM_LEVEL_4_CRITICAL');\nconst HOST_ACTIONS_V1_MCP_MARKER = true;\nconst HostAction = z.literal('harden_agent_api_v1');",
-    'mcp_constants'
-  );
+    "const Confirmation=z.literal('CONFIRM_LEVEL_4_CRITICAL');"
+  ];
+  const matches = anchors.filter(anchor => input.includes(anchor));
+  if (matches.length !== 1) throw new Error(`mcp_confirmation_anchor_count:${matches.length}`);
+  const anchor = matches[0];
+  if (input.indexOf(anchor, input.indexOf(anchor) + anchor.length) >= 0) throw new Error('mcp_confirmation_anchor_not_unique');
+  const replacement = anchor + "\nconst HOST_ACTIONS_V1_MCP_MARKER = true;\nconst HostAction = z.literal('harden_agent_api_v1');";
+  let out = replaceOnce(input, anchor, replacement, 'mcp_constants');
   const closeAnchor = "\n}\n";
   const idx = out.lastIndexOf(closeAnchor);
   if (idx < 0) throw new Error('mcp_export_close_missing');
