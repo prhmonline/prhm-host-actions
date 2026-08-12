@@ -9,7 +9,8 @@ const PATHS = Object.freeze({
   policy: '/opt/prhm-company-control-plane/config/approval-policy.json',
   base: '/opt/prhm-agent-selfmaint/server.js',
   exec: '/opt/prhm-agent-selfmaint-exec/server.js',
-  mcp: '/home/agent/ssh-mcp-server/src/plugins/selfmaint.js',
+  mcpRegistry: '/home/agent/ssh-mcp-server/src/core/registry.js',
+  mcpHostActions: '/home/agent/ssh-mcp-server/src/plugins/hostActions.js',
   execDropinDir: '/etc/systemd/system/prhm-agent-selfmaint-exec.service.d',
   execDropin: '/etc/systemd/system/prhm-agent-selfmaint-exec.service.d/90-host-actions-v1.conf',
   targetDropinDir: '/etc/systemd/system/prhm-agent-api.service.d',
@@ -20,7 +21,7 @@ const EXPECTED = Object.freeze({
   policy: '0b841879c7e63f60628c8df377038f88de8feb52ffe2462782eaaf44a629e2b1',
   base: 'd28029d952809b643ee9796cd0be05f230c9a74b1050fe43952507f51ed2f4fb',
   exec: 'c8e83f6f2c5fbc53882eae5d4344e492a7c9d050b35d68fdd439a2ad292e53f8',
-  mcp: 'a7addf8da379cc05fe723f80a92fe726bf88829676529f0c02ba08ab8f2544c3'
+  mcpRegistry: '40a6619d852951d9491a142294d8a9a029ae1536625aaa0656e922a3bd6fdfcd'
 });
 
 const SERVICES = Object.freeze([
@@ -169,22 +170,19 @@ function patchExec(input) {
   return out;
 }
 
-function patchMcp(input) {
-  if (input.includes('HOST_ACTIONS_V1_MCP_MARKER')) throw new Error('mcp_already_patched');
-  const anchors = [
-    "const Confirmation = z.literal('CONFIRM_LEVEL_4_CRITICAL');",
-    "const Confirmation=z.literal('CONFIRM_LEVEL_4_CRITICAL');"
-  ];
-  const matches = anchors.filter(anchor => input.includes(anchor));
-  if (matches.length !== 1) throw new Error(`mcp_confirmation_anchor_count:${matches.length}`);
-  const anchor = matches[0];
-  if (input.indexOf(anchor, input.indexOf(anchor) + anchor.length) >= 0) throw new Error('mcp_confirmation_anchor_not_unique');
-  const replacement = anchor + "\nconst HOST_ACTIONS_V1_MCP_MARKER = true;\nconst HostAction = z.literal('harden_agent_api_v1');";
-  let out = replaceOnce(input, anchor, replacement, 'mcp_constants');
-  const closeAnchor = "\n}\n";
-  const idx = out.lastIndexOf(closeAnchor);
-  if (idx < 0) throw new Error('mcp_export_close_missing');
-  out = out.slice(0, idx) + INJECT.mcp_tools + out.slice(idx);
+function buildHostActionsPlugin() {
+  const prefix = Buffer.from('aW1wb3J0IGh0dHAgZnJvbSAnbm9kZTpodHRwJzsKaW1wb3J0IHsgeiB9IGZyb20gJ3pvZCc7CmltcG9ydCB7IHRleHRSZXN1bHQgfSBmcm9tICcuLi9jb3JlL3Jlc3VsdC5qcyc7Cgpjb25zdCBTT0NLRVQ9Jy9ydW4vcHJobS1hZ2VudC1zZWxmbWFpbnQtZXhlYy9leGVjLnNvY2snOwpjb25zdCBNQVhfUkVTUE9OU0U9NDAwMDAwOwpjb25zdCBDb25maXJtYXRpb249ei5saXRlcmFsKCdDT05GSVJNX0xFVkVMXzRfQ1JJVElDQUwnKTsKY29uc3QgSG9zdEFjdGlvbj16LmxpdGVyYWwoJ2hhcmRlbl9hZ2VudF9hcGlfdjEnKTsKY29uc3QgUk89e3JlYWRPbmx5SGludDp0cnVlLGRlc3RydWN0aXZlSGludDpmYWxzZSxpZGVtcG90ZW50SGludDp0cnVlLG9wZW5Xb3JsZEhpbnQ6ZmFsc2V9Owpjb25zdCBSRVFVRVNUPXtyZWFkT25seUhpbnQ6ZmFsc2UsZGVzdHJ1Y3RpdmVIaW50OmZhbHNlLGlkZW1wb3RlbnRIaW50OmZhbHNlLG9wZW5Xb3JsZEhpbnQ6ZmFsc2V9Owpjb25zdCBBUFBMWT17cmVhZE9ubHlIaW50OmZhbHNlLGRlc3RydWN0aXZlSGludDp0cnVlLGlkZW1wb3RlbnRIaW50OmZhbHNlLG9wZW5Xb3JsZEhpbnQ6ZmFsc2V9OwoKZnVuY3Rpb24gY2FsbEV4ZWMocGF0aG5hbWUsbWV0aG9kPSdHRVQnLGJvZHksdGltZW91dE1zPTE1MDAwKXsKICByZXR1cm4gbmV3IFByb21pc2UoKHJlc29sdmUscmVqZWN0KT0+ewogICAgY29uc3QgZGF0YT1ib2R5PT09dW5kZWZpbmVkP251bGw6QnVmZmVyLmZyb20oSlNPTi5zdHJpbmdpZnkoYm9keSkpOwogICAgY29uc3QgaGVhZGVycz1kYXRhP3snY29udGVudC10eXBlJzonYXBwbGljYXRpb24vanNvbicsJ2NvbnRlbnQtbGVuZ3RoJzpkYXRhLmxlbmd0aH06e307CiAgICBjb25zdCByZXE9aHR0cC5yZXF1ZXN0KHtzb2NrZXRQYXRoOlNPQ0tFVCxwYXRoOnBhdGhuYW1lLG1ldGhvZCxoZWFkZXJzfSxyZXM9PnsKICAgICAgbGV0IHNpemU9MDtjb25zdCBjaHVua3M9W107CiAgICAgIHJlcy5vbignZGF0YScsY2h1bms9PntzaXplKz1jaHVuay5sZW5ndGg7aWYoc2l6ZTw9TUFYX1JFU1BPTlNFKWNodW5rcy5wdXNoKGNodW5rKX0pOwogICAgICByZXMub24oJ2VuZCcsKCk9PntpZihzaXplPk1BWF9SRVNQT05TRSlyZXR1cm4gcmVqZWN0KG5ldyBFcnJvcignaG9zdF9hY3Rpb25zX2V4ZWNfcmVzcG9uc2VfdG9vX2xhcmdlJykpO2xldCBvdXQ9e307dHJ5e291dD1KU09OLnBhcnNlKEJ1ZmZlci5jb25jYXQoY2h1bmtzKS50b1N0cmluZygndXRmOCcpfHwne30nKX1jYXRjaHtyZXR1cm4gcmVqZWN0KG5ldyBFcnJvcignaG9zdF9hY3Rpb25zX2V4ZWNfaW52YWxpZF9yZXNwb25zZScpKX1pZihyZXMuc3RhdHVzQ29kZTwyMDB8fHJlcy5zdGF0dXNDb2RlPj0zMDB8fG91dC5vayE9PXRydWUpcmV0dXJuIHJlamVjdChuZXcgRXJyb3IoU3RyaW5nKG91dC5lcnJvcnx8YGhvc3RfYWN0aW9uc19leGVjX3JlamVjdGVkXyR7cmVzLnN0YXR1c0NvZGV9YCkpKTtyZXNvbHZlKG91dCl9KTsKICAgIH0pOwogICAgcmVxLnNldFRpbWVvdXQodGltZW91dE1zLCgpPT5yZXEuZGVzdHJveShuZXcgRXJyb3IoJ2hvc3RfYWN0aW9uc19leGVjX3RpbWVvdXQnKSkpOwogICAgcmVxLm9uKCdlcnJvcicsZT0+cmVqZWN0KG5ldyBFcnJvcihgaG9zdF9hY3Rpb25zX2V4ZWNfYnJpZGdlX2Vycm9yOiR7ZS5tZXNzYWdlfWApKSk7CiAgICBkYXRhP3JlcS5lbmQoZGF0YSk6cmVxLmVuZCgpOwogIH0pOwp9CgpleHBvcnQgZnVuY3Rpb24gcmVnaXN0ZXJIb3N0QWN0aW9uc1BsdWdpbihtY3Apewo=', 'base64').toString('utf8');
+  const suffix = Buffer.from('Cn0K', 'base64').toString('utf8');
+  return prefix + INJECT.mcp_tools + suffix;
+}
+
+function patchMcpRegistry(input) {
+  if (input.includes('registerHostActionsPlugin') || input.includes('../plugins/hostActions.js')) throw new Error('host_actions_registry_already_patched');
+  const importAnchor = "import { registerSelfmaintPlugin } from '../plugins/selfmaint.js';";
+  const callAnchor = "  registerSelfmaintPlugin(mcp, context);";
+  const nl = String.fromCharCode(10);
+  let out = replaceOnce(input, importAnchor, importAnchor + nl + "import { registerHostActionsPlugin } from '../plugins/hostActions.js';", 'mcp_registry_import');
+  out = replaceOnce(out, callAnchor, callAnchor + nl + "  registerHostActionsPlugin(mcp, context);", 'mcp_registry_call');
   return out;
 }
 
@@ -196,8 +194,11 @@ function restoreFile(file, backup) {
   fs.chownSync(tmp, st.uid, st.gid);
   fs.renameSync(tmp, file);
 }
-function rollback(backups, oldDropin, oldDropinExists) {
+function rollback(backups, oldDropin, oldDropinExists, createdFiles = []) {
   const errors = [];
+  for (const file of [...createdFiles].reverse()) {
+    try { fs.unlinkSync(file); } catch (e) { if (e.code !== 'ENOENT') errors.push(`created:${file}:${e.message}`); }
+  }
   for (const [file, backup] of [...backups].reverse()) {
     try { restoreFile(file, backup); } catch (e) { errors.push(`${file}:${e.message}`); }
   }
@@ -225,10 +226,11 @@ function main() {
   assertSha('policy', PATHS.policy, EXPECTED.policy);
   assertSha('base', PATHS.base, EXPECTED.base);
   assertSha('exec', PATHS.exec, EXPECTED.exec);
-  assertSha('mcp', PATHS.mcp, EXPECTED.mcp);
+  assertSha('mcpRegistry', PATHS.mcpRegistry, EXPECTED.mcpRegistry);
+  if (fs.existsSync(PATHS.mcpHostActions)) throw new Error('host_actions_plugin_already_exists');
 
-  const originals = { policy: read(PATHS.policy), base: read(PATHS.base), exec: read(PATHS.exec), mcp: read(PATHS.mcp) };
-  const patched = { policy: patchPolicy(originals.policy), base: patchBase(originals.base), exec: patchExec(originals.exec), mcp: patchMcp(originals.mcp) };
+  const originals = { policy: read(PATHS.policy), base: read(PATHS.base), exec: read(PATHS.exec), mcpRegistry: read(PATHS.mcpRegistry) };
+  const patched = { policy: patchPolicy(originals.policy), base: patchBase(originals.base), exec: patchExec(originals.exec), mcpRegistry: patchMcpRegistry(originals.mcpRegistry), mcpHostActions: buildHostActionsPlugin() };
   JSON.parse(patched.policy);
 
   const preflightDir = `/tmp/prhm-host-actions-v1-preflight-${process.pid}`;
@@ -236,14 +238,17 @@ function main() {
   const preflightFiles = {
     base: path.join(preflightDir, 'base-server.js'),
     exec: path.join(preflightDir, 'exec-server.js'),
-    mcp: path.join(preflightDir, 'selfmaint.js')
+    mcpRegistry: path.join(preflightDir, 'registry.js'),
+    mcpHostActions: path.join(preflightDir, 'hostActions.js')
   };
   fs.writeFileSync(preflightFiles.base, patched.base, { mode: 0o600 });
   fs.writeFileSync(preflightFiles.exec, patched.exec, { mode: 0o600 });
-  fs.writeFileSync(preflightFiles.mcp, patched.mcp, { mode: 0o600 });
+  fs.writeFileSync(preflightFiles.mcpRegistry, patched.mcpRegistry, { mode: 0o600 });
+  fs.writeFileSync(preflightFiles.mcpHostActions, patched.mcpHostActions, { mode: 0o600 });
   nodeCheck(preflightFiles.base);
   nodeCheck(preflightFiles.exec);
-  nodeCheck(preflightFiles.mcp);
+  nodeCheck(preflightFiles.mcpRegistry);
+  nodeCheck(preflightFiles.mcpHostActions);
   fs.rmSync(preflightDir, { recursive: true, force: true });
 
   if (preflightOnly) {
@@ -255,7 +260,8 @@ function main() {
         policy: shaText(patched.policy),
         base: shaText(patched.base),
         exec: shaText(patched.exec),
-        mcp: shaText(patched.mcp)
+        mcpRegistry: shaText(patched.mcpRegistry),
+        mcpHostActions: shaText(patched.mcpHostActions)
       },
       host_action: 'harden_agent_api_v1',
       policy_version: '2026-08-12.1-host-actions-v1'
@@ -268,7 +274,7 @@ function main() {
   fs.mkdirSync(backupDir, { recursive: true, mode: 0o700 });
 
   const backups = [];
-  const fileMap = [['policy', PATHS.policy], ['base', PATHS.base], ['exec', PATHS.exec], ['mcp', PATHS.mcp]];
+  const fileMap = [['policy', PATHS.policy], ['base', PATHS.base], ['exec', PATHS.exec], ['mcpRegistry', PATHS.mcpRegistry]];
   for (const [, file] of fileMap) backups.push([file, backupFile(file, backupDir)]);
 
   fs.mkdirSync(PATHS.execDropinDir, { recursive: true, mode: 0o755 });
@@ -280,11 +286,15 @@ function main() {
     fs.chmodSync(oldDropin, 0o600);
   }
 
+  let pluginCreated = false;
   try {
     for (const [key, file] of fileMap) {
       const st = fs.statSync(file);
       writeAtomic(file, patched[key], st.mode & 0o777, st.uid, st.gid);
     }
+    const registrySt = fs.statSync(PATHS.mcpRegistry);
+    writeAtomic(PATHS.mcpHostActions, patched.mcpHostActions, 0o644, registrySt.uid, registrySt.gid);
+    pluginCreated = true;
 
     fs.writeFileSync(PATHS.execDropin, `[Service]\nReadWritePaths=${PATHS.targetDropinDir}\n`, { mode: 0o644 });
     fs.chmodSync(PATHS.execDropin, 0o644);
@@ -319,14 +329,15 @@ function main() {
         policy: shaText(read(PATHS.policy)),
         base: shaText(read(PATHS.base)),
         exec: shaText(read(PATHS.exec)),
-        mcp: shaText(read(PATHS.mcp))
+        mcpRegistry: shaText(read(PATHS.mcpRegistry)),
+        mcpHostActions: shaText(read(PATHS.mcpHostActions))
       }
     };
     fs.mkdirSync(path.dirname(PATHS.marker), { recursive: true, mode: 0o700 });
     fs.writeFileSync(PATHS.marker, JSON.stringify(result, null, 2) + '\n', { mode: 0o600 });
     console.log(JSON.stringify(result));
   } catch (error) {
-    const rollbackErrors = rollback(backups, oldDropin, oldDropinExists);
+    const rollbackErrors = rollback(backups, oldDropin, oldDropinExists, pluginCreated ? [PATHS.mcpHostActions] : []);
     if (rollbackErrors.length) throw new Error(`bootstrap_failed_and_rollback_incomplete:${error.message}:${rollbackErrors.join('|')}`);
     throw new Error(`bootstrap_failed_rolled_back:${error.message}`);
   }
