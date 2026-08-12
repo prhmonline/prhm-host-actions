@@ -20,7 +20,7 @@ const EXPECTED = Object.freeze({
   policy: '0b841879c7e63f60628c8df377038f88de8feb52ffe2462782eaaf44a629e2b1',
   base: 'd28029d952809b643ee9796cd0be05f230c9a74b1050fe43952507f51ed2f4fb',
   exec: 'c8e83f6f2c5fbc53882eae5d4344e492a7c9d050b35d68fdd439a2ad292e53f8',
-  mcp: '513411bd8c9ab1c5aba6cce0d23f41d8f24e3a50bb614cb45d3123c6ec0b2fc8'
+  mcp: '0cee29772517eb27b1b9b7e6b6f2c06f3297c9ad5ef4f9596ef9bcaf96e9535d'
 });
 
 const SERVICES = Object.freeze([
