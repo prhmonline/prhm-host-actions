@@ -23,7 +23,7 @@ const ACTION='repair_node1_ssl_deploy_v1';
 const OLD_ACTIONS=['agent_api_process_sandbox_v1','agent_api_filesystem_confinement_v1','agent_api_capability_minimize_v1'];
 
 const TARGETS={
-  policy:{path:'/opt/prhm-company-control-plane/config/approval-policy.json',sha:'16eb044d40744f00b9cfc270043b41d43d304ff35e08824029469303a0c5927c',patch:'lib/patch-policy-v2-ssl.js',kind:'json'},
+  policy:{path:'/opt/prhm-company-control-plane/config/approval-policy.json',sha:'eed2e4f975a2bece1f0007bf92ad060d638c7a0e0a611b20c0fa931bfcf079d2',patch:'lib/patch-policy-v2-ssl.js',kind:'json'},
   base:{path:'/opt/prhm-agent-selfmaint/server.js',sha:'f027b75adf2499467f74b5403a5f9421bc5cc54a696c74117340111cf968f8a7',patch:'lib/patch-base-v2-ssl.js',kind:'js'},
   exec:{path:'/opt/prhm-agent-selfmaint-exec/server.js',sha:'949a66baa0764e07c02781fd96406213fdd8aebfd99b1d4f659be453eb453540',patch:'lib/patch-exec-v2-ssl.js',kind:'js'},
   mcp:{path:'/home/agent/ssh-mcp-server/src/plugins/hostActionsV2.js',sha:'a30fdcaf7723b0996f7042a63be4728cf7eac108fa6ad4d56e206cfa0f09f9fa',patch:'lib/patch-mcp-v2-ssl.js',kind:'js'}
