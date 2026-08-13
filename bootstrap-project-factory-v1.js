@@ -8,7 +8,7 @@ const cp=require('child_process');
 
 const VERSION='2026-08-13.1-project-factory-v1';
 const PATHS=Object.freeze({
-  agentApi:'/home/agent/ssh-agent-api/server.js',
+  basicRoutes:'/home/agent/ssh-agent-api/fileBasicRoutes.js',
   registry:'/home/agent/ssh-mcp-server/src/core/registry.js',
   safeFiles:'/home/agent/ssh-mcp-server/src/plugins/safeFiles.js',
   plugin:'/home/agent/ssh-mcp-server/src/plugins/projectFactory.js',
@@ -23,7 +23,7 @@ const PATHS=Object.freeze({
   marker:'/var/lib/prhm-project-factory/bootstrap-v1.json'
 });
 const EXPECTED=Object.freeze({
-  agentApi:'fe8a8fe2e37bf428d18cc1588a1261becb99d7337e9fc7d6e29a65ffb7f7b773',
+  basicRoutes:'0d8413f9bdc3686a3ef4d5bbbd47f18c33ef061b44450bb129bc641d96716b9d',
   registry:'8ad3ef2006c212585cca00007e68137eff9f1b4a7bd867de5272b496b39c7ee3',
   safeFiles:'db64eea728085adc87c75e6408722d81ebd31259defbd70c063c7b57922256e0'
 });
@@ -138,8 +138,8 @@ const UNIT=`[Unit]\nDescription=PRHM Project Factory\nAfter=network-online.targe
 const REGISTRY_HELPERS=String.raw`
 const PRHM_GENERATED_PROJECTS_REGISTRY_V1 = true;
 const GENERATED_PROJECTS_ROOT = '/home/prhm/projects/generated';
-function refreshGeneratedProjects() {
-  for (const key of Object.keys(PROJECTS)) if (PROJECTS[key]?.generated === true) delete PROJECTS[key];
+function refreshGeneratedProjects(projects) {
+  for (const key of Object.keys(projects)) if (projects[key]?.generated === true) delete projects[key];
   try {
     if (!fs.existsSync(GENERATED_PROJECTS_ROOT)) return;
     const baseStat = fs.lstatSync(GENERATED_PROJECTS_ROOT);
@@ -159,20 +159,22 @@ function refreshGeneratedProjects() {
       let manifest, state; try { manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf8')); state = JSON.parse(fs.readFileSync(stateFile, 'utf8')); } catch { continue; }
       if (manifest?.standard_id !== 'PRHM_NEW_SITE_V1' || manifest?.slug !== slug || state?.ok !== true || state?.status !== 'ready_for_configuration') continue;
       const id = 'gen_' + slug.replace(/-/g, '_');
-      if (PROJECTS[id] && PROJECTS[id].generated !== true) continue;
-      PROJECTS[id] = { name: id, root: real, description: 'Generated PRHM project: ' + String(manifest.name || slug).slice(0, 120), generated: true, slug };
+      if (projects[id] && projects[id].generated !== true) continue;
+      projects[id] = { name: id, root: real, description: 'Generated PRHM project: ' + String(manifest.name || slug).slice(0, 120), generated: true, slug };
     }
   } catch (_) {}
 }
 `;
 
-function patchAgentApi(input){
-  if(input.includes('PRHM_GENERATED_PROJECTS_REGISTRY_V1'))throw Error('agent_api_project_factory_already_patched');
-  let out=replaceOnce(input,'const opsSelfmaintBridge = createOpsSelfmaintBridge();','const opsSelfmaintBridge = createOpsSelfmaintBridge();'+REGISTRY_HELPERS,'agent_api_registry_helpers');
-  out=replaceOnce(out,'function auth(req, res, next) {','refreshGeneratedProjects();\nsetInterval(refreshGeneratedProjects, 5000).unref?.();\n\nfunction auth(req, res, next) {','agent_api_registry_start');
-  out=replaceOnce(out,"app.get('/projects', auth, (req, res) => {\n  res.json({","app.get('/projects', auth, (req, res) => {\n  refreshGeneratedProjects();\n  res.json({",'agent_api_projects_refresh');
-  out=replaceOnce(out,'    if (!PROJECTS[project]) {','    refreshGeneratedProjects();\n\n    if (!PROJECTS[project]) {','agent_api_run_project_refresh');
-  out=replaceOnce(out,'  if (project && !PROJECTS[project]) {','  refreshGeneratedProjects();\n\n  if (project && !PROJECTS[project]) {','agent_api_job_refresh');
+function patchBasicRoutes(input){
+  if(input.includes('PRHM_GENERATED_PROJECTS_REGISTRY_V1'))throw Error('basic_routes_project_factory_already_patched');
+  let out=replaceOnce(input,"const MODE_RE=/^(0600|0640|0644|0750|0755)$/;","const MODE_RE=/^(0600|0640|0644|0750|0755)$/;"+REGISTRY_HELPERS,'basic_routes_registry_helpers');
+  const registerAnchor="function registerBasicFileRoutes(app,{auth,projects,appendHistory}){\n scheduleLeadOpsV3Bootstrap();";
+  const registerReplacement="function registerBasicFileRoutes(app,{auth,projects,appendHistory}){\n refreshGeneratedProjects(projects);\n const generatedProjectsTimer=setInterval(()=>refreshGeneratedProjects(projects),5000);generatedProjectsTimer.unref?.();\n scheduleLeadOpsV3Bootstrap();";
+  out=replaceOnce(out,registerAnchor,registerReplacement,'basic_routes_registry_start');
+  const targets=" app.get('/file-targets',auth,(req,res)=>res.json({ok:true,targets:Object.keys(core.roots(projects))}));";
+  const targetsReplacement=" app.get('/file-targets',auth,(req,res)=>{refreshGeneratedProjects(projects);res.json({ok:true,targets:Object.keys(core.roots(projects))});});";
+  out=replaceOnce(out,targets,targetsReplacement,'basic_routes_targets_refresh');
   return out;
 }
 function patchRegistry(input){
@@ -187,7 +189,7 @@ function patchSafeFiles(input){
   return replaceOnce(input,line,"const Target=z.string().min(1).max(100).regex(/^[A-Za-z0-9._-]+$/); // PRHM_DYNAMIC_PROJECT_TARGET_V1",'safe_files_dynamic_target');
 }
 function validateCandidate(c){
-  if(!c.agentApi.includes('PRHM_GENERATED_PROJECTS_REGISTRY_V1'))throw Error('dynamic_registry_marker_missing');
+  if(!c.basicRoutes.includes('PRHM_GENERATED_PROJECTS_REGISTRY_V1'))throw Error('dynamic_registry_marker_missing');
   if(!c.registry.includes('registerProjectFactoryPlugin'))throw Error('factory_registry_missing');
   if(!c.safeFiles.includes('PRHM_DYNAMIC_PROJECT_TARGET_V1'))throw Error('dynamic_target_marker_missing');
   if(!MCP_PLUGIN.includes("project_factory_bootstrap")||!MCP_PLUGIN.includes("z.literal(true)"))throw Error('factory_mcp_guard_missing');
@@ -196,17 +198,17 @@ function validateCandidate(c){
   if(/ReadWritePaths=.*\/home\/prhm(?:\s|$)/.test(UNIT))throw Error('factory_unit_broad_home_write_forbidden');
 }
 function preflightCandidate(){
-  for(const [label,file] of Object.entries({agentApi:PATHS.agentApi,registry:PATHS.registry,safeFiles:PATHS.safeFiles}))assertSha(label,file,EXPECTED[label]);
+  for(const [label,file] of Object.entries({basicRoutes:PATHS.basicRoutes,registry:PATHS.registry,safeFiles:PATHS.safeFiles}))assertSha(label,file,EXPECTED[label]);
   if(fs.existsSync(PATHS.marker))throw Error('project_factory_bootstrap_marker_exists');
   if(fs.existsSync(PATHS.plugin)||fs.existsSync(PATHS.factoryDir)||fs.existsSync(PATHS.unit))throw Error('project_factory_install_target_already_exists');
   if(!fs.existsSync(PATHS.ownerReference)||!fs.statSync(PATHS.ownerReference).isDirectory())throw Error('project_factory_owner_reference_missing');
   for(const bin of ['composer','git','chown','curl','tar','systemctl'])cp.execFileSync('which',[bin],{stdio:'pipe',timeout:5000});
-  const originals={agentApi:read(PATHS.agentApi),registry:read(PATHS.registry),safeFiles:read(PATHS.safeFiles)};
-  const patched={agentApi:patchAgentApi(originals.agentApi),registry:patchRegistry(originals.registry),safeFiles:patchSafeFiles(originals.safeFiles)};
+  const originals={basicRoutes:read(PATHS.basicRoutes),registry:read(PATHS.registry),safeFiles:read(PATHS.safeFiles)};
+  const patched={basicRoutes:patchBasicRoutes(originals.basicRoutes),registry:patchRegistry(originals.registry),safeFiles:patchSafeFiles(originals.safeFiles)};
   validateCandidate(patched);
   const dir=`/tmp/prhm-project-factory-preflight-${process.pid}`;fs.mkdirSync(dir,{recursive:true,mode:0o700});
-  const files={agentApi:path.join(dir,'agent-api-server.js'),registry:path.join(dir,'registry.js'),safeFiles:path.join(dir,'safeFiles.js'),plugin:path.join(dir,'projectFactory.js'),engine:path.join(dir,'factory.js'),server:path.join(dir,'factory-server.js'),worker:path.join(dir,'factory-worker.js')};
-  for(const [k,v] of Object.entries({agentApi:patched.agentApi,registry:patched.registry,safeFiles:patched.safeFiles,plugin:MCP_PLUGIN,engine:FACTORY_ENGINE,server:FACTORY_SERVER,worker:FACTORY_WORKER}))fs.writeFileSync(files[k],v,{mode:0o600});
+  const files={basicRoutes:path.join(dir,'fileBasicRoutes.js'),registry:path.join(dir,'registry.js'),safeFiles:path.join(dir,'safeFiles.js'),plugin:path.join(dir,'projectFactory.js'),engine:path.join(dir,'factory.js'),server:path.join(dir,'factory-server.js'),worker:path.join(dir,'factory-worker.js')};
+  for(const [k,v] of Object.entries({basicRoutes:patched.basicRoutes,registry:patched.registry,safeFiles:patched.safeFiles,plugin:MCP_PLUGIN,engine:FACTORY_ENGINE,server:FACTORY_SERVER,worker:FACTORY_WORKER}))fs.writeFileSync(files[k],v,{mode:0o600});
   for(const f of Object.values(files))nodeCheck(f);
   const sample={standard_id:'PRHM_NEW_SITE_V1',slug:'factory-preflight-sample',name:'Factory Preflight Sample',domains:['factory-preflight.example.com'],languages:['fa'],modules:[],payment_adapter:null,sms_adapter:null,brand:{display_name:'Factory Preflight Sample'},features:{}};
   const payload=Buffer.from(JSON.stringify(sample),'utf8').toString('base64');
@@ -215,7 +217,7 @@ function preflightCandidate(){
   if(dry.error||dry.status!==0)throw Error('factory_engine_dry_run_failed:'+String(dry.stderr||dry.stdout||dry.error?.message||'').slice(0,2000));
   let plan;try{plan=JSON.parse(String(dry.stdout||'').trim())}catch{throw Error('factory_engine_dry_run_invalid_json')}
   if(plan.ok!==true||plan.dry_run!==true||plan.root!=='/home/prhm/projects/generated/factory-preflight-sample')throw Error('factory_engine_dry_run_invalid_result');
-  return{originals,patched,files,toolchain,report:{ok:true,preflight_only:true,version:VERSION,current_hashes:{...EXPECTED},candidate_hashes:{agentApi:shaText(patched.agentApi),registry:shaText(patched.registry),safeFiles:shaText(patched.safeFiles),plugin:shaText(MCP_PLUGIN),engine:shaText(FACTORY_ENGINE),server:shaText(FACTORY_SERVER),worker:shaText(FACTORY_WORKER),unit:shaText(UNIT)},factory_root:PATHS.generatedRoot,write_scope:PATHS.generatedRoot,sample_plan_root:plan.root,node_toolchain:{arch:toolchain.arch,file:toolchain.file,sha256:toolchain.sha256,node_version:toolchain.node_version,npm_version:toolchain.npm_version,npx_version:toolchain.npx_version}}};
+  return{originals,patched,files,toolchain,report:{ok:true,preflight_only:true,version:VERSION,current_hashes:{...EXPECTED},candidate_hashes:{basicRoutes:shaText(patched.basicRoutes),registry:shaText(patched.registry),safeFiles:shaText(patched.safeFiles),plugin:shaText(MCP_PLUGIN),engine:shaText(FACTORY_ENGINE),server:shaText(FACTORY_SERVER),worker:shaText(FACTORY_WORKER),unit:shaText(UNIT)},factory_root:PATHS.generatedRoot,write_scope:PATHS.generatedRoot,sample_plan_root:plan.root,node_toolchain:{arch:toolchain.arch,file:toolchain.file,sha256:toolchain.sha256,node_version:toolchain.node_version,npm_version:toolchain.npm_version,npx_version:toolchain.npx_version}}};
 }
 function main(){
   const preflightOnly=process.argv.includes('--preflight-only');
@@ -225,15 +227,15 @@ function main(){
   const stamp=new Date().toISOString().replace(/[-:.TZ]/g,'').slice(0,14),backupDir=`/var/backups/prhm-project-factory-bootstrap-${stamp}`;fs.mkdirSync(backupDir,{recursive:true,mode:0o700});
   const backups=[],created=[];let generatedCreated=false;
   try{
-    for(const f of [PATHS.agentApi,PATHS.registry,PATHS.safeFiles])backups.push([f,backupFile(f,backupDir)]);
-    const stats=Object.fromEntries([PATHS.agentApi,PATHS.registry,PATHS.safeFiles].map(f=>[f,fs.statSync(f)]));
+    for(const f of [PATHS.basicRoutes,PATHS.registry,PATHS.safeFiles])backups.push([f,backupFile(f,backupDir)]);
+    const stats=Object.fromEntries([PATHS.basicRoutes,PATHS.registry,PATHS.safeFiles].map(f=>[f,fs.statSync(f)]));
     const owner=fs.statSync(PATHS.ownerReference);
     if(!fs.existsSync(PATHS.generatedRoot)){fs.mkdirSync(PATHS.generatedRoot,{recursive:false,mode:0o750});fs.chownSync(PATHS.generatedRoot,owner.uid,owner.gid);generatedCreated=true;}else{const gs=fs.lstatSync(PATHS.generatedRoot);if(gs.isSymbolicLink()||!gs.isDirectory())throw Error('generated_root_invalid');}
     fs.mkdirSync(PATHS.factoryDir,{recursive:false,mode:0o755});created.push(PATHS.factoryDir);
     fs.renameSync(p.toolchain.extracted,PATHS.nodeRoot);
     atomicWrite(PATHS.factoryEngine,FACTORY_ENGINE,0o644,0,0);atomicWrite(PATHS.factoryServer,FACTORY_SERVER,0o644,0,0);atomicWrite(PATHS.factoryWorker,FACTORY_WORKER,0o644,0,0);
     const plugDir=path.dirname(PATHS.plugin),pst=fs.statSync(plugDir);atomicWrite(PATHS.plugin,MCP_PLUGIN,0o644,pst.uid,pst.gid);created.push(PATHS.plugin);
-    atomicWrite(PATHS.agentApi,p.patched.agentApi,stats[PATHS.agentApi].mode&0o777,stats[PATHS.agentApi].uid,stats[PATHS.agentApi].gid);
+    atomicWrite(PATHS.basicRoutes,p.patched.basicRoutes,stats[PATHS.basicRoutes].mode&0o777,stats[PATHS.basicRoutes].uid,stats[PATHS.basicRoutes].gid);
     atomicWrite(PATHS.registry,p.patched.registry,stats[PATHS.registry].mode&0o777,stats[PATHS.registry].uid,stats[PATHS.registry].gid);
     atomicWrite(PATHS.safeFiles,p.patched.safeFiles,stats[PATHS.safeFiles].mode&0o777,stats[PATHS.safeFiles].uid,stats[PATHS.safeFiles].gid);
     atomicWrite(PATHS.unit,UNIT,0o644,0,0);created.push(PATHS.unit);
@@ -244,7 +246,7 @@ function main(){
     const plan=JSON.parse(curlUnixPost('/run/prhm-project-factory/factory.sock','http://localhost/v1/plan',{manifest:sample}));if(plan.ok!==true||plan.plan?.root!=='/home/prhm/projects/generated/factory-install-smoke')throw Error('factory_plan_smoke_failed');
     const api=JSON.parse(waitFor(()=>curlLocal('http://127.0.0.1:8099/health')));if(api.ok!==true)throw Error('agent_api_health_failed');
     const mcp=JSON.parse(waitFor(()=>curlLocal('http://127.0.0.1:8123/health')));if(mcp.ok!==true)throw Error('agent_mcp_health_failed');
-    for(const [f,expected] of [[PATHS.agentApi,p.report.candidate_hashes.agentApi],[PATHS.registry,p.report.candidate_hashes.registry],[PATHS.safeFiles,p.report.candidate_hashes.safeFiles],[PATHS.plugin,p.report.candidate_hashes.plugin],[PATHS.factoryEngine,p.report.candidate_hashes.engine],[PATHS.factoryServer,p.report.candidate_hashes.server],[PATHS.factoryWorker,p.report.candidate_hashes.worker]])if(shaText(read(f))!==expected)throw Error('post_install_sha_mismatch:'+f);
+    for(const [f,expected] of [[PATHS.basicRoutes,p.report.candidate_hashes.basicRoutes],[PATHS.registry,p.report.candidate_hashes.registry],[PATHS.safeFiles,p.report.candidate_hashes.safeFiles],[PATHS.plugin,p.report.candidate_hashes.plugin],[PATHS.factoryEngine,p.report.candidate_hashes.engine],[PATHS.factoryServer,p.report.candidate_hashes.server],[PATHS.factoryWorker,p.report.candidate_hashes.worker]])if(shaText(read(f))!==expected)throw Error('post_install_sha_mismatch:'+f);
     fs.mkdirSync(path.dirname(PATHS.marker),{recursive:true,mode:0o700});fs.writeFileSync(PATHS.marker,JSON.stringify({...p.report,preflight_only:false,installed:true,installed_at:new Date().toISOString(),backup_dir:backupDir})+'\n',{flag:'wx',mode:0o600});
     console.log(JSON.stringify({...p.report,preflight_only:false,installed:true,backup_dir:backupDir}));
   }catch(error){const errs=[];try{systemctl('disable','--now','prhm-project-factory.service')}catch(e){errs.push('stop:'+e.message)}for(const [f,b] of backups.reverse())try{restore(f,b)}catch(e){errs.push(f+':'+e.message)}for(const f of created.reverse())try{if(f===PATHS.factoryDir)fs.rmSync(f,{recursive:true,force:true});else if(fs.existsSync(f))fs.unlinkSync(f)}catch(e){errs.push(f+':'+e.message)}if(generatedCreated)try{if(fs.existsSync(PATHS.generatedRoot)&&fs.readdirSync(PATHS.generatedRoot).length===0)fs.rmdirSync(PATHS.generatedRoot)}catch(e){errs.push('generated:'+e.message)}try{systemctl('daemon-reload')}catch(e){errs.push('daemon:'+e.message)}for(const s of ['prhm-agent-api.service','prhm-agent-mcp.service'])try{systemctl('restart',s)}catch(e){errs.push(s+':'+e.message)}if(errs.length)throw Error('project_factory_bootstrap_failed_and_rollback_failed:'+error.message+':'+errs.join('|'));throw Error('project_factory_bootstrap_failed_rolled_back:'+error.message);}
