@@ -74,11 +74,14 @@ function candidateCheck(patched){
   fs.rmSync(tmp,{recursive:true,force:true});
 }
 function healthVerify(){
-  const approval=JSON.parse(waitFor(()=>curlHttp('http://127.0.0.1:18133/health')));if(approval.ok!==true)throw new Error('approval_health_failed');
+  const approvalState=systemctl('is-active','prhm-company-approval.service');
+  if(approvalState!=='active')throw new Error('approval_service_not_active:'+approvalState);
+  const approvalPid=Number(systemctl('show','prhm-company-approval.service','-p','MainPID','--value'));
+  if(!Number.isInteger(approvalPid)||approvalPid<=0)throw new Error('approval_service_mainpid_invalid');
   const bridge=JSON.parse(waitFor(()=>curlUnix('/run/prhm-agent-approval/approval.sock','http://localhost/health')));if(bridge.ok!==true||bridge.version!=='1.4.0-imotion-safe-deploy')throw new Error('bridge_health_failed');
   const agent=JSON.parse(waitFor(()=>curlHttp('http://127.0.0.1:8099/health')));if(agent.ok!==true)throw new Error('agent_health_failed');
   const mcp=JSON.parse(waitFor(()=>curlHttp('http://127.0.0.1:8123/health')));if(mcp.ok!==true)throw new Error('mcp_health_failed');
-  return {approval,bridge,agent,mcp};
+  return {approval:{active:true,main_pid:approvalPid},bridge,agent,mcp};
 }
 function restore(file,backup,st){const data=fs.readFileSync(backup);const tmp=`${file}.rollback-${process.pid}-${Date.now()}.tmp`;fs.writeFileSync(tmp,data,{mode:st.mode&0o777});fs.chmodSync(tmp,st.mode&0o777);fs.chownSync(tmp,st.uid,st.gid);fs.renameSync(tmp,file)}
 
