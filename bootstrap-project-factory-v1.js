@@ -13,6 +13,7 @@ const PATHS=Object.freeze({
   safeFiles:'/home/agent/ssh-mcp-server/src/plugins/safeFiles.js',
   plugin:'/home/agent/ssh-mcp-server/src/plugins/projectFactory.js',
   factoryDir:'/opt/prhm-project-factory',
+  nodeRoot:'/opt/prhm-project-factory/node',
   factoryEngine:'/opt/prhm-project-factory/factory.js',
   factoryServer:'/opt/prhm-project-factory/server.js',
   factoryWorker:'/opt/prhm-project-factory/worker.js',
@@ -25,6 +26,10 @@ const EXPECTED=Object.freeze({
   agentApi:'fe8a8fe2e37bf428d18cc1588a1261becb99d7337e9fc7d6e29a65ffb7f7b773',
   registry:'8ad3ef2006c212585cca00007e68137eff9f1b4a7bd867de5272b496b39c7ee3',
   safeFiles:'db64eea728085adc87c75e6408722d81ebd31259defbd70c063c7b57922256e0'
+});
+const NODE_TOOLCHAINS=Object.freeze({
+  x64:{version:'20.20.2',file:'node-v20.20.2-linux-x64.tar.gz',dir:'node-v20.20.2-linux-x64',sha256:'19e56f0825510207dd904f087fe52faa0a4eb6b2aab5f0ea7a33830d04888b8b'},
+  arm64:{version:'20.20.2',file:'node-v20.20.2-linux-arm64.tar.gz',dir:'node-v20.20.2-linux-arm64',sha256:'47ef73d543ecf6eb19435f6c03a0ac4809b3bf0dd6b26c7c571efc2a6572a74d'}
 });
 
 function shaText(s){return crypto.createHash('sha256').update(Buffer.from(s,'utf8')).digest('hex');}
@@ -41,6 +46,9 @@ function waitFor(fn,attempts=60,delay=500){let last;for(let i=0;i<attempts;i++){
 function curlUnix(socket,url){return cp.execFileSync('curl',['-fsS','--max-time','8','--unix-socket',socket,url],{encoding:'utf8',stdio:['ignore','pipe','pipe'],timeout:12000}).trim();}
 function curlUnixPost(socket,url,payload){return cp.execFileSync('curl',['-fsS','--max-time','12','--unix-socket',socket,'-H','content-type: application/json','--data-binary',JSON.stringify(payload),url],{encoding:'utf8',stdio:['ignore','pipe','pipe'],timeout:16000}).trim();}
 function curlLocal(url){return cp.execFileSync('curl',['-fsS','--max-time','8',url],{encoding:'utf8',stdio:['ignore','pipe','pipe'],timeout:12000}).trim();}
+function fileSha256(file){return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');}
+function nodeToolchainSpec(){const spec=NODE_TOOLCHAINS[process.arch];if(!spec)throw Error('unsupported_node_toolchain_arch:'+process.arch);return spec;}
+function stageNodeToolchain(dir){const spec=nodeToolchainSpec();fs.mkdirSync(dir,{recursive:true,mode:0o700});const archive=path.join(dir,spec.file);const url='https://nodejs.org/dist/v'+spec.version+'/'+spec.file;cp.execFileSync('curl',['-fL','--proto','=https','--tlsv1.2','--retry','3','--connect-timeout','10','--max-time','180',url,'-o',archive],{stdio:['ignore','pipe','pipe'],timeout:210000});const actual=fileSha256(archive);if(actual!==spec.sha256)throw Error('node_toolchain_sha_mismatch:'+actual);cp.execFileSync('tar',['-xzf',archive,'-C',dir],{stdio:['ignore','pipe','pipe'],timeout:120000});const extracted=path.join(dir,spec.dir),bin=path.join(extracted,'bin');for(const name of ['node','npm','npx']){const f=path.join(bin,name);if(!fs.existsSync(f))throw Error('node_toolchain_binary_missing:'+name);}const env={...process.env,PATH:bin+':'+String(process.env.PATH||'')};const nodeVersion=cp.execFileSync(path.join(bin,'node'),['--version'],{encoding:'utf8',env,timeout:10000}).trim();const npmVersion=cp.execFileSync(path.join(bin,'npm'),['--version'],{encoding:'utf8',env,timeout:10000}).trim();const npxVersion=cp.execFileSync(path.join(bin,'npx'),['--version'],{encoding:'utf8',env,timeout:10000}).trim();if(nodeVersion!=='v'+spec.version)throw Error('node_toolchain_version_mismatch:'+nodeVersion);return{arch:process.arch,url,file:spec.file,sha256:actual,extracted,node_version:nodeVersion,npm_version:npmVersion,npx_version:npxVersion};}
 
 const FACTORY_ENGINE=String.raw`#!/usr/local/bin/prhm-node
 'use strict';
@@ -67,8 +75,8 @@ function ensureTarget(root){if(fs.existsSync(root))fail('target_exists:'+root,3)
 function plan(root,o){return[
 {name:'laravel_api',command:'composer',args:['create-project','laravel/laravel:^13.0',path.join(root,'apps/api'),'--no-interaction','--prefer-dist'],cwd:root},
 {name:'laravel_standard_packages',command:'composer',args:['require','laravel/sanctum:^4.3','spatie/laravel-permission:^8.0','--no-interaction'],cwd:path.join(root,'apps/api')},
-{name:'next_web',command:'npx',args:['create-next-app@16.2.10',path.join(root,'apps/web'),'--ts','--tailwind','--eslint','--app','--src-dir','--import-alias','@/*','--use-npm','--yes','--disable-git'],cwd:root},
-{name:'next_admin',command:'npx',args:['create-next-app@16.2.10',path.join(root,'apps/admin'),'--ts','--tailwind','--eslint','--app','--src-dir','--import-alias','@/*','--use-npm','--yes','--disable-git'],cwd:root},
+{name:'next_web',command:'/opt/prhm-project-factory/node/bin/npx',args:['create-next-app@16.2.10',path.join(root,'apps/web'),'--ts','--tailwind','--eslint','--app','--src-dir','--import-alias','@/*','--use-npm','--yes','--disable-git'],cwd:root},
+{name:'next_admin',command:'/opt/prhm-project-factory/node/bin/npx',args:['create-next-app@16.2.10',path.join(root,'apps/admin'),'--ts','--tailwind','--eslint','--app','--src-dir','--import-alias','@/*','--use-npm','--yes','--disable-git'],cwd:root},
 {name:'git_init',command:'git',args:['init','--initial-branch=main'],cwd:root},
 {name:'normalize_ownership',command:'chown',args:['-R',o.uid+':'+o.gid,root],cwd:root}
 ];}
@@ -125,7 +133,7 @@ function call(pathname,body,timeout=20000){return new Promise((resolve,reject)=>
 export function registerProjectFactoryPlugin(mcp){mcp.registerTool('project_factory_plan',{title:'Plan Standard PRHM Project',description:'Validate a PRHM_NEW_SITE_V1 manifest and return the exact isolated project materialization plan. Read-only; creates nothing.',inputSchema:{manifest:Manifest},annotations:RO},async({manifest})=>textResult(await call('/v1/plan',{manifest})));mcp.registerTool('project_factory_bootstrap',{title:'Bootstrap Standard PRHM Project',description:'Create one brand-new project only under /home/prhm/projects/generated from a validated PRHM_NEW_SITE_V1 manifest. Existing targets are never overwritten and failed materialization is rolled back.',inputSchema:{manifest:Manifest,acknowledgeRisk:z.literal(true)},annotations:WR},async args=>textResult(await call('/v1/bootstrap',args,30000)));mcp.registerTool('project_factory_status',{title:'Project Factory Job Status',description:'Read persistent Project Factory job status and bounded log tail.',inputSchema:{job_id:z.string().uuid()},annotations:RO},async args=>textResult(await call('/v1/status',args)));}
 `;
 
-const UNIT=`[Unit]\nDescription=PRHM Project Factory\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nType=simple\nUser=root\nGroup=root\nUMask=0077\nExecStart=/usr/local/bin/prhm-node /opt/prhm-project-factory/server.js\nRestart=on-failure\nRestartSec=2\nRuntimeDirectory=prhm-project-factory\nRuntimeDirectoryMode=0750\nStateDirectory=prhm-project-factory\nStateDirectoryMode=0700\nWorkingDirectory=/opt/prhm-project-factory\nEnvironment=COMPOSER_HOME=/var/lib/prhm-project-factory/composer\nEnvironment=npm_config_cache=/var/lib/prhm-project-factory/npm-cache\nNoNewPrivileges=yes\nPrivateTmp=yes\nPrivateDevices=yes\nProtectSystem=strict\nProtectHome=read-only\nReadWritePaths=/home/prhm/projects/generated\nProtectKernelTunables=yes\nProtectKernelModules=yes\nProtectControlGroups=yes\nRestrictNamespaces=yes\nRestrictSUIDSGID=yes\nLockPersonality=yes\nRestrictAddressFamilies=AF_UNIX AF_INET AF_INET6\nCapabilityBoundingSet=CAP_CHOWN CAP_DAC_OVERRIDE CAP_DAC_READ_SEARCH CAP_FOWNER CAP_FSETID CAP_SETGID CAP_SETUID\nAmbientCapabilities=\nTasksMax=2048\n\n[Install]\nWantedBy=multi-user.target\n`;
+const UNIT=`[Unit]\nDescription=PRHM Project Factory\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nType=simple\nUser=root\nGroup=root\nUMask=0077\nExecStart=/usr/local/bin/prhm-node /opt/prhm-project-factory/server.js\nRestart=on-failure\nRestartSec=2\nRuntimeDirectory=prhm-project-factory\nRuntimeDirectoryMode=0750\nStateDirectory=prhm-project-factory\nStateDirectoryMode=0700\nWorkingDirectory=/opt/prhm-project-factory\nEnvironment=COMPOSER_HOME=/var/lib/prhm-project-factory/composer\nEnvironment=npm_config_cache=/var/lib/prhm-project-factory/npm-cache\nEnvironment=PATH=/opt/prhm-project-factory/node/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin\nNoNewPrivileges=yes\nPrivateTmp=yes\nPrivateDevices=yes\nProtectSystem=strict\nProtectHome=read-only\nReadWritePaths=/home/prhm/projects/generated\nProtectKernelTunables=yes\nProtectKernelModules=yes\nProtectControlGroups=yes\nRestrictNamespaces=yes\nRestrictSUIDSGID=yes\nLockPersonality=yes\nRestrictAddressFamilies=AF_UNIX AF_INET AF_INET6\nCapabilityBoundingSet=CAP_CHOWN CAP_DAC_OVERRIDE CAP_DAC_READ_SEARCH CAP_FOWNER CAP_FSETID CAP_SETGID CAP_SETUID\nAmbientCapabilities=\nTasksMax=2048\n\n[Install]\nWantedBy=multi-user.target\n`;
 
 const REGISTRY_HELPERS=String.raw`
 const PRHM_GENERATED_PROJECTS_REGISTRY_V1 = true;
@@ -192,7 +200,7 @@ function preflightCandidate(){
   if(fs.existsSync(PATHS.marker))throw Error('project_factory_bootstrap_marker_exists');
   if(fs.existsSync(PATHS.plugin)||fs.existsSync(PATHS.factoryDir)||fs.existsSync(PATHS.unit))throw Error('project_factory_install_target_already_exists');
   if(!fs.existsSync(PATHS.ownerReference)||!fs.statSync(PATHS.ownerReference).isDirectory())throw Error('project_factory_owner_reference_missing');
-  for(const bin of ['composer','npx','git','chown','curl','systemctl'])cp.execFileSync('which',[bin],{stdio:'pipe',timeout:5000});
+  for(const bin of ['composer','git','chown','curl','tar','systemctl'])cp.execFileSync('which',[bin],{stdio:'pipe',timeout:5000});
   const originals={agentApi:read(PATHS.agentApi),registry:read(PATHS.registry),safeFiles:read(PATHS.safeFiles)};
   const patched={agentApi:patchAgentApi(originals.agentApi),registry:patchRegistry(originals.registry),safeFiles:patchSafeFiles(originals.safeFiles)};
   validateCandidate(patched);
@@ -202,11 +210,12 @@ function preflightCandidate(){
   for(const f of Object.values(files))nodeCheck(f);
   const sample={standard_id:'PRHM_NEW_SITE_V1',slug:'factory-preflight-sample',name:'Factory Preflight Sample',domains:['factory-preflight.example.com'],languages:['fa'],modules:[],payment_adapter:null,sms_adapter:null,brand:{display_name:'Factory Preflight Sample'},features:{}};
   const payload=Buffer.from(JSON.stringify(sample),'utf8').toString('base64');
+  const toolchain=stageNodeToolchain(path.join(dir,'node-toolchain'));
   const dry=cp.spawnSync('/usr/local/bin/prhm-node',[files.engine,'--manifest-base64',payload,'--dry-run'],{encoding:'utf8',timeout:15000,maxBuffer:1000000});
   if(dry.error||dry.status!==0)throw Error('factory_engine_dry_run_failed:'+String(dry.stderr||dry.stdout||dry.error?.message||'').slice(0,2000));
   let plan;try{plan=JSON.parse(String(dry.stdout||'').trim())}catch{throw Error('factory_engine_dry_run_invalid_json')}
   if(plan.ok!==true||plan.dry_run!==true||plan.root!=='/home/prhm/projects/generated/factory-preflight-sample')throw Error('factory_engine_dry_run_invalid_result');
-  return{originals,patched,files,report:{ok:true,preflight_only:true,version:VERSION,current_hashes:{...EXPECTED},candidate_hashes:{agentApi:shaText(patched.agentApi),registry:shaText(patched.registry),safeFiles:shaText(patched.safeFiles),plugin:shaText(MCP_PLUGIN),engine:shaText(FACTORY_ENGINE),server:shaText(FACTORY_SERVER),worker:shaText(FACTORY_WORKER),unit:shaText(UNIT)},factory_root:PATHS.generatedRoot,write_scope:PATHS.generatedRoot,sample_plan_root:plan.root}};
+  return{originals,patched,files,toolchain,report:{ok:true,preflight_only:true,version:VERSION,current_hashes:{...EXPECTED},candidate_hashes:{agentApi:shaText(patched.agentApi),registry:shaText(patched.registry),safeFiles:shaText(patched.safeFiles),plugin:shaText(MCP_PLUGIN),engine:shaText(FACTORY_ENGINE),server:shaText(FACTORY_SERVER),worker:shaText(FACTORY_WORKER),unit:shaText(UNIT)},factory_root:PATHS.generatedRoot,write_scope:PATHS.generatedRoot,sample_plan_root:plan.root,node_toolchain:{arch:toolchain.arch,file:toolchain.file,sha256:toolchain.sha256,node_version:toolchain.node_version,npm_version:toolchain.npm_version,npx_version:toolchain.npx_version}}};
 }
 function main(){
   const preflightOnly=process.argv.includes('--preflight-only');
@@ -221,6 +230,7 @@ function main(){
     const owner=fs.statSync(PATHS.ownerReference);
     if(!fs.existsSync(PATHS.generatedRoot)){fs.mkdirSync(PATHS.generatedRoot,{recursive:false,mode:0o750});fs.chownSync(PATHS.generatedRoot,owner.uid,owner.gid);generatedCreated=true;}else{const gs=fs.lstatSync(PATHS.generatedRoot);if(gs.isSymbolicLink()||!gs.isDirectory())throw Error('generated_root_invalid');}
     fs.mkdirSync(PATHS.factoryDir,{recursive:false,mode:0o755});created.push(PATHS.factoryDir);
+    fs.renameSync(p.toolchain.extracted,PATHS.nodeRoot);
     atomicWrite(PATHS.factoryEngine,FACTORY_ENGINE,0o644,0,0);atomicWrite(PATHS.factoryServer,FACTORY_SERVER,0o644,0,0);atomicWrite(PATHS.factoryWorker,FACTORY_WORKER,0o644,0,0);
     const plugDir=path.dirname(PATHS.plugin),pst=fs.statSync(plugDir);atomicWrite(PATHS.plugin,MCP_PLUGIN,0o644,pst.uid,pst.gid);created.push(PATHS.plugin);
     atomicWrite(PATHS.agentApi,p.patched.agentApi,stats[PATHS.agentApi].mode&0o777,stats[PATHS.agentApi].uid,stats[PATHS.agentApi].gid);
