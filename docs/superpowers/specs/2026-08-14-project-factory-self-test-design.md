@@ -18,7 +18,7 @@ The chosen model is:
 - Installing, changing, or removing the self-test action, helper, policy, executor registration, or plugin schema is a Level-4 critical control-plane mutation.
 - Normal execution of the already-installed self-test is Level-2.
 - The runtime action is fixed and accepts no arbitrary command, path, shell, SQL, domain, repository, package, project, or environment input.
-- A Level-2 execution cannot alter the implementation, policy, expected Factory SHA, allowlist, or test manifest.
+- A Level-2 execution cannot alter the implementation, policy, expected Factory SHA, allowlist, dependency baseline, or test manifest.
 
 ## 3. Architecture
 
@@ -71,7 +71,7 @@ The helper supplies a fixed manifest to the Factory. It must include:
 - `standard_id: PRHM_NEW_SITE_V1`
 - a generated disposable slug
 - a clearly disposable project name
-- reserved test-only domains that are never provisioned
+- fixed test-only domains under the reserved `.invalid` top-level domain, which are never provisioned
 - fixed language/module values sufficient to exercise normal Factory validation
 - `features.e2e_test: true`
 
@@ -93,11 +93,13 @@ The required successful sequence is:
 8. Ownership normalization.
 9. Final bootstrap state `ready_for_configuration`.
 
-For Factory `1.3.4`, Web and Admin must resolve the approved baseline:
+For the initially supported Factory `1.3.4`, Web and Admin must resolve exactly this approved security baseline:
 
 - Next.js `16.2.12`
-- PostCSS `8.5.23` or newer compatible approved patch within the pinned policy
-- sharp `0.35.0` or newer compatible approved patch within the pinned policy
+- PostCSS `8.5.23`
+- sharp `0.35.3`
+
+A future dependency-version change is not accepted implicitly. It requires a new Level-4 update of the self-test implementation and its SHA-bound expected baseline.
 
 The helper independently verifies that these required artifacts exist:
 
@@ -130,7 +132,7 @@ Required checks:
 - `critical === 0`.
 - `high === 0`.
 - `npm ls` for Next.js, PostCSS, and sharp succeeds.
-- resolved package versions satisfy the approved baseline.
+- resolved package versions exactly match the SHA-bound approved baseline for the installed self-test version.
 - `next build` succeeds for both applications.
 
 Any High/Critical vulnerability, dependency-tree failure, version mismatch, or production build failure makes the self-test fail.
@@ -284,7 +286,7 @@ Implementation is accepted only when all of these are demonstrated with fresh ev
 2. The installed action appears in the Host Action request schema as `project_factory_selftest_v1`.
 3. A fresh request identifies the action as Level-2 and contains no caller-controlled arguments.
 4. A normal apply executes exactly one positive E2E and one negative rollback test.
-5. Positive E2E returns zero High/Critical audit findings for Web and Admin and both builds succeed.
+5. Positive E2E returns zero High/Critical audit findings for Web and Admin, exact approved dependency versions, and both builds succeed.
 6. Negative rollback test proves missing-artifact false-success detection and root rollback.
 7. Installed Factory SHA is identical before and after execution.
 8. No production project, production service configuration, domain, TLS, database, or secret is mutated.
