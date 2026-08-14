@@ -132,7 +132,8 @@ function main() {
       const neg = run('/usr/local/bin/prhm-node', [negativeFile, '--manifest-base64', Buffer.from(JSON.stringify(negativeManifest)).toString('base64')], {encoding:'utf8'});
       if (neg.status === 0) die('negative_test_unexpected_success');
       const combined = (neg.stdout || '') + '\n' + (neg.stderr || '');
-      if (!combined.includes('postcondition_missing:' + negativeRoot + '/apps/web/package.json')) die('negative_missing_postcondition_evidence');
+      if (!combined.includes('materialization_failed:next_web:rollback_ok')) die('negative_missing_failure_evidence');
+      if (!combined.includes('\"failed_step\":\"next_web\"')) die('negative_missing_failed_step_evidence');
       if (!combined.includes('rollback_ok')) die('negative_missing_rollback_evidence');
       if (fs.existsSync(negativeRoot)) die('negative_root_still_exists');
     } finally {
