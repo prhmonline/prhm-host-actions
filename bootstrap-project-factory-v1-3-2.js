@@ -75,7 +75,7 @@ function main() {
   if ((patched.match(/XDG_CONFIG_HOME/g)||[]).length < 3) die('xdg_verify_failed');
   if ((patched.match(/postcondition_missing:/g)||[]).length !== 1) die('postcondition_verify_failed');
 
-  const candidate = TARGET + '.candidate-v1-3-2-' + process.pid;
+  const candidate = TARGET + '.candidate-v1-3-2-' + process.pid + '.js';
   fs.writeFileSync(candidate, patched, {mode:0o600});
   try {
     const syntax = run('/usr/local/bin/prhm-node', ['--check', candidate]);
