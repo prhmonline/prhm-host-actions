@@ -1,0 +1,33 @@
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const helper=path.join(__dirname,'company-os-dashboard-v1.js');
+test('dashboard installer is fixed, SHA-bound, preflightable and rollback-capable',()=>{
+ const s=fs.readFileSync(helper,'utf8');
+ assert.match(s,/company_os_dashboard_v1/);
+ assert.match(s,/--preflight-only/);
+ assert.match(s,/3df02ee3a386c2ef144131225c037d20d5348bdc969adcf14bd556acd864fe40/);
+ assert.match(s,/39e146f24e277c8e90f72247828358da14caf4a8f3d0bcb49803d9318db3304c/);
+ assert.match(s,/\/opt\/prhm-company-os-dashboard/);
+ assert.match(s,/AUTH_DIR='\/etc\/prhm-company-os-dashboard'/); assert.match(s,/AUTH_FILE=AUTH_DIR\+'\/auth\.json'/);
+ assert.match(s,/STATE_DIR='\/var\/lib\/prhm-company-os-dashboard'/); assert.match(s,/SNAPSHOT=STATE_DIR\+'\/snapshot\.json'/);
+ assert.match(s,/18135/);
+ assert.match(s,/ProxyPass \/company-os http:\/\/127\.0\.0\.1:18135\/company-os/);
+ assert.match(s,/httpd -t|\['-t'\]/);
+ assert.match(s,/backup/i);assert.match(s,/rollback/i);
+ assert.match(s,/crypto\.randomBytes/);
+ assert.match(s,/password_sha256/);
+ assert.match(s,/company-os-dashboard-credentials\.txt/);
+ assert.match(s,/OnUnitActiveSec=5min/);
+ assert.match(s,/User=apache/);assert.match(s,/Group=apache/);
+ assert.match(s,/NoNewPrivileges=true/);assert.match(s,/ProtectSystem=strict/);
+ assert.match(s,/P0_SHADOW_MODE/);assert.match(s,/PROPOSAL_AUTO_SEND_ENABLED/);
+});
+test('dashboard installer embeds the exact tested app and no business send actions',()=>{
+ const s=fs.readFileSync(helper,'utf8');
+ for(const x of ['server.js','collector.js','index.html','styles.css','app.js'])assert.match(s,new RegExp(x.replace('.','\\.')));
+ assert.match(s,/prhm\.company-os-dashboard\.snapshot\.v1/);
+ assert.doesNotMatch(s,/PROPOSAL_AUTO_SEND_ENABLED[^\n]{0,120}(?:true|1)/i);
+ assert.doesNotMatch(s,/P0_DECISION_ENABLED[^\n]{0,120}(?:true|1)/i);
+});
