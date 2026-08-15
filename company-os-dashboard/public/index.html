@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Company OS — مرکز عملیات</title>
+<link rel="stylesheet" href="/company-os/styles.css">
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" aria-label="ناوبری Company OS">
+    <div class="brand"><div class="brand-mark">CO</div><div><strong>Company OS</strong><span>مرکز عملیات روزانه</span></div></div>
+    <nav class="nav-list">
+      <button class="nav-item active" data-view="overview"><span class="nav-icon">⌂</span><span>وضعیت امروز</span></button>
+      <button class="nav-item" data-view="opportunities"><span class="nav-icon">◎</span><span>فرصت‌های LeadOps</span></button>
+      <button class="nav-item" data-view="decisions"><span class="nav-icon">◈</span><span>Economics و تصمیم‌ها</span></button>
+      <button class="nav-item" data-view="host-actions"><span class="nav-icon">✓</span><span>Approval و Host Actions</span></button>
+      <button class="nav-item" data-view="reports"><span class="nav-icon">▦</span><span>گزارش‌ها و سلامت</span></button>
+    </nav>
+    <div class="sidebar-footer"><div class="shield-dot"></div><div><b>حالت محافظت فعال</b><small>Read-only dashboard</small></div></div>
+  </aside>
+  <main class="main">
+    <header class="topbar">
+      <div><p class="eyebrow">PRHM / SOLO COMPANY</p><h1 id="page-title">وضعیت امروز</h1></div>
+      <div class="top-actions"><span class="updated" id="updated-at">در حال دریافت اطلاعات…</span><button id="refresh-btn" class="refresh-btn" type="button">↻ بروزرسانی</button></div>
+    </header>
+    <div id="loading" class="state-panel loading" aria-live="polite"><span class="spinner"></span> در حال دریافت وضعیت Company OS…</div>
+    <div id="error-state" class="state-panel error-state hidden" role="alert"><b>دریافت اطلاعات ناموفق بود</b><span id="error-text">دوباره تلاش کنید.</span></div>
+    <div id="empty-state" class="state-panel empty-state hidden">داده‌ای برای نمایش وجود ندارد.</div>
+
+    <section class="view" id="view-overview" data-panel="overview">
+      <div class="safety-strip">
+        <div><span class="safety-label">وضعیت اتوماسیون</span><strong>Shadow / No-send</strong></div>
+        <div class="safety-items">
+          <span class="safety-chip safe"><i></i>P0 Live <b>OFF</b></span>
+          <span class="safety-chip safe"><i></i>Proposal Auto Send <b>OFF</b></span>
+          <span class="safety-chip safe"><i></i>Bid Auto Send <b>OFF</b></span>
+        </div>
+      </div>
+      <div class="metric-grid">
+        <article class="metric-card"><div class="metric-head"><span>فرصت‌های منتظر بررسی</span><span class="metric-icon">◎</span></div><strong id="metric-waiting">—</strong><small>WAITING_APPROVAL</small></article>
+        <article class="metric-card"><div class="metric-head"><span>تصمیم‌های Shadow</span><span class="metric-icon">◈</span></div><strong id="metric-decisions">—</strong><small>کل تصمیم‌های ثبت‌شده</small></article>
+        <article class="metric-card"><div class="metric-head"><span>Bid ارسال‌شده</span><span class="metric-icon">↗</span></div><strong id="metric-bids">—</strong><small>Baseline تاریخی</small></article>
+        <article class="metric-card"><div class="metric-head"><span>سرویس‌های سالم</span><span class="metric-icon">✓</span></div><strong id="metric-services">—</strong><small>هسته Company OS</small></article>
+      </div>
+      <div class="overview-grid">
+        <article class="panel"><div class="panel-head"><div><p class="eyebrow">LATEST LEADS</p><h2>فرصت‌های تازه</h2></div><button class="text-btn" data-view="opportunities">مشاهده همه</button></div><div id="overview-opportunities" class="compact-list"></div></article>
+        <article class="panel"><div class="panel-head"><div><p class="eyebrow">VALIDATION</p><h2>آمادگی عملیاتی</h2></div></div><div id="readiness-list" class="readiness-list"></div></article>
+      </div>
+      <article class="panel"><div class="panel-head"><div><p class="eyebrow">LATEST DECISIONS</p><h2>آخرین تصمیم‌های اقتصادی</h2></div><button class="text-btn" data-view="decisions">جزئیات</button></div><div class="table-wrap"><table><thead><tr><th>پروژه</th><th>منبع</th><th>تصمیم</th><th>دلیل</th><th>پیشنهاد</th><th>زمان</th></tr></thead><tbody id="overview-decisions"></tbody></table></div></article>
+    </section>
+
+    <section class="view hidden" id="view-opportunities" data-panel="opportunities">
+      <article class="panel"><div class="panel-head stack-mobile"><div><p class="eyebrow">LEADOPS PIPELINE</p><h2>فرصت‌های منتظر بررسی</h2></div><div class="filters"><input id="opportunity-search" type="search" placeholder="جستجو در عنوان یا شناسه…" aria-label="جستجوی فرصت"><select id="source-filter" aria-label="فیلتر منبع"><option value="">همه منابع</option></select></div></div><div class="table-wrap"><table><thead><tr><th>پروژه</th><th>منبع</th><th>بودجه</th><th>امتیاز</th><th>دسته</th><th>Economics</th><th>زمان کشف</th></tr></thead><tbody id="opportunities-body"></tbody></table></div></article>
+    </section>
+
+    <section class="view hidden" id="view-decisions" data-panel="decisions">
+      <div class="metric-grid metric-grid-three"><article class="metric-card"><span>Economic Facts فعال</span><strong id="metric-facts">—</strong><small>Verified facts موجود</small></article><article class="metric-card"><span>Outbox Published</span><strong id="metric-outbox">—</strong><small>Baseline تاریخی</small></article><article class="metric-card"><span>آخرین Positive UAT</span><strong id="metric-positive-uat">—</strong><small>Verified Economics replay</small></article></div>
+      <article class="panel"><div class="panel-head"><div><p class="eyebrow">ECONOMICS ENGINE</p><h2>تاریخچه تصمیم‌ها</h2></div></div><div class="table-wrap"><table><thead><tr><th>پروژه</th><th>تصمیم</th><th>Economic Floor</th><th>Final Bid</th><th>سود</th><th>Margin</th><th>نسخه</th></tr></thead><tbody id="decisions-body"></tbody></table></div></article>
+    </section>
+
+    <section class="view hidden" id="view-host-actions" data-panel="host-actions">
+      <article class="panel"><div class="panel-head"><div><p class="eyebrow">APPROVAL CENTER</p><h2>Host Actions اخیر</h2></div><span class="read-only-pill">فقط مشاهده</span></div><div id="host-actions-list" class="timeline"></div></article>
+    </section>
+
+    <section class="view hidden" id="view-reports" data-panel="reports">
+      <div class="reports-grid" id="reports-grid"></div>
+      <article class="panel"><div class="panel-head"><div><p class="eyebrow">INFRASTRUCTURE</p><h2>سلامت سرویس‌ها</h2></div></div><div id="services-grid" class="service-grid"></div></article>
+    </section>
+  </main>
+</div>
+<script src="/company-os/app.js" defer></script>
+</body>
+</html>
