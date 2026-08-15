@@ -168,13 +168,24 @@ function patchV4Helper(src,newPluginSha){
     'v4_expected_plugin_sha'
   );
 }
+function curlHealth(args,label){
+  let lastError=null;
+  for(let i=0;i<50;i++){
+    try{
+      const r=exec('/usr/bin/curl',args,{timeout:10000});
+      return JSON.parse(String(r.stdout||'{}'));
+    }catch(error){
+      lastError=error;
+      if(i<49)Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,200);
+    }
+  }
+  fail(label+'_health_not_ready:'+String(lastError?.message||lastError||'unknown'));
+}
 function loopbackHealth(port){
-  const r=exec('/usr/bin/curl',['-fsS','http://127.0.0.1:'+port+'/health'],{timeout:10000});
-  return JSON.parse(String(r.stdout||'{}'));
+  return curlHealth(['-fsS','http://127.0.0.1:'+port+'/health'],'loopback');
 }
 function unixHealth(socket){
-  const r=exec('/usr/bin/curl',['-fsS','--unix-socket',socket,'http://localhost/health'],{timeout:10000});
-  return JSON.parse(String(r.stdout||'{}'));
+  return curlHealth(['-fsS','--unix-socket',socket,'http://localhost/health'],'unix');
 }
 
 function main(){
