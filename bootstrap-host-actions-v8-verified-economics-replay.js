@@ -102,7 +102,7 @@ function main(){
   let ok=false;
   try{
     for(const k of ['base','executor','plugin','policy','v4helper']){
-      atomic(FILES[k],candidate[k],k==='policy'?0o600:0o755);
+      atomic(FILES[k],candidate[k],k==='policy'?0o644:0o755);
       changed.push(k);
     }
     fs.mkdirSync(path.dirname(FILES.helper),{recursive:true,mode:0o755});
@@ -129,7 +129,7 @@ function main(){
         if(changed.includes(k)){
           const bak=path.join(backupDir,k+'-'+path.basename(FILES[k])+'.bak');
           fs.copyFileSync(bak,FILES[k]);
-          fs.chmodSync(FILES[k],k==='policy'?0o600:0o755);
+          fs.chmodSync(FILES[k],k==='policy'?0o644:0o755);
         }
       }
       if(changed.includes('helper')){try{fs.unlinkSync(FILES.helper)}catch{}}
