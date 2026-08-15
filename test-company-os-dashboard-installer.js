@@ -19,7 +19,8 @@ test('dashboard installer is fixed, SHA-bound, preflightable and rollback-capabl
  assert.match(s,/backup/i);assert.match(s,/rollback/i);
  assert.match(s,/crypto\.randomBytes/);
  assert.match(s,/password_sha256/);
- assert.match(s,/company-os-dashboard-credentials\.txt/);
+ assert.match(s,/CREDENTIALS=RESULT_DIR\+'\/credentials\.txt'/);
+ assert.doesNotMatch(s,/CREDENTIALS='\/root\//);
  assert.match(s,/OnUnitActiveSec=5min/);
  assert.match(s,/User=apache/);assert.match(s,/Group=apache/);
  assert.match(s,/NoNewPrivileges=true/);assert.match(s,/ProtectSystem=strict/);

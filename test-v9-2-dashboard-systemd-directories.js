@@ -19,7 +19,7 @@ test('executor delegates directory creation to systemd before namespace setup',(
  assert.match(bootstrap,/ConfigurationDirectoryMode=0750/);
  assert.doesNotMatch(bootstrap,/mkdirSync\(dir/);
  assert.doesNotMatch(bootstrap,/ReadWritePaths=\/opt\/prhm-company-os-dashboard/);
- assert.match(bootstrap,/1\.9\.2-host-actions-v2-company-os-dashboard-systemd-dirs/);
+ assert.match(bootstrap,/1\.9\.3-host-actions-v2-company-os-dashboard-credentials/);
 });
 test('systemd-managed empty directories are reusable but business artifacts are not',()=>{
  assert.match(helper,/managedDir/);
