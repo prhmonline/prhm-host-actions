@@ -54,6 +54,7 @@ function atomic(file,content,mode){const t=file+'.v8-'+process.pid+'.tmp';fs.wri
 function systemctl(args){exec('/usr/bin/systemctl',args,{timeout:60000})}
 function unixHealth(){for(let i=0;i<50;i++){const r=cp.spawnSync('/usr/bin/curl',['-fsS','--max-time','2','--unix-socket','/run/prhm-agent-selfmaint-exec/exec.sock','http://localhost/health'],{encoding:'utf8'});if(r.status===0){try{const x=JSON.parse(r.stdout);if(x.ok===true&&x.version===VERSION)return x}catch{}}Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,200)}fail('executor_health_not_ready')}
 function mcpHealth(){for(let i=0;i<50;i++){const r=cp.spawnSync('/usr/bin/curl',['-fsS','--max-time','2','http://127.0.0.1:8123/health'],{encoding:'utf8'});if(r.status===0){try{const x=JSON.parse(r.stdout);if(x.ok===true)return x}catch{}}Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,200)}fail('mcp_health_not_ready')}
+function approvalHealth(){for(let i=0;i<50;i++){const r=cp.spawnSync('/usr/bin/curl',['-fsS','--max-time','2','http://127.0.0.1:18133/health'],{encoding:'utf8'});if(r.status===0){try{const x=JSON.parse(r.stdout);if(x.ok===true&&x.policy_version==='2026-08-15.3-verified-economics-replay-v1')return x}catch{}}Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,200)}fail('approval_health_policy_not_ready')}
 function main(){
   const a=process.argv.slice(2);
   if(a.length>1||(a.length===1&&a[0]!=='--preflight-only'))fail('unexpected_arguments');
@@ -106,9 +107,11 @@ function main(){
     fs.mkdirSync(path.dirname(FILES.helper),{recursive:true,mode:0o755});
     atomic(FILES.helper,HELPER_CONTENT,0o755);
     changed.push('helper');
+    systemctl(['restart','prhm-company-approval.service']);
     systemctl(['restart','prhm-agent-selfmaint.service']);
     systemctl(['restart','prhm-agent-selfmaint-exec.service']);
     systemctl(['restart','prhm-agent-mcp.service']);
+    const approval=approvalHealth();
     const h=unixHealth();
     const m=mcpHealth();
     if(sha(FILES.helper)!==HELPER_SHA)fail('helper_sha_postverify_failed');
@@ -118,7 +121,7 @@ function main(){
     const post=helperPreflight();
     if(post.ok!==true||post.preflight_only!==true)fail('post_helper_preflight_failed');
     ok=true;
-    console.log(JSON.stringify({ok:true,schema_version:'prhm.host-action-install-result.v1',installed:true,version:VERSION,action:ACTION,helper_sha256:HELPER_SHA,mcp_plugin_sha256:pluginSha,approval_policy_version:p.version,helper_preflight:post,uat_executed:false,database_mutation:false,business_mutation:false,p0_live:false,proposal_send:false,bid_send:false,backup_dir:backupDir,health:{executor:h,mcp:m}}));
+    console.log(JSON.stringify({ok:true,schema_version:'prhm.host-action-install-result.v1',installed:true,version:VERSION,action:ACTION,helper_sha256:HELPER_SHA,mcp_plugin_sha256:pluginSha,approval_policy_version:p.version,helper_preflight:post,uat_executed:false,database_mutation:false,business_mutation:false,p0_live:false,proposal_send:false,bid_send:false,backup_dir:backupDir,health:{approval,executor:h,mcp:m}}));
   }finally{
     if(!ok){
       for(const k of ['v4helper','policy','plugin','executor','base']){
@@ -130,6 +133,7 @@ function main(){
       }
       if(changed.includes('helper')){try{fs.unlinkSync(FILES.helper)}catch{}}
       try{
+        systemctl(['restart','prhm-company-approval.service']);
         systemctl(['restart','prhm-agent-selfmaint.service']);
         systemctl(['restart','prhm-agent-selfmaint-exec.service']);
         systemctl(['restart','prhm-agent-mcp.service']);
