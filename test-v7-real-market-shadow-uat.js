@@ -36,5 +36,5 @@ test('bootstrap adds only fixed Level-4 action while preserving solo selftest an
   assert.match(s,/solo_company_selftest_v1/);
   assert.match(s,/leadops_economics_inputs_foundation_v1/);
   assert.match(s,/level:4/);
-  assert.match(s,/1\.7\.0-host-actions-v2-real-market-shadow-uat/);
+  assert.match(s,/1\.7\.1-host-actions-v2-real-market-shadow-uat-validator/);
 });
