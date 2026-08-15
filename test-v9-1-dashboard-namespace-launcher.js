@@ -14,5 +14,5 @@ test('namespace regression remains fixed without widening executor filesystem ac
 });
 test('future v9 bootstrap reloads Approval Center and identifies v9.2 launcher',()=>{
   assert.match(bootstrap,/prhm-company-approval\.service/);
-  assert.match(bootstrap,/1\.9\.2-host-actions-v2-company-os-dashboard-systemd-dirs/);
+  assert.match(bootstrap,/1\.9\.3-host-actions-v2-company-os-dashboard-credentials/);
 });
