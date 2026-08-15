@@ -1,7 +1,7 @@
 # Company OS Daily Readiness v8 — Design
 
 ## Goal
-Make Company OS usable as a daily operating console while preserving the current fail-closed safety model. The release has two independently testable outcomes: a positive real-market Shadow UAT with provenance-backed economics, and a separate graphical read-only Company OS dashboard.
+Make Company OS usable as a daily operating console while preserving the current fail-closed safety model. The release has two independently testable outcomes: a positive real-market historical replay UAT with provenance-backed economics, and a separate graphical read-only Company OS dashboard.
 
 ## Safety boundaries
 - `P0_SHADOW_MODE=true` remains the only enabled P0 flag.
@@ -18,16 +18,16 @@ The UAT facts are fixed and carry provenance objects. They are derived only from
 - `recommendedPrice=800000`: conservative use of the listing's minimum budget, never above the client range.
 - `platformMinimum=800000`: listing minimum budget.
 - `deliveryCost=30900`: 300 words × 103 Toman/word. The 103 Toman current internal delivery rate is corroborated by multiple recent completed DrTarjomeh Persian→English orders whose `price_translator/count_admin` equals 103.
-- `platformFee=80000`: 10% of the 800,000 Toman bid for the current free Karlancer plan.
+- `platformFee=120000`: conservative 15% fee ceiling on the 800,000 Toman replay bid; this is a controlled UAT policy bound, not a claim about the live account fee.
 - `aiOpsCost=0`: this isolated UAT performs no external paid model/provider call.
 - `paymentFee=0`: no additional payment fee is modeled separately for this isolated platform UAT; uncertainty is covered by reserve.
 - `riskReserve=80000`: conservative 10% UAT reserve policy.
-- `hardFloor=212112`: conservative break-even floor covering delivery, platform fee, risk reserve and a 10% contingency buffer.
-- `minimumMarginPrice=238625`: conservative floor ensuring at least 20% margin under the same cost envelope.
+- `hardFloor=230900`: fixed replay cost envelope = 30,900 delivery + 120,000 fee ceiling + 80,000 reserve + zero separately modeled AI/payment fees.
+- `minimumMarginPrice=288625`: hardFloor / 0.80, the minimum price that preserves a 20% margin under the fixed replay cost envelope.
 
 `winProbability` and `humanHours` are optional and intentionally omitted until a verified historical estimator exists.
 
-Expected engine result: `SEND_NOW`, `autoSendAllowed=false`, final bid 800,000 Toman, positive margin above 20%. The test validates provenance, no-send invariants, and full cleanup.
+Replay clock is pinned only inside the disposable worker copy to one hour after the original discovery timestamp; production freshness logic is unchanged. Expected engine result: `SEND_NOW`, `autoSendAllowed=false`, final bid 800,000 Toman, positive margin above 20%. The test validates provenance, no-send invariants, and full cleanup.
 
 ## Dashboard architecture
 A dedicated package is installed at `/opt/prhm-company-dashboard` with two units:
