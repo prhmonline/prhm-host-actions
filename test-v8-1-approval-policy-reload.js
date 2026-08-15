@@ -8,6 +8,8 @@ test('future v8 installer reloads Approval Center after policy change',()=>{
   const s=fs.readFileSync(path.join(__dirname,'bootstrap-host-actions-v8-verified-economics-replay.js'),'utf8');
   assert.match(s,/prhm-company-approval\.service/);
   assert.match(s,/18133\/health/);
+  assert.match(s,/prhm-company-registry\.service/);
+  assert.match(s,/nsenter/);
   assert.match(s,/2026-08-15\.3-verified-economics-replay-v1/);
 });
 
@@ -24,6 +26,9 @@ test('v8.1 remediation is post-v8 state-bound and approval-reload-only',()=>{
   assert.match(s,/systemctl.*restart.*prhm-company-approval\.service/s);
   assert.match(s,/const POLICY_VERSION='2026-08-15\.3-verified-economics-replay-v1'/);
   assert.match(s,/x\.policy_version===POLICY_VERSION/);
+  assert.match(s,/prhm-company-registry\.service/);
+  assert.match(s,/nsenter/);
+  assert.match(s,/18133\/health/);
   assert.doesNotMatch(s,/writeFileSync\([^)]*approval-policy\.json/);
   assert.match(s,/database_mutation:false/);
   assert.match(s,/business_mutation:false/);
