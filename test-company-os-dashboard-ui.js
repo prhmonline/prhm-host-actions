@@ -7,9 +7,9 @@ function read(n){return fs.readFileSync(path.join(pub,n),'utf8')}
 test('dashboard HTML is Persian RTL and contains all daily work views',()=>{
  const h=read('index.html');
  assert.match(h,/<html[^>]+lang="fa"[^>]+dir="rtl"/);
- for(const x of ['وضعیت امروز','فرصت‌های LeadOps','Economics و تصمیم‌ها','Approval و Host Actions','گزارش‌ها و سلامت'])assert.match(h,new RegExp(x));
+ for(const x of ['وضعیت امروز','فرصت‌های جذب پروژه','اقتصاد و تصمیم‌ها','مرکز تأیید و عملیات سیستمی','گزارش‌ها و سلامت'])assert.match(h,new RegExp(x));
  for(const id of ['view-overview','view-opportunities','view-decisions','view-host-actions','view-reports'])assert.match(h,new RegExp(`id="${id}"`));
- assert.match(h,/P0 Live/);assert.match(h,/Proposal Auto Send/);assert.match(h,/Bid Auto Send/);
+ assert.match(h,/اجرای زنده P0/);assert.match(h,/ارسال خودکار پیشنهاد/);assert.match(h,/ارسال خودکار قیمت/);
  assert.match(h,/aria-live/);assert.match(h,/loading/);assert.match(h,/empty-state/);assert.match(h,/error-state/);
 });
 test('dashboard CSS has deliberate design tokens and responsive layouts',()=>{
