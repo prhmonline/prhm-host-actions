@@ -33,3 +33,11 @@ test('helper accepts no arbitrary production inputs',()=>{
   assert.match(s,/unexpected_arguments/);
   assert.doesNotMatch(s,/process\.env\.(TARGET|SQL|COMMAND|PATH)/);
 });
+
+
+test('post-insert verification expects the nine temporary facts instead of zero',()=>{
+  const s=fs.readFileSync(helperPath,'utf8');
+  assert.match(s,/function verifyTarget\(expectedEconomics=0\)/);
+  assert.match(s,/Number\(x\.resolved_economics_count\)!==Number\(expectedEconomics\)/);
+  assert.match(s,/verifyTarget\(9\)/);
+});
