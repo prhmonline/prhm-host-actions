@@ -12,7 +12,7 @@ test('helper is fixed to Parscoders 614602 and expected fail-closed decision',()
   assert.match(s,/614602/);
   assert.match(s,/parscoders/);
   assert.match(s,/ASK_CLARIFICATION/);
-  assert.match(s,/price_inputs_missing/);
+  assert.match(s,/economics_inputs_incomplete/);
 });
 
 test('helper does not fabricate economics and requires zero resolved facts',()=>{
