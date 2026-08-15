@@ -9,7 +9,8 @@ test('dashboard installer is fixed, SHA-bound, preflightable and rollback-capabl
  assert.match(s,/--preflight-only/);
  assert.match(s,/3df02ee3a386c2ef144131225c037d20d5348bdc969adcf14bd556acd864fe40/);
  assert.match(s,/39e146f24e277c8e90f72247828358da14caf4a8f3d0bcb49803d9318db3304c/);
- assert.match(s,/\/opt\/prhm-company-os-dashboard/);
+ assert.match(s,/APP_DIR=STATE_DIR\+'\/app'/);
+ assert.doesNotMatch(s,/APP_DIR='\/opt\/prhm-company-os-dashboard'/);
  assert.match(s,/AUTH_DIR='\/etc\/prhm-company-os-dashboard'/); assert.match(s,/AUTH_FILE=AUTH_DIR\+'\/auth\.json'/);
  assert.match(s,/STATE_DIR='\/var\/lib\/prhm-company-os-dashboard'/); assert.match(s,/SNAPSHOT=STATE_DIR\+'\/snapshot\.json'/);
  assert.match(s,/18135/);

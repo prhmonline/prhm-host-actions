@@ -9,7 +9,7 @@ test('v9 registers Company OS dashboard at base executor MCP and Level-4 policy 
  assert.match(s,/host_action\.company_os_dashboard_v1/);
  assert.match(s,/level:4/);
  assert.match(s,/risk:'critical'/);
- assert.match(s,/1\.9\.1-host-actions-v2-company-os-dashboard-launcher/);
+ assert.match(s,/1\.9\.2-host-actions-v2-company-os-dashboard-systemd-dirs/);
  assert.match(s,/hostActionsV2\.js/);
  assert.match(s,/mcp-candidate-schema-compare-v1\.js/);
 });
