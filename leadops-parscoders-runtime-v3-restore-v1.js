@@ -26,6 +26,10 @@ const SCORER_DROPIN='/etc/systemd/system/leadops-parscoders-score.service.d/40-r
 const TIMER_DROPIN='/etc/systemd/system/leadops-parscoders-collector.timer.d/40-runtime-v3-canonical.conf';
 const RESULT_DIR='/var/lib/prhm-agent-selfmaint-exec/leadops-parscoders-runtime-v3-restore-v1';
 const RESULT=RESULT_DIR+'/latest.json';
+const GETENFORCE='/usr/sbin/getenforce';
+const SEMANAGE='/usr/sbin/semanage';
+const RESTORECON='/usr/sbin/restorecon';
+const LS='/usr/bin/ls';
 
 const ROLE_SQL=`CREATE ROLE leadops_parscoders LOGIN PASSWORD '__PASSWORD__' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT;
 GRANT CONNECT, TEMP ON DATABASE leadops TO leadops_parscoders;
@@ -55,6 +59,50 @@ function userIds(){const uid=Number(String(run('/usr/bin/id',['-u','drtarjomeh']
 function syntaxBash(content,label){const f='/tmp/prhm-'+ACTION+'-'+label+'-'+process.pid+'.sh';try{fs.writeFileSync(f,content,{mode:0o700});run('/usr/bin/bash',['-n',f])}finally{try{fs.unlinkSync(f)}catch{}}}
 function atomic(file,data,mode,uid,gid){fs.mkdirSync(path.dirname(file),{recursive:true,mode:0o755});const tmp=file+'.tmp-'+process.pid;fs.writeFileSync(tmp,data,{mode});fs.chmodSync(tmp,mode);if(uid!==undefined)fs.chownSync(tmp,uid,gid);fs.renameSync(tmp,file)}
 function writeJson(file,obj){fs.mkdirSync(path.dirname(file),{recursive:true,mode:0o700});atomic(file,JSON.stringify(obj,null,2)+'\n',0o600,0,0)}
+function selinuxMode(){
+  const mode=String(run(GETENFORCE,[]).stdout||'').trim();
+  if(!['Enforcing','Permissive','Disabled'].includes(mode))fail('selinux_mode_invalid:'+mode);
+  if((mode==='Enforcing'||mode==='Permissive')&&(!fs.existsSync(SEMANAGE)||!fs.existsSync(RESTORECON)))fail('selinux_tools_missing');
+  return mode;
+}
+function selinuxType(file){
+  const out=String(run(LS,['-Zd',file]).stdout||'').trim();
+  const m=out.match(/\b[^:\s]+:object_r:([^:\s]+):[^\s]+\b/);
+  if(!m)fail('selinux_context_parse_failed:'+file);
+  return m[1];
+}
+function inspectExactFcontext(file){
+  const r=runLoose(SEMANAGE,['fcontext','-C','-l']);
+  if(r.status!==0)fail('semanage_fcontext_list_failed');
+  const rows=String(r.stdout||'').split(/\r?\n/).filter(Boolean);
+  const exact=rows.filter(line=>line.trim().startsWith(file+' '));
+  if(exact.length>1)fail('fcontext_ambiguous:'+file);
+  if(exact.length===0)return {exists:false,type:null};
+  const m=exact[0].match(/\b[^:\s]+:object_r:([^:\s]+):[^\s]+\b/);
+  if(!m)fail('fcontext_context_parse_failed:'+file);
+  return {exists:true,type:m[1]};
+}
+function ensureExactExecFcontext(file){
+  const before_type=selinuxType(file);
+  const existing=inspectExactFcontext(file);
+  if(existing.exists&&existing.type!=='bin_t')fail('fcontext_conflict:'+file+':'+existing.type);
+  let created=false;
+  try{
+    if(!existing.exists){run(SEMANAGE,['fcontext','-a','-t','bin_t',file]);created=true;}
+    run(RESTORECON,['-v',file]);
+    const after_type=selinuxType(file);
+    if(after_type!=='bin_t')fail('selinux_type_not_bin_t:'+file+':'+after_type);
+    return {path:file,created,before_type,after_type};
+  }catch(e){
+    if(created){
+      try{run(SEMANAGE,['fcontext','-d',file]);run(RESTORECON,['-v',file]);}catch(rb){process.stderr.write('fcontext_self_rollback_failed:'+String(rb&&rb.message||rb)+'\n');}
+    }
+    throw e;
+  }
+}
+function rollbackFcontext(change){
+  if(change&&change.created){run(SEMANAGE,['fcontext','-d',change.path]);run(RESTORECON,['-v',change.path]);}
+}
 
 function deriveCandidates(){
   if(shaFile(SOURCE_COLLECTOR)!==COLLECTOR_SHA)fail('collector_source_sha_mismatch');
@@ -105,7 +153,7 @@ function baseline(){
   return {ids,runtime_meta,safety,collector_unit:{user:cu,group:cg,exec:ce},scorer_unit:{user:su,group:sg,exec:se},timer:{enabled:'disabled',active:'inactive'}};
 }
 
-function preflight(){const b=baseline(),c=deriveCandidates();return {ok:true,schema_version:'prhm.leadops-parscoders-runtime-v3-restore.preflight.v1',action:ACTION,preflight_only:true,production_mutation:false,database_mutation:false,business_mutation:false,p0_live:false,p0_decision:false,proposal_send:false,bid_send:false,auto_send:false,external_send:false,source_hashes:{collector:COLLECTOR_SHA,scorer:SCORER_SHA},candidate_hashes:c.hashes,role:ROLE,role_exists:false,timer_before:b.timer,validation_mode:'rollback_only'}}
+function preflight(){const b=baseline(),c=deriveCandidates(),mode=selinuxMode();const fcontext_existing=(mode==='Enforcing'||mode==='Permissive')?{collector:inspectExactFcontext(COLLECTOR),scorer:inspectExactFcontext(SCORER)}:{collector:{exists:false,type:null},scorer:{exists:false,type:null}};for(const [k,x] of Object.entries(fcontext_existing))if(x.exists&&x.type!=='bin_t')fail('fcontext_conflict_preflight:'+k+':'+x.type);return {ok:true,schema_version:'prhm.leadops-parscoders-runtime-v3-restore.preflight.v1',action:ACTION,preflight_only:true,production_mutation:false,database_mutation:false,business_mutation:false,p0_live:false,p0_decision:false,proposal_send:false,bid_send:false,auto_send:false,external_send:false,source_hashes:{collector:COLLECTOR_SHA,scorer:SCORER_SHA},candidate_hashes:c.hashes,role:ROLE,role_exists:false,timer_before:b.timer,selinux_mode:mode,fcontext_scope:'exact_paths_only',fcontext_existing,systemd_validation:false,validation_avc_denials:0,validation_mode:'rollback_only'}}
 
 function createRole(password){const sql=ROLE_SQL.replace('__PASSWORD__',password);psqlAdmin(sql,false);if(!roleExists())fail('role_create_failed');const check=jsonQuery(`SELECT json_build_object(
 'connect',has_database_privilege('${ROLE}','leadops','CONNECT'),
@@ -124,20 +172,36 @@ function createRole(password){const sql=ROLE_SQL.replace('__PASSWORD__',password
 );`);for(const k of ['connect','temp','sources_select','opportunities_select','opportunities_insert','opportunities_update','evaluations_select','evaluations_insert','outbox_insert','outbox_idempotency_select'])if(check[k]!==true)fail('required_privilege_missing:'+k);for(const k of ['outbox_select_all','outbox_delete','opportunities_delete'])if(check[k]!==false)fail('forbidden_privilege_present:'+k);return check}
 function dropRole(){if(!roleExists())return;psqlAdmin(`DROP OWNED BY ${ROLE}; DROP ROLE ${ROLE};`,false);if(roleExists())fail('role_drop_failed')}
 function envContent(password){return `PGHOST=127.0.0.1\nPGPORT=55434\nPGDATABASE=leadops\nPGUSER=leadops_parscoders\nPGPASSWORD=${password}\n`}
-function installRuntime(c,password,b){const {uid,gid}=b.ids;fs.chownSync(RUNTIME,0,gid);fs.chmodSync(RUNTIME,0o750);atomic(COLLECTOR,c.collector,0o750,0,gid);atomic(SCORER,c.scorer,0o750,0,gid);atomic(RULES,c.rules,0o640,0,gid);atomic(ENV_FILE,envContent(password),0o640,0,gid);fs.mkdirSync(DATA_DIR,{mode:0o750});fs.chownSync(DATA_DIR,uid,gid);fs.chmodSync(DATA_DIR,0o750)}
+function installRuntime(c,password,b){
+  const {uid,gid}=b.ids;fs.chownSync(RUNTIME,0,gid);fs.chmodSync(RUNTIME,0o750);
+  atomic(COLLECTOR,c.collector,0o750,0,gid);atomic(SCORER,c.scorer,0o750,0,gid);atomic(RULES,c.rules,0o640,0,gid);atomic(ENV_FILE,envContent(password),0o640,0,gid);fs.mkdirSync(DATA_DIR,{mode:0o750});fs.chownSync(DATA_DIR,uid,gid);fs.chmodSync(DATA_DIR,0o750);
+  const mode=selinuxMode(),fcontexts=[];
+  try{
+    if(mode==='Enforcing'||mode==='Permissive'){fcontexts.push(ensureExactExecFcontext(COLLECTOR));fcontexts.push(ensureExactExecFcontext(SCORER));}
+    return {selinux_mode:mode,fcontexts};
+  }catch(e){for(const c of [...fcontexts].reverse()){try{rollbackFcontext(c)}catch(rb){process.stderr.write('fcontext_install_rollback_failed:'+String(rb&&rb.message||rb)+'\n')}}throw e;}
+}
 function installDropins(){const collector=`[Service]\nUser=drtarjomeh\nGroup=drtarjomeh\nExecStart=\nExecStart=/home/drtarjomeh/leadops/runtime-v3/collector\n`;const scorer=`[Service]\nUser=drtarjomeh\nGroup=drtarjomeh\nExecStart=\nExecStart=/home/drtarjomeh/leadops/runtime-v3/scorer\n`;const timer=`[Timer]\nOnBootSec=\nOnUnitActiveSec=\nOnActiveSec=10min\nOnUnitActiveSec=60min\nRandomizedDelaySec=5min\nPersistent=true\nUnit=leadops-parscoders-collector.service\n`;atomic(COLLECTOR_DROPIN,collector,0o644,0,0);atomic(SCORER_DROPIN,scorer,0o644,0,0);atomic(TIMER_DROPIN,timer,0o644,0,0);run('/usr/bin/systemctl',['daemon-reload'])}
 function verifyEffective(){const cu=systemctlValue(COLLECTOR_SERVICE,'User'),cg=systemctlValue(COLLECTOR_SERVICE,'Group'),ce=systemctlValue(COLLECTOR_SERVICE,'ExecStart'),su=systemctlValue(SCORER_SERVICE,'User'),sg=systemctlValue(SCORER_SERVICE,'Group'),se=systemctlValue(SCORER_SERVICE,'ExecStart');if(cu!=='drtarjomeh'||cg!=='drtarjomeh'||!ce.includes(COLLECTOR))fail('collector_effective_invalid');if(su!=='drtarjomeh'||sg!=='drtarjomeh'||!se.includes(SCORER))fail('scorer_effective_invalid');return {collector:{user:cu,group:cg,exec:ce},scorer:{user:su,group:sg,exec:se}}}
 function validateRoleConnection(password){const x=psqlRole(`BEGIN; CREATE TEMP TABLE prhm_parscoders_v3_validate(x integer); INSERT INTO prhm_parscoders_v3_validate VALUES (1); SELECT current_user || ':' || count(*) FROM prhm_parscoders_v3_validate; ROLLBACK;`,password);if(!x.includes('leadops_parscoders:1'))fail('role_direct_psql_validation_failed')}
-function validationRun(){const before=safetyState();assertSendSafety(before);const env={...process.env,PARSCODERS_VALIDATE_ONLY:'1'};run('/usr/sbin/runuser',['-u','drtarjomeh','--',COLLECTOR],{env,timeout:240000});const after=safetyState();assertSendSafety(after);sameSafety(before,after);return {before,after}}
+function systemdValidationRun(){
+  const before=safetyState();assertSendSafety(before);const unit='prhm-parscoders-runtime-v3-validate-'+Date.now(),started=new Date().toISOString();
+  run('/usr/bin/systemd-run',['--wait','--collect','--unit='+unit,'--property=Type=oneshot','--property=User=drtarjomeh','--property=Group=drtarjomeh','--property=NoNewPrivileges=true','--property=PrivateTmp=true','--property=PrivateDevices=true','--property=ProtectHome=read-only','--property=ProtectSystem=full','--property=RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6','--setenv=PARSCODERS_VALIDATE_ONLY=1','--setenv=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',COLLECTOR],{timeout:240000});
+  const after=safetyState();assertSendSafety(after);sameSafety(before,after);
+  const j=runLoose('/usr/bin/journalctl',['-k','--since',started,'--no-pager','-o','cat']);
+  const avc=String(j.stdout||'').split(/\r?\n/).filter(x=>/avc:\s+denied/i.test(x)&&(/collector|scorer/.test(x)));
+  if(avc.length)fail('selinux_avc_during_validation:'+avc.length);
+  return {before,after,unit,avc_denials:0};
+}
 function activateTimer(){run('/usr/bin/systemctl',['enable',TIMER]);run('/usr/bin/systemctl',['start',TIMER]);const enabled=unitFileState(TIMER),active=activeState(TIMER),next=systemctlValue(TIMER,'NextElapseUSecRealtime');if(enabled!=='enabled'||active!=='active')fail('timer_activation_failed');return {enabled,active,next,first_run_delay:'10min+randomized<=5min',interval:'60min'}}
 function cleanupNewTargets(){for(const p of [COLLECTOR_DROPIN,SCORER_DROPIN,TIMER_DROPIN,COLLECTOR,SCORER,RULES,ENV_FILE]){try{fs.unlinkSync(p)}catch(e){if(e.code!=='ENOENT')throw e}}try{fs.rmdirSync(DATA_DIR)}catch(e){if(!['ENOENT','ENOTEMPTY'].includes(e.code))throw e}}
-function rollback(b){let ok=true,errors=[];try{runLoose('/usr/bin/systemctl',['disable','--now',TIMER])}catch(e){ok=false;errors.push(String(e.message||e))}try{cleanupNewTargets();fs.chownSync(RUNTIME,b.runtime_meta.uid,b.runtime_meta.gid);fs.chmodSync(RUNTIME,b.runtime_meta.mode);run('/usr/bin/systemctl',['daemon-reload'])}catch(e){ok=false;errors.push(String(e.message||e))}try{dropRole()}catch(e){ok=false;errors.push(String(e.message||e))}return {ok,errors}}
+function rollback(b,runtimeInstall){let ok=true,errors=[];try{runLoose('/usr/bin/systemctl',['disable','--now',TIMER])}catch(e){ok=false;errors.push(String(e.message||e))}try{for(const c of [...(runtimeInstall?.fcontexts||[])].reverse())rollbackFcontext(c)}catch(e){ok=false;errors.push(String(e.message||e))}try{cleanupNewTargets();fs.chownSync(RUNTIME,b.runtime_meta.uid,b.runtime_meta.gid);fs.chmodSync(RUNTIME,b.runtime_meta.mode);run('/usr/bin/systemctl',['daemon-reload'])}catch(e){ok=false;errors.push(String(e.message||e))}try{dropRole()}catch(e){ok=false;errors.push(String(e.message||e))}return {ok,errors}}
 
 function main(){const args=process.argv.slice(2);if(args.length>1||(args.length===1&&args[0]!=='--preflight-only'))fail('unexpected_arguments');if(args[0]==='--preflight-only'){process.stdout.write(JSON.stringify(preflight())+'\n');return}
   const b=baseline(),c=deriveCandidates();const stamp=new Date().toISOString().replace(/[-:.TZ]/g,'').slice(0,14),backup='/var/backups/prhm-leadops-parscoders-runtime-v3-restore-'+stamp;fs.mkdirSync(backup,{recursive:true,mode:0o700});writeJson(backup+'/baseline.json',{...b,source_hashes:{collector:COLLECTOR_SHA,scorer:SCORER_SHA},candidate_hashes:c.hashes});
-  let committed=false,roleCreated=false;const password=crypto.randomBytes(32).toString('base64url');const password_sha256=shaBuf(Buffer.from(password));try{
-    const privileges=createRole(password);roleCreated=true;installRuntime(c,password,b);validateRoleConnection(password);installDropins();const effective=verifyEffective();const validation=validationRun();const timer=activateTimer();
-    const result={ok:true,schema_version:'prhm.host-action-result.v1',action:ACTION,installed:true,runtime_v3_restored:true,validation_run:true,validation_mode:'rollback_only',database_mutation:true,business_mutation:false,external_send:false,p0_live:false,p0_decision:false,proposal_send:false,bid_send:false,auto_send:false,role:ROLE,role_password_sha256:password_sha256,privileges,source_hashes:{collector:COLLECTOR_SHA,scorer:SCORER_SHA},candidate_hashes:c.hashes,effective,timer,backup_dir:backup,legacy_paths_authoritative:false,rollback_verified:false};writeJson(RESULT,result);committed=true;process.stdout.write(JSON.stringify(result)+'\n');
-  }finally{if(!committed){const rb=rollback(b);try{writeJson(backup+'/rollback.json',{ok:rb.ok,errors:rb.errors,role_created:roleCreated})}catch{}if(!rb.ok)process.stderr.write('rollback_failed:'+rb.errors.join('|')+'\n')}}
+  let committed=false,roleCreated=false,runtimeInstall=null;const password=crypto.randomBytes(32).toString('base64url');const password_sha256=shaBuf(Buffer.from(password));try{
+    const privileges=createRole(password);roleCreated=true;runtimeInstall=installRuntime(c,password,b);validateRoleConnection(password);installDropins();const effective=verifyEffective();const validation=systemdValidationRun();const timer=activateTimer();const collector_type=runtimeInstall.selinux_mode==='Disabled'?null:selinuxType(COLLECTOR),scorer_type=runtimeInstall.selinux_mode==='Disabled'?null:selinuxType(SCORER);
+    const result={ok:true,schema_version:'prhm.host-action-result.v1',action:ACTION,installed:true,runtime_v3_restored:true,validation_run:true,validation_mode:'rollback_only',database_mutation:true,business_mutation:false,external_send:false,p0_live:false,p0_decision:false,proposal_send:false,bid_send:false,auto_send:false,role:ROLE,role_password_sha256:password_sha256,privileges,source_hashes:{collector:COLLECTOR_SHA,scorer:SCORER_SHA},candidate_hashes:c.hashes,effective,timer,selinux_mode:runtimeInstall.selinux_mode,fcontext_scope:'exact_paths_only',collector_type,scorer_type,systemd_validation:true,validation_avc_denials:validation.avc_denials,backup_dir:backup,legacy_paths_authoritative:false,rollback_verified:false};writeJson(RESULT,result);committed=true;process.stdout.write(JSON.stringify(result)+'\n');
+  }finally{if(!committed){const rb=rollback(b,runtimeInstall);try{writeJson(backup+'/rollback.json',{ok:rb.ok,errors:rb.errors,role_created:roleCreated})}catch{}if(!rb.ok)process.stderr.write('rollback_failed:'+rb.errors.join('|')+'\n')}}
 }
 try{main()}catch(e){process.stderr.write(String(e&&e.stack||e)+'\n');process.exit(1)}
