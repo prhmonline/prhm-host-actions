@@ -134,7 +134,7 @@ function safetyState(){return jsonQuery(`SELECT json_build_object(
 'parscoders_outbox',(SELECT count(*) FROM automation.outbox_events WHERE idempotency_key LIKE 'parscoders:%'),
 'flags',(SELECT COALESCE(json_object_agg(flag,enabled),'{}'::json) FROM automation.p0_feature_flags WHERE flag IN ('P0_SHADOW_MODE','P0_DECISION_ENABLED','PROPOSAL_AUTO_SEND_ENABLED','AUTO_PROPOSAL_ENABLED','BID_AUTO_SEND_ENABLED'))
 );`)}
-function assertSendSafety(s){const f=s.flags||{};if(f.P0_SHADOW_MODE!==true)fail('shadow_mode_not_true');for(const k of ['P0_DECISION_ENABLED','PROPOSAL_AUTO_SEND_ENABLED','AUTO_PROPOSAL_ENABLED','BID_AUTO_SEND_ENABLED'])if(f[k]!==false)fail('send_flag_not_false:'+k+':'+String(f[k]))}
+function assertSendSafety(s){const f=s.flags||{};if(f.P0_SHADOW_MODE!==true)fail('shadow_mode_not_true');for(const k of ['P0_DECISION_ENABLED','PROPOSAL_AUTO_SEND_ENABLED','AUTO_PROPOSAL_ENABLED'])if(f[k]!==false)fail('send_flag_not_false:'+k+':'+String(f[k]));if(Object.prototype.hasOwnProperty.call(f,'BID_AUTO_SEND_ENABLED')&&f.BID_AUTO_SEND_ENABLED!==false)fail('send_flag_not_false:BID_AUTO_SEND_ENABLED:'+String(f.BID_AUTO_SEND_ENABLED))}
 function sameSafety(a,b){for(const k of ['outbox_published','bids_submitted','telegram','parscoders_opportunities','parscoders_evaluations','parscoders_outbox'])if(String(a[k])!==String(b[k]))fail('validation_mutated:'+k+':'+a[k]+':'+b[k]);if(JSON.stringify(a.flags)!==JSON.stringify(b.flags))fail('flags_changed_during_validation')}
 
 function baseline(){

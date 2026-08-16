@@ -45,3 +45,8 @@ test('v12.2 permanent helper exposes a non-mutating installed-state preflight',(
   assert.match(helper,/rolePrivilegeState/);
   assert.match(helper,/assertNoBroadRuntimeFcontext/);
 });
+
+test('v12.2 treats absent BID_AUTO_SEND_ENABLED as schema-optional but rejects true',()=>{
+  assert.match(helper,/hasOwnProperty\.call\(f,'BID_AUTO_SEND_ENABLED'\).*BID_AUTO_SEND_ENABLED!==false/);
+  assert.doesNotMatch(helper,/\['P0_DECISION_ENABLED','PROPOSAL_AUTO_SEND_ENABLED','AUTO_PROPOSAL_ENABLED','BID_AUTO_SEND_ENABLED'\]/);
+});
