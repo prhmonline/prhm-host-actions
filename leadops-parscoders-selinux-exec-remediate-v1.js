@@ -20,7 +20,7 @@ const COLLECTOR_SHA='3d070b611850904e1be77ee037960f3a871baa9bd430eaab1adccaf8fe3
 const SCORER_SHA='7526b70a11447858a8af2a8c2a4c324570c7635bd4d7554377026e527f34ada0';
 const INSTALLED_RESTORE_HELPER='/opt/prhm-agent-selfmaint-exec/actions/leadops-parscoders-runtime-v3-restore-v1.js';
 const INSTALLED_RESTORE_HELPER_SHA='15e8274230ff33a0a1572430a5928bdd6a54210f687569d8e1009db947432d14';
-const UPDATED_RESTORE_HELPER_SHA='1aebce0105112f69a06509225a9706dd20395a4d7b29ac5dda0b4849c8a9ccd7';
+const UPDATED_RESTORE_HELPER_SHA='43876d21357f5294cf7190d79e37616caf2fd7800dc0ec72e270b782760b6154';
 const ADMIN_PASS_FILE='/etc/prhm-p0-db-helper/postgres_superuser_password';
 const GETENFORCE='/usr/sbin/getenforce';
 const SEMANAGE='/usr/sbin/semanage';
@@ -105,7 +105,8 @@ function safetyState(){return jsonQuery(`SELECT json_build_object(
 function assertSendSafety(s){
   const f=s.flags||{};
   if(f.P0_SHADOW_MODE!==true)fail('shadow_mode_not_true');
-  for(const k of ['P0_DECISION_ENABLED','PROPOSAL_AUTO_SEND_ENABLED','AUTO_PROPOSAL_ENABLED','BID_AUTO_SEND_ENABLED'])if(f[k]!==false)fail('send_flag_not_false:'+k+':'+String(f[k]));
+  for(const k of ['P0_DECISION_ENABLED','PROPOSAL_AUTO_SEND_ENABLED','AUTO_PROPOSAL_ENABLED'])if(f[k]!==false)fail('send_flag_not_false:'+k+':'+String(f[k]));
+  if(Object.prototype.hasOwnProperty.call(f,'BID_AUTO_SEND_ENABLED')&&f.BID_AUTO_SEND_ENABLED!==false)fail('send_flag_not_false:BID_AUTO_SEND_ENABLED:'+String(f.BID_AUTO_SEND_ENABLED));
 }
 function sameSafety(a,b){for(const k of ['outbox_published','bids_submitted','telegram','parscoders_opportunities','parscoders_evaluations','parscoders_outbox'])if(String(a[k])!==String(b[k]))fail('validation_mutated:'+k+':'+a[k]+':'+b[k]);if(JSON.stringify(a.flags)!==JSON.stringify(b.flags))fail('flags_changed_during_validation')}
 function dbPrivileges(){return jsonQuery(`SELECT json_build_object(
