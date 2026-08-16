@@ -33,7 +33,8 @@ GRANT USAGE ON SCHEMA marketplace, automation TO leadops_parscoders;
 GRANT SELECT ON marketplace.sources TO leadops_parscoders;
 GRANT SELECT, INSERT, UPDATE ON marketplace.opportunities TO leadops_parscoders;
 GRANT SELECT, INSERT ON marketplace.opportunity_evaluations TO leadops_parscoders;
-GRANT INSERT ON automation.outbox_events TO leadops_parscoders;`;
+GRANT INSERT ON automation.outbox_events TO leadops_parscoders;
+GRANT SELECT (idempotency_key) ON automation.outbox_events TO leadops_parscoders;`;
 
 function fail(m){throw new Error(m)}
 function shaBuf(b){return crypto.createHash('sha256').update(b).digest('hex')}
@@ -116,9 +117,11 @@ function createRole(password){const sql=ROLE_SQL.replace('__PASSWORD__',password
 'evaluations_select',has_table_privilege('${ROLE}','marketplace.opportunity_evaluations','SELECT'),
 'evaluations_insert',has_table_privilege('${ROLE}','marketplace.opportunity_evaluations','INSERT'),
 'outbox_insert',has_table_privilege('${ROLE}','automation.outbox_events','INSERT'),
+'outbox_idempotency_select',has_column_privilege('${ROLE}','automation.outbox_events','idempotency_key','SELECT'),
+'outbox_select_all',has_table_privilege('${ROLE}','automation.outbox_events','SELECT'),
 'outbox_delete',has_table_privilege('${ROLE}','automation.outbox_events','DELETE'),
 'opportunities_delete',has_table_privilege('${ROLE}','marketplace.opportunities','DELETE')
-);`);for(const k of ['connect','temp','sources_select','opportunities_select','opportunities_insert','opportunities_update','evaluations_select','evaluations_insert','outbox_insert'])if(check[k]!==true)fail('required_privilege_missing:'+k);for(const k of ['outbox_delete','opportunities_delete'])if(check[k]!==false)fail('forbidden_privilege_present:'+k);return check}
+);`);for(const k of ['connect','temp','sources_select','opportunities_select','opportunities_insert','opportunities_update','evaluations_select','evaluations_insert','outbox_insert','outbox_idempotency_select'])if(check[k]!==true)fail('required_privilege_missing:'+k);for(const k of ['outbox_select_all','outbox_delete','opportunities_delete'])if(check[k]!==false)fail('forbidden_privilege_present:'+k);return check}
 function dropRole(){if(!roleExists())return;psqlAdmin(`DROP OWNED BY ${ROLE}; DROP ROLE ${ROLE};`,false);if(roleExists())fail('role_drop_failed')}
 function envContent(password){return `PGHOST=127.0.0.1\nPGPORT=55434\nPGDATABASE=leadops\nPGUSER=leadops_parscoders\nPGPASSWORD=${password}\n`}
 function installRuntime(c,password,b){const {uid,gid}=b.ids;fs.chownSync(RUNTIME,0,gid);fs.chmodSync(RUNTIME,0o750);atomic(COLLECTOR,c.collector,0o750,0,gid);atomic(SCORER,c.scorer,0o750,0,gid);atomic(RULES,c.rules,0o640,0,gid);atomic(ENV_FILE,envContent(password),0o640,0,gid);fs.mkdirSync(DATA_DIR,{mode:0o750});fs.chownSync(DATA_DIR,uid,gid);fs.chmodSync(DATA_DIR,0o750)}
