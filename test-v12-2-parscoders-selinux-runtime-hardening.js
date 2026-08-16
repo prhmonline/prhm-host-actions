@@ -38,3 +38,10 @@ test('canonical v12 bootstrap embeds the v12.2 helper byte-for-byte',()=>{
   assert.ok(m,'HELPER_B64 missing');
   assert.deepEqual(Buffer.from(m[1],'base64'),Buffer.from(helper));
 });
+
+test('v12.2 permanent helper exposes a non-mutating installed-state preflight',()=>{
+  assert.match(helper,/--installed-state-preflight-only/);
+  assert.match(helper,/installedStatePreflight/);
+  assert.match(helper,/rolePrivilegeState/);
+  assert.match(helper,/assertNoBroadRuntimeFcontext/);
+});

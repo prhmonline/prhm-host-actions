@@ -11,7 +11,7 @@ test('remediation helper exists and is exact-state-bound',()=>{
   assert.match(s,/3d070b611850904e1be77ee037960f3a871baa9bd430eaab1adccaf8fe3a8760/);
   assert.match(s,/7526b70a11447858a8af2a8c2a4c324570c7635bd4d7554377026e527f34ada0/);
   assert.match(s,/15e8274230ff33a0a1572430a5928bdd6a54210f687569d8e1009db947432d14/);
-  assert.match(s,/c5136db3e8408b84c4b356141c9c205ce42e6196bc16320763315a4022e53c54/);
+  assert.match(s,/1aebce0105112f69a06509225a9706dd20395a4d7b29ac5dda0b4849c8a9ccd7/);
 });
 
 test('remediation changes only exact fcontexts and uses systemd validation',()=>{
