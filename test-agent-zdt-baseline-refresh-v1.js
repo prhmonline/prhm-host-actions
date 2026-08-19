@@ -7,6 +7,7 @@ const file='bootstrap-agent-zdt-baseline-refresh-v1.js';
 const TARGET_CANONICAL='/home/agent/ssh-mcp-server/ops/agent-zdt/agent-zero-downtime-bootstrap-v1.js';
 const TARGET_INSTALLED='/opt/prhm-agent-selfmaint-exec/actions/agent-zero-downtime-bootstrap-v1.js';
 const HELPER_BEFORE='4f1d5a14ae6e13cc25f442dceca7507e8f79088836f4735dcbcad782be126f26';
+const RESULTING_HELPER_SHA='a54e2890eb455c078a4e09e92e007d71545f834dfec7d8d62bb232e1c91406b4';
 const BASE_OLD='4d4c9f1a8ff9099165f09a4df0c43735a320b20ca1c0f5c27def299a1fcabb25';
 const BASE_NEW='b084b501b2ea572b39336e45673b4d987a6f7cdb10c769a4db3191ce86ca2877';
 const EXEC_OLD='372083619c6c5dd813e413d2873a9015c647ce3a5cb5037b3c1cc4e671c2b22a';
@@ -52,4 +53,10 @@ test('unexpected CLI arguments fail before filesystem baseline work',()=>{
   assert.notEqual(r.status,0);
   assert.match(String(r.stderr||''),/unexpected_arguments/);
   assert.doesNotMatch(String(r.stderr||''),/ENOENT|sha_mismatch|missing:/);
+});
+
+test('resulting helper identity is pinned from live read-only preflight',()=>{
+  const src=source();
+  assert.ok(src.includes(RESULTING_HELPER_SHA),RESULTING_HELPER_SHA);
+  assert.doesNotMatch(src,/EXPECTED_RESULTING_HELPER_SHA=null/);
 });
