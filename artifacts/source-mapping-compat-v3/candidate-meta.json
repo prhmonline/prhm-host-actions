@@ -1,0 +1,12 @@
+{
+  "source_sha256": "87da44a939478786b9a48585c1cccacd862b683831dbba976d8b6a85869d2473",
+  "candidate_sha256": "92e6e279f10fe8561a9c986d9dc90d6bc0cd284009ed9984f51fefe202ac6252",
+  "candidate_bytes": 12232,
+  "replacements": {
+    "gitSafeDirectory": 1,
+    "dbCandidate": 1,
+    "v3Sentinel": 1,
+    "v3Function": 1,
+    "v3Proxy": 1
+  }
+}
