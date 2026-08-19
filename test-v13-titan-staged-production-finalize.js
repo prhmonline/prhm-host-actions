@@ -51,7 +51,7 @@ test('Titan helper pins exact SANs and rejects ambiguous Nginx anchors',()=>{
 
 test('v13 bootstrap registers only a fixed critical Level-4 action and keeps bootstrap preflight read-only',()=>{
   assert.equal(fs.existsSync(boot),true,'bootstrap must exist');
-  const s=fs.readFileSync(boot,'utf8');
+  const s=[boot,path.join(root,'lib/titan-v13-contract.js'),path.join(root,'lib/titan-v13-runtime.js'),path.join(root,'lib/titan-v13-patch.js')].map(f=>fs.readFileSync(f,'utf8')).join('\n');
   for(const x of [
     'titan_staged_production_finalize_v1',
     'host_action.titan_staged_production_finalize_v1',
