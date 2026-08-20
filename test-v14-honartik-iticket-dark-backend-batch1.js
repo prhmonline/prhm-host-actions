@@ -128,3 +128,14 @@ test('executor patch tolerates unrelated dispatch wrappers but still inserts iTi
   assert.match(out,/if\(action==='honartik_iticket_dark_backend_batch1_v1'\)return applyHonartikIticketDarkBackendBatch1V1\(\);return applyHostActionV2Original\(action\);/);
   assert.throws(()=>boot.patchExecutor(base.replace('return applyHostActionV2Original(action);','return somethingElse(action);')),/executor_dispatch_fallback_missing/);
 });
+
+
+test('rollback verification is journal-bound and never depends on historical whole-file BASELINE hashes',()=>{
+  const source=fs.readFileSync(bootstrapPath,'utf8');
+  const m=source.match(/function verifyRestoredJournal\(j\)\{([\s\S]*?)\}return true;\}/);
+  assert.ok(m,'verifyRestoredJournal must exist');
+  assert.doesNotMatch(m[1],/verifyOriginal\(/);
+  assert.doesNotMatch(m[1],/BASELINE/);
+  assert.match(m[1],/original_sha256/);
+  assert.match(m[1],/sha\(read\(state\.file\)\)/);
+});

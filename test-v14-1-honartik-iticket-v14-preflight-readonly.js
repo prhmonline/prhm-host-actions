@@ -30,7 +30,7 @@ test('installer is SHA-bound to the live Agent API/MCP baselines and V14 payload
   assert.equal(installer.EXPECTED.agentServer,'70368fdc8be24646b10d414f6159502c2f3d338ed1132451d5b5740d1270999c');
   assert.equal(installer.EXPECTED.registry,'cf3681ca4d4632156df2f77886afe59c07da9a86dbcb68f4217577f811b22231');
   assert.equal(installer.IMMUTABLE_HOST_ACTIONS_V2_SHA,'7efeeb17253bc52aeac1f362c377fd4121984f49f159fd9e72ae7e06897ded56');
-  assert.equal(installer.V14_SHA,'4bd64fc2c6e8764af1d835c7785263c8cf98219047e457b718fd5a24c750a090');
+  assert.equal(installer.V14_SHA,'c7bce25d4d2c6a1274a3829dde4c7f5704868417c94bd24cd71feb5a3522b31b');
   assert.equal(typeof installer.patchAgentServer,'function');
   assert.equal(typeof installer.patchRegistry,'function');
   assert.equal(typeof installer.preflight,'function');
