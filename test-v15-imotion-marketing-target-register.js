@@ -70,6 +70,19 @@ test('bootstrap registers a fixed Level-4 Host Action with no production-site mu
   assert.equal(scope.project,'control_plane');
 });
 
+test('helper verifies fixed WordPress target evidence without reading config contents',()=>{
+  const helper=require(helperPath);
+  const os=require('node:os');
+  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'imotion-target-test-'));
+  try{
+    fs.writeFileSync(path.join(tmp,'wp-config.php'),'do-not-read-this-secret');
+    fs.mkdirSync(path.join(tmp,'wp-content'));
+    assert.deepEqual(helper.verifyTargetRoot(tmp),{target_root_exists:true,wordpress_detected:true});
+    fs.rmSync(path.join(tmp,'wp-content'),{recursive:true,force:true});
+    assert.throws(()=>helper.verifyTargetRoot(tmp),/wordpress_content_missing_or_unsafe/);
+  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
+});
+
 test('helper result contract explicitly excludes WordPress, database, redirect and canonical mutation',()=>{
   const src=fs.readFileSync(helperPath,'utf8');
   for(const marker of ['production_site_mutation:false','database_mutation:false','redirect_mutation:false','canonical_mutation:false','requires_zdt_refresh:true']) assert.match(src,new RegExp(marker.replace(/[.*+?^${}()|[\\]\\]/g,'\\$&')));
