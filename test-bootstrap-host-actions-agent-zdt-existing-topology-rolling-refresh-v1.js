@@ -17,16 +17,16 @@ test('installer pins exact three actions, helper and live four-layer baseline',(
   assert.deepEqual(m.TARGET_ACTIONS,ACTIONS);
   assert.equal(m.HELPER_SHA,'71bd4afde341148f85f8264c6a07cae924caa23c1be59eb1c14d8ed25bb70381');
   assert.deepEqual(m.BEFORE,{
-    mcp:'7efeeb17253bc52aeac1f362c377fd4121984f49f159fd9e72ae7e06897ded56',
-    base:'85229ccd95e98523e9d87468df1fcaec4107c6834f5c4e0bc108b265a0a499cf',
-    exec:'6bd9c56b4d5889c1d70d8278bcd66f48cab9561f2429cd3489a5b42ab1bbc35f',
-    policy:'0e0b0c3b605e7aeadfe0b7cb51bfeb2db4c60de34bce956bbce0053cb5ecd5a9'
+    mcp:'4432f904eaea786d6c184ffee10577402d3620484680f4e2e8d116dd9f8b3bba',
+    base:'849a86143358e7208e9c641604676875dac8972f25364ee262fb6778cb79a13f',
+    exec:'ff1034c25d8878d75af087ea570d6387a094b409dabe17b00134bfe02082d90b',
+    policy:'ad935f12e427597cf972670b8ee1eccfc4b74bb6a666dde3ffe00db077187e10'
   });
 });
 
 test('patchMcp inserts all three fixed actions exactly once into enum',()=>{
   const {patchMcp}=implementation();
-  const src="const HostActionV2=z.enum(['agent_zero_downtime_bootstrap_v1','host_action_v2_installer_v1','imotion_marketing_target_register_v1']);\n";
+  const src="const HostActionV2=z.enum(['agent_zero_downtime_bootstrap_v1','host_action_v2_installer_v1','imotion_marketing_target_register_v1','drtarjomeh_security_containment_v1']);\n";
   const out=patchMcp(src);
   for(const a of ACTIONS) assert.equal(out.split(`'${a}'`).length-1,1);
   assert.match(out,/imotion_marketing_target_register_v1/);
@@ -34,7 +34,7 @@ test('patchMcp inserts all three fixed actions exactly once into enum',()=>{
 
 test('patchBase appends three fixed rollback-aware specs',()=>{
   const {patchBase}=implementation();
-  const src="  imotion_marketing_target_register_v1: { operation: 'host_action.imotion_marketing_target_register_v1', rollback: 'host-action-v2:imotion-marketing-target-register-v1:source-restore' }\n});\n";
+  const src="  imotion_marketing_target_register_v1: { operation: 'host_action.imotion_marketing_target_register_v1', rollback: 'host-action-v2:imotion-marketing-target-register-v1:source-restore' },\n  drtarjomeh_security_containment_v1: { operation: 'host_action.drtarjomeh_security_containment_v1', rollback: 'host-action-v2:drtarjomeh-security-containment-v1:backup-restore' }\n});\n";
   const out=patchBase(src);
   for(const a of ACTIONS){assert.match(out,new RegExp(a));assert.match(out,new RegExp(`host_action\\.${a}`));}
   assert.match(out,/rolling-refresh-v1:evidence-restore/);
@@ -43,10 +43,12 @@ test('patchBase appends three fixed rollback-aware specs',()=>{
 test('patchExec registers three specs and fixed phase dispatch without caller-controlled mode',()=>{
   const {patchExec}=implementation();
   const src=[
-    "  imotion_marketing_target_register_v1:{operation:'host_action.imotion_marketing_target_register_v1',kind:'imotion_marketing_target_register_v1'}",
+    "  imotion_marketing_target_register_v1:{operation:'host_action.imotion_marketing_target_register_v1',kind:'imotion_marketing_target_register_v1'},",
+    "  drtarjomeh_security_containment_v1: { operation: 'host_action.drtarjomeh_security_containment_v1', kind: 'drtarjomeh_security_containment_v1' }",
     "});",
     "const applyHostActionV2Original=applyHostActionV2;",
-    "applyHostActionV2=async function(action){if(action==='imotion_marketing_target_register_v1')return applyImotionMarketingTargetRegisterV1();if(action==='host_action_v2_installer_v1')return applyHostActionV2InstallerV1();if(action==='agent_zero_downtime_bootstrap_v1')return applyAgentZeroDowntimeBootstrapV1();return applyHostActionV2Original(action);};"
+    "applyHostActionV2=async function(action){",
+    "if(action==='drtarjomeh_security_containment_v1')return applyDrTarjomehSecurityContainmentV1();if(action==='imotion_marketing_target_register_v1')return applyImotionMarketingTargetRegisterV1();if(action==='host_action_v2_installer_v1')return applyHostActionV2InstallerV1();if(action==='agent_zero_downtime_bootstrap_v1')return applyAgentZeroDowntimeBootstrapV1();return applyHostActionV2Original(action);};"
   ].join('\n');
   const out=patchExec(src);
   for(const a of ACTIONS) assert.match(out,new RegExp(a));

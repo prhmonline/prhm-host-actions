@@ -13,10 +13,10 @@ const PHASE_BY_ACTION=Object.freeze({
   agent_zdt_existing_topology_rolling_refresh_finalize_v1:'--finalize'
 });
 const BEFORE=Object.freeze({
-  mcp:'7efeeb17253bc52aeac1f362c377fd4121984f49f159fd9e72ae7e06897ded56',
-  base:'85229ccd95e98523e9d87468df1fcaec4107c6834f5c4e0bc108b265a0a499cf',
-  exec:'6bd9c56b4d5889c1d70d8278bcd66f48cab9561f2429cd3489a5b42ab1bbc35f',
-  policy:'0e0b0c3b605e7aeadfe0b7cb51bfeb2db4c60de34bce956bbce0053cb5ecd5a9'
+  mcp:'4432f904eaea786d6c184ffee10577402d3620484680f4e2e8d116dd9f8b3bba',
+  base:'849a86143358e7208e9c641604676875dac8972f25364ee262fb6778cb79a13f',
+  exec:'ff1034c25d8878d75af087ea570d6387a094b409dabe17b00134bfe02082d90b',
+  policy:'ad935f12e427597cf972670b8ee1eccfc4b74bb6a666dde3ffe00db077187e10'
 });
 const F=Object.freeze({
   mcp:'/home/agent/ssh-mcp-server/src/plugins/hostActionsV2.js',
@@ -40,18 +40,18 @@ function atomicWrite(file,bytes,mode){const t=file+'.'+process.pid+'.'+Date.now(
 function persist(v){fs.mkdirSync(path.dirname(RESULT),{recursive:true,mode:0o700});const t=RESULT+'.'+process.pid+'.tmp';fs.writeFileSync(t,JSON.stringify(v,null,2)+'\n',{mode:0o600,flag:'wx'});fs.renameSync(t,RESULT)}
 
 function patchMcp(s){
-  const a="'host_action_v2_installer_v1','imotion_marketing_target_register_v1']);";
-  const b="'host_action_v2_installer_v1','imotion_marketing_target_register_v1','agent_zdt_existing_topology_rolling_refresh_v1','agent_zdt_existing_topology_rolling_refresh_rollback_v1','agent_zdt_existing_topology_rolling_refresh_finalize_v1']);";
+  const a="'host_action_v2_installer_v1','imotion_marketing_target_register_v1','drtarjomeh_security_containment_v1']);";
+  const b="'host_action_v2_installer_v1','imotion_marketing_target_register_v1','drtarjomeh_security_containment_v1','agent_zdt_existing_topology_rolling_refresh_v1','agent_zdt_existing_topology_rolling_refresh_rollback_v1','agent_zdt_existing_topology_rolling_refresh_finalize_v1']);";
   return replaceOnce(s,a,b,'mcp_enum');
 }
 function patchBase(s){
-  const a="  imotion_marketing_target_register_v1: { operation: 'host_action.imotion_marketing_target_register_v1', rollback: 'host-action-v2:imotion-marketing-target-register-v1:source-restore' }\n});";
-  const b="  imotion_marketing_target_register_v1: { operation: 'host_action.imotion_marketing_target_register_v1', rollback: 'host-action-v2:imotion-marketing-target-register-v1:source-restore' },\n  agent_zdt_existing_topology_rolling_refresh_v1: { operation: 'host_action.agent_zdt_existing_topology_rolling_refresh_v1', rollback: 'host-action-v2:rolling-refresh-v1:evidence-restore' },\n  agent_zdt_existing_topology_rolling_refresh_rollback_v1: { operation: 'host_action.agent_zdt_existing_topology_rolling_refresh_rollback_v1', rollback: 'host-action-v2:rolling-refresh-v1:evidence-restore' },\n  agent_zdt_existing_topology_rolling_refresh_finalize_v1: { operation: 'host_action.agent_zdt_existing_topology_rolling_refresh_finalize_v1', rollback: 'host-action-v2:rolling-refresh-v1:evidence-restore' }\n});";
+  const a="  imotion_marketing_target_register_v1: { operation: 'host_action.imotion_marketing_target_register_v1', rollback: 'host-action-v2:imotion-marketing-target-register-v1:source-restore' },\n  drtarjomeh_security_containment_v1: { operation: 'host_action.drtarjomeh_security_containment_v1', rollback: 'host-action-v2:drtarjomeh-security-containment-v1:backup-restore' }\n});";
+  const b="  imotion_marketing_target_register_v1: { operation: 'host_action.imotion_marketing_target_register_v1', rollback: 'host-action-v2:imotion-marketing-target-register-v1:source-restore' },\n  drtarjomeh_security_containment_v1: { operation: 'host_action.drtarjomeh_security_containment_v1', rollback: 'host-action-v2:drtarjomeh-security-containment-v1:backup-restore' },\n  agent_zdt_existing_topology_rolling_refresh_v1: { operation: 'host_action.agent_zdt_existing_topology_rolling_refresh_v1', rollback: 'host-action-v2:rolling-refresh-v1:evidence-restore' },\n  agent_zdt_existing_topology_rolling_refresh_rollback_v1: { operation: 'host_action.agent_zdt_existing_topology_rolling_refresh_rollback_v1', rollback: 'host-action-v2:rolling-refresh-v1:evidence-restore' },\n  agent_zdt_existing_topology_rolling_refresh_finalize_v1: { operation: 'host_action.agent_zdt_existing_topology_rolling_refresh_finalize_v1', rollback: 'host-action-v2:rolling-refresh-v1:evidence-restore' }\n});";
   return replaceOnce(s,a,b,'base_specs');
 }
 function patchExec(s){
-  const sa="  imotion_marketing_target_register_v1:{operation:'host_action.imotion_marketing_target_register_v1',kind:'imotion_marketing_target_register_v1'}\n});";
-  const sb="  imotion_marketing_target_register_v1:{operation:'host_action.imotion_marketing_target_register_v1',kind:'imotion_marketing_target_register_v1'},\n  agent_zdt_existing_topology_rolling_refresh_v1:{operation:'host_action.agent_zdt_existing_topology_rolling_refresh_v1',kind:'agent_zdt_existing_topology_rolling_refresh_v1'},\n  agent_zdt_existing_topology_rolling_refresh_rollback_v1:{operation:'host_action.agent_zdt_existing_topology_rolling_refresh_rollback_v1',kind:'agent_zdt_existing_topology_rolling_refresh_rollback_v1'},\n  agent_zdt_existing_topology_rolling_refresh_finalize_v1:{operation:'host_action.agent_zdt_existing_topology_rolling_refresh_finalize_v1',kind:'agent_zdt_existing_topology_rolling_refresh_finalize_v1'}\n});";
+  const sa="  imotion_marketing_target_register_v1:{operation:'host_action.imotion_marketing_target_register_v1',kind:'imotion_marketing_target_register_v1'},\n  drtarjomeh_security_containment_v1: { operation: 'host_action.drtarjomeh_security_containment_v1', kind: 'drtarjomeh_security_containment_v1' }\n});";
+  const sb="  imotion_marketing_target_register_v1:{operation:'host_action.imotion_marketing_target_register_v1',kind:'imotion_marketing_target_register_v1'},\n  drtarjomeh_security_containment_v1: { operation: 'host_action.drtarjomeh_security_containment_v1', kind: 'drtarjomeh_security_containment_v1' },\n  agent_zdt_existing_topology_rolling_refresh_v1:{operation:'host_action.agent_zdt_existing_topology_rolling_refresh_v1',kind:'agent_zdt_existing_topology_rolling_refresh_v1'},\n  agent_zdt_existing_topology_rolling_refresh_rollback_v1:{operation:'host_action.agent_zdt_existing_topology_rolling_refresh_rollback_v1',kind:'agent_zdt_existing_topology_rolling_refresh_rollback_v1'},\n  agent_zdt_existing_topology_rolling_refresh_finalize_v1:{operation:'host_action.agent_zdt_existing_topology_rolling_refresh_finalize_v1',kind:'agent_zdt_existing_topology_rolling_refresh_finalize_v1'}\n});";
   s=replaceOnce(s,sa,sb,'exec_specs');
   const anchor='const applyHostActionV2Original=applyHostActionV2;\n';
   const block=`const AGENT_ZDT_EXISTING_TOPOLOGY_ROLLING_HELPER='${F.helper}';
@@ -62,7 +62,7 @@ function applyAgentZdtExistingTopologyRollingRollbackV1(){return runAgentZdtExis
 function applyAgentZdtExistingTopologyRollingFinalizeV1(){return runAgentZdtExistingTopologyRollingPhase('agent_zdt_existing_topology_rolling_refresh_finalize_v1','--finalize')}
 `;
   s=replaceOnce(s,anchor,block+anchor,'exec_phase_helpers');
-  const da="applyHostActionV2=async function(action){if(action==='imotion_marketing_target_register_v1')return applyImotionMarketingTargetRegisterV1();if(action==='host_action_v2_installer_v1')return applyHostActionV2InstallerV1();if(action==='agent_zero_downtime_bootstrap_v1')return applyAgentZeroDowntimeBootstrapV1();return applyHostActionV2Original(action);};";
+  const da="applyHostActionV2=async function(action){\nif(action==='drtarjomeh_security_containment_v1')return applyDrTarjomehSecurityContainmentV1();if(action==='imotion_marketing_target_register_v1')return applyImotionMarketingTargetRegisterV1();if(action==='host_action_v2_installer_v1')return applyHostActionV2InstallerV1();if(action==='agent_zero_downtime_bootstrap_v1')return applyAgentZeroDowntimeBootstrapV1();return applyHostActionV2Original(action);};";
   const db="applyHostActionV2=async function(action){if(action==='agent_zdt_existing_topology_rolling_refresh_v1')return applyAgentZdtExistingTopologyRollingApplyV1();if(action==='agent_zdt_existing_topology_rolling_refresh_rollback_v1')return applyAgentZdtExistingTopologyRollingRollbackV1();if(action==='agent_zdt_existing_topology_rolling_refresh_finalize_v1')return applyAgentZdtExistingTopologyRollingFinalizeV1();if(action==='imotion_marketing_target_register_v1')return applyImotionMarketingTargetRegisterV1();if(action==='host_action_v2_installer_v1')return applyHostActionV2InstallerV1();if(action==='agent_zero_downtime_bootstrap_v1')return applyAgentZeroDowntimeBootstrapV1();return applyHostActionV2Original(action);};";
   return replaceOnce(s,da,db,'exec_dispatch');
 }
