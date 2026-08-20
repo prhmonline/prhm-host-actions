@@ -58,10 +58,10 @@ test('bootstrap registers a fixed Level-4 Host Action with no production-site mu
   const bootstrap=require(bootstrapPath);
   assert.equal(bootstrap.ACTION,'imotion_marketing_target_register_v1');
   assert.equal(bootstrap.OPERATION,'host_action.imotion_marketing_target_register_v1');
-  assert.equal(bootstrap.BASELINE.base,'b084b501b2ea572b39336e45673b4d987a6f7cdb10c769a4db3191ce86ca2877');
-  assert.equal(bootstrap.BASELINE.executor,'5346b24f88c19121898288bd197a8dbe2a18a8c587402cfcd5a27afcfeadacad');
-  assert.equal(bootstrap.BASELINE.mcp,'ebe988fb99794ed3e09b2cefa7496c2d47c967a850b900a117b6b762b388cc34');
-  assert.equal(bootstrap.BASELINE.policy,'c56f3f7c35e6ac22735f0689371e8ca4a7de6f8c375436a456798f8df0b7596a');
+  assert.equal(bootstrap.BASELINE.base,'b0ada3809307005d7715a1c7c970687b65ace82e765c8dfaeb5408061477b4ae');
+  assert.equal(bootstrap.BASELINE.executor,'6b945fcb3afe8ef3e074b07745912c5183f28826728bf4d14ed93c1161c961ba');
+  assert.equal(bootstrap.BASELINE.mcp,'7362fcf00bff04e46287df574f875110603d8c7da8b1bb207e9e609dc86c5b85');
+  assert.equal(bootstrap.BASELINE.policy,'139e5571086b5ead1805e959d9a66866bd9ef3be19ead760a6281c63956a0e18');
   const policy=JSON.parse(bootstrap.patchPolicy(JSON.stringify({version:'old',operations:{},typed_scopes:[]})));
   assert.deepEqual(policy.operations[bootstrap.OPERATION],{level:4});
   const scope=policy.typed_scopes.find(x=>x.action===bootstrap.ACTION);
@@ -88,12 +88,26 @@ test('both installer and helper carry rollback-before-partial-success guards',()
 });
 
 
-test('ZDT manifest fails closed when project or safeFiles bindings are absent',()=>{
+test('ZDT manifest deterministically inserts absent project and safeFiles bindings',()=>{
   const helper=require(helperPath);
-  const onlyApi=`const X={\n'/home/agent/ssh-agent-api/server.js':'70368fdc8be24646b10d414f6159502c2f3d338ed1132451d5b5740d1270999c'\n};`;
-  assert.throws(()=>helper.patchZdtManifest(onlyApi,{api:'a'.repeat(64),project:'b'.repeat(64),safeFiles:'c'.repeat(64)}),/zdt_(path_missing|sha_binding_count).*project\.js/);
-  const apiAndProject=`const X={\n'/home/agent/ssh-agent-api/server.js':'70368fdc8be24646b10d414f6159502c2f3d338ed1132451d5b5740d1270999c',\n'/home/agent/ssh-mcp-server/src/plugins/project.js':'f0a6cc26250ff0f6de05d2d67c3789a84a33c4ded8d1f0d6a1048389e955c511'\n};`;
-  assert.throws(()=>helper.patchZdtManifest(apiAndProject,{api:'a'.repeat(64),project:'b'.repeat(64),safeFiles:'c'.repeat(64)}),/zdt_(path_missing|sha_binding_count).*safeFiles\.js/);
+  const liveShape=`const EXPECTED_SHA=Object.freeze({
+'/home/agent/ssh-agent-api/server.js':'70368fdc8be24646b10d414f6159502c2f3d338ed1132451d5b5740d1270999c'
+});`;
+  const out=helper.patchZdtManifest(liveShape,{api:'a'.repeat(64),project:'b'.repeat(64),safeFiles:'c'.repeat(64)});
+  assert.match(out,/ssh-agent-api\/server\.js'\s*:\s*'a{64}'/);
+  assert.match(out,/plugins\/project\.js'\s*:\s*'b{64}'/);
+  assert.match(out,/plugins\/safeFiles\.js'\s*:\s*'c{64}'/);
+  assert.equal((out.match(/plugins\/project\.js/g)||[]).length,1);
+  assert.equal((out.match(/plugins\/safeFiles\.js/g)||[]).length,1);
+});
+
+test('ZDT manifest still fails closed on an unexpected existing binding',()=>{
+  const helper=require(helperPath);
+  const bad=`const EXPECTED_SHA=Object.freeze({
+'/home/agent/ssh-agent-api/server.js':'70368fdc8be24646b10d414f6159502c2f3d338ed1132451d5b5740d1270999c',
+'/home/agent/ssh-mcp-server/src/plugins/project.js':'${'d'.repeat(64)}'
+});`;
+  assert.throws(()=>helper.patchZdtManifest(bad,{api:'a'.repeat(64),project:'b'.repeat(64),safeFiles:'c'.repeat(64)}),/zdt_sha_binding_count.*project\.js/);
 });
 
 test('Agent API compile patch tolerates whitespace and line breaks',()=>{

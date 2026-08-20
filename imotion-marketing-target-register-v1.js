@@ -98,11 +98,20 @@ function replaceBoundSha(source,file,oldSha,newSha,required){
   const matches=[...source.matchAll(re)];if(matches.length!==1)fail('zdt_sha_binding_count:'+file+':'+matches.length);
   return source.replace(re,'$1'+newSha+'$2');
 }
+function ensureBoundSha(source,file,oldSha,newSha,anchorFile){
+  if(source.includes(file))return replaceBoundSha(source,file,oldSha,newSha,true);
+  if(!anchorFile||!source.includes(anchorFile))fail('zdt_insert_anchor_missing:'+file);
+  const anchorRe=new RegExp("(['\\\"]"+escapeRe(anchorFile)+"['\\\"]\\s*:\\s*['\\\"][a-f0-9]{64}['\\\"],?)",'g');
+  const matches=[...source.matchAll(anchorRe)];if(matches.length!==1)fail('zdt_insert_anchor_count:'+file+':'+matches.length);
+  const anchor=matches[0][0];const comma=/,\s*$/.test(anchor)?'':',';
+  const line="\n  '"+file+"':'"+newSha+"',";
+  return source.slice(0,matches[0].index)+anchor.replace(/,?\s*$/,comma)+line+source.slice(matches[0].index+anchor.length);
+}
 function patchZdtManifest(source,newHashes){
   if(!newHashes||!/^[a-f0-9]{64}$/.test(newHashes.api)||!/^[a-f0-9]{64}$/.test(newHashes.project)||!/^[a-f0-9]{64}$/.test(newHashes.safeFiles))fail('zdt_new_hashes_invalid');
   let out=replaceBoundSha(source,PATHS.api,EXPECTED.api,newHashes.api,true);
-  out=replaceBoundSha(out,PATHS.project,EXPECTED.project,newHashes.project,true);
-  out=replaceBoundSha(out,PATHS.safeFiles,EXPECTED.safeFiles,newHashes.safeFiles,true);
+  out=ensureBoundSha(out,PATHS.project,EXPECTED.project,newHashes.project,PATHS.api);
+  out=ensureBoundSha(out,PATHS.safeFiles,EXPECTED.safeFiles,newHashes.safeFiles,PATHS.project);
   return out;
 }
 function syntaxCheck(label,bytes,ext){const dir=path.dirname(PATHS[label]||PATHS.zdt),tmp=path.join(dir,'.imotion-check-'+process.pid+'-'+Date.now()+ext);try{fs.writeFileSync(tmp,bytes,{mode:0o600,flag:'wx'});const r=cp.spawnSync('/usr/local/bin/prhm-node',['--check',tmp],{encoding:'utf8',timeout:15000,maxBuffer:200000});if(r.error||r.status!==0)fail('syntax_check_failed:'+label+':'+String(r.stderr||r.stdout||r.error?.message||'').slice(0,500));}finally{try{fs.unlinkSync(tmp)}catch{}}}
