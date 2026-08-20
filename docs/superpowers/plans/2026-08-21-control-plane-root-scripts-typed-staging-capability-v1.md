@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a narrowly fixed MCP capability inside the existing `src/plugins/safeFiles.js` that stages exactly two immutable Root-of-Trust transport artifacts, reports bounded metadata, and executes only the fixed registration bootstrap `--preflight-only` path.
+**Goal:** Build and test an immutable candidate replacement for the existing MCP `candidates/agent-mcp/safeFiles-control-plane-root-staging-v1.js` as `candidates/agent-mcp/safeFiles-control-plane-root-staging-v1.js`; it stages exactly two immutable Root-of-Trust transport artifacts, reports bounded metadata, and executes only the fixed registration bootstrap `--preflight-only` path.
 
 **Architecture:** Modify only the existing MCP safe-files source plus focused tests; do not create a new privileged helper or generic writer. The two artifact byte sequences are deterministically embedded, reconstructed and SHA-verified, while staging mutation is gated by Approval Center validation/consume and a fresh Level-4 confirmation. Public Blue/Green/router exposure and any later Root-of-Trust `--apply` remain separate governed gates.
 
@@ -10,10 +10,15 @@
 
 **Spec:** `docs/superpowers/specs/2026-08-21-control-plane-root-scripts-typed-staging-capability-v1-design.md`
 
+## Candidate artifact boundary
+
+Tasks 1-6 operate only on `candidates/agent-mcp/safeFiles-control-plane-root-staging-v1.js` plus repository tests/docs. The live MCP file `/home/agent/ssh-mcp-server/src/plugins/safeFiles.js` is read-only baseline evidence until Task 7, which is separately gated and not authorized by this execution.
+
 ## Global Constraints
 
-- Existing live MCP file to replace later: `src/plugins/safeFiles.js`; current reviewed live evidence: 20090 bytes, SHA-256 `9f291891673806e34d2681ba7b8227ddd4470f73cec12f69a7c3e9035808caa2`.
-- Self-maintenance replacement payload ceiling: `120000` bytes; final candidate `safeFiles.js` MUST be `<=120000` bytes or implementation stops fail-closed.
+- Existing live MCP file to replace later: `/home/agent/ssh-mcp-server/candidates/agent-mcp/safeFiles-control-plane-root-staging-v1.js`; freshly reviewed live evidence: 20090 bytes, SHA-256 `9f291891673806e34d2681ba7b8227ddd4470f73cec12f69a7c3e9035808caa2`.
+- Development candidate path in this repository: `candidates/agent-mcp/safeFiles-control-plane-root-staging-v1.js`. Tasks 1-6 modify only this candidate and tests/docs, never the live MCP file.
+- Self-maintenance replacement payload ceiling: `120000` bytes; final candidate `candidates/agent-mcp/safeFiles-control-plane-root-staging-v1.js` MUST be `<=120000` bytes or implementation stops fail-closed.
 - Immutable source commit: `51027bc81f16840580b3ed5ca09d6c42f78dc044`.
 - Transport artifact: `control-plane-typed-bootstrap-transport-v1.js`, 72854 bytes, SHA-256 `049250921dda0aa98ade7cf3707634668590bd66163606de5906841f5ca34335`.
 - Registration bootstrap artifact: `bootstrap-host-actions-control-plane-typed-bootstrap-transport-v1.js`, 109634 bytes, SHA-256 `d3be569a4fd63b8e0c78e370ad689a27aa2751ea772891cb6b7ffe7fbd49b35e`.
@@ -30,7 +35,7 @@
 ### Task 1: Deterministic Artifact Packaging and 120KB Feasibility Gate
 
 **Files:**
-- Modify later: `src/plugins/safeFiles.js`
+- Modify later: `candidates/agent-mcp/safeFiles-control-plane-root-staging-v1.js`
 - Create: `test-control-plane-root-scripts-typed-staging-capability-v1.js`
 - Read: immutable artifacts from commit `51027bc81f16840580b3ed5ca09d6c42f78dc044`
 
@@ -62,14 +67,14 @@ Run the focused test. Expected: PASS for exact size/SHA and negative unknown-id 
 
 Run:
 ```bash
-wc -c < src/plugins/safeFiles.js
+wc -c < candidates/agent-mcp/safeFiles-control-plane-root-staging-v1.js
 ```
 Expected: integer `<=120000`. If greater than 120000, record `SAFEFILES_SIZE_GATE=FAIL` and stop; do not introduce network fetch, new helper, generic upload or weakened self-maintenance fallback.
 
 - [ ] **Step 6: Commit Task 1**
 
 ```bash
-git add src/plugins/safeFiles.js test-control-plane-root-scripts-typed-staging-capability-v1.js
+git add candidates/agent-mcp/safeFiles-control-plane-root-staging-v1.js test-control-plane-root-scripts-typed-staging-capability-v1.js
 git commit -m "feat: embed fixed root trust artifacts"
 ```
 
@@ -78,7 +83,7 @@ git commit -m "feat: embed fixed root trust artifacts"
 ### Task 2: Fixed Metadata Status Surface and Filesystem Guards
 
 **Files:**
-- Modify: `src/plugins/safeFiles.js`
+- Modify: `candidates/agent-mcp/safeFiles-control-plane-root-staging-v1.js`
 - Modify: `test-control-plane-root-scripts-typed-staging-capability-v1.js`
 
 **Interfaces:**
@@ -104,7 +109,7 @@ Run focused test; all status/guard cases PASS and no artifact content is returne
 - [ ] **Step 5: Commit Task 2**
 
 ```bash
-git add src/plugins/safeFiles.js test-control-plane-root-scripts-typed-staging-capability-v1.js
+git add candidates/agent-mcp/safeFiles-control-plane-root-staging-v1.js test-control-plane-root-scripts-typed-staging-capability-v1.js
 git commit -m "feat: add fixed root trust stage status"
 ```
 
@@ -113,7 +118,7 @@ git commit -m "feat: add fixed root trust stage status"
 ### Task 3: Approval-Bound Atomic Stage Mutation
 
 **Files:**
-- Modify: `src/plugins/safeFiles.js`
+- Modify: `candidates/agent-mcp/safeFiles-control-plane-root-staging-v1.js`
 - Modify: `test-control-plane-root-scripts-typed-staging-capability-v1.js`
 
 **Interfaces:**
@@ -144,7 +149,7 @@ Run focused test. Expected: all approval, atomicity and rollback cases PASS.
 - [ ] **Step 6: Commit Task 3**
 
 ```bash
-git add src/plugins/safeFiles.js test-control-plane-root-scripts-typed-staging-capability-v1.js
+git add candidates/agent-mcp/safeFiles-control-plane-root-staging-v1.js test-control-plane-root-scripts-typed-staging-capability-v1.js
 git commit -m "feat: add approval-bound root trust staging"
 ```
 
@@ -153,7 +158,7 @@ git commit -m "feat: add approval-bound root trust staging"
 ### Task 4: Fixed Preflight-Only Execution Surface
 
 **Files:**
-- Modify: `src/plugins/safeFiles.js`
+- Modify: `candidates/agent-mcp/safeFiles-control-plane-root-staging-v1.js`
 - Modify: `test-control-plane-root-scripts-typed-staging-capability-v1.js`
 
 **Interfaces:**
@@ -184,7 +189,7 @@ Run focused test; all fixed-argv and fail-closed cases PASS.
 - [ ] **Step 6: Commit Task 4**
 
 ```bash
-git add src/plugins/safeFiles.js test-control-plane-root-scripts-typed-staging-capability-v1.js
+git add candidates/agent-mcp/safeFiles-control-plane-root-staging-v1.js test-control-plane-root-scripts-typed-staging-capability-v1.js
 git commit -m "feat: add fixed root trust transport preflight"
 ```
 
@@ -193,7 +198,7 @@ git commit -m "feat: add fixed root trust transport preflight"
 ### Task 5: MCP Tool Registration and Security Regression Suite
 
 **Files:**
-- Modify: `src/plugins/safeFiles.js`
+- Modify: `candidates/agent-mcp/safeFiles-control-plane-root-staging-v1.js`
 - Modify: `test-control-plane-root-scripts-typed-staging-capability-v1.js`
 
 **Interfaces:**
@@ -224,22 +229,22 @@ Expected: all tests PASS, zero skipped security cases.
 - [ ] **Step 5: Run syntax and existing relevant regression tests**
 
 ```bash
-/usr/local/bin/prhm-node --check src/plugins/safeFiles.js
+/usr/local/bin/prhm-node --check candidates/agent-mcp/safeFiles-control-plane-root-staging-v1.js
 ```
 Then run every repository test whose name contains `safeFiles`, `source-mapping`, `host-actions`, or MCP plugin registration and record exact PASS counts.
 
 - [ ] **Step 6: Re-measure final payload**
 
 ```bash
-wc -c < src/plugins/safeFiles.js
-sha256sum src/plugins/safeFiles.js
+wc -c < candidates/agent-mcp/safeFiles-control-plane-root-staging-v1.js
+sha256sum candidates/agent-mcp/safeFiles-control-plane-root-staging-v1.js
 ```
 Expected: byte count `<=120000`; record candidate SHA for the later self-maintenance request.
 
 - [ ] **Step 7: Commit Task 5**
 
 ```bash
-git add src/plugins/safeFiles.js test-control-plane-root-scripts-typed-staging-capability-v1.js
+git add candidates/agent-mcp/safeFiles-control-plane-root-staging-v1.js test-control-plane-root-scripts-typed-staging-capability-v1.js
 git commit -m "test: verify typed root staging capability"
 ```
 
@@ -252,7 +257,7 @@ git commit -m "test: verify typed root staging capability"
 - Create only if repository convention requires: draft PR description/evidence; no production files
 
 **Interfaces:**
-- Produces immutable candidate branch head, candidate `safeFiles.js` SHA-256, byte count and complete test evidence.
+- Produces immutable candidate branch head, candidate artifact SHA-256, byte count and complete test evidence.
 
 - [ ] **Step 1: Run the full capability suite from a clean isolated worktree**
 
@@ -292,7 +297,7 @@ Re-read live `safeFiles.js` SHA/bytes and public/Blue/Green health. Any drift re
 
 - [ ] **Step 2: Create exact SHA-bound self-maintenance request**
 
-Request must target only `src/plugins/safeFiles.js`, bind exact live old SHA and exact candidate content. This creates a pending Level-4 request; it does not authorize apply.
+Request must target only `src/plugins/safeFiles.js`, bind exact fresh live old SHA and the exact bytes from `candidates/agent-mcp/safeFiles-control-plane-root-staging-v1.js`. This creates a pending Level-4 request; it does not authorize apply.
 
 - [ ] **Step 3: Stop and obtain fresh Level-4 confirmation**
 

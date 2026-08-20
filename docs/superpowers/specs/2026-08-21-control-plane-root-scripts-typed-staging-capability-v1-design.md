@@ -16,9 +16,22 @@ Last observed live source evidence, for compatibility review only and never as a
 
 Immediately before any implementation request, the live source SHA and service topology must be captured again. Drift fails closed until the candidate is explicitly rebased and retested.
 
+
+## Candidate Artifact Boundary Amendment V1
+Development Tasks 1-6 run only in `prhmonline/prhm-host-actions`. The live MCP repository is not a development worktree for this change.
+
+- Development candidate artifact: `candidates/agent-mcp/safeFiles-control-plane-root-staging-v1.js`
+- Production deployment target later: `/home/agent/ssh-mcp-server/src/plugins/safeFiles.js`
+- The candidate MUST begin from the freshly captured live baseline bytes and then contain only the reviewed capability change.
+- Tasks 1-6 MUST NOT edit, commit, upload, or self-maintain the live MCP file.
+- Task 7, under a separate production gate, binds `selfmaint_request(target=agent_mcp, path=src/plugins/safeFiles.js)` to the fresh live old SHA and the exact immutable candidate bytes.
+- The candidate artifact itself is never executed from the `prhm-host-actions` repository and is not a generic deployment script.
+
+This amendment changes only the development artifact boundary. All fixed tool schemas, Approval Center requirements, filesystem confinement, size ceiling, no-network rule, and separate production gates remain unchanged.
+
 ## Capability Identity
 - Capability id: `control_plane_root_scripts_typed_staging_capability_v1`
-- Modified existing MCP file: `src/plugins/safeFiles.js`
+- Development candidate artifact: `candidates/agent-mcp/safeFiles-control-plane-root-staging-v1.js`; the existing live MCP file `src/plugins/safeFiles.js` is replaced only later through the separately approved self-maintenance gate
 - New generic writer: none
 - New Executor action: none
 - New helper file required to install capability: none
