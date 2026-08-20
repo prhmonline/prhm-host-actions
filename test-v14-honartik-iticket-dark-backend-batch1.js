@@ -49,6 +49,7 @@ test('bootstrap registers fixed Level-4 action with rollback',()=>{
   assert.equal(bootstrap.BASELINE.mcp,'ebe988fb99794ed3e09b2cefa7496c2d47c967a850b900a117b6b762b388cc34');
   assert.equal(bootstrap.BASELINE.policy,'c56f3f7c35e6ac22735f0689371e8ca4a7de6f8c375436a456798f8df0b7596a');
   assert.equal(bootstrap.sha(Buffer.from(bootstrap.HELPER_B64,'base64')),bootstrap.HELPER_SHA);
+  assert.deepEqual(Buffer.from(bootstrap.HELPER_B64,'base64'),fs.readFileSync(helperPath));
   const baseFixture="const HOST_ACTION_V2_SPECS = Object.freeze({\n  agent_zero_downtime_bootstrap_v1: { operation: 'host_action.agent_zero_downtime_bootstrap_v1', rollback: 'host-action-v2:agent-zero-downtime-bootstrap-v1:backup-restore' }\n});";
   const executorFixture="const HOST_ACTION_V2_SPECS = Object.freeze({\n  agent_zero_downtime_bootstrap_v1:{operation:'host_action.agent_zero_downtime_bootstrap_v1',kind:'agent_zero_downtime_bootstrap_v1'}\n});\nconst AGENT_ZDT_BOOTSTRAP_HELPER='/x';\nfunction applyAgentZeroDowntimeBootstrapV1(){return true;}\nfunction verifyProcessSandboxV2(){return true;}\napplyHostActionV2=async function(action){if(action==='agent_zero_downtime_bootstrap_v1')return applyAgentZeroDowntimeBootstrapV1();return applyHostActionV2Original(action);};\nreturn json(res, 200, { ok: true, service: 'prhm-agent-selfmaint-exec', version: '1.12.4-host-actions-v2-verified-economics-fixture', host_actions: [HOST_ACTION_NAME], host_actions_v2: Object.keys(HOST_ACTION_V2_SPECS), base: sanitize(base) });";
   const mcpFixture="const HostActionV2=z.enum(['agent_zero_downtime_bootstrap_v1']);";
@@ -74,4 +75,38 @@ test('bootstrap registers fixed Level-4 action with rollback',()=>{
   assert.match(source,/rollback/i);
   assert.match(source,/prhm-host-actions-v14-honartik-iticket/);
   assert.match(source,/RestrictAddressFamilies=AF_UNIX/);
+});
+
+test('bootstrap protects preflight, concurrency, crash recovery and sandbox capabilities',()=>{
+  const bootstrap=require(bootstrapPath);
+  const source=fs.readFileSync(bootstrapPath,'utf8');
+  assert.match(source,/install_lock_held/);
+  assert.match(source,/install-state\.json/);
+  assert.match(source,/phase:'prepared'/);
+  assert.match(source,/phase:'committed'/);
+  assert.match(source,/already_installed:true/);
+  assert.match(source,/CapabilityBoundingSet=CAP_DAC_OVERRIDE/);
+  assert.doesNotMatch(source,/CAP_SYS_ADMIN|CAP_NET_ADMIN|CAP_SYS_PTRACE/);
+  assert.match(source,/AmbientCapabilities=/);
+  assert.match(source,/RestrictSUIDSGID=true/);
+  assert.match(source,/RestrictNamespaces=true/);
+  const preflightSource=bootstrap.preflight.toString();
+  assert.doesNotMatch(preflightSource,/captureBackup/);
+  assert.doesNotMatch(preflightSource,/restartServices/);
+  assert.doesNotMatch(preflightSource,/atomicBytes/);
+  const installSource=bootstrap.install.toString();
+  assert.ok(installSource.indexOf('acquireLock') < installSource.indexOf('captureBackup'));
+  assert.ok(installSource.indexOf('writePreparedJournal') < installSource.indexOf('atomicBytes(PATHS.helper'));
+  const policyFixture=JSON.stringify({version:'x',operations:{},typed_scopes:[]},null,2);
+  const once=bootstrap.patchPolicy(policyFixture);
+  assert.throws(()=>bootstrap.patchPolicy(once),/policy_operation_already_present|policy_scope_already_present/);
+});
+
+
+test('helper locks execution and revalidates worktree identity after writes',()=>{
+  const source=fs.readFileSync(helperPath,'utf8');
+  assert.match(source,/helper-run\.lock/);
+  assert.match(source,/helper_lock_held/);
+  assert.match(source,/_worktree_head_changed_after/);
+  assert.match(source,/_worktree_branch_changed_after/);
 });
