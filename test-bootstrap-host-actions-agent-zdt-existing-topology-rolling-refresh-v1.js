@@ -80,3 +80,100 @@ test('installer has no caller-controlled command, path, phase or action argument
   assert.match(s,/const PHASE_BY_ACTION=Object\.freeze/);
   assert.match(s,/agent-zdt-existing-topology-rolling-refresh-v1\.js/);
 });
+
+
+test('schema exposure selects only the opposite MCP blue-green slot',()=>{
+  const {mcpExposureCandidate}=implementation();
+  assert.deepEqual(mcpExposureCandidate(8124),{active_port:8124,active_slot:'blue',candidate_port:8125,candidate_slot:'green'});
+  assert.deepEqual(mcpExposureCandidate(8125),{active_port:8125,active_slot:'green',candidate_port:8124,candidate_slot:'blue'});
+  assert.throws(()=>mcpExposureCandidate(8130),/mcp_active_pointer_not_blue_green/);
+});
+
+test('schema exposure restarts only candidate then atomically cuts public MCP to it',async()=>{
+  const {runMcpSchemaExposure}=implementation();
+  const events=[];
+  const adapter={
+    inspect:async()=>({pointer_port:8124,pointer_regular:true,router_ok:true,public_health:true,public_ready:true,active_health:true,active_ready:true,candidate_contract:true,legacy_listening:true}),
+    capture:async plan=>{events.push('capture');return {...plan,pointer_backup:'b',candidate_pre_active:true,candidate_pre_enabled:true};},
+    restartCandidate:async pre=>events.push('restart:'+pre.candidate_slot),
+    candidateHealth:async()=>{events.push('candidate_health');return true;},
+    candidateReady:async()=>{events.push('candidate_ready');return true;},
+    pointerUnchanged:async()=>{events.push('pointer_unchanged');return true;},
+    switchPointer:async()=>events.push('switch_pointer'),
+    publicHealth:async()=>{events.push('public_health');return true;},
+    publicReady:async()=>{events.push('public_ready');return true;},
+    oldActiveHealthy:async()=>{events.push('old_active_health');return true;},
+    persist:async r=>r
+  };
+  const r=await runMcpSchemaExposure(adapter);
+  assert.equal(r.ok,true);assert.equal(r.active_before,8124);assert.equal(r.active_after,8125);assert.equal(r.old_active_still_healthy,true);
+  assert.deepEqual(events,['capture','restart:green','candidate_health','candidate_ready','pointer_unchanged','switch_pointer','public_health','public_ready','old_active_health']);
+});
+
+test('schema exposure failure after cutover restores pointer before candidate pre-state',async()=>{
+  const {runMcpSchemaExposure}=implementation();
+  const events=[];
+  const adapter={
+    inspect:async()=>({pointer_port:8124,pointer_regular:true,router_ok:true,public_health:true,public_ready:true,active_health:true,active_ready:true,candidate_contract:true,legacy_listening:true}),
+    capture:async plan=>({...plan,pointer_backup:'b',candidate_pre_active:false,candidate_pre_enabled:false}),
+    restartCandidate:async()=>events.push('restart_candidate'),candidateHealth:async()=>true,candidateReady:async()=>true,pointerUnchanged:async()=>true,
+    switchPointer:async()=>events.push('switch_pointer'),
+    publicHealth:async()=>{events.push('public_health_fail');return false;},publicReady:async()=>true,
+    restorePointer:async()=>events.push('restore_pointer'),
+    rollbackPublicHealth:async()=>{events.push('rollback_public_health');return true;},rollbackPublicReady:async()=>true,
+    restoreCandidate:async()=>events.push('restore_candidate'),persist:async r=>r
+  };
+  await assert.rejects(()=>runMcpSchemaExposure(adapter),/mcp_schema_exposure_public_health_failed/);
+  assert.ok(events.indexOf('restore_pointer')>events.indexOf('switch_pointer'));
+  assert.ok(events.indexOf('restore_candidate')>events.indexOf('restore_pointer'));
+});
+
+test('installer schema exposure never restarts legacy MCP or API/router services',()=>{
+  const s=fs.readFileSync(implPath,'utf8');
+  const m=/function restartControlPlaneCore\(\)\{([^}]*)\}/.exec(s);
+  assert.ok(m,'restartControlPlaneCore must exist');
+  assert.match(m[1],/prhm-agent-selfmaint\.service/);
+  assert.match(m[1],/prhm-agent-selfmaint-exec\.service/);
+  assert.equal(/prhm-agent-mcp\.service/.test(m[1]),false);
+  assert.equal(/prhm-agent-api|router/.test(m[1]),false);
+  assert.match(s,/prhm-agent-mcp-blue\.service/);
+  assert.match(s,/prhm-agent-mcp-green\.service/);
+});
+
+test('installer apply wires production MCP schema exposure after post-install verification',()=>{
+  const s=fs.readFileSync(implPath,'utf8');
+  assert.match(s,/class ProductionMcpSchemaExposureAdapter/);
+  const apply=/function apply\(\)\{([\s\S]*?)\nmodule\.exports=/.exec(s)?.[1]||'';
+  const core=apply.indexOf('restartControlPlaneCore()');
+  const verify=apply.indexOf('post_install_sha_mismatch');
+  const exposure=apply.indexOf('runMcpSchemaExposure');
+  assert.ok(core>=0&&verify>core&&exposure>verify,'schema exposure must occur after core restart and post-install SHA verification');
+  assert.match(apply,/schema_exposure/);
+});
+
+
+test('completed schema exposure rollback is pointer-first before candidate restore',async()=>{
+  const {rollbackMcpSchemaExposure}=implementation();
+  const events=[];
+  const adapter={
+    restorePointer:async()=>events.push('restore_pointer'),
+    rollbackPublicHealth:async()=>{events.push('rollback_public_health');return true;},
+    rollbackPublicReady:async()=>{events.push('rollback_public_ready');return true;},
+    restoreCandidate:async()=>events.push('restore_candidate')
+  };
+  const exposure={pre:{active_port:8124,candidate_port:8125,candidate_slot:'green'}};
+  const r=await rollbackMcpSchemaExposure(adapter,exposure);
+  assert.equal(r.rollback_performed,true);
+  assert.deepEqual(events,['restore_pointer','rollback_public_health','rollback_public_ready','restore_candidate']);
+});
+
+
+test('installer failure reloads previously-active schema candidate only after source restore',()=>{
+  const src=fs.readFileSync(implPath,'utf8');
+  const apply=/async function apply\(\)\{([\s\S]*?)\nmodule\.exports=/.exec(src)?.[1]||'';
+  const exposureRollback=apply.indexOf('rollbackMcpSchemaExposure');
+  const sourceRestore=apply.indexOf("fs.readFileSync(path.join(dir,k+'.bak'))");
+  const coreRestore=apply.lastIndexOf('restartControlPlaneCore()');
+  const candidateReload=apply.indexOf('reloadCandidateAfterSourceRestore');
+  assert.ok(exposureRollback>=0&&sourceRestore>exposureRollback&&coreRestore>sourceRestore&&candidateReload>coreRestore);
+});

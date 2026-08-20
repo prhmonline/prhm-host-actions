@@ -79,8 +79,61 @@ function inspect(){
   for(const k of ['mcp','base','exec','helper'])syntax(next[k],k);JSON.parse(next.policy.toString());if(shaBuf(next.helper)!==HELPER_SHA)fail('helper_sha_mismatch');
   return{old,next,post:Object.fromEntries(Object.entries(next).map(([k,v])=>[k,shaBuf(v)]))};
 }
+const MCP_EXPOSURE=Object.freeze({public:8123,blue:8124,green:8125,legacy:8130,pointer:'/var/lib/prhm-agent-zdt/mcp-active',router:'prhm-agent-mcp-router.service',blueUnit:'prhm-agent-mcp-blue.service',greenUnit:'prhm-agent-mcp-green.service'});
+function mcpExposureCandidate(activePort){if(activePort===MCP_EXPOSURE.blue)return{active_port:activePort,active_slot:'blue',candidate_port:MCP_EXPOSURE.green,candidate_slot:'green'};if(activePort===MCP_EXPOSURE.green)return{active_port:activePort,active_slot:'green',candidate_port:MCP_EXPOSURE.blue,candidate_slot:'blue'};throw new Error('mcp_active_pointer_not_blue_green:'+activePort)}
+async function runMcpSchemaExposure(adapter){
+  const state=await adapter.inspect();
+  if(!state||state.pointer_regular!==true||state.router_ok!==true||state.public_health!==true||state.public_ready!==true||state.active_health!==true||state.active_ready!==true||state.candidate_contract!==true||state.legacy_listening!==true)throw new Error('mcp_schema_exposure_preflight_failed');
+  const plan=mcpExposureCandidate(state.pointer_port),pre=await adapter.capture(plan);let restarted=false,switched=false;
+  try{
+    await adapter.restartCandidate(pre);restarted=true;
+    if(await adapter.candidateHealth(pre)!==true)throw new Error('mcp_schema_exposure_candidate_health_failed');
+    if(await adapter.candidateReady(pre)!==true)throw new Error('mcp_schema_exposure_candidate_ready_failed');
+    if(await adapter.pointerUnchanged(pre)!==true)throw new Error('mcp_schema_exposure_pointer_changed');
+    await adapter.switchPointer(pre);switched=true;
+    if(await adapter.publicHealth()!==true)throw new Error('mcp_schema_exposure_public_health_failed');
+    if(await adapter.publicReady()!==true)throw new Error('mcp_schema_exposure_public_ready_failed');
+    const oldHealthy=await adapter.oldActiveHealthy(pre);
+    if(oldHealthy!==true)throw new Error('mcp_schema_exposure_old_active_unhealthy');
+    const result={ok:true,active_before:pre.active_port,active_after:pre.candidate_port,candidate_slot:pre.candidate_slot,old_active_still_healthy:true,rollback_performed:false,pre};
+    return adapter.persist?await adapter.persist(result):result;
+  }catch(error){
+    if(switched){await adapter.restorePointer(pre);if(adapter.rollbackPublicHealth&&await adapter.rollbackPublicHealth()!==true)throw new Error('mcp_schema_exposure_rollback_public_health_failed');if(adapter.rollbackPublicReady&&await adapter.rollbackPublicReady()!==true)throw new Error('mcp_schema_exposure_rollback_public_ready_failed');}
+    if(restarted&&adapter.restoreCandidate)await adapter.restoreCandidate(pre);
+    error.rollback_performed=restarted||switched;error.exposure_pre=pre;throw error;
+  }
+}
+async function rollbackMcpSchemaExposure(adapter,exposure){
+  if(!exposure||!exposure.pre)throw new Error('mcp_schema_exposure_evidence_missing');
+  await adapter.restorePointer(exposure.pre);
+  if(await adapter.rollbackPublicHealth()!==true)throw new Error('mcp_schema_exposure_rollback_public_health_failed');
+  if(await adapter.rollbackPublicReady()!==true)throw new Error('mcp_schema_exposure_rollback_public_ready_failed');
+  await adapter.restoreCandidate(exposure.pre);
+  return{rollback_performed:true,active_restored:exposure.pre.active_port,candidate_restored:exposure.pre.candidate_port};
+}
+async function installerEndpointOk(port,route,key){try{const r=await fetch(`http://127.0.0.1:${port}${route}`,{signal:AbortSignal.timeout(5000)});if(r.status!==200)return false;const j=await r.json();return j?.[key]===true;}catch{return false;}}
+async function installerWaitEndpoint(port,route,key){for(let i=0;i<40;i++){if(await installerEndpointOk(port,route,key))return true;await new Promise(r=>setTimeout(r,250));}return false;}
+class ProductionMcpSchemaExposureAdapter{
+  constructor(){const H=require(F.helper);this.H=H;this.inner=new H.ProductionAdapter();this.validated=null;}
+  async inspect(){const raw=await this.inner.inspectLane('mcp'),v=this.H.validateLane('mcp',raw);this.validated=v;return{pointer_regular:true,pointer_port:v.current_backend,router_ok:v.topology_match===true,public_health:v.public_health===true,public_ready:v.public_ready===true,active_health:v.active_health===true,active_ready:v.active_ready===true,candidate_contract:true,legacy_listening:v.legacy_listening===true};}
+  async capture(plan){if(!this.validated||this.validated.current_backend!==plan.active_port||this.validated.candidate_backend!==plan.candidate_port)throw new Error('mcp_schema_exposure_plan_drift');const pre=await this.inner.captureLaneState('mcp',this.validated);return{...pre,active_port:plan.active_port,active_slot:plan.active_slot,candidate_port:plan.candidate_port,candidate_slot:plan.candidate_slot};}
+  async restartCandidate(pre){return this.inner.restartCandidate('mcp',pre);}
+  async candidateHealth(pre){return this.inner.candidateHealth('mcp',pre);}
+  async candidateReady(pre){return this.inner.candidateReady('mcp',pre);}
+  async pointerUnchanged(pre){try{await this.inner.assertPointerUnchanged('mcp',pre);return true;}catch{return false;}}
+  async switchPointer(pre){return this.inner.switchPointer('mcp',pre);}
+  async publicHealth(){return this.inner.publicHealth('mcp');}
+  async publicReady(){return this.inner.publicReady('mcp');}
+  async oldActiveHealthy(pre){return(await installerWaitEndpoint(pre.active_port,'/health','ok'))&&(await installerWaitEndpoint(pre.active_port,'/ready','ready'));}
+  async restorePointer(pre){return this.inner.restorePointer('mcp',pre);}
+  async rollbackPublicHealth(){return this.inner.publicHealth('mcp');}
+  async rollbackPublicReady(){return this.inner.publicReady('mcp');}
+  async restoreCandidate(pre){return this.inner.restoreCandidatePrestate('mcp',pre);}
+  async persist(result){return result;}
+  async reloadCandidateAfterSourceRestore(pre){if(pre?.candidate_pre_active===true)return this.inner.restartCandidate('mcp',pre);return this.inner.restoreCandidatePrestate('mcp',pre);}
+}
 function preflight(){const st=inspect();return{ok:true,action:ACTION,target_actions:[...TARGET_ACTIONS],schema_version:'prhm.host-action-installer-preflight.v1',preflight_only:true,production_mutation:false,baseline_match:true,helper_sha256:HELPER_SHA,post_install_sha256:st.post}}
-function restartAll(){for(const u of ['prhm-agent-selfmaint.service','prhm-agent-selfmaint-exec.service','prhm-agent-mcp.service'])cp.execFileSync('/usr/bin/systemctl',['restart',u],{encoding:'utf8',stdio:['ignore','pipe','pipe'],timeout:120000})}
-function apply(){const st=inspect(),stamp=new Date().toISOString().replace(/[:.]/g,'-'),dir=path.join(BACKUP_ROOT,stamp);fs.mkdirSync(dir,{recursive:true,mode:0o700});for(const k of ['mcp','base','exec','policy'])fs.writeFileSync(path.join(dir,k+'.bak'),st.old[k],{mode:0o600,flag:'wx'});let mutated=false;try{for(const k of ['mcp','base','exec','policy'])atomicWrite(F[k],st.next[k],fs.statSync(F[k]).mode&0o777);atomicWrite(F.helper,st.next.helper,0o750);mutated=true;restartAll();for(const [k,e] of Object.entries(st.post)){const a=shaFile(F[k]);if(a!==e)fail('post_install_sha_mismatch:'+k+':'+a)}const r={ok:true,action:ACTION,target_actions:[...TARGET_ACTIONS],schema_version:'prhm.host-action-result.v1',installed:true,rollback_performed:false,backup_dir:dir,helper_sha256:HELPER_SHA,post_install_sha256:st.post};persist(r);return r}catch(error){if(mutated){for(const k of ['mcp','base','exec','policy'])atomicWrite(F[k],fs.readFileSync(path.join(dir,k+'.bak')),fs.statSync(F[k]).mode&0o777);try{fs.unlinkSync(F.helper)}catch(e){if(e.code!=='ENOENT')throw e};restartAll()}throw new Error('install_failed_rolled_back:'+String(error?.message||error))}}
-module.exports={ACTION,TARGET_ACTIONS,PHASE_BY_ACTION,BEFORE,F,HELPER_SHA,patchMcp,patchBase,patchExec,patchPolicy,inspect,preflight,apply};
-if(require.main===module){try{console.log(JSON.stringify(apply()))}catch(e){console.error(String(e?.stack||e));process.exit(1)}}
+function restartControlPlaneCore(){for(const u of ['prhm-agent-selfmaint.service','prhm-agent-selfmaint-exec.service'])cp.execFileSync('/usr/bin/systemctl',['restart',u],{encoding:'utf8',stdio:['ignore','pipe','pipe'],timeout:120000})}
+async function apply(){const st=inspect(),stamp=new Date().toISOString().replace(/[:.]/g,'-'),dir=path.join(BACKUP_ROOT,stamp);fs.mkdirSync(dir,{recursive:true,mode:0o700});for(const k of ['mcp','base','exec','policy'])fs.writeFileSync(path.join(dir,k+'.bak'),st.old[k],{mode:0o600,flag:'wx'});let mutated=false,exposureAdapter=null,schemaExposure=null;try{for(const k of ['mcp','base','exec','policy'])atomicWrite(F[k],st.next[k],fs.statSync(F[k]).mode&0o777);atomicWrite(F.helper,st.next.helper,0o750);mutated=true;restartControlPlaneCore();for(const [k,e] of Object.entries(st.post)){const a=shaFile(F[k]);if(a!==e)fail('post_install_sha_mismatch:'+k+':'+a)}exposureAdapter=new ProductionMcpSchemaExposureAdapter();schemaExposure=await runMcpSchemaExposure(exposureAdapter);const r={ok:true,action:ACTION,target_actions:[...TARGET_ACTIONS],schema_version:'prhm.host-action-result.v1',installed:true,schema_exposure:{ok:true,active_before:schemaExposure.active_before,active_after:schemaExposure.active_after,candidate_slot:schemaExposure.candidate_slot,old_active_still_healthy:schemaExposure.old_active_still_healthy},rollback_performed:false,backup_dir:dir,helper_sha256:HELPER_SHA,post_install_sha256:st.post};persist(r);return r}catch(error){const rollbackPre=schemaExposure?.pre||error?.exposure_pre||null;if(schemaExposure&&exposureAdapter){try{await rollbackMcpSchemaExposure(exposureAdapter,schemaExposure)}catch(rb){error.schema_exposure_rollback_error=String(rb?.message||rb)}}if(mutated){for(const k of ['mcp','base','exec','policy'])atomicWrite(F[k],fs.readFileSync(path.join(dir,k+'.bak')),fs.statSync(F[k]).mode&0o777);try{fs.unlinkSync(F.helper)}catch(e){if(e.code!=='ENOENT')throw e};restartControlPlaneCore();if(rollbackPre&&exposureAdapter){try{await exposureAdapter.reloadCandidateAfterSourceRestore(rollbackPre)}catch(rb){error.candidate_reload_rollback_error=String(rb?.message||rb)}}}throw new Error('install_failed_rolled_back:'+String(error?.message||error))}}
+module.exports={ACTION,TARGET_ACTIONS,PHASE_BY_ACTION,BEFORE,F,HELPER_SHA,MCP_EXPOSURE,mcpExposureCandidate,runMcpSchemaExposure,rollbackMcpSchemaExposure,ProductionMcpSchemaExposureAdapter,patchMcp,patchBase,patchExec,patchPolicy,inspect,preflight,apply};
+if(require.main===module)apply().then(r=>console.log(JSON.stringify(r))).catch(e=>{console.error(String(e?.stack||e));process.exit(1)})

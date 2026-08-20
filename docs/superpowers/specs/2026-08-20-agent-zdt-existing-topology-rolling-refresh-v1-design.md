@@ -269,3 +269,12 @@ The Host Actions v2 interface accepts only a fixed action name and no caller-sup
 - `agent_zdt_existing_topology_rolling_refresh_finalize_v1` — executes `--finalize` only.
 
 `--preflight-only` remains a read-only commit-pinned verification step and is not exposed as a mutating Host Action. Each phase action requires its own one-time Level-4 approval and typed scope. The Executor injects the fixed helper phase server-side; callers cannot provide a command, path, port, slot, action alias, or mode. Rollback and finalize remain evidence-gated and can only operate on a valid prior apply record. Automatic finalize is prohibited.
+
+
+## Amendment — MCP Schema-Only Rolling Exposure
+
+Approved token: `SPEC_AMENDMENT_APPROVED_AGENT_ZDT_SCHEMA_EXPOSURE_ROLLING_V1`.
+
+Task 9 must not restart the legacy MCP service to expose the new Host Actions v2 schema. After the four-layer install and post-install SHA verification, the installer must read the existing MCP blue/green topology, identify the active pointer (`8124` or `8125`), restart only the opposite candidate slot, require candidate health/ready, atomically cut the MCP pointer, require public `8123` health/ready, and keep the old active backend healthy and running as rollback capacity. API, routers, legacy services and reserved port `8101` are untouched.
+
+If schema exposure fails after pointer cutover, rollback is pointer-first, then candidate pre-state restore, then the four-layer installer restore. If the candidate had been active before exposure, it is reloaded after the old source files are restored so no standby process retains the new schema in memory. There is no auto-finalize and the actual rolling-refresh apply remains a separate Level-4 action.

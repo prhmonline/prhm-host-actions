@@ -404,3 +404,19 @@ Task 6 is amended so the installer registers three independent fixed Level-4 act
 3. `agent_zdt_existing_topology_rolling_refresh_finalize_v1` → fixed helper mode `--finalize`.
 
 The shared helper remains `agent-zdt-existing-topology-rolling-refresh-v1.js`. The MCP enum, Base registry, Executor registry/dispatcher, approval-policy operations, and typed scopes must contain all three actions exactly once. No caller-controlled phase or mode is accepted. `--preflight-only` remains read-only and is executed separately before any Level-4 request.
+
+
+## Plan Amendment — MCP Schema-Only Rolling Exposure
+
+Task 9 is amended as follows:
+
+- [ ] Install the reviewed four-layer Host Actions v2 changes and shared helper.
+- [ ] Restart only Base Self-Maintenance and Executor; do not restart legacy MCP.
+- [ ] Verify all post-install SHA identities before any MCP pointer mutation.
+- [ ] Read MCP active pointer and select only the opposite blue/green candidate.
+- [ ] Restart only that candidate, require candidate `/health` and `/ready`, and assert pointer unchanged.
+- [ ] Atomically switch the MCP pointer and require public `8123` `/health` and `/ready`.
+- [ ] Require the old active MCP backend to remain healthy/running as rollback capacity.
+- [ ] On any exposure failure: restore pointer first, verify public recovery, restore candidate pre-state, restore four Control Plane files/helper, restart Base/Executor, and reload any previously-active candidate against the restored source.
+- [ ] Do not touch API, MCP router, legacy MCP, or port `8101`.
+- [ ] Only after schema exposure succeeds may the new fixed apply/rollback/finalize actions be requested through Host Actions v2.
