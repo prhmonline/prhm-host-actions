@@ -63,4 +63,47 @@ function preflight({fsApi,execApi,manifest,packageBytes,sourceCommit,manifestSha
  return redactEvidence({ok:true,action:ACTION,schema_version:'prhm.bootstrap-preflight-result.v1',package_id:PACKAGE.package_id,preflight_only:true,production_mutation:false,source_commit_match:true,manifest_sha_match:true,all_file_sha_match:true,destination_allowlist_pass:allow,symlink_guard_pass:symlink,syntax_pass:true,baseline_match:true,deployhq_mutation:false,application_mutation:false,honartik_mutation:false,imotion_mutation:false});
 }
 
-module.exports={ACTION,OPERATION,REQUEST_FIELDS,PACKAGE,ALLOWLIST,canonicalManifestBytes,validateManifest,validateDestination,validatePackageBytes,redactEvidence,sha256,preflight};
+
+const SERVICE='prhm-deployhq-control.service';
+function persistResult(result,deps){if(!deps||!deps.io||typeof deps.io.persistResult!=='function')fail('result_persistence_missing');deps.io.persistResult(redactEvidence(result));return result}
+function rollbackJournal(journal,deps){
+ const errors=[];const io=deps.io,service=deps.serviceApi;
+ for(const e of [...journal.entries].reverse()){
+  try{if(e.existed){if(!e.backup_path)throw new Error('backup_missing');const b=io.readBackup(e.backup_path);if(sha256(b)!==e.original_sha256)throw new Error('backup_sha_mismatch');io.restoreBackup(e.destination_path,e.backup_path,e)}else{io.remove(e.destination_path)}}catch(err){errors.push(e.destination_path+':'+String(err.message||err))}
+ }
+ try{if(journal.unit_changed&&service&&typeof service.daemonReload==='function')service.daemonReload()}catch(e){errors.push('daemon_reload:'+String(e.message||e))}
+ try{if(service&&typeof service.restoreState==='function')service.restoreState(SERVICE,journal.service_state)}catch(e){errors.push('service_restore:'+String(e.message||e))}
+ if(errors.length)return {ok:false,critical_failure:true,rollback_failed:true,errors};
+ return {ok:true,rollback_performed:true,rollback_failed:false};
+}
+function applyTransaction(deps){
+ const {io,serviceApi,healthApi}=deps||{};if(!io||!serviceApi||!healthApi)fail('apply_dependencies_missing');
+ const pf=preflight(deps);
+ const invocationId=deps.invocationId||crypto.randomUUID();
+ const serviceState=serviceApi.getState(SERVICE);
+ const entries=[];
+ for(const r of deps.manifest.records){const st=io.inspect(r.destination_path);let backup=null;if(st.exists){if(st.is_symlink)fail('destination_symlink');backup=io.backup(r.destination_path,invocationId,r)}entries.push({destination_path:r.destination_path,existed:!!st.exists,original_sha256:st.exists?st.sha256:null,mode:st.mode??null,owner:st.owner??null,group:st.group??null,backup_path:backup,source_path:r.source_path,expected_sha256:r.sha256});}
+ const unitPath='/etc/systemd/system/prhm-deployhq-control.service';
+ const unitEntry=entries.find(x=>x.destination_path===unitPath);const unitChanged=!unitEntry?.existed||unitEntry.original_sha256!==unitEntry.expected_sha256;
+ const journal={schema_version:'prhm.bootstrap-journal.v1',action:ACTION,package_id:PACKAGE.package_id,invocation_id:invocationId,entries,service_state:serviceState,unit_changed:unitChanged,mutation_started:false};
+ io.persistJournal(journal);
+ try{
+  const staged=[];
+  for(const r of deps.manifest.records){const stagePath=io.stageCandidate(invocationId,r,deps.packageBytes[r.source_path]);const stagedBytes=io.readStage(stagePath);if(sha256(stagedBytes)!==r.sha256)fail('stage_sha_mismatch');staged.push({r,stagePath})}
+  journal.mutation_started=true;io.persistJournal(journal);
+  for(const {r,stagePath} of staged){io.installAtomic(stagePath,r.destination_path,r);const now=io.readInstalled(r.destination_path);if(sha256(now)!==r.sha256)fail('post_write_sha_mismatch')}
+  if(unitChanged)serviceApi.daemonReload();
+  serviceApi.startOrRestart(SERVICE);
+  const health=healthApi.checkAdapter();
+  let adapterReady=true,readinessReason=null;
+  if(!health||health.ok!==true){if(health&&health.reason==='deployhq_credentials_missing'){adapterReady=false;readinessReason='deployhq_credentials_missing'}else fail('adapter_health_failed')}
+  const out={ok:true,action:ACTION,schema_version:'prhm.bootstrap-result.v1',package_id:PACKAGE.package_id,installed:true,adapter_installed:true,adapter_ready:adapterReady,readiness_reason:readinessReason,host_action_registration_installed:false,mcp_refresh_required:false,deployhq_mutation:false,application_mutation:false,honartik_mutation:false,imotion_mutation:false,rollback_performed:false,rollback_failed:false,invocation_id:invocationId,preflight:pf};
+  persistResult(out,deps);return out;
+ }catch(error){
+  const rb=rollbackJournal(journal,deps);
+  if(rb.rollback_failed){const out={ok:false,action:ACTION,critical_failure:true,rollback_failed:true,rollback_performed:false,error:String(error.message||error),rollback_errors:rb.errors};try{persistResult(out,deps)}catch{}return out}
+  const out={ok:false,action:ACTION,critical_failure:false,rollback_failed:false,rollback_performed:true,error:String(error.message||error)};try{persistResult(out,deps)}catch{}return out;
+ }
+}
+
+module.exports={ACTION,OPERATION,REQUEST_FIELDS,PACKAGE,ALLOWLIST,SERVICE,canonicalManifestBytes,validateManifest,validateDestination,validatePackageBytes,redactEvidence,sha256,preflight,applyTransaction,rollbackJournal,persistResult};

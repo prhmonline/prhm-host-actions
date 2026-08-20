@@ -47,3 +47,32 @@ test('preflight evidence contains no auth or secret values',()=>{
  const out=t.preflight({fsApi,execApi,manifest,packageBytes:bytes,sourceCommit:t.PACKAGE.source_commit,manifestSha:t.PACKAGE.manifest_sha256,liveBaseline:{expected:{a:1},actual:{a:1}}});
  const text=JSON.stringify(out);assert.doesNotMatch(text,/SHOULD_NOT_LEAK|Basic abc/);
 });
+
+
+function makeApplyDeps(opts={}){
+ const trace=[];const installed=new Map();const backups=new Map();const stages=new Map();
+ const fsApi={lstatSync(){const e=new Error();e.code='ENOENT';throw e}};
+ const execApi={verifyNode(){return {ok:true}},verifyUnit(){return {ok:true}}};
+ const io={
+  inspect(p){const b=installed.get(p);return b?{exists:true,sha256:t.sha256(b),mode:'0750',owner:'root',group:'root',is_symlink:false}:{exists:false,is_symlink:false}},
+  backup(p,id){const bp='/backup/'+id+'/'+Buffer.from(p).toString('hex');backups.set(bp,installed.get(p));trace.push({kind:'backup',path:p});return bp},
+  readBackup(p){if(opts.rollbackReadFail)throw new Error('rollback read fail');return backups.get(p)},
+  restoreBackup(p,bp){if(opts.rollbackRestoreFail)throw new Error('restore fail');installed.set(p,backups.get(bp));trace.push({kind:'restore',path:p})},
+  remove(p){installed.delete(p);trace.push({kind:'remove',path:p})},
+  persistJournal(j){trace.push({kind:'journal',mutation_started:j.mutation_started})},
+  stageCandidate(id,r,b){const p='/stage/'+id+'/'+Buffer.from(r.source_path).toString('hex');stages.set(p,Buffer.from(b));trace.push({kind:'stage',path:p});return p},
+  readStage(p){return stages.get(p)},
+  installAtomic(sp,dp){installed.set(dp,Buffer.from(stages.get(sp)));trace.push({kind:'write',path:dp});if(opts.tamperPostWrite&&trace.filter(x=>x.kind==='write').length===1)installed.set(dp,Buffer.from('tampered'))},
+  readInstalled(p){return installed.get(p)},
+  persistResult(r){trace.push({kind:'result',ok:r.ok})}
+ };
+ const serviceApi={getState(){return {active:false,enabled:false}},daemonReload(){trace.push({kind:'daemon-reload'})},startOrRestart(s){trace.push({kind:'service',service:s})},restoreState(s,state){if(opts.serviceRestoreFail)throw new Error('service restore fail');trace.push({kind:'service-restore',service:s,state})}};
+ const healthApi={checkAdapter(){return opts.health||{ok:true}}};
+ return {trace,installed,manifest,packageBytes:bytes,sourceCommit:t.PACKAGE.source_commit,manifestSha:t.PACKAGE.manifest_sha256,liveBaseline:{expected:{a:1},actual:{a:1}},fsApi,execApi,io,serviceApi,healthApi,invocationId:'11111111-1111-4111-8111-111111111111'};
+}
+test('apply writes only manifest-owned destinations',()=>{const d=makeApplyDeps();const out=t.applyTransaction(d);assert.equal(out.ok,true);const writes=d.trace.filter(x=>x.kind==='write').map(x=>x.path);assert.deepEqual(new Set(writes),new Set(manifest.records.map(r=>r.destination_path)));assert.deepEqual(d.trace.filter(x=>x.kind==='service').map(x=>x.service),['prhm-deployhq-control.service']);});
+test('apply journal exists before first destination write',()=>{const d=makeApplyDeps();t.applyTransaction(d);const ji=d.trace.findIndex(x=>x.kind==='journal');const wi=d.trace.findIndex(x=>x.kind==='write');assert.ok(ji>=0&&ji<wi)});
+test('post-write sha mismatch rolls back invocation-owned created files',()=>{const d=makeApplyDeps({tamperPostWrite:true});const out=t.applyTransaction(d);assert.equal(out.ok,false);assert.equal(out.rollback_performed,true);for(const r of manifest.records)assert.equal(d.installed.has(r.destination_path),false);});
+test('adapter health failure rolls back but credentials-missing remains fail-closed installed',()=>{const d=makeApplyDeps({health:{ok:false,reason:'boom'}});const out=t.applyTransaction(d);assert.equal(out.rollback_performed,true);const d2=makeApplyDeps({health:{ok:false,reason:'deployhq_credentials_missing'}});const out2=t.applyTransaction(d2);assert.equal(out2.ok,true);assert.equal(out2.adapter_ready,false);assert.equal(out2.readiness_reason,'deployhq_credentials_missing');});
+test('rollback failure returns critical explicit evidence',()=>{const d=makeApplyDeps({tamperPostWrite:true,rollbackRestoreFail:true});d.installed.set(manifest.records[0].destination_path,Buffer.from('old'));const out=t.applyTransaction(d);assert.equal(out.ok,false);assert.equal(out.critical_failure,true);assert.equal(out.rollback_failed,true);});
+test('no unrelated service or MCP runtime restart occurs',()=>{const d=makeApplyDeps();t.applyTransaction(d);const text=JSON.stringify(d.trace);assert.doesNotMatch(text,/prhm-agent-mcp|honartik|imotion/);assert.match(text,/prhm-deployhq-control\.service/);});
