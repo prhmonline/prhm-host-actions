@@ -24,6 +24,7 @@ function stageArtifactBytes(key){const spec=STAGE_ARTIFACTS[key];if(!spec)throw 
 function requireRegularNoSymlink(fsOps,file,errorName){const st=fsOps.lstatSync(file);if(st.isSymbolicLink()||!st.isFile())throw new Error(errorName);return st}
 function verifyExactFile(fsOps,file,spec){const st=requireRegularNoSymlink(fsOps,file,'staged_file_not_regular');const raw=fsOps.readFileSync(file);if(raw.length!==spec.bytes||sha256(raw)!==spec.sha256)throw new Error('staged_file_integrity_mismatch');return st}
 function captureDestination(fsOps,file){if(!fsOps.existsSync(file))return{exists:false};const st=requireRegularNoSymlink(fsOps,file,'destination_not_regular');return{exists:true,bytes:fsOps.readFileSync(file),mode:st.mode&0o777,uid:st.uid,gid:st.gid}}
+function assertOnlyExpectedStageEntries(fsOps,root){const allowed=new Set(Object.values(STAGE_FILENAMES));for(const name of fsOps.readdirSync(root))if(!allowed.has(name))throw new Error('staging_root_unexpected_entry')}
 function ownedTemp(root,name,id){return path.join(root,`.${name}.${id}.tmp`)}
 function writeTemp(fsOps,file,bytes,uid,gid,mode=0o600){if(fsOps.existsSync(file))throw new Error('invocation_temp_exists');fsOps.writeFileSync(file,bytes,{mode,flag:'wx'});fsOps.chmodSync(file,mode);if(typeof fsOps.chownSync==='function')fsOps.chownSync(file,uid,gid)}
 
@@ -36,6 +37,7 @@ export function createFixedStageTransaction(options={}){
       if(fsOps.existsSync(root)){const st=fsOps.lstatSync(root);if(st.isSymbolicLink())throw new Error('staging_root_symlink_forbidden');if(!st.isDirectory())throw new Error('staging_root_not_directory')}else fsOps.mkdirSync(root,{recursive:true,mode:0o700});
       fsOps.chmodSync(root,0o700);if(typeof fsOps.chownSync==='function')fsOps.chownSync(root,uid,gid);
       if(fsOps.realpathSync(root)!==path.resolve(root))throw new Error('staging_root_realpath_mismatch');
+      assertOnlyExpectedStageEntries(fsOps,root);
       for(const key of names){const dest=path.join(root,STAGE_FILENAMES[key]);before[key]=captureDestination(fsOps,dest)}
       const evidence={};
       for(const key of names){
@@ -60,7 +62,7 @@ function parsePreflightEvidence(stdout){for(const line of String(stdout||'').tri
 export function createFixedTransportPreflight(options={}){
   const fsOps=options.fsOps||fs,root=options.stagingRoot||STAGING_ROOT,uid=options.ownerUid??0,gid=options.ownerGid??0,spawn=options.spawn||spawnSync;
   return async function runFixedTransportPreflight(){
-    if(!fsOps.existsSync(root))throw new Error('staging_root_missing');const rootStat=fsOps.lstatSync(root);if(rootStat.isSymbolicLink()||!rootStat.isDirectory())throw new Error('staging_root_invalid');if(fsOps.realpathSync(root)!==path.resolve(root))throw new Error('staging_root_realpath_mismatch');
+    if(!fsOps.existsSync(root))throw new Error('staging_root_missing');const rootStat=fsOps.lstatSync(root);if(rootStat.isSymbolicLink()||!rootStat.isDirectory())throw new Error('staging_root_invalid');if(fsOps.realpathSync(root)!==path.resolve(root))throw new Error('staging_root_realpath_mismatch');assertOnlyExpectedStageEntries(fsOps,root);
     const artifacts={};
     for(const key of Object.keys(STAGE_FILENAMES)){const file=path.join(root,STAGE_FILENAMES[key]),spec=STAGE_ARTIFACTS[key],st=verifyExactFile(fsOps,file,spec);if((st.mode&0o777)!==0o600)throw new Error('staged_file_mode_mismatch');if(st.uid!==uid||st.gid!==gid)throw new Error('staged_file_owner_mismatch');artifacts[key]={path:file,bytes:spec.bytes,sha256:spec.sha256}}
     const bootstrap=path.join(root,STAGE_FILENAMES.bootstrap);const result=spawn('/usr/local/bin/prhm-node',[bootstrap,'--preflight-only'],{shell:false,encoding:'utf8',timeout:30000,maxBuffer:262144,env:{PATH:'/usr/local/bin:/usr/bin:/bin',LC_ALL:'C'}});
