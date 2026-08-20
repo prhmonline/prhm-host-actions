@@ -21,3 +21,12 @@ test('request body cannot override fixed node1 fields',async()=>{let creates=0;c
 test('unknown route fails closed without outbound mutation',async()=>{let calls=0;const deps={listServers:async()=>{calls++;return[]},createFixedServer:async()=>{calls++;},deleteCreatedServer:async()=>{},deploymentSnapshot:async()=>({count:0}),commandSnapshot:async()=>({count:0})};const r=await req(m.createAdapter(deps),'POST','/v1/proxy',{x:1});assert.equal(r.status,404);assert.equal(calls,0)});
 test('temp Honartik target drift triggers rollback of newly created target only',async()=>{let lists=0,deleted=[];const deps={listServers:async()=>{lists++;return lists===1?[temp('t1')]:[temp('t2'),{...FIXED,identifier:'new1'}]},createFixedServer:async()=>({...FIXED,identifier:'new1'}),deleteCreatedServer:async(id)=>deleted.push(id),deploymentSnapshot:async()=>({count:1,last:'d1'}),commandSnapshot:async()=>({count:1,last:'c1'})};const r=await req(m.createAdapter(deps),'POST','/v1/node1/create-fixed');assert.equal(r.status,409);assert.deepEqual(deleted,['new1']);assert.equal(r.body.error,'honartik_targets_changed')});
 test('redact removes bearer/token-like values recursively',()=>{const out=m.redact({a:'Bearer abcdefghijklmnop',token:'secret-value',nested:{password:'pw',safe:'ok'}});assert.equal(out.a,'[REDACTED]');assert.equal(out.token,'[REDACTED]');assert.equal(out.nested.password,'[REDACTED]');assert.equal(out.nested.safe,'ok')});
+
+
+test('rollback delete is allowed only for an identifier created by this adapter process',async()=>{
+ let lists=0,deleted=[];const deps={listServers:async()=>{lists++;return lists===1?[]:[{...FIXED,identifier:'11111111-1111-4111-8111-111111111111'}]},createFixedServer:async()=>({...FIXED,identifier:'11111111-1111-4111-8111-111111111111'}),deleteCreatedServer:async id=>deleted.push(id),deploymentSnapshot:async()=>({count:0}),commandSnapshot:async()=>({count:0})};
+ const app=m.createAdapter(deps);const c=await req(app,'POST','/v1/node1/create-fixed');assert.equal(c.status,201);
+ const bad=await req(app,'DELETE','/v1/node1/22222222-2222-4222-8222-222222222222');assert.equal(bad.status,403);assert.deepEqual(deleted,[]);
+ const good=await req(app,'DELETE','/v1/node1/11111111-1111-4111-8111-111111111111');assert.equal(good.status,200);assert.deepEqual(deleted,['11111111-1111-4111-8111-111111111111']);
+ const replay=await req(app,'DELETE','/v1/node1/11111111-1111-4111-8111-111111111111');assert.equal(replay.status,403);assert.deepEqual(deleted,['11111111-1111-4111-8111-111111111111']);
+});
