@@ -1,0 +1,30 @@
+[Unit]
+Description=PRHM DeployHQ Control Adapter
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+DynamicUser=true
+StateDirectory=prhm-deployhq-control
+WorkingDirectory=/opt/prhm-deployhq-control
+ExecStart=/usr/local/bin/prhm-node /opt/prhm-deployhq-control/server.js --serve
+LoadCredential=deployhq_email:/etc/prhm-credentials/deployhq/email
+LoadCredential=deployhq_api_key:/etc/prhm-credentials/deployhq/api-key
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+UMask=0077
+Restart=on-failure
+RestartSec=2s
+
+[Install]
+WantedBy=multi-user.target
