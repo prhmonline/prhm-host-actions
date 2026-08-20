@@ -9,7 +9,7 @@ const TOOL='honartik_iticket_v14_preflight_readonly';
 const ROUTE='/honartik/iticket/v14/preflight';
 const ACTION='honartik_iticket_dark_backend_batch1_v1';
 const V14_PAYLOAD='/opt/prhm-agent-readonly-actions/honartik-iticket-v14-preflight.js';
-const V14_SHA='420a7f817c99967819e3b5bae43d862b6158a483a8fb5665492917f5c641972b';
+const V14_SHA='1cd8e33bdecaa2ebffc086c778e7938cb33b57b31e6abab21a183972259a0059';
 const JOURNAL='/var/lib/prhm-agent-selfmaint-exec/host-actions-v14-honartik-iticket-dark-backend-batch1/install-state.json';
 const READ_EXACT=new Set([
   V14_PAYLOAD,

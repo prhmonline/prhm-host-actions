@@ -44,10 +44,10 @@ test('bootstrap registers fixed Level-4 action with rollback',()=>{
   assert.equal(fs.existsSync(bootstrapPath),true,'bootstrap must exist');
   const bootstrap=require(bootstrapPath);
   assert.equal(bootstrap.ACTION,'honartik_iticket_dark_backend_batch1_v1');
-  assert.equal(bootstrap.BASELINE.base,'b0ada3809307005d7715a1c7c970687b65ace82e765c8dfaeb5408061477b4ae');
-  assert.equal(bootstrap.BASELINE.executor,'6b945fcb3afe8ef3e074b07745912c5183f28826728bf4d14ed93c1161c961ba');
-  assert.equal(bootstrap.BASELINE.mcp,'7362fcf00bff04e46287df574f875110603d8c7da8b1bb207e9e609dc86c5b85');
-  assert.equal(bootstrap.BASELINE.policy,'139e5571086b5ead1805e959d9a66866bd9ef3be19ead760a6281c63956a0e18');
+  assert.equal(bootstrap.BASELINE.base,'85229ccd95e98523e9d87468df1fcaec4107c6834f5c4e0bc108b265a0a499cf');
+  assert.equal(bootstrap.BASELINE.executor,'6bd9c56b4d5889c1d70d8278bcd66f48cab9561f2429cd3489a5b42ab1bbc35f');
+  assert.equal(bootstrap.BASELINE.mcp,'7efeeb17253bc52aeac1f362c377fd4121984f49f159fd9e72ae7e06897ded56');
+  assert.equal(bootstrap.BASELINE.policy,'0e0b0c3b605e7aeadfe0b7cb51bfeb2db4c60de34bce956bbce0053cb5ecd5a9');
   assert.equal(bootstrap.sha(Buffer.from(bootstrap.HELPER_B64,'base64')),bootstrap.HELPER_SHA);
   assert.deepEqual(Buffer.from(bootstrap.HELPER_B64,'base64'),fs.readFileSync(helperPath));
   const baseFixture="const HOST_ACTION_V2_SPECS = Object.freeze({\n  agent_zero_downtime_bootstrap_v1: { operation: 'host_action.agent_zero_downtime_bootstrap_v1', rollback: 'host-action-v2:agent-zero-downtime-bootstrap-v1:backup-restore' }\n});";

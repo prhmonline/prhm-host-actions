@@ -12,7 +12,7 @@ test('runtime module exposes the fixed zero-input contract',()=>{
   assert.equal(typeof route.runPinnedPreflight,'function');
   assert.equal(route.TOOL,'honartik_iticket_v14_preflight_readonly');
   assert.equal(route.ROUTE,'/honartik/iticket/v14/preflight');
-  assert.equal(route.V14_SHA,'420a7f817c99967819e3b5bae43d862b6158a483a8fb5665492917f5c641972b');
+  assert.equal(route.V14_SHA,'1cd8e33bdecaa2ebffc086c778e7938cb33b57b31e6abab21a183972259a0059');
 });
 
 test('runtime source contains no public arbitrary execution surface',()=>{
@@ -29,8 +29,8 @@ test('installer is SHA-bound to the live Agent API/MCP baselines and V14 payload
   const installer=require(path.join(__dirname,'bootstrap-host-actions-v14-1-honartik-iticket-v14-preflight-readonly.js'));
   assert.equal(installer.EXPECTED.agentServer,'70368fdc8be24646b10d414f6159502c2f3d338ed1132451d5b5740d1270999c');
   assert.equal(installer.EXPECTED.registry,'cf3681ca4d4632156df2f77886afe59c07da9a86dbcb68f4217577f811b22231');
-  assert.equal(installer.IMMUTABLE_HOST_ACTIONS_V2_SHA,'7362fcf00bff04e46287df574f875110603d8c7da8b1bb207e9e609dc86c5b85');
-  assert.equal(installer.V14_SHA,'420a7f817c99967819e3b5bae43d862b6158a483a8fb5665492917f5c641972b');
+  assert.equal(installer.IMMUTABLE_HOST_ACTIONS_V2_SHA,'7efeeb17253bc52aeac1f362c377fd4121984f49f159fd9e72ae7e06897ded56');
+  assert.equal(installer.V14_SHA,'1cd8e33bdecaa2ebffc086c778e7938cb33b57b31e6abab21a183972259a0059');
   assert.equal(typeof installer.patchAgentServer,'function');
   assert.equal(typeof installer.patchRegistry,'function');
   assert.equal(typeof installer.preflight,'function');
