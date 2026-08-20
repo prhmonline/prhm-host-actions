@@ -1,0 +1,148 @@
+#!/usr/local/bin/prhm-node
+'use strict';
+const fs=require('node:fs');
+const path=require('node:path');
+const crypto=require('node:crypto');
+const cp=require('node:child_process');
+
+const ACTION='imotion_marketing_targets_register_v2';
+const TARGETS=Object.freeze({
+  front:Object.freeze({name:'imotion_marketing_front_prod',root:'/mnt/imotion-prod-vm/domains/imotion.ir/public_html',remoteHost:'imotion-prod-vm',remoteRoot:'/home/imotion/domains/imotion.ir/public_html',description:'iMotion marketing static/Git production front'}),
+  sale:Object.freeze({name:'imotion_sale_wordpress_prod',root:'/mnt/imotion-prod-vm/domains/sale.imotion.ir/public_html',remoteHost:'imotion-prod-vm',remoteRoot:'/home/imotion/domains/sale.imotion.ir/public_html',description:'iMotion sale WordPress production site'})
+});
+const PATHS=Object.freeze({
+  api:'/home/agent/ssh-agent-api/server.js',
+  project:'/home/agent/ssh-mcp-server/src/plugins/project.js',
+  safeFiles:'/home/agent/ssh-mcp-server/src/plugins/safeFiles.js',
+  zdt:'/opt/prhm-agent-selfmaint-exec/actions/agent-zero-downtime-bootstrap-v1.js'
+});
+const EXPECTED=Object.freeze({
+  api:'7171a63ac5a7e72cd7c0af7d0c90e7d16abd17ed1af623441c44387444e77b23',
+  project:'f0a6cc26250ff0f6de05d2d67c3789a84a33c4ded8d1f0d6a1048389e955c511',
+  safeFiles:'2f4cedb73d58bff927e09e8d0b534a08cf49f08b3e5da54f47900f57d8a5f910',
+  zdt:'9032c504e7cd0dc994887ca77d28fb690fbe387c9b1de374b5322d6a5e3e4934'
+});
+const RESULT_DIR='/var/lib/prhm-agent-selfmaint-exec/imotion-marketing-targets-register-v2';
+const RESULT=RESULT_DIR+'/latest.json';
+const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
+const fail=code=>{throw new Error(code)};
+function regular(file){const st=fs.lstatSync(file);return st.isFile()&&!st.isSymbolicLink();}
+function directory(file){const st=fs.lstatSync(file);return st.isDirectory()&&!st.isSymbolicLink();}
+function verifyTargetRoots(targets=TARGETS){
+  const front=targets.front,sale=targets.sale;
+  if(!fs.existsSync(front.root)||!directory(front.root))fail('front_target_root_missing_or_unsafe');
+  const index=path.join(front.root,'index.html'),git=path.join(front.root,'.git');
+  if(!fs.existsSync(index)||!regular(index))fail('front_index_missing_or_unsafe');
+  if(!fs.existsSync(git)||!directory(git))fail('front_git_missing_or_unsafe');
+  if(!fs.existsSync(sale.root)||!directory(sale.root))fail('sale_target_root_missing_or_unsafe');
+  const config=path.join(sale.root,'wp-config.php'),content=path.join(sale.root,'wp-content');
+  if(!fs.existsSync(config)||!regular(config))fail('sale_wordpress_config_missing_or_unsafe');
+  if(!fs.existsSync(content)||!directory(content))fail('sale_wordpress_content_missing_or_unsafe');
+  return{front_target_root_exists:true,static_front_detected:true,sale_target_root_exists:true,wordpress_detected:true,targets_verified:true};
+}
+function read(file){if(!fs.existsSync(file)||!regular(file))fail('unsafe_or_missing_file:'+file);return fs.readFileSync(file);}
+function modeOf(file){return fs.lstatSync(file).mode&0o777;}
+function count(h,n){return h.split(n).length-1;}
+function escapeRe(s){return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
+function atomicBytes(file,bytes,mode){const tmp=file+'.imotion-target-'+process.pid+'-'+Date.now()+'.tmp';const fd=fs.openSync(tmp,'wx',mode);try{fs.writeFileSync(fd,bytes);fs.fsyncSync(fd);}finally{fs.closeSync(fd);}fs.renameSync(tmp,file);fs.chmodSync(file,mode);}
+function atomicJson(file,obj){fs.mkdirSync(path.dirname(file),{recursive:true,mode:0o700});atomicBytes(file,Buffer.from(JSON.stringify(obj,null,2)+'\n'),0o600);}
+
+function injectImotionMarketingProjects(baseSource){
+  if(typeof baseSource!=='string')throw new Error('imotion_marketing_base_source_invalid');
+  for(const name of ['imotion_marketing_front_prod','imotion_sale_wordpress_prod'])if(new RegExp('(?:^|\n)[ \t]*(?:[\'\"])?'+name+'(?:[\'\"])?\s*:').test(baseSource))throw new Error('imotion_marketing_target_already_present:'+name);
+  for(const marker of ['imotion_front_prod','imotion_admin_prod','/mnt/imotion-prod-vm/domains/i-motion.ir/public_html','/home/imotion/domains/i-motion.ir/public_html'])if(!baseSource.includes(marker))throw new Error('imotion_marketing_anchor_missing:'+marker);
+  const re=/\n([ \t]*)(?:['"])?imotion_admin_prod(?:['"])?\s*:/g;
+  const matches=[...baseSource.matchAll(re)];
+  if(matches.length!==1)throw new Error('imotion_marketing_admin_anchor_count:'+matches.length);
+  const m=matches[0],indent=m[1]||'';
+  const bindings=indent+"imotion_marketing_front_prod: { root: '/mnt/imotion-prod-vm/domains/imotion.ir/public_html', remoteHost: 'imotion-prod-vm', remoteRoot: '/home/imotion/domains/imotion.ir/public_html', description: 'iMotion marketing static/Git production front' },\n"+
+    indent+"imotion_sale_wordpress_prod: { root: '/mnt/imotion-prod-vm/domains/sale.imotion.ir/public_html', remoteHost: 'imotion-prod-vm', remoteRoot: '/home/imotion/domains/sale.imotion.ir/public_html', description: 'iMotion sale WordPress production site' },\n";
+  const at=m.index+1;
+  return baseSource.slice(0,at)+bindings+baseSource.slice(at);
+}
+function patchAgentApiServer(source){
+  if(source.includes('injectImotionMarketingProjects('))fail('agent_api_marketing_patch_already_present');
+  const re=/([A-Za-z_$][\w$]*)\s*\.\s*_compile\s*\(\s*([A-Za-z_$][\w$]*)\s*,\s*\1\s*\.\s*filename\s*\);/g;
+  const matches=[...source.matchAll(re)];
+  if(matches.length!==1)fail('agent_api_compile_anchor_count:'+matches.length);
+  const m=matches[0],moduleVar=m[1],sourceVar=m[2];
+  const fn=injectImotionMarketingProjects.toString();
+  const replacement=moduleVar+'._compile(injectImotionMarketingProjects('+sourceVar+'),'+moduleVar+'.filename);';
+  return source.slice(0,m.index)+fn+'\n'+replacement+source.slice(m.index+m[0].length);
+}
+function projectProxySource(){return `
+function imotionMarketingTargetsProjectProxy(mcp){
+  return new Proxy(mcp,{get(target,prop){
+    if(prop==='tool')return(name,description,schema,handler)=>{
+      if(name!=='run_project_command')return target.tool(name,description,schema,handler);
+      const shape=typeof schema?.shape==='function'?schema.shape():schema?.shape;
+      const projectSchema=shape?.project;
+      const options=Array.isArray(projectSchema?.options)?projectSchema.options:null;
+      if(typeof schema?.extend!=='function'||!options||!options.includes('imotion_front_prod')||!options.includes('imotion_admin_prod'))throw new Error('imotion_marketing_project_schema_unexpected');
+      for(const name of ['imotion_marketing_front_prod','imotion_sale_wordpress_prod'])if(options.includes(name))throw new Error('imotion_marketing_project_schema_already_present:'+name);
+      const expanded=schema.extend({project:z.enum([...options,'imotion_marketing_front_prod','imotion_sale_wordpress_prod'])});
+      return target.tool(name,description,expanded,handler);
+    };
+    const v=target[prop];return typeof v==='function'?v.bind(target):v;
+  }});
+}
+`;}
+function patchProjectPlugin(source){
+  if(source.includes('imotionMarketingTargetsProjectProxy')||source.includes('imotion_marketing_front_prod')||source.includes('imotion_sale_wordpress_prod'))fail('project_plugin_marketing_patch_already_present');
+  const re=/export function registerProjectPlugin\s*\(/g;
+  const matches=[...source.matchAll(re)];if(matches.length!==1)fail('project_export_anchor_count:'+matches.length);
+  let out=source;
+  if(!/from\s*['"]zod['"]/.test(out))out="import { z } from 'zod';\n"+out;
+  out=out.replace(/export function registerProjectPlugin\s*\(/,'function registerProjectPluginOriginal(');
+  out+='\n'+projectProxySource()+"\nexport function registerProjectPlugin(mcp,context){return registerProjectPluginOriginal(imotionMarketingTargetsProjectProxy(mcp),context);}\n";
+  return out;
+}
+function patchSafeFiles(source){
+  for(const name of ['imotion_marketing_front_prod','imotion_sale_wordpress_prod'])if(source.includes("'"+name+"'")||source.includes('"'+name+'"'))fail('safe_files_marketing_target_already_present:'+name);
+  const startRe=/ExpandedTarget\s*=\s*z\.enum\s*\(\s*\[/g;const starts=[...source.matchAll(startRe)];if(starts.length!==1)fail('safe_files_enum_start_count:'+starts.length);const s=starts[0].index;const open=s+starts[0][0].length;const tail=source.slice(open);const close=tail.search(/\]\s*\)/);if(close<0)fail('safe_files_enum_end_missing');const e=open+close;
+  const body=source.slice(open,e);const marker="'imotion_admin_prod'";const i=body.indexOf(marker);if(i<0)fail('safe_files_admin_anchor_missing');if(body.indexOf(marker,i+1)>=0)fail('safe_files_admin_anchor_duplicate');
+  const abs=open+i+marker.length;return source.slice(0,abs)+",'imotion_marketing_front_prod','imotion_sale_wordpress_prod'"+source.slice(abs);
+}
+function replaceBoundSha(source,file,oldSha,newSha,required){
+  if(!source.includes(file)){if(required)fail('zdt_path_missing:'+file);return source;}
+  const re=new RegExp("(['\\\"]"+escapeRe(file)+"['\\\"]\\s*:\\s*['\\\"])"+oldSha+"(['\\\"])",'g');
+  const matches=[...source.matchAll(re)];if(matches.length!==1)fail('zdt_sha_binding_count:'+file+':'+matches.length);
+  return source.replace(re,'$1'+newSha+'$2');
+}
+function ensureBoundSha(source,file,oldSha,newSha,anchorFile){
+  if(source.includes(file))return replaceBoundSha(source,file,oldSha,newSha,true);
+  if(!anchorFile||!source.includes(anchorFile))fail('zdt_insert_anchor_missing:'+file);
+  const anchorRe=new RegExp("(['\\\"]"+escapeRe(anchorFile)+"['\\\"]\\s*:\\s*['\\\"][a-f0-9]{64}['\\\"],?)",'g');
+  const matches=[...source.matchAll(anchorRe)];if(matches.length!==1)fail('zdt_insert_anchor_count:'+file+':'+matches.length);
+  const anchor=matches[0][0];const comma=/,\s*$/.test(anchor)?'':',';
+  const line="\n  '"+file+"':'"+newSha+"',";
+  return source.slice(0,matches[0].index)+anchor.replace(/,?\s*$/,comma)+line+source.slice(matches[0].index+anchor.length);
+}
+function patchZdtManifest(source,newHashes){
+  if(!newHashes||!/^[a-f0-9]{64}$/.test(newHashes.api)||!/^[a-f0-9]{64}$/.test(newHashes.project)||!/^[a-f0-9]{64}$/.test(newHashes.safeFiles))fail('zdt_new_hashes_invalid');
+  let out=replaceBoundSha(source,PATHS.api,EXPECTED.api,newHashes.api,true);
+  out=ensureBoundSha(out,PATHS.project,EXPECTED.project,newHashes.project,PATHS.api);
+  out=ensureBoundSha(out,PATHS.safeFiles,EXPECTED.safeFiles,newHashes.safeFiles,PATHS.project);
+  return out;
+}
+function syntaxCheck(label,bytes,ext){const dir=path.dirname(PATHS[label]||PATHS.zdt),tmp=path.join(dir,'.imotion-check-'+process.pid+'-'+Date.now()+ext);try{fs.writeFileSync(tmp,bytes,{mode:0o600,flag:'wx'});const r=cp.spawnSync('/usr/local/bin/prhm-node',['--check',tmp],{encoding:'utf8',timeout:15000,maxBuffer:200000});if(r.error||r.status!==0)fail('syntax_check_failed:'+label+':'+String(r.stderr||r.stdout||r.error?.message||'').slice(0,500));}finally{try{fs.unlinkSync(tmp)}catch{}}}
+function verifyBaselines(){for(const [key,file] of Object.entries(PATHS)){const actual=sha(read(file));if(actual!==EXPECTED[key])fail('baseline_sha_mismatch:'+key+':'+actual);}return true;}
+function buildCandidates(){
+  const api=Buffer.from(patchAgentApiServer(read(PATHS.api).toString('utf8')),'utf8');
+  const project=Buffer.from(patchProjectPlugin(read(PATHS.project).toString('utf8')),'utf8');
+  const safeFiles=Buffer.from(patchSafeFiles(read(PATHS.safeFiles).toString('utf8')),'utf8');
+  const hashes={api:sha(api),project:sha(project),safeFiles:sha(safeFiles)};
+  const zdt=Buffer.from(patchZdtManifest(read(PATHS.zdt).toString('utf8'),hashes),'utf8');
+  syntaxCheck('api',api,'.cjs');syntaxCheck('project',project,'.mjs');syntaxCheck('safeFiles',safeFiles,'.mjs');syntaxCheck('zdt',zdt,'.cjs');
+  return{api,project,safeFiles,zdt,hashes:{...hashes,zdt:sha(zdt)}};
+}
+function preflight(){const targetEvidence=verifyTargetRoots();verifyBaselines();const c=buildCandidates();return{ok:true,schema_version:'prhm.host-action-preflight.v1',action:ACTION,preflight_only:true,targets:TARGETS,...targetEvidence,candidate_sha256:c.hashes,requires_zdt_refresh:true,production_site_mutation:false,database_mutation:false,redirect_mutation:false,canonical_mutation:false,deploy:false,external_network:false,token_read:false};}
+function backupOriginals(){fs.mkdirSync(RESULT_DIR,{recursive:true,mode:0o700});const dir=path.join(RESULT_DIR,'backup-'+Date.now()+'-'+crypto.randomBytes(4).toString('hex'));fs.mkdirSync(dir,{mode:0o700});const states={};for(const [key,file] of Object.entries(PATHS)){const bytes=read(file),mode=modeOf(file),backup=path.join(dir,key+'.bak');fs.writeFileSync(backup,bytes,{mode:0o600,flag:'wx'});states[key]={file,mode,backup,sha256:sha(bytes)};}return{dir,states};}
+function restore(backup,mutated){const failures=[];for(const key of [...mutated].reverse()){try{const s=backup.states[key],bytes=fs.readFileSync(s.backup);if(sha(bytes)!==s.sha256)throw new Error('backup_sha_mismatch');atomicBytes(s.file,bytes,s.mode);}catch(e){failures.push(key+':'+String(e.message||e));}}if(failures.length)fail('rollback_failed:'+failures.join('|'));}
+function apply(){const started_at=new Date().toISOString(),targetEvidence=verifyTargetRoot();verifyBaselines();const c=buildCandidates(),backup=backupOriginals(),mutated=[];try{
+  for(const key of ['api','project','safeFiles','zdt']){mutated.push(key);atomicBytes(PATHS[key],c[key],backup.states[key].mode);if(sha(read(PATHS[key]))!==c.hashes[key])fail('post_write_sha_mismatch:'+key);}
+  const result={ok:true,schema_version:'prhm.host-action-result.v1',action:ACTION,started_at,finished_at:new Date().toISOString(),targets:TARGETS,...targetEvidence,registered_in_source:true,requires_zdt_refresh:true,candidate_sha256:c.hashes,backup_dir:backup.dir,production_site_mutation:false,database_mutation:false,redirect_mutation:false,canonical_mutation:false,deploy:false,external_network:false,token_read:false,rollback_performed:false,rollback:{performed:false}};
+  atomicJson(RESULT,result);return result;
+}catch(error){let rb=null;try{restore(backup,mutated);rb=true}catch(e){rb=false;throw new Error('imotion_marketing_targets_failed_and_rollback_failed:'+String(error.message||error)+':'+String(e.message||e));}finally{try{atomicJson(RESULT,{ok:false,schema_version:'prhm.host-action-result.v1',action:ACTION,error:String(error.message||error).slice(0,1000),production_site_mutation:false,database_mutation:false,redirect_mutation:false,canonical_mutation:false,deploy:false,external_network:false,token_read:false,rollback_performed:rb,rollback:{performed:rb}})}catch{}}throw new Error('imotion_marketing_targets_failed_rolled_back:'+String(error.message||error));}}
+if(require.main===module){try{const out=process.argv.includes('--preflight-only')?preflight():apply();process.stdout.write(JSON.stringify(out)+'\n');}catch(error){process.stderr.write(String(error?.stack||error)+'\n');process.exitCode=1;}}
+module.exports={ACTION,TARGETS,PATHS,EXPECTED,sha,verifyTargetRoots,injectImotionMarketingProjects,patchAgentApiServer,patchProjectPlugin,patchSafeFiles,patchZdtManifest,preflight,apply};
