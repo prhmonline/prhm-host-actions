@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import { spawnSync } from 'node:child_process';
+import http from 'node:http';
 
 export const FIXED_BINDING=Object.freeze({
   principal_id:'mohammad',
@@ -101,6 +102,22 @@ function assertSecretFree(value){
   visit(value); return value;
 }
 
+
+export const MEDIATOR_SOCKET='/run/prhm-root-scripts-stage-mediator-v1/mediator.sock';
+function exactKeys(obj,allowed){if(!obj||typeof obj!=='object'||Array.isArray(obj))throw new Error('invalid_request_body');for(const k of Object.keys(obj))if(!allowed.includes(k))throw new Error('unexpected_request_field');for(const k of allowed)if(!(k in obj))throw new Error('missing_request_field');return obj}
+function readJsonBody(req,max=8192){return new Promise((resolve,reject)=>{const chunks=[];let total=0;req.on('data',c=>{total+=c.length;if(total>max){reject(new Error('request_body_too_large'));req.destroy();return}chunks.push(c)});req.on('end',()=>{try{const text=Buffer.concat(chunks).toString('utf8').trim();resolve(text?JSON.parse(text):{})}catch{reject(new Error('invalid_json_body'))}});req.on('error',reject)})}
+function sendJson(res,status,payload){const safe=assertSecretFree(payload);const bytes=Buffer.from(JSON.stringify(safe));res.writeHead(status,{'content-type':'application/json','content-length':String(bytes.length)});res.end(bytes)}
+export function createRootScriptsStageMediatorServer({mediator,stageTransaction,preflight}){
+  for(const name of ['createRequest','getStatus','applyApprovedRequest'])if(typeof mediator?.[name]!=='function')throw new Error('mediator_contract_invalid');if(typeof stageTransaction!=='function'||typeof preflight!=='function')throw new Error('mediator_runtime_dependency_invalid');
+  return http.createServer(async(req,res)=>{try{
+    const url=new URL(req.url,'http://localhost');
+    if(req.method==='POST'&&url.pathname==='/v1/request'){const body=await readJsonBody(req);exactKeys(body,[]);const out=await mediator.createRequest();return sendJson(res,201,{ok:true,...out})}
+    if(req.method==='POST'&&url.pathname==='/v1/apply'){const body=exactKeys(await readJsonBody(req),['request_id','second_confirmation']);const out=await mediator.applyApprovedRequest(body,stageTransaction);return sendJson(res,200,{ok:true,...out})}
+    const m=url.pathname.match(/^\/v1\/status\/([0-9a-f-]{36})$/i);if(req.method==='GET'&&m){const out=await mediator.getStatus({request_id:m[1]});return sendJson(res,200,{ok:true,...out})}
+    if(req.method==='POST'&&url.pathname==='/v1/preflight'){const body=await readJsonBody(req);exactKeys(body,[]);const out=await preflight();return sendJson(res,200,{ok:true,...out})}
+    return sendJson(res,404,{ok:false,error:'not_found'});
+  }catch(error){const msg=String(error?.message||'mediator_failed').slice(0,160);const status=/invalid_|unexpected_|missing_|too_large/.test(msg)?400:/confirmation|required|pending|binding|validation|consume|replay|expired/.test(msg)?409:500;return sendJson(res,status,{ok:false,error:msg})}});
+}
 export function createRootScriptsStageMediator(deps){
   const createApprovalRequest=requireFn(deps?.createApprovalRequest,'createApprovalRequest');
   const getApprovalRequest=requireFn(deps?.getApprovalRequest,'getApprovalRequest');
