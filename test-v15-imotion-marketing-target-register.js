@@ -86,3 +86,33 @@ test('both installer and helper carry rollback-before-partial-success guards',()
   assert.match(bootstrap,/restoreBackup/);
   assert.match(bootstrap,/rollback/);
 });
+
+
+test('ZDT manifest fails closed when project or safeFiles bindings are absent',()=>{
+  const helper=require(helperPath);
+  const onlyApi=`const X={\n'/home/agent/ssh-agent-api/server.js':'70368fdc8be24646b10d414f6159502c2f3d338ed1132451d5b5740d1270999c'\n};`;
+  assert.throws(()=>helper.patchZdtManifest(onlyApi,{api:'a'.repeat(64),project:'b'.repeat(64),safeFiles:'c'.repeat(64)}),/zdt_(path_missing|sha_binding_count).*project\.js/);
+  const apiAndProject=`const X={\n'/home/agent/ssh-agent-api/server.js':'70368fdc8be24646b10d414f6159502c2f3d338ed1132451d5b5740d1270999c',\n'/home/agent/ssh-mcp-server/src/plugins/project.js':'f0a6cc26250ff0f6de05d2d67c3789a84a33c4ded8d1f0d6a1048389e955c511'\n};`;
+  assert.throws(()=>helper.patchZdtManifest(apiAndProject,{api:'a'.repeat(64),project:'b'.repeat(64),safeFiles:'c'.repeat(64)}),/zdt_(path_missing|sha_binding_count).*safeFiles\.js/);
+});
+
+test('Agent API compile patch tolerates whitespace and line breaks',()=>{
+  const helper=require(helperPath);
+  const api=`const compiled={filename:'x',_compile(){}}; const source='x';\ncompiled ._compile (\n  source,\n  compiled.filename\n);`;
+  const out=helper.patchAgentApiServer(api);
+  assert.match(out,/injectImotionMarketingProject/);
+});
+
+test('safeFiles enum patch tolerates whitespace around assignment and enum call',()=>{
+  const helper=require(helperPath);
+  const safe=`const ExpandedTarget = z.enum( [ 'imotion_front_prod', 'imotion_admin_prod', 'root_scripts' ] );`;
+  const out=helper.patchSafeFiles(safe);
+  assert.match(out,/imotion_marketing_prod/);
+});
+
+test('comment mentioning target name does not count as existing project binding',()=>{
+  const helper=require(helperPath);
+  const base=`// planned name: imotion_marketing_prod\nconst projects={\n  imotion_front_prod:{root:'/mnt/imotion-prod-vm/domains/i-motion.ir/public_html',remoteHost:'imotion-prod-vm',remoteRoot:'/home/imotion/domains/i-motion.ir/public_html'},\n  imotion_admin_prod:{root:'/mnt/imotion-prod-vm/domains/admin.i-motion.ir/public_html'}\n};`;
+  const out=helper.injectImotionMarketingProject(base);
+  assert.equal((out.match(/imotion_marketing_prod\s*:/g)||[]).length,1);
+});

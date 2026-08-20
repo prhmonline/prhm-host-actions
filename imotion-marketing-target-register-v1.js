@@ -39,7 +39,7 @@ function atomicJson(file,obj){fs.mkdirSync(path.dirname(file),{recursive:true,mo
 
 function injectImotionMarketingProject(baseSource){
   if(typeof baseSource!=='string')throw new Error('imotion_marketing_base_source_invalid');
-  if(baseSource.includes('imotion_marketing_prod'))throw new Error('imotion_marketing_target_already_present');
+  if(/(?:^|\n)[ \t]*(?:['\"])?imotion_marketing_prod(?:['\"])?\s*:/.test(baseSource))throw new Error('imotion_marketing_target_already_present');
   for(const marker of ['imotion_front_prod','imotion_admin_prod','/mnt/imotion-prod-vm/domains/i-motion.ir/public_html','/home/imotion/domains/i-motion.ir/public_html'])if(!baseSource.includes(marker))throw new Error('imotion_marketing_anchor_missing:'+marker);
   const re=/\n([ \t]*)(?:['"])?imotion_admin_prod(?:['"])?\s*:/g;
   const matches=[...baseSource.matchAll(re)];
@@ -51,7 +51,7 @@ function injectImotionMarketingProject(baseSource){
 }
 function patchAgentApiServer(source){
   if(source.includes('injectImotionMarketingProject('))fail('agent_api_marketing_patch_already_present');
-  const re=/([A-Za-z_$][\w$]*)\._compile\(([A-Za-z_$][\w$]*),\s*\1\.filename\);/g;
+  const re=/([A-Za-z_$][\w$]*)\s*\.\s*_compile\s*\(\s*([A-Za-z_$][\w$]*)\s*,\s*\1\s*\.\s*filename\s*\);/g;
   const matches=[...source.matchAll(re)];
   if(matches.length!==1)fail('agent_api_compile_anchor_count:'+matches.length);
   const m=matches[0],moduleVar=m[1],sourceVar=m[2];
@@ -88,9 +88,9 @@ function patchProjectPlugin(source){
 }
 function patchSafeFiles(source){
   if(source.includes("'imotion_marketing_prod'")||source.includes('"imotion_marketing_prod"'))fail('safe_files_marketing_target_already_present');
-  const start='ExpandedTarget=z.enum([';const s=source.indexOf(start);if(s<0)fail('safe_files_enum_start_missing');const e=source.indexOf(']);',s);if(e<0)fail('safe_files_enum_end_missing');
-  const body=source.slice(s,e);const marker="'imotion_admin_prod'";const i=body.indexOf(marker);if(i<0)fail('safe_files_admin_anchor_missing');if(body.indexOf(marker,i+1)>=0)fail('safe_files_admin_anchor_duplicate');
-  const abs=s+i+marker.length;return source.slice(0,abs)+",'imotion_marketing_prod'"+source.slice(abs);
+  const startRe=/ExpandedTarget\s*=\s*z\.enum\s*\(\s*\[/g;const starts=[...source.matchAll(startRe)];if(starts.length!==1)fail('safe_files_enum_start_count:'+starts.length);const s=starts[0].index;const open=s+starts[0][0].length;const tail=source.slice(open);const close=tail.search(/\]\s*\)/);if(close<0)fail('safe_files_enum_end_missing');const e=open+close;
+  const body=source.slice(open,e);const marker="'imotion_admin_prod'";const i=body.indexOf(marker);if(i<0)fail('safe_files_admin_anchor_missing');if(body.indexOf(marker,i+1)>=0)fail('safe_files_admin_anchor_duplicate');
+  const abs=open+i+marker.length;return source.slice(0,abs)+",'imotion_marketing_prod'"+source.slice(abs);
 }
 function replaceBoundSha(source,file,oldSha,newSha,required){
   if(!source.includes(file)){if(required)fail('zdt_path_missing:'+file);return source;}
@@ -101,8 +101,8 @@ function replaceBoundSha(source,file,oldSha,newSha,required){
 function patchZdtManifest(source,newHashes){
   if(!newHashes||!/^[a-f0-9]{64}$/.test(newHashes.api)||!/^[a-f0-9]{64}$/.test(newHashes.project)||!/^[a-f0-9]{64}$/.test(newHashes.safeFiles))fail('zdt_new_hashes_invalid');
   let out=replaceBoundSha(source,PATHS.api,EXPECTED.api,newHashes.api,true);
-  out=replaceBoundSha(out,PATHS.project,EXPECTED.project,newHashes.project,false);
-  out=replaceBoundSha(out,PATHS.safeFiles,EXPECTED.safeFiles,newHashes.safeFiles,false);
+  out=replaceBoundSha(out,PATHS.project,EXPECTED.project,newHashes.project,true);
+  out=replaceBoundSha(out,PATHS.safeFiles,EXPECTED.safeFiles,newHashes.safeFiles,true);
   return out;
 }
 function syntaxCheck(label,bytes,ext){const dir=path.dirname(PATHS[label]||PATHS.zdt),tmp=path.join(dir,'.imotion-check-'+process.pid+'-'+Date.now()+ext);try{fs.writeFileSync(tmp,bytes,{mode:0o600,flag:'wx'});const r=cp.spawnSync('/usr/local/bin/prhm-node',['--check',tmp],{encoding:'utf8',timeout:15000,maxBuffer:200000});if(r.error||r.status!==0)fail('syntax_check_failed:'+label+':'+String(r.stderr||r.stdout||r.error?.message||'').slice(0,500));}finally{try{fs.unlinkSync(tmp)}catch{}}}
