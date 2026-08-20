@@ -1,263 +1,191 @@
 # Control Plane Root Scripts Typed Staging Capability V1 — Design
 
 ## Status
-Design review approved in chat for written-spec capture. This document authorizes no implementation, self-maintenance request, MCP restart/refresh, staging mutation, Root-of-Trust preflight, DeployHQ operation, or Control Plane apply.
+Architecture amendment review **approved** (Amendment ID: `CONTROL_PLANE_ROOT_SCRIPTS_APPROVAL_MEDIATED_STAGING_ARCHITECTURE_V1`).  
+Written specification **awaiting explicit `SPEC_APPROVED` gate** before any implementation planning.
 
 ## Purpose
-Provide one narrowly fixed MCP capability that can stage exactly the two immutable artifacts required by the Control Plane Bootstrap Root-of-Trust ceremony and execute only their fixed host `--preflight-only` path. It must not create a reusable root-file writer, generic script runner, arbitrary package installer, shell bridge, or application deployment primitive.
+Provide a narrowly‑fixed MCP capability that can stage exactly the two immutable artifacts required by the Control Plane Bootstrap Root‑of‑Trust ceremony and execute only their fixed host `--preflight-only` path. The design must not create a reusable root‑file writer, generic script runner, arbitrary package installer, shell bridge, or application deployment primitive.
 
 ## Existing Trust Path
-The capability is installed only by replacing the already-existing MCP source file `src/plugins/safeFiles.js` through the existing SHA-bound `selfmaint_request(target=agent_mcp)` / `selfmaint_apply` flow. Self-maintenance may replace existing files only; this design intentionally creates no new bootstrap helper for installing itself.
+The capability is installed only by replacing the already‑existing MCP source file `src/plugins/safeFiles.js` through the existing SHA‑bound `selfmaint_request(target=agent_mcp)` / `selfmaint_apply` flow. Self‑maintenance may replace existing files only; this design intentionally creates no new bootstrap helper for installing itself.
 
-Last observed live source evidence, for compatibility review only and never as a permanent assumption:
-- `src/plugins/safeFiles.js`: 20090 bytes, SHA-256 `9f291891673806e34d2681ba7b8227ddd4470f73cec12f69a7c3e9035808caa2`
-- self-maintenance replacement ceiling: 120000 bytes
-- MCP Blue runs without an explicit `User=` assignment, under `ProtectHome=read-only` and `ProtectSystem=full`
+**Live safeFiles baseline evidence** (captured before any change):  
+- `src/plugins/safeFiles.js`: **20090 bytes**, SHA‑256 `9f291891673806e34d2681ba7b8227ddd4470f73cec12f69a7c3e9035808caa2`  
+- Self‑maintenance replacement ceiling: **120 000 bytes**  
+- MCP runs under `ProtectHome=read-only` and `ProtectSystem=full` (no explicit `User=` assignment)
 
 Immediately before any implementation request, the live source SHA and service topology must be captured again. Drift fails closed until the candidate is explicitly rebased and retested.
 
-
 ## Candidate Artifact Boundary Amendment V1
-Development Tasks 1-6 run only in `prhmonline/prhm-host-actions`. The live MCP repository is not a development worktree for this change.
+Development tasks run only in `prhmonline/prhm-host-actions`. The live MCP repository is not a development work‑tree for this change.
 
-- Development candidate artifact: `candidates/agent-mcp/safeFiles-control-plane-root-staging-v1.js`
-- Production deployment target later: `/home/agent/ssh-mcp-server/src/plugins/safeFiles.js`
-- The candidate MUST begin from the freshly captured live baseline bytes and then contain only the reviewed capability change.
-- Tasks 1-6 MUST NOT edit, commit, upload, or self-maintain the live MCP file.
-- Task 7, under a separate production gate, binds `selfmaint_request(target=agent_mcp, path=src/plugins/safeFiles.js)` to the fresh live old SHA and the exact immutable candidate bytes.
-- The candidate artifact itself is never executed from the `prhm-host-actions` repository and is not a generic deployment script.
+- **Development candidate artifact:** `candidates/agent-mcp/safeFiles-control-plane-root-staging-v1.js`  
+- **Production deployment target (later):** `/home/agent/ssh-mcp-server/src/plugins/safeFiles.js`  
+- The candidate **must begin** from the freshly captured live baseline bytes and then contain only the reviewed capability change.  
+- Tasks 1‑6 **must not** edit, commit, upload, or self‑maintain the live MCP file.  
+- **Task 7**, under a separate production gate, binds `selfmaint_request(target=agent_mcp, path=src/plugins/safeFiles.js)` to the fresh live old SHA and the exact immutable candidate bytes.  
+- The candidate artifact itself is never executed from the `prhm-host-actions` repository and is not a generic deployment script.  
 
-This amendment changes only the development artifact boundary. All fixed tool schemas, Approval Center requirements, filesystem confinement, size ceiling, no-network rule, and separate production gates remain unchanged.
+The amendment updates the boundary to state that the **MCP façade** remains based on the verified live `safeFiles` baseline, while the **privileged approval mediator** is a separate development artifact/boundary to be specified in the implementation plan.
 
 ## Capability Identity
-- Capability id: `control_plane_root_scripts_typed_staging_capability_v1`
-- Development candidate artifact: `candidates/agent-mcp/safeFiles-control-plane-root-staging-v1.js`; the existing live MCP file `src/plugins/safeFiles.js` is replaced only later through the separately approved self-maintenance gate
-- New generic writer: none
-- New Executor action: none
-- New helper file required to install capability: none
-- Caller-controlled command/path/URL/repository/commit/content/environment/credential fields: none
+- **Capability id:** `control_plane_root_scripts_typed_staging_capability_v1`  
+- **Operation identity (fixed):** `host_action.control_plane_root_scripts_stage_transport_v1`  
+- No caller‑controlled command/path/URL/repository/commit/content/environment/credential fields are accepted.
 
 ## Fixed Artifact Identity
-The candidate bytes are bound to immutable repository commit:
-- Repository: `prhmonline/prhm-host-actions`
-- Source commit: `51027bc81f16840580b3ed5ca09d6c42f78dc044`
+The candidate bytes are bound to an immutable repository commit:
 
-Artifact 1:
-- Name: `control-plane-typed-bootstrap-transport-v1.js`
-- Bytes: `72854`
-- SHA-256: `049250921dda0aa98ade7cf3707634668590bd66163606de5906841f5ca34335`
+- **Repository:** `prhmonline/prhm-host-actions`  
+- **Source commit:** `51027bc81f16840580b3ed5ca09d6c42f78dc044`
 
-Artifact 2:
-- Name: `bootstrap-host-actions-control-plane-typed-bootstrap-transport-v1.js`
-- Bytes: `109634`
-- SHA-256: `d3be569a4fd63b8e0c78e370ad689a27aa2751ea772891cb6b7ffe7fbd49b35e`
+### Artifact 1
+- **Name:** `control-plane-typed-bootstrap-transport-v1.js`  
+- **Bytes:** `72854`  
+- **SHA‑256:** `049250921dda0aa98ade7cf3707634668590bd66163606de5906841f5ca34335`
 
-Embedded transport package identity:
-- Package id: `deployhq_control_adapter_node1_recreate_v1`
-- Manifest SHA-256: `aa3e87db8630b1fac0d8db1a6863a733563763bc39b8677f8af2a7e6088b7728`
+### Artifact 2
+- **Name:** `bootstrap-host-actions-control-plane-typed-bootstrap-transport-v1.js`  
+- **Bytes:** `109634`  
+- **SHA‑256:** `d3be569a4fd63b8e0c78e370ad689a27aa2751ea772891cb6b7ffe7fbd49b35e`
 
-No mutable `HEAD`, branch tip, tag, external URL argument, or caller-provided SHA is accepted at runtime.
+**Embedded transport package identity**  
+- **Package id:** `deployhq_control_adapter_node1_recreate_v1`  
+- **Manifest SHA‑256:** `aa3e87db8630b1fac0d8db1a6863a733563763bc39b8677f8af2a7e6088b7728`
+
+No mutable `HEAD`, branch tip, tag, external URL argument, or caller‑provided SHA is accepted at runtime.
 
 ## Fixed Staging Root
 The capability writes only under:
 
-`/var/lib/prhm-agent-selfmaint-exec/root-of-trust-stage-v1/`
+```
+/var/lib/prhm-agent-selfmaint-exec/root-of-trust-stage-v1/
+```
 
-The previously considered `/root/...` staging location is explicitly abandoned because MCP is intentionally constrained by `ProtectHome=read-only`. This design must not weaken that sandbox.
+Fixed staged filenames (exact, immutable):
 
-Fixed staged filenames are exactly:
-- `/var/lib/prhm-agent-selfmaint-exec/root-of-trust-stage-v1/control-plane-typed-bootstrap-transport-v1.js`
+- `/var/lib/prhm-agent-selfmaint-exec/root-of-trust-stage-v1/control-plane-typed-bootstrap-transport-v1.js`  
 - `/var/lib/prhm-agent-selfmaint-exec/root-of-trust-stage-v1/bootstrap-host-actions-control-plane-typed-bootstrap-transport-v1.js`
 
 No request field may alter either destination.
 
-## Tool Surface
-The capability adds exactly three fixed tools.
+- **MCP candidate payload ceiling:** the complete replacement `safeFiles.js` must remain `<=120000` bytes; if exceeded, implementation fails closed and no fallback transport is permitted.
 
-### 1. `control_plane_root_scripts_stage_transport_v1`
-Purpose: stage both immutable artifacts atomically/scopably.
+## Privileged Approval Mediator Boundary
+A **separate privileged mediator** owns all Approval Center request/decision credentials and single-use approval-token handling. The MCP facade has no Approval Center credentials.  
 
-Input surface:
-- `second_confirmation`: literal `CONFIRM_LEVEL_4_CRITICAL`
-- approval-bound fields required by the existing Approval Center integration, if represented by runtime metadata rather than user-visible schema
+- The mediator creates a fixed Level‑4 Approval Center request (tool 1) and returns only a `request_id` plus bounded non‑secret binding metadata.  
+- The mediator validates, decides, authorizes, and consumes the request when the apply tool (tool 2) is invoked.  
+- **MCP safeFiles** (the façade) **must never** read, mint, accept, return, log, or persist any approval‑token secrets.  
+- The mediator may be implemented as its own narrowly scoped action/route; it is **not** a safeFiles‑only privilege escalation. Its implementation artifact is outside the safeFiles payload ceiling and will be reviewed separately.
 
-No other caller input is accepted.
+### Fixed Approval Binding
+The mediator binds every request and apply to immutable metadata selected by code, never by the caller:
 
-The tool must require both:
-1. the fresh literal Level-4 confirmation; and
-2. successful validation and single-use consumption through the existing company Approval Center using a fixed operation identity for this exact stage action.
+- `action=control_plane_root_scripts_stage_transport_v1`
+- `operation=host_action.control_plane_root_scripts_stage_transport_v1`
+- `project=control_plane`
+- `environment=production`
+- `risk=critical`
+- fixed principal/role/tool identities defined by the mediator contract
+- deterministic fixed action arguments and their exact `arguments_sha256`
+- bounded TTL
+- fixed rollback reference
+- request/apply correlation by `request_id`
 
-A literal confirmation alone must never authorize filesystem mutation.
+No MCP input may override any binding field. The Approval Center is the only authority that issues an approval token. The mediator may only receive, validate, consume, and discard that single-use token inside its privileged boundary.
 
-Operation identity:
-`host_action.control_plane_root_scripts_stage_transport_v1`
+## Tool Surface (Exactly Four Fixed MCP‑Facing Tools)
 
-Risk/environment:
-- risk: `critical`
-- environment: `production`
-- approval: fresh, scoped, single-use Level-4
+### 1. `control_plane_root_scripts_stage_transport_request_v1`
+- **Purpose:** Create a fixed Level‑4 Approval Center request via the privileged mediator.  
+- **Input:** *EMPTY* (no caller‑provided fields).  
+- **Output:** `{ request_id: <string>, binding_metadata: { … } }` – only non‑secret, bounded metadata.  
+- **Behavior:** The Approval Center issues the single-use approval token only as part of the governed decision flow; the privileged mediator receives, validates, consumes, and discards it internally. The mediator does not mint tokens, and the token never crosses the mediator boundary.
 
-Stage semantics:
-1. validate approval before write;
-2. ensure the staging root resolves exactly and is not a symlink;
-3. reject a symlink or non-regular pre-existing destination;
-4. materialize only the two fixed embedded artifact byte sequences;
-5. verify expected byte length before commit;
-6. verify expected SHA-256 before commit;
-7. write through invocation-owned temporary files in the same fixed staging directory;
-8. set ownership `root:root` and mode `0600`;
-9. atomically rename into the two exact destination filenames;
-10. re-read and verify byte length and SHA-256 after commit;
-11. on partial failure, roll back only files created/replaced by this invocation and persist bounded evidence.
+### 2. `control_plane_root_scripts_stage_transport_apply_v1`
+- **Purpose:** Consume a previously created request and perform the exact two‑file staging mutation.  
+- **Input:**  
+  - `request_id` (string, returned by tool 1)  
+  - `second_confirmation` (literal string `CONFIRM_LEVEL_4_CRITICAL`)  
+- **Output:** Success/failure status with bounded evidence; no secrets returned.  
+- **Behavior:**  
+  1. Calls the privileged mediator to **validate**, **decide**, **authorize**, and **consume** the request.  
+  2. The mediator must confirm the request matches the fixed action/operation, `project=control_plane`, `environment=production`, `risk=critical`, exact `arguments_sha256` for the deterministic fixed action arguments, TTL, rollback reference, and the supplied `request_id`.  
+  3. If any validation fails (missing/expired/mismatched/replayed request, wrong confirmation, decision failure, validation failure, consume failure, or binding mismatch) the tool **fails closed** **before** any filesystem mutation.  
+  4. Executes the exact two‑file staging mutation (see “Staging Mutation” below).  
+  5. MCP caller never sees or handles an approval token.
 
-No service restart or Control Plane destination mutation is permitted.
+### 3. `control_plane_root_scripts_stage_transport_status_v1`
+- **Purpose:** Query bounded persisted state/evidence for a given request.  
+- **Input:** `request_id` (string).  
+- **Output:** Metadata only (e.g., request state, timestamps, decision outcome). No file content, secrets, or token data.
 
-### 2. `control_plane_root_scripts_stage_transport_status_v1`
-Purpose: read bounded staging evidence only.
+### 4. `control_plane_root_scripts_transport_preflight_v1`
+- **Purpose:** Run the staged bootstrap in its read‑only `--preflight-only` mode after independently re‑validating the staged artifacts.  
+- **Input:** *EMPTY*.  
+- **Behavior:**  
+  - Re‑validates both staged files (path, regular‑file status, non‑symlink, byte length, SHA‑256, ownership `root:root`, mode `0600`).  
+  - Executes **exactly**:  
+    ```
+    /usr/local/bin/prhm-node /var/lib/prhm-agent-selfmaint-exec/root-of-trust-stage-v1/bootstrap-host-actions-control-plane-typed-bootstrap-transport-v1.js --preflight-only
+    ```  
+  - Uses a fixed executable and fixed argv; `--apply` is structurally unreachable.  
+  - Returns bounded evidence of preflight success; no secrets.
 
-Input surface: empty.
+## Staging Mutation (Apply Tool)
+The apply tool must perform **exactly** the following atomic two‑file mutation under the fixed staging root:
 
-Returns only bounded metadata for the two fixed staged paths:
-- exists
-- regular_file
-- symlink=false/true
-- bytes
-- sha256
-- mode
-- owner/group identity in non-secret form
-- ready
+1. Write each artifact to a temporary file **in the same staging directory**.  
+2. Set temporary file ownership `root:root` and mode `0600`.  
+3. Verify temporary file byte length and SHA‑256 against the fixed artifact identities.  
+4. Atomically rename each temporary file to its final destination filename.  
+5. Re‑read each final file and verify length and SHA‑256 again.  
+6. Record bounded rollback reference tied to this invocation; on any failure, restore the pre‑invocation state for the two files only.  
+7. All operations are confined to the staging directory; symlinks or path escapes cause immediate failure.
 
-It never returns artifact content, environment data, credentials, headers, tokens, private keys, or unrelated directory listings.
+## Explicit Forbidden Behaviors
+- Caller‑visible `approval_token` fields or any token handling inside the MCP plugin.  
+- Any token minting, logging, persisting, or returning by safeFiles.  
+- Arbitrary path, content, command, URL, repository, branch, tag, or SHA inputs.  
+- Network fetches, shell execution, `eval`, `exec`, `curl|bash`, `wget|sh`, or similar streaming execution.  
+- Generic root‑script widening, `/root` writes, or weakening of `ProtectHome=read-only` / `ProtectSystem=full`.  
+- Service restarts, `systemctl` mutations, DeployHQ interactions, or any application/database changes.  
+- Public schema refresh or self‑maintain request/apply from within these tools.
 
-### 3. `control_plane_root_scripts_transport_preflight_v1`
-Purpose: execute only the already-staged registration bootstrap in its supported read-only host preflight mode.
-
-Input surface: empty.
-
-Before execution it must independently revalidate both fixed staged artifact paths, byte lengths, SHA-256 values, regular-file status, non-symlink status, ownership, and mode.
-
-The only permitted executable invocation is semantically equivalent to:
-
-`/usr/local/bin/prhm-node /var/lib/prhm-agent-selfmaint-exec/root-of-trust-stage-v1/bootstrap-host-actions-control-plane-typed-bootstrap-transport-v1.js --preflight-only`
-
-Implementation must use a fixed executable and fixed argv through `execFile`/`spawn`-style APIs; shell execution is forbidden. No alternate arguments are reachable. `--apply` must be structurally unreachable from this capability.
-
-Expected output must prove the registration bootstrap remained preflight-only and did not mutate production destinations or services. Any missing or contradictory evidence fails closed.
-
-## Embedded Artifact Packaging and Size Gate
-The two immutable artifacts may be stored inside the existing MCP source as deterministic compressed/base64 constants or another deterministic byte representation, provided decoding cannot be influenced by caller input.
-
-Hard implementation gate:
-
-`FINAL_SAFEFILES_JS_BYTES <= 120000`
-
-The complete replacement `src/plugins/safeFiles.js` must remain within the existing self-maintenance payload ceiling. If it does not, implementation stops. There is no automatic fallback to network fetch, mutable Git checkout, new helper bootstrap, generic upload, shell pipeline, or weakened self-maintenance validation.
-
-The implementation plan must include deterministic reconstruction tests proving reconstructed bytes exactly match the two fixed SHA-256 values and byte lengths.
-
-## Approval and Confirmation Boundary
-Capability installation, public schema exposure, staging, and later Root-of-Trust apply remain distinct gates.
-
-No confirmation may be reused across gates.
-
-Required sequence:
-1. implement and test candidate `safeFiles.js` change off-host;
-2. create a SHA-bound `selfmaint_request(target=agent_mcp)` for that exact existing file;
-3. obtain a fresh `CONFIRM_LEVEL_4_CRITICAL` and consume it only for capability source installation;
-4. verify installed source SHA and legacy MCP health;
-5. perform separately approved MCP rolling schema refresh/exposure through the existing governed ZDT path;
-6. create/validate a separate Approval Center request for `control_plane_root_scripts_stage_transport_v1` and obtain a fresh Level-4 confirmation;
-7. stage the two exact artifacts;
-8. run the fixed preflight-only tool and verify evidence;
-9. only later enter `CONTROL_PLANE_BOOTSTRAP_ROOT_OF_TRUST_APPLY_V1` with another fresh approval/confirmation.
-
-The staging capability itself never executes the Root-of-Trust `--apply` operation.
-
-## Explicitly Forbidden Behavior
-The capability must not expose or perform:
-- arbitrary path writes;
-- arbitrary content writes;
-- arbitrary command or argument execution;
-- arbitrary URL/repository/branch/tag/commit/SHA inputs;
-- mutable `HEAD` or network artifact fetch at execution time;
-- shell invocation, `eval`, `exec`, `curl | bash`, `wget | sh`, or equivalent streamed execution;
-- generic `root_scripts` widening;
-- `/root` write enablement or weakening of `ProtectHome=read-only`;
-- weakening of `ProtectSystem=full`;
-- generic safe-file upload behavior for root paths;
-- `systemctl restart`, `reload`, or `daemon-reload` from the staging/preflight tools;
-- public MCP cutover from the capability itself;
-- Control Plane Base/Executor/Policy/MCP/ZDT destination installation;
-- DeployHQ API calls or node1 recreation;
-- credential provisioning or reading credential values;
-- Honartik, iMotion, database, redirect, canonical, SEO, or application mutation.
-
-## Rollback Boundary
-Staging rollback is invocation-bound only. The stage tool may restore or remove only the two fixed staging destinations that it changed during that invocation. It must not perform broad directory cleanup or touch installed Control Plane files.
-
-If rollback fails, return/persist bounded critical evidence including `critical_failure=true` and `rollback_failed=true`, without secret values, then stop. No alternate remediation is executed automatically.
-
-## MCP and Runtime Boundary
-Installing the capability source through self-maintenance may restart only the service already defined by the existing self-maintenance target contract. Public Blue/Green/router exposure is not implied by source installation and remains a separate governed rolling-refresh step.
-
-The capability must not patch MCP service hardening to gain filesystem access. If the fixed `/var/lib/prhm-agent-selfmaint-exec/root-of-trust-stage-v1/` destination is not writable under the actual runtime confinement, implementation fails closed and the design must be revisited instead of weakening service protections.
+## Authorization Boundary
+This design document authorizes no implementation, no production mutation, no service restart, no self-maintenance request/apply, no MCP public schema refresh, and no Root-of-Trust apply. After this written amendment is reviewed, implementation planning starts only after the explicit gate `SPEC_APPROVED_CONTROL_PLANE_ROOT_SCRIPTS_APPROVAL_MEDIATED_STAGING_ARCHITECTURE_V1`.
 
 ## Acceptance Criteria
-The implementation is acceptable only if all of the following are independently verified:
-1. candidate modifies only intended existing MCP source/test/spec/plan surfaces;
-2. final `safeFiles.js` payload is at most 120000 bytes;
-3. current live `safeFiles.js` baseline is freshly captured and exact before creating self-maintenance request;
-4. self-maintenance replacement is bound to the exact old SHA and exact new content;
-5. no new generic privileged writer exists;
-6. stage tool accepts no path/content/command/URL/repository/SHA parameters;
-7. Approval Center validation and one-time consume are mandatory before staging mutation;
-8. confirmation reuse is impossible across gates;
-9. both reconstructed artifacts exactly match fixed byte lengths and SHA-256 values;
-10. staging root and destination files reject symlinks/path escape;
-11. writes are same-directory temporary-file plus atomic rename;
-12. post-write byte/SHA verification passes;
-13. status tool exposes metadata only and no file content;
-14. preflight tool has fixed executable and fixed `--preflight-only` argv;
-15. `--apply` is unreachable;
-16. MCP sandbox settings remain unchanged;
-17. `/root` is not made writable;
-18. no service restart occurs from stage/status/preflight tool code;
-19. no DeployHQ/Honartik/iMotion/database/application mutation occurs;
-20. staging rollback is invocation-bound;
-21. source installation, MCP rolling exposure, staging, and Root-of-Trust apply each require their own governed gate;
-22. all implementation tests and syntax checks pass with zero skipped security cases.
+The implementation is acceptable only if **all** of the following are independently verified:
+
+1. Candidate modifies only intended existing MCP source/test/spec/plan surfaces.  
+2. Final `safeFiles.js` payload ≤ 120 000 bytes.  
+3. Live `safeFiles.js` baseline is freshly captured and exact before creating any self‑maintain request.  
+4. Self‑maintenance replacement is bound to the exact old SHA and exact new content.  
+5. No new generic privileged writer exists.  
+6. All four tools exist with the exact names and fixed schemas described above.  
+7. Tools accept **no** caller‑controlled path/content/command/URL/repository/SHA/role/project/environment/risk fields.  
+8. Tool 1 creates a Level‑4 request via the privileged mediator; only `request_id` and non‑secret metadata are returned.  
+9. Tool 2 requires the exact `request_id` and literal `CONFIRM_LEVEL_4_CRITICAL`; it fails closed on any mismatch, replay, expiry, or binding error **before** any filesystem mutation.  
+10. The privileged mediator validates the fixed action/operation, project, environment, risk, exact `arguments_sha256` for the deterministic fixed action arguments, TTL, rollback reference, and correlates the `request_id`.  
+11. Approval token handling remains entirely inside the mediator; MCP never sees the token.  
+12. Both staged artifacts exactly match the fixed byte lengths and SHA‑256 values.  
+13. Staging root and destination files reject symlinks, path escapes, or non‑regular files.  
+14. Writes use same‑directory temporary files plus atomic rename; ownership `root:root`, mode `0600`.  
+15. Post‑write byte length and SHA‑256 verification passes.  
+16. Tool 3 (`status`) returns only bounded metadata; no file content or secrets.  
+17. Tool 4 (`preflight`) uses the fixed executable and fixed `--preflight-only` argv; `--apply` is structurally unreachable.  
+18. Preflight independently re‑validates both staged files before execution.  
+19. No service restart, DeployHQ, Honartik, iMotion, database, or application mutation occurs from any tool.  
+20. Rollback is invocation‑bound only and limited to the two staged files; failure produces bounded evidence (`critical_failure=true`, `rollback_failed=true`).  
+21. Each major gate (source installation, MCP schema exposure, staging request, staging mutation, preflight, Root‑of‑Trust apply) requires its own governed approval/confirmation.  
+22. All implementation tests and syntax checks pass with zero skipped security cases.
 
 ## Required Test Classes
-At minimum the implementation plan must include tests for:
-- exact tool names and schemas;
-- zero arbitrary input surface;
-- Approval Center validation/consume requirement;
-- invalid/replayed approval rejection;
-- wrong embedded transport SHA rejection;
-- wrong embedded bootstrap SHA rejection;
-- wrong artifact length rejection;
-- deterministic reconstruction;
-- final source payload size ceiling;
-- staging-root symlink rejection;
-- destination symlink rejection;
-- non-regular destination rejection;
-- atomic write/journal ordering;
-- partial-stage rollback;
-- rollback-failure evidence;
-- metadata-only status output;
-- fixed preflight executable and argv;
-- structural absence of `--apply` execution path;
-- structural absence of generic command/path/content/URL inputs;
-- no shell/eval/network execution;
-- no systemctl mutation from capability;
-- no sandbox hardening changes;
-- no DeployHQ/Honartik/iMotion/application mutation.
+The implementation plan must include tests for at minimum:
 
-## Out of Scope
-- Root-of-Trust `--apply` execution.
-- DeployHQ adapter package installation.
-- canonical DeployHQ node1 recreation.
-- Blue V4/public MCP cutover beyond the separately approved schema-exposure refresh required to expose this capability.
-- iMotion target registration.
-- Honartik temporary target cleanup.
-- any application, database, SEO, redirect, canonical, payment, or credential changes.
+- Presence and exact naming of the four fixed tools.  
+- Zero arbitrary input surface for each tool (empty or fixed literals only).  
+- Priv
