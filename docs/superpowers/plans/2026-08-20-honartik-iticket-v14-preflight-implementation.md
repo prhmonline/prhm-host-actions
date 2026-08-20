@@ -4,7 +4,7 @@
 
 **Goal:** Install a fixed zero-input Agent/MCP adapter that invokes only the merged Bootstrap V14 `preflight()` logic and returns bounded read-only evidence without installing or registering the iTicket mutation action.
 
-**Architecture:** A dedicated Agent API route module SHA-verifies and loads the exact merged V14 bootstrap under a restricted CommonJS capability facade, then calls only its exported `preflight()`. A V14.1 installer writes the pinned payload and route module, patches the current Agent API wrapper and MCP `hostActionsV2.js`, and restarts only Agent API/MCP with rollback. The MCP tool has an empty input schema and calls only the fixed Agent API route.
+**Architecture:** A dedicated Agent API route module SHA-verifies and loads the exact merged V14 bootstrap under a restricted CommonJS capability facade, then calls only its exported `preflight()`. A V14.1 installer writes the pinned payload, route module, and a dedicated MCP plugin, patches the current Agent API wrapper and MCP core registry, and restarts only Agent API/MCP with rollback. `hostActionsV2.js` stays byte-for-byte unchanged because V14 preflight pins its SHA. The MCP tool has an empty input schema and calls only the fixed Agent API route.
 
 **Tech Stack:** Node.js/CommonJS, Express-style Agent API routes, MCP plugin/Zod conventions, `node:test`, SHA-256 binding, systemd service health checks.
 
@@ -15,15 +15,17 @@
 - Pinned merged V14 source commit: `1ecd932451d7464e354419b67f2c605d93135854`.
 - Pinned V14 payload SHA-256: `134ef8c0828b6c941b98e0d5c3ecb5d6ceaff1e1bf6ef73daabc79a92f5d8b78`.
 - Live Agent API baseline SHA-256 at plan time: `70368fdc8be24646b10d414f6159502c2f3d338ed1132451d5b5740d1270999c`.
-- Live MCP `hostActionsV2.js` baseline SHA-256 at plan time: `ebe988fb99794ed3e09b2cefa7496c2d47c967a850b900a117b6b762b388cc34`.
+- Live MCP `hostActionsV2.js` immutable V14 baseline SHA-256: `ebe988fb99794ed3e09b2cefa7496c2d47c967a850b900a117b6b762b388cc34`; the adapter must never modify this file.
+- Live MCP registry `/home/agent/ssh-mcp-server/src/core/registry.js` baseline SHA-256 at plan correction time: `cf3681ca4d4632156df2f77886afe59c07da9a86dbcb68f4217577f811b22231`.
 - New MCP tool name: `honartik_iticket_v14_preflight_readonly`.
 - Agent API route: `POST /honartik/iticket/v14/preflight`.
 - The public tool accepts zero arguments and the Agent route rejects any request-body key.
 - Runtime preflight may read only the pinned V14 payload, the V14 control-plane baseline files/journal/backups required by `preflight()`, and the fixed Honartik production/worktree Git metadata required by V14.
 - Runtime child process access is limited to `/usr/bin/git` with the exact V14 read commands: `rev-parse HEAD`, `branch --show-current`, and `status --porcelain=v1 --untracked-files=all` against the four pinned Honartik roots/targets.
 - Runtime `execFileSync`, filesystem write methods, HTTP/network requests, arbitrary commands, arbitrary paths, caller-provided refs, environment reads, token reads, database access, deploys, and service control are denied.
-- Adapter installation must not modify Host Actions Base, Executor, or Approval Policy and must not register `honartik_iticket_dark_backend_batch1_v1`.
-- Installation restarts only `prhm-agent-api.service` and `prhm-agent-mcp.service`; any failure rolls back both modified baseline files and removes both new files.
+- Adapter installation must not modify Host Actions Base, Executor, Approval Policy, or `src/plugins/hostActionsV2.js`, and must not register `honartik_iticket_dark_backend_batch1_v1`.
+- The zero-input tool is registered by a dedicated ESM plugin `src/plugins/honartikIticketPreflight.js` imported and invoked by `src/core/registry.js`; the plugin calls Agent API with the existing `agent.callAgent()` pattern.
+- Installation restarts only `prhm-agent-api.service` and `prhm-agent-mcp.service`; any failure rolls back both modified baseline files (Agent API server + MCP registry) and removes all three new files (Agent route + MCP plugin + V14 payload).
 - No DeployHQ `preview` mode is used as a safety boundary.
 
 ---
@@ -33,9 +35,11 @@
 **Files:**
 - Create: `test-v14-1-honartik-iticket-v14-preflight-readonly.js`
 - Create: `honartik-iticket-v14-preflight-readonly-routes.js`
+- Create: `honartik-iticket-v14-preflight-mcp.js`
 
 **Interfaces:**
 - Produces: `registerHonartikIticketV14PreflightRoutes(app, { auth })`.
+- Produces: `registerHonartikIticketPreflightPlugin(mcp, { agent })`, a zero-input MCP tool that calls only `agent.callAgent('/honartik/iticket/v14/preflight','POST',{})`.
 - Produces: internal `runPinnedPreflight()` returning validated `prhm.host-action-install-preflight.v1` JSON.
 - Consumes: exact payload path `/opt/prhm-agent-readonly-actions/honartik-iticket-v14-preflight.js` and SHA `134ef8c0828b6c941b98e0d5c3ecb5d6ceaff1e1bf6ef73daabc79a92f5d8b78`.
 
@@ -107,12 +111,14 @@ git commit -m "feat: add iTicket V14 read-only preflight runtime"
 **Files:**
 - Create: `bootstrap-host-actions-v14-1-honartik-iticket-v14-preflight-readonly.js`
 - Modify: `test-v14-1-honartik-iticket-v14-preflight-readonly.js`
+- Verify immutable: `src/plugins/hostActionsV2.js` remains SHA `ebe988fb99794ed3e09b2cefa7496c2d47c967a850b900a117b6b762b388cc34`
 
 **Interfaces:**
-- Produces: `patchAgentServer(source)`, `patchMcp(source)`, `preflight()`, and `install()`.
+- Produces: `patchAgentServer(source)`, `patchRegistry(source)`, `preflight()`, and `install()`.
+- Installs exact MCP plugin bytes to `/home/agent/ssh-mcp-server/src/plugins/honartikIticketPreflight.js`.
 - Installs exact route module bytes to `/home/agent/ssh-agent-api/honartikIticketV14PreflightRoutes.js`.
 - Installs exact V14 bytes to `/opt/prhm-agent-readonly-actions/honartik-iticket-v14-preflight.js`.
-- Modifies only `/home/agent/ssh-agent-api/server.js` and `/home/agent/ssh-mcp-server/src/plugins/hostActionsV2.js`.
+- Modifies only `/home/agent/ssh-agent-api/server.js` and `/home/agent/ssh-mcp-server/src/core/registry.js`; `hostActionsV2.js` is verified but never written.
 
 - [ ] **Step 1: Extend tests first for installer behavior**
 
@@ -120,11 +126,12 @@ Add failing assertions that:
 
 ```js
 assert.equal(installer.EXPECTED.agentServer, '70368fdc8be24646b10d414f6159502c2f3d338ed1132451d5b5740d1270999c');
-assert.equal(installer.EXPECTED.mcp, 'ebe988fb99794ed3e09b2cefa7496c2d47c967a850b900a117b6b762b388cc34');
+assert.equal(installer.EXPECTED.registry, 'cf3681ca4d4632156df2f77886afe59c07da9a86dbcb68f4217577f811b22231');
+assert.equal(installer.IMMUTABLE_HOST_ACTIONS_V2_SHA, 'ebe988fb99794ed3e09b2cefa7496c2d47c967a850b900a117b6b762b388cc34');
 assert.equal(installer.V14_SHA, '134ef8c0828b6c941b98e0d5c3ecb5d6ceaff1e1bf6ef73daabc79a92f5d8b78');
 ```
 
-Tests must prove `patchAgentServer()` injects the route import/register transformations exactly once into the current wrapper, `patchMcp()` adds only the zero-input read-only tool and does not add the iTicket mutation action enum, and the installer does not reference Base/Executor/Approval Policy write paths.
+Tests must prove `patchAgentServer()` injects the route import/register transformations exactly once into the current wrapper, `patchRegistry()` imports/registers only the dedicated read-only plugin exactly once, the dedicated plugin has an empty input schema and uses only `agent.callAgent()` for the fixed route, `hostActionsV2.js` remains immutable at its V14 SHA, and the installer does not reference Base/Executor/Approval Policy write paths.
 
 - [ ] **Step 2: Run RED**
 
@@ -141,15 +148,16 @@ Expected: FAIL because the V14.1 installer does not exist.
 `preflight()` must:
 
 1. require hostname `prhm-production.prhm.ir`;
-2. SHA-check Agent API and MCP baselines;
+2. SHA-check Agent API and MCP registry baselines, and separately verify immutable `hostActionsV2.js` still matches the V14 baseline SHA;
 3. require new target route/payload files to be absent unless a valid committed marker proves this exact version is already installed;
 4. verify embedded V14 bytes SHA equals `V14_SHA`;
-5. verify embedded route-module bytes equal the repository route module SHA;
-6. build patched Agent API/MCP candidates;
+5. verify embedded route-module and dedicated MCP-plugin bytes equal their repository SHAs;
+6. build patched Agent API/MCP-registry candidates;
 7. run `node --check` on temporary candidate files;
-8. return only bounded JSON with `preflight_only:true`, candidate hashes, and all mutation/network/token/database/deploy flags false.
+8. prove the candidate registry does not modify/import `hostActionsV2.js` content and the mutation action is not introduced by the dedicated plugin;
+9. return only bounded JSON with `preflight_only:true`, candidate hashes, and all mutation/network/token/database/deploy flags false.
 
-`install()` must create atomic backups, write the two new files and two patched files, restart only Agent API/MCP, validate both health endpoints and the fixed tool schema, write a committed marker, and rollback all four files on any failure.
+`install()` must create atomic backups, write the three new files and two patched files, restart only Agent API/MCP, validate both health endpoints and the fixed tool schema, write a committed marker, and rollback all four files on any failure.
 
 - [ ] **Step 4: Run GREEN**
 
@@ -185,7 +193,7 @@ git commit -m "feat: add iTicket V14 preflight adapter installer"
 
 - [ ] **Step 1: Add failing byte-binding regression assertions**
 
-The test must read the merged V14 repo file and assert its SHA and bytes equal the installer-embedded payload. It must also assert installer-embedded route bytes equal the standalone route module bytes.
+The test must read the merged V14 repo file and assert its SHA and bytes equal the installer-embedded payload. It must assert installer-embedded route bytes equal the standalone route module bytes and installer-embedded MCP-plugin bytes equal the standalone dedicated plugin bytes. It must also assert `hostActionsV2.js` is not an installer write target and its immutable SHA remains the V14 baseline.
 
 - [ ] **Step 2: Run RED if any embedded payload drift exists**
 
