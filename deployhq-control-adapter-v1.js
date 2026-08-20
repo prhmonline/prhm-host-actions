@@ -86,6 +86,7 @@ function send(res,status,obj){const body=JSON.stringify(redact(obj));res.statusC
 function readJson(req){return new Promise((resolve,reject)=>{let body='';req.on('data',d=>{body+=d;if(body.length>8192) reject(new Error('request_too_large'))});req.on('end',()=>{if(!body)return resolve(undefined);try{resolve(JSON.parse(body))}catch{reject(new Error('invalid_json'))}});req.on('error',reject)})}
 function snapEqual(a,b){return JSON.stringify(a||{})===JSON.stringify(b||{})}
 function createAdapter(deps){
+  const rollbackEligible=new Set();
   const need=['listServers','createFixedServer','deleteCreatedServer','deploymentSnapshot','commandSnapshot'];
   for(const k of need) if(!deps||typeof deps[k]!=='function') throw new Error('missing_dependency_'+k);
   return async function handler(req,res){
@@ -96,6 +97,8 @@ function createAdapter(deps){
         const servers=await deps.listServers(); const c=classifyCanonical(servers);
         return send(res,200,{ok:true,canonical:c,temp_honartik_ids:tempIds(servers),servers:(servers||[]).map(normalizeServer)});
       }
+      const rollbackMatch=req.method==='DELETE'&&url.pathname.match(/^\/v1\/node1\/([0-9a-fA-F-]{36})$/);
+      if(rollbackMatch){const id=rollbackMatch[1];if(!rollbackEligible.has(id))return send(res,403,{ok:false,error:'rollback_identifier_not_eligible'});try{await deps.deleteCreatedServer(id);rollbackEligible.delete(id);return send(res,200,{ok:true,rollback_performed:true,canonical_identifier:id})}catch(e){return send(res,502,{ok:false,error:'rollback_failed',rollback_failed:true})}}
       if(req.method!=='POST'||url.pathname!=='/v1/node1/create-fixed') return send(res,404,{ok:false,error:'route_not_allowed'});
       const body=await readJson(req); if(body!==undefined&&(body===null||typeof body!=='object'||Array.isArray(body)||Object.keys(body).length)) return send(res,400,{ok:false,error:'fixed_contract_override_forbidden'});
       const beforeServers=await deps.listServers();
@@ -118,6 +121,7 @@ function createAdapter(deps){
           if(readback.state!=='exact'||readback.identifier!==createdId) error='canonical_config_mismatch';
         }
         if(error){await deps.deleteCreatedServer(createdId);return send(res,409,{ok:false,error,rollback_performed:true,canonical_identifier:createdId});}
+        rollbackEligible.add(createdId);
         return send(res,201,{ok:true,canonical_created:true,canonical_identifier:createdId,config_match:true,deployment_executed:false,command_executed:false,honartik_targets_mutated:false,rollback_performed:false});
       }catch(err){
         if(createdId){try{await deps.deleteCreatedServer(createdId)}catch(rollbackErr){return send(res,500,{ok:false,error:'rollback_failed',rollback_failed:true})}}
