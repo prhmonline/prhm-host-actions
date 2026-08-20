@@ -126,4 +126,26 @@ function createAdapter(deps){
     }catch(err){return send(res,400,{ok:false,error:err&&err.message||'bad_request'})}
   }
 }
-module.exports={FIXED_NODE1,redact,normalizeServer,classifyCanonical,createAdapter,credentialPaths,credentialEvidence,createDeployHQClient};
+
+const fs=require('node:fs');
+const http=require('node:http');
+const https=require('node:https');
+const LISTEN=Object.freeze({host:'127.0.0.1',port:8791});
+function validateListen(v){if(!v||v.host!=='127.0.0.1'||v.port!==8791)throw new Error('non_loopback_bind_forbidden');return true}
+function httpsRequest({origin,method,path,headers,body}){
+  if(origin!==DEPLOYHQ_ORIGIN) return Promise.reject(new Error('deployhq_origin_forbidden'));
+  return new Promise((resolve,reject)=>{
+    const u=new URL(path,origin); const payload=body===undefined?null:Buffer.from(JSON.stringify(body));
+    const req=https.request({protocol:u.protocol,hostname:u.hostname,port:u.port||443,path:u.pathname+u.search,method,headers:{...headers,...(payload?{'content-length':String(payload.length)}:{})},timeout:15000},res=>{
+      let size=0,chunks=[];res.on('data',d=>{size+=d.length;if(size>1024*1024){req.destroy(new Error('deployhq_response_too_large'));return}chunks.push(d)});res.on('end',()=>{const text=Buffer.concat(chunks).toString('utf8');let json={};if(text){try{json=JSON.parse(text)}catch{return reject(new Error('deployhq_invalid_json'))}}resolve({status:res.statusCode,json})});
+    }); req.on('timeout',()=>req.destroy(new Error('deployhq_timeout')));req.on('error',reject);if(payload)req.write(payload);req.end();
+  });
+}
+function loadRuntimeCredentials(env=process.env,readFile=fs.readFileSync){const p=credentialPaths(env);return {email:readFile(p.email),apiKey:readFile(p.apiKey)}}
+function runServer({env=process.env,readFile=fs.readFileSync,request=httpsRequest,listen=LISTEN}={}){
+  validateListen(listen); const creds=loadRuntimeCredentials(env,readFile); const client=createDeployHQClient({...creds,request}); const server=http.createServer(createAdapter(client)); server.listen(listen.port,listen.host); return server;
+}
+
+module.exports={FIXED_NODE1,redact,normalizeServer,classifyCanonical,createAdapter,credentialPaths,credentialEvidence,createDeployHQClient,LISTEN,validateListen,httpsRequest,loadRuntimeCredentials,runServer};
+
+if(require.main===module){const args=process.argv.slice(2);if(args.length===1&&args[0]==='--serve'){runServer();}else{process.stderr.write('unexpected_arguments\n');process.exitCode=2}}
