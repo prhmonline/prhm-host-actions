@@ -1,0 +1,86 @@
+#!/usr/bin/env node
+'use strict';
+
+const FIXED_NODE1=Object.freeze({
+  name:'PRHM Host Bootstrap - node1',
+  hostname:'185.191.76.138',
+  port:22022,
+  username:'root',
+  protocol_type:'ssh',
+  server_path:'/root',
+  branch:'main',
+  auto_deploy:false,
+});
+const FIXED_KEYS=Object.keys(FIXED_NODE1);
+const SECRET_KEY_RE=/(authorization|token|secret|password|private.?key|api.?key)/i;
+const SECRET_VALUE_RE=/bearer\s+[A-Za-z0-9._~+\/-]{8,}/i;
+const TEMP_RE=/^TEMP Honartik iTicket V14 /;
+function redact(value,key=''){
+  if(SECRET_KEY_RE.test(String(key))) return '[REDACTED]';
+  if(Array.isArray(value)) return value.map(v=>redact(v));
+  if(value&&typeof value==='object'){
+    const out={}; for(const [k,v] of Object.entries(value)) out[k]=redact(v,k); return out;
+  }
+  if(typeof value==='string'&&SECRET_VALUE_RE.test(value)) return '[REDACTED]';
+  return value;
+}
+function normalizeServer(server){
+  const out={identifier:server&&server.identifier};
+  for(const k of FIXED_KEYS) out[k]=server&&server[k];
+  return out;
+}
+function matchesFixed(server){return FIXED_KEYS.every(k=>server&&server[k]===FIXED_NODE1[k]);}
+function classifyCanonical(servers){
+  const same=(servers||[]).filter(s=>s&&s.name===FIXED_NODE1.name);
+  if(!same.length) return {state:'absent'};
+  const exact=same.filter(matchesFixed);
+  if(exact.length===1&&same.length===1) return {state:'exact',identifier:exact[0].identifier};
+  return {state:'conflict',identifiers:same.map(s=>s.identifier).filter(Boolean)};
+}
+function tempIds(servers){return (servers||[]).filter(s=>TEMP_RE.test(String(s&&s.name||''))).map(s=>s.identifier).filter(Boolean).sort();}
+function sameJson(a,b){return JSON.stringify(a)===JSON.stringify(b);}
+function send(res,status,obj){const body=JSON.stringify(redact(obj));res.statusCode=status;res.setHeader('content-type','application/json');res.end(body)}
+function readJson(req){return new Promise((resolve,reject)=>{let body='';req.on('data',d=>{body+=d;if(body.length>8192) reject(new Error('request_too_large'))});req.on('end',()=>{if(!body)return resolve(undefined);try{resolve(JSON.parse(body))}catch{reject(new Error('invalid_json'))}});req.on('error',reject)})}
+function snapEqual(a,b){return JSON.stringify(a||{})===JSON.stringify(b||{})}
+function createAdapter(deps){
+  const need=['listServers','createFixedServer','deleteCreatedServer','deploymentSnapshot','commandSnapshot'];
+  for(const k of need) if(!deps||typeof deps[k]!=='function') throw new Error('missing_dependency_'+k);
+  return async function handler(req,res){
+    try{
+      const url=new URL(req.url,'http://127.0.0.1');
+      if(req.method==='GET'&&url.pathname==='/health') return send(res,200,{ok:true,service:'prhm-deployhq-control-core'});
+      if(req.method==='GET'&&url.pathname==='/v1/node1'){
+        const servers=await deps.listServers(); const c=classifyCanonical(servers);
+        return send(res,200,{ok:true,canonical:c,temp_honartik_ids:tempIds(servers),servers:(servers||[]).map(normalizeServer)});
+      }
+      if(req.method!=='POST'||url.pathname!=='/v1/node1/create-fixed') return send(res,404,{ok:false,error:'route_not_allowed'});
+      const body=await readJson(req); if(body!==undefined&&(body===null||typeof body!=='object'||Array.isArray(body)||Object.keys(body).length)) return send(res,400,{ok:false,error:'fixed_contract_override_forbidden'});
+      const beforeServers=await deps.listServers();
+      const canonical=classifyCanonical(beforeServers);
+      if(canonical.state==='conflict') return send(res,409,{ok:false,error:'canonical_name_conflict'});
+      if(canonical.state==='exact') return send(res,200,{ok:true,canonical_created:false,canonical_identifier:canonical.identifier,config_match:true,deployment_executed:false,command_executed:false,honartik_targets_mutated:false,rollback_performed:false});
+      const beforeTemp=tempIds(beforeServers), beforeDep=await deps.deploymentSnapshot(), beforeCmd=await deps.commandSnapshot();
+      let createdId=null;
+      try{
+        const created=await deps.createFixedServer(); createdId=created&&created.identifier;
+        if(!createdId) throw Object.assign(new Error('canonical_create_failed'),{code:'canonical_create_failed'});
+        const afterServers=await deps.listServers();
+        const afterTemp=tempIds(afterServers), afterDep=await deps.deploymentSnapshot(), afterCmd=await deps.commandSnapshot();
+        let error=null;
+        if(!sameJson(beforeTemp,afterTemp)) error='honartik_targets_changed';
+        else if(!snapEqual(beforeDep,afterDep)) error='unexpected_deployment_side_effect';
+        else if(!snapEqual(beforeCmd,afterCmd)) error='unexpected_command_side_effect';
+        else {
+          const readback=classifyCanonical(afterServers);
+          if(readback.state!=='exact'||readback.identifier!==createdId) error='canonical_config_mismatch';
+        }
+        if(error){await deps.deleteCreatedServer(createdId);return send(res,409,{ok:false,error,rollback_performed:true,canonical_identifier:createdId});}
+        return send(res,201,{ok:true,canonical_created:true,canonical_identifier:createdId,config_match:true,deployment_executed:false,command_executed:false,honartik_targets_mutated:false,rollback_performed:false});
+      }catch(err){
+        if(createdId){try{await deps.deleteCreatedServer(createdId)}catch(rollbackErr){return send(res,500,{ok:false,error:'rollback_failed',rollback_failed:true})}}
+        return send(res,502,{ok:false,error:err&&err.code||'canonical_create_failed'});
+      }
+    }catch(err){return send(res,400,{ok:false,error:err&&err.message||'bad_request'})}
+  }
+}
+module.exports={FIXED_NODE1,redact,normalizeServer,classifyCanonical,createAdapter};
