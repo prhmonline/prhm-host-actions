@@ -1,0 +1,12 @@
+{
+  "source_sha256": "92e6e279f10fe8561a9c986d9dc90d6bc0cd284009ed9984f51fefe202ac6252",
+  "candidate_sha256": "22dfb51356b3a89d0b6150b6e67e10ebc5464fb66cb67c9e2a75cb6d2e521481",
+  "bytes": 17114,
+  "replacements": {
+    "v4Sentinel": 1,
+    "v4Bounds": 1,
+    "v4Diagnostics": 1,
+    "v4Function": 1,
+    "v4Proxy": 1
+  }
+}
