@@ -13,9 +13,9 @@ test('upgrade is bound to the exact old installed state and corrected V14 artifa
   assert.equal(up.UPGRADE_VERSION,'1.14.1-honartik-iticket-v14-preflight-upgrade-v1');
   assert.equal(up.OLD.agentServer,'7171a63ac5a7e72cd7c0af7d0c90e7d16abd17ed1af623441c44387444e77b23');
   assert.equal(up.OLD.registry,'faec4810f1a8059f7c9bf7cb02a277d3e515b8f15bbc52dde8ddce347aa7155f');
-  assert.equal(up.OLD.agentRoute,'a2c69c0066c514b938eb304bb38325199f81a269320829d0508d9b80323e4c92');
+  assert.equal(up.OLD.agentRoute,'a2c3480018f7e8cfb69eeda9cb92e122735f0694ecae3d7e69bd37b8124b5189');
   assert.equal(up.OLD.mcpPlugin,'963529d9ebec49e64ea98798ca0dbf2cd8542f4fb648213a05cb3351f83d28a2');
-  assert.equal(up.OLD.payload,'1cd8e33bdecaa2ebffc086c778e7938cb33b57b31e6abab21a183972259a0059');
+  assert.equal(up.OLD.payload,'a1d5e590f5798226fb8bf39652b15e2e341ece82c23c2591ba839fad12834b20');
   assert.equal(Object.prototype.hasOwnProperty.call(up.OLD,'hostActionsV2'),false);
   assert.equal(Object.prototype.hasOwnProperty.call(up.NEW,'hostActionsV2'),false);
   assert.equal(up.NEW.agentRoute,sha(fs.readFileSync(path.join(ROOT,'honartik-iticket-v14-preflight-readonly-routes.js'))));
