@@ -157,3 +157,68 @@ The implementation must preserve current iMotion, MCP Blue/Green, and Honartik r
 - registering iMotion targets;
 - changing iMotion or WordPress files;
 - changing redirects, canonicals, databases, or application content.
+
+## Amendment: DeployHQ Control Adapter V1
+
+Direct DeployHQ mutation is not available from the host-action runtime and no existing server-side DeployHQ adapter or credential source was found. The typed node1 recreate action therefore MUST call a dedicated localhost-only adapter rather than DeployHQ directly.
+
+### Adapter service
+
+Service name: `prhm-deployhq-control.service`
+
+Listen address: `127.0.0.1` only. No public listener is permitted.
+
+Allowed operations are fixed and closed:
+
+- `GET /v1/node1` — read canonical node1 state plus immutable TEMP Honartik identifiers/count.
+- `POST /v1/node1/create-fixed` — create exactly the approved canonical node1 target. No request body may override hostname, username, path, port, branch, protocol or auto-deploy.
+- `DELETE /v1/node1/:identifier` — permitted only when the identifier equals the adapter's same-request created identifier supplied through the typed host-action rollback journal. Arbitrary deletes are forbidden.
+- `GET /health` — reports readiness without exposing credentials.
+
+Any other method/path returns fail-closed. There is no raw URL, raw API path, generic proxy, arbitrary JSON payload, deployment endpoint, SSH-command endpoint, config-file endpoint, or server mutation primitive.
+
+### Credential boundary
+
+The DeployHQ credential MUST NOT exist in Git, chat, action requests, logs, persisted result JSON, environment dumps, command lines, or helper arguments. The service consumes a systemd credential named `deployhq_token` from `${CREDENTIALS_DIRECTORY}/deployhq_token`. The unit uses `LoadCredential=deployhq_token:<root-only-source>` and the bootstrap only verifies source metadata/presence; it never prints or copies the token into repository content.
+
+Permitted credential evidence is limited to:
+
+- `credential_present=true|false`
+- byte length
+- short SHA-256 fingerprint (maximum 12 hex characters)
+
+The source credential provisioning itself is a separate Level-4 gate if the source is absent. Installing code or the service MUST NOT fabricate a credential.
+
+### Adapter hardening
+
+The service MUST run as a dedicated unprivileged account when feasible, with `NoNewPrivileges=true`, `PrivateTmp=true`, `ProtectSystem=strict`, `ProtectHome=true`, `RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX`, an explicit writable state directory only, and no shell execution. Outbound network is limited by application code to the fixed DeployHQ API origin.
+
+### Adapter API behavior
+
+The adapter validates the expected DeployHQ project `prhm-host-actions`, snapshots TEMP Honartik target identifiers/count, and exposes only redacted normalized server fields. It rejects same-name wrong-config canonical targets with `canonical_name_conflict`. Exact canonical duplicates are idempotent reads and are never recreated.
+
+Create-fixed performs exactly one server-target create using the fixed contract. It MUST NOT queue a deployment or create/execute a command. Read-back is mandatory.
+
+### Host Action boundary
+
+`deployhq_node1_canonical_recreate_v1` talks only to `http://127.0.0.1:<fixed-port>` and never receives the DeployHQ credential. The host action remains Level-4 critical. Installation of the adapter and execution of the recreate action are separate Level-4 gates.
+
+### Additional TDD acceptance cases
+
+11. Unknown adapter route/method -> 404/405 fail-closed, no outbound call.
+12. Request body attempts to override fixed node1 fields -> 400 fail-closed, no outbound mutation.
+13. Missing systemd credential -> health not-ready / mutation disabled; secret not requested from the caller.
+14. Credential value appears in thrown upstream error -> redacted before logs/evidence.
+15. DeployHQ response contains unexpected secret-like fields -> omitted/redacted from normalized adapter output.
+16. Adapter binds non-loopback address -> startup failure.
+17. Host action attempts direct DeployHQ access -> contract test failure.
+
+### Revised implementation boundary
+
+The work is split into two independently testable subsystems:
+
+1. DeployHQ Control Adapter V1: core client, fixed routes, redaction, systemd unit/bootstrap and credential-presence preflight.
+2. Node1 Canonical Recreate Typed Action V1: Host Action v2 helper/registration using only the localhost adapter.
+
+No production installation, credential provisioning, adapter start/restart, or node1 recreation is authorized by this design amendment itself.
+
