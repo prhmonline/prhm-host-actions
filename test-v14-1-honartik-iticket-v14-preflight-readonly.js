@@ -28,16 +28,29 @@ test('runtime source contains no public arbitrary execution surface',()=>{
 test('installer is SHA-bound to the live Agent API/MCP baselines and V14 payload',()=>{
   const installer=require(path.join(__dirname,'bootstrap-host-actions-v14-1-honartik-iticket-v14-preflight-readonly.js'));
   assert.equal(installer.EXPECTED.agentServer,'70368fdc8be24646b10d414f6159502c2f3d338ed1132451d5b5740d1270999c');
-  assert.equal(installer.EXPECTED.mcp,'ebe988fb99794ed3e09b2cefa7496c2d47c967a850b900a117b6b762b388cc34');
+  assert.equal(installer.EXPECTED.registry,'cf3681ca4d4632156df2f77886afe59c07da9a86dbcb68f4217577f811b22231');
+  assert.equal(installer.IMMUTABLE_HOST_ACTIONS_V2_SHA,'ebe988fb99794ed3e09b2cefa7496c2d47c967a850b900a117b6b762b388cc34');
   assert.equal(installer.V14_SHA,'134ef8c0828b6c941b98e0d5c3ecb5d6ceaff1e1bf6ef73daabc79a92f5d8b78');
   assert.equal(typeof installer.patchAgentServer,'function');
-  assert.equal(typeof installer.patchMcp,'function');
+  assert.equal(typeof installer.patchRegistry,'function');
   assert.equal(typeof installer.preflight,'function');
   assert.equal(typeof installer.install,'function');
 });
 
 
-test('installer patches only the Agent route binding and zero-input MCP tool',()=>{
+test('dedicated MCP plugin exposes only the fixed zero-input Agent API call',()=>{
+  const pluginPath=path.join(__dirname,'honartik-iticket-v14-preflight-mcp.js');
+  const plugin=require('node:fs').readFileSync(pluginPath,'utf8');
+  assert.match(plugin,/export function registerHonartikIticketPreflightPlugin/);
+  assert.match(plugin,/const TOOL='honartik_iticket_v14_preflight_readonly'/);
+  assert.match(plugin,/mcp\.registerTool\(TOOL,/);
+  assert.match(plugin,/inputSchema:\{\},annotations:RO/);
+  assert.match(plugin,/agent\.callAgent\('\/honartik\/iticket\/v14\/preflight','POST',\{\}\)/);
+  assert.doesNotMatch(plugin,/host_action_v2_(request|apply)/);
+  assert.doesNotMatch(plugin,/honartik_iticket_dark_backend_batch1_v1/);
+});
+
+test('installer patches only Agent wrapper and MCP registry while preserving hostActionsV2',()=>{
   const installer=require(path.join(__dirname,'bootstrap-host-actions-v14-1-honartik-iticket-v14-preflight-readonly.js'));
   const agentFixture=`'use strict';\n${"const x=1;"}\nsource=replaceOnce(source,"'status'=>1,'created_at'=>$now","'status'=>2,'created_at'=>$now",'admin_active_status');\ntry { const compiled=1; }`;
   const patchedAgent=installer.patchAgentServer(agentFixture);
@@ -45,15 +58,16 @@ test('installer patches only the Agent route binding and zero-input MCP tool',()
   assert.match(patchedAgent,/honartikIticketV14PreflightRoutes/);
   assert.throws(()=>installer.patchAgentServer(patchedAgent),/agent_preflight_already_patched/);
 
-  const mcpFixture=`const HostActionV2=z.enum(['agent_zero_downtime_bootstrap_v1']);\nexport function registerHostActionsV2Plugin(mcp){mcp.registerTool('host_action_v2_status',{inputSchema:{request_id:z.string().uuid()},annotations:RO},async args=>textResult(await callExec('/v2/host-actions/status','POST',args)));}`;
-  const patchedMcp=installer.patchMcp(mcpFixture);
-  assert.match(patchedMcp,/honartik_iticket_v14_preflight_readonly/);
-  assert.match(patchedMcp,/inputSchema:\{\}/);
-  const enumBody=patchedMcp.slice(patchedMcp.indexOf('const HostActionV2=z.enum(['),patchedMcp.indexOf(']);')+3);
-  assert.doesNotMatch(enumBody,/honartik_iticket_dark_backend_batch1_v1/);
-  assert.throws(()=>installer.patchMcp(patchedMcp),/mcp_preflight_already_patched/);
+  const registryFixture=`import { registerHostActionsV2Plugin } from '../plugins/hostActionsV2.js';\nimport { registerProjectFactoryPlugin } from '../plugins/projectFactory.js';\nexport function registerPlugins(mcp, context) {\n  registerHostActionsV2Plugin(mcp, context);\n  registerProjectFactoryPlugin(mcp, context);\n}`;
+  const patchedRegistry=installer.patchRegistry(registryFixture);
+  assert.match(patchedRegistry,/registerHonartikIticketPreflightPlugin/);
+  assert.match(patchedRegistry,/honartikIticketPreflight\.js/);
+  assert.throws(()=>installer.patchRegistry(patchedRegistry),/mcp_registry_preflight_already_patched/);
+  assert.equal(installer.PATHS.hostActionsV2,'/home/agent/ssh-mcp-server/src/plugins/hostActionsV2.js');
+  assert.equal(installer.PATHS.mcpPlugin,'/home/agent/ssh-mcp-server/src/plugins/honartikIticketPreflight.js');
+  assert.equal(installer.PATHS.mcpRegistry,'/home/agent/ssh-mcp-server/src/core/registry.js');
+  assert.equal(Object.prototype.hasOwnProperty.call(installer.PATHS,'mcp'),false);
 });
-
 
 test('installer marks mutation before the first write so partial installs always rollback',()=>{
   const source=fs.readFileSync(path.join(__dirname,'bootstrap-host-actions-v14-1-honartik-iticket-v14-preflight-readonly.js'),'utf8');
@@ -64,6 +78,23 @@ test('installer marks mutation before the first write so partial installs always
 
 test('installer syntax-checks MCP candidate as ESM from stdin',()=>{
   const source=fs.readFileSync(path.join(__dirname,'bootstrap-host-actions-v14-1-honartik-iticket-v14-preflight-readonly.js'),'utf8');
-  assert.match(source,/nodeCheckSource\('mcp',patched\.mcp,true\)/);
+  assert.match(source,/nodeCheckSource\('mcpRegistry',patched\.registry,true\)/);
+  assert.match(source,/nodeCheckSource\('mcpPlugin',mcpPlugin\.toString\('utf8'\),true\)/);
   assert.match(source,/--input-type=module/);
+});
+
+
+test('installer embeds exact V14 route and dedicated MCP plugin bytes',()=>{
+  const installer=require(path.join(__dirname,'bootstrap-host-actions-v14-1-honartik-iticket-v14-preflight-readonly.js'));
+  assert.deepEqual(Buffer.from(installer.V14_B64,'base64'),fs.readFileSync(path.join(__dirname,'bootstrap-host-actions-v14-honartik-iticket-dark-backend-batch1.js')));
+  assert.deepEqual(Buffer.from(installer.ROUTE_B64,'base64'),fs.readFileSync(path.join(__dirname,'honartik-iticket-v14-preflight-readonly-routes.js')));
+  assert.deepEqual(Buffer.from(installer.MCP_PLUGIN_B64,'base64'),fs.readFileSync(path.join(__dirname,'honartik-iticket-v14-preflight-mcp.js')));
+});
+
+test('installer never writes or patches the V14-bound hostActionsV2 file',()=>{
+  const source=fs.readFileSync(path.join(__dirname,'bootstrap-host-actions-v14-1-honartik-iticket-v14-preflight-readonly.js'),'utf8');
+  assert.doesNotMatch(source,/function patchMcp\(/);
+  assert.doesNotMatch(source,/atomicWrite\(PATHS\.hostActionsV2/);
+  assert.doesNotMatch(source,/backupFile\(PATHS\.hostActionsV2/);
+  assert.match(source,/assertSha\('hostActionsV2'/);
 });
