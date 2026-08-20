@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
+import { spawnSync } from 'node:child_process';
 
 export const FIXED_BINDING=Object.freeze({
   principal_id:'mohammad',
@@ -50,6 +51,19 @@ export function createFixedStageTransaction(options={}){
       }catch{rollbackFailed=true}
       error.evidence={ok:false,staged:false,invocation_id:id,rollback_performed:rollbackPerformed,rollback_failed:rollbackFailed,critical_failure:rollbackFailed};throw error;
     }
+  };
+}
+
+const PREFLIGHT_EXPECTED=Object.freeze({ok:true,preflight_only:true,production_mutation:false,database_mutation:false,deployhq_mutation:false,honartik_mutation:false,imotion_mutation:false,mcp_cutover:false});
+function parsePreflightEvidence(stdout){for(const line of String(stdout||'').trim().split(/\r?\n/).reverse()){if(!line.trim())continue;try{const value=JSON.parse(line);if(value&&typeof value==='object')return value}catch{}}throw new Error('preflight_output_invalid')}
+export function createFixedTransportPreflight(options={}){
+  const fsOps=options.fsOps||fs,root=options.stagingRoot||STAGING_ROOT,uid=options.ownerUid??0,gid=options.ownerGid??0,spawn=options.spawn||spawnSync;
+  return async function runFixedTransportPreflight(){
+    if(!fsOps.existsSync(root))throw new Error('staging_root_missing');const rootStat=fsOps.lstatSync(root);if(rootStat.isSymbolicLink()||!rootStat.isDirectory())throw new Error('staging_root_invalid');if(fsOps.realpathSync(root)!==path.resolve(root))throw new Error('staging_root_realpath_mismatch');
+    const artifacts={};
+    for(const key of Object.keys(STAGE_FILENAMES)){const file=path.join(root,STAGE_FILENAMES[key]),spec=STAGE_ARTIFACTS[key],st=verifyExactFile(fsOps,file,spec);if((st.mode&0o777)!==0o600)throw new Error('staged_file_mode_mismatch');if(st.uid!==uid||st.gid!==gid)throw new Error('staged_file_owner_mismatch');artifacts[key]={path:file,bytes:spec.bytes,sha256:spec.sha256}}
+    const bootstrap=path.join(root,STAGE_FILENAMES.bootstrap);const result=spawn('/usr/local/bin/prhm-node',[bootstrap,'--preflight-only'],{shell:false,encoding:'utf8',timeout:30000,maxBuffer:262144,env:{PATH:'/usr/local/bin:/usr/bin:/bin',LC_ALL:'C'}});
+    if(result?.error||result?.status!==0)throw new Error('preflight_process_failed');const evidence=parsePreflightEvidence(result.stdout);for(const [k,v] of Object.entries(PREFLIGHT_EXPECTED))if(evidence[k]!==v)throw new Error('preflight_evidence_mismatch');return {...PREFLIGHT_EXPECTED,exit_code:0,artifacts};
   };
 }
 export const ROLLBACK_REFERENCE='root-stage-v1:invocation-bound-two-files';
