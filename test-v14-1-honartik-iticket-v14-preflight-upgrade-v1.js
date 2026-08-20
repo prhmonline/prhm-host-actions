@@ -16,7 +16,8 @@ test('upgrade is bound to the exact old installed state and corrected V14 artifa
   assert.equal(up.OLD.agentRoute,'a2c69c0066c514b938eb304bb38325199f81a269320829d0508d9b80323e4c92');
   assert.equal(up.OLD.mcpPlugin,'963529d9ebec49e64ea98798ca0dbf2cd8542f4fb648213a05cb3351f83d28a2');
   assert.equal(up.OLD.payload,'1cd8e33bdecaa2ebffc086c778e7938cb33b57b31e6abab21a183972259a0059');
-  assert.equal(up.OLD.hostActionsV2,'4432f904eaea786d6c184ffee10577402d3620484680f4e2e8d116dd9f8b3bba');
+  assert.equal(Object.prototype.hasOwnProperty.call(up.OLD,'hostActionsV2'),false);
+  assert.equal(Object.prototype.hasOwnProperty.call(up.NEW,'hostActionsV2'),false);
   assert.equal(up.NEW.agentRoute,sha(fs.readFileSync(path.join(ROOT,'honartik-iticket-v14-preflight-readonly-routes.js'))));
   assert.equal(up.NEW.payload,sha(fs.readFileSync(path.join(ROOT,'bootstrap-host-actions-v14-honartik-iticket-dark-backend-batch1.js'))));
   assert.equal(path.basename(up.SOURCES.agentRoute),'honartik-iticket-v14-preflight-readonly-routes.js');
@@ -33,6 +34,8 @@ test('state classifier accepts only exact old or exact upgraded installation mar
   const driftMarker={...oldMarker,installed_sha256:{...drift}};
   assert.throws(()=>up.classifyHashes(drift,driftMarker),/installed_state_drift/);
   assert.throws(()=>up.classifyHashes({...up.OLD},{...oldMarker,installed_sha256:{...up.OLD,payload:'f'.repeat(64)}}),/installed_marker_sha_mismatch:payload/);
+  const markerWithHistoricalHostActions={...oldMarker,installed_sha256:{...up.OLD,hostActionsV2:'1'.repeat(64)}};
+  assert.equal(up.classifyHashes({...up.OLD,hostActionsV2:'2'.repeat(64)},markerWithHistoricalHostActions),'upgrade_required');
 });
 
 test('upgrader mutation surface is limited to route payload marker and Agent API restart',()=>{
@@ -44,6 +47,7 @@ test('upgrader mutation surface is limited to route payload marker and Agent API
   assert.match(src,/atomicWrite\(PATHS\.payload/);
   assert.match(src,/atomicWrite\(PATHS\.marker/);
   assert.doesNotMatch(src,/https?:\/\//);
+  assert.match(src,/host_actions_v2_changed_during_upgrade/);
 });
 
 test('preflight is read-only and rollback restores all three mutable files',()=>{
