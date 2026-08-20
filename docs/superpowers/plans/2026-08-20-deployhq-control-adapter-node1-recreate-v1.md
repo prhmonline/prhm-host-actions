@@ -15,7 +15,7 @@
 - Fixed DeployHQ project: `prhm-host-actions`.
 - Fixed canonical target: `PRHM Host Bootstrap - node1`, `185.191.76.138:22022`, `root`, `/root`, `main`, SSH, `auto_deploy=false`.
 - Adapter listens on loopback only and exposes no generic proxy/API path.
-- Credential comes only from `${CREDENTIALS_DIRECTORY}/deployhq_token`; never from request body, argv, repo or chat.
+- Credential comes only from `${CREDENTIALS_DIRECTORY}/deployhq_email` and `${CREDENTIALS_DIRECTORY}/deployhq_api_key`; never from request body, argv, repo or chat.
 - No deployment, SSH command or config-file deployment may be created/executed.
 - TEMP Honartik targets/commands are immutable in this project.
 - Adapter install and Host Action apply are separate fresh Level-4 gates.
@@ -45,10 +45,10 @@
 - Create: `test-deployhq-control-credential-v1.js`
 
 **Interfaces:**
-- Produces: `credentialPath(env)`, `credentialEvidence(buf)`, `createDeployHQClient({token, request})`.
+- Produces: `credentialPaths(env)`, `credentialEvidence({email,apiKey})`, `createDeployHQClient({email,apiKey,request})`.
 - Client exposes only `listServers`, `createFixedServer`, `deleteCreatedServer`, `deploymentSnapshot`, `commandSnapshot`.
 
-- [ ] **Step 1: Write failing tests** asserting credential path is `${CREDENTIALS_DIRECTORY}/deployhq_token`, missing credential disables mutation, evidence returns present/length/12-hex fingerprint only, Authorization/token never appears in output/errors, and the client rejects non-fixed API operations.
+- [ ] **Step 1: Write failing tests** asserting credential paths are `${CREDENTIALS_DIRECTORY}/deployhq_email` and `${CREDENTIALS_DIRECTORY}/deployhq_api_key`, missing either credential disables mutation, evidence returns present/length/12-hex fingerprint only, Authorization/token never appears in output/errors, and the client rejects non-fixed API operations.
 - [ ] **Step 2: Run tests** and verify RED for missing functions.
 - [ ] **Step 3: Implement minimal HTTPS client** with fixed DeployHQ API origin/project paths, request timeout, bounded response size and token redaction.
 - [ ] **Step 4: Run all adapter tests**; expected PASS.
