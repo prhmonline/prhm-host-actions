@@ -23,7 +23,7 @@ test('apply clean create returns exact approved evidence',async()=>{
   {status:201,json:{ok:true,canonical_created:true,canonical_identifier:'new1',config_match:true,deployment_executed:false,command_executed:false,honartik_targets_mutated:false,rollback_performed:false}},
   {status:200,json:{ok:true,canonical:{state:'exact',identifier:'new1'},temp_honartik_ids:['t1']}}
  ]);
- const r=await m.runApply({request});assert.equal(r.ok,true);assert.equal(r.action,'deployhq_node1_canonical_recreate_v1');assert.equal(r.production_mutation,true);assert.equal(r.canonical_created,true);assert.equal(r.canonical_identifier,'new1');assert.equal(r.deployment_executed,false);assert.equal(r.command_executed,false);assert.equal(r.honartik_targets_mutated,false);
+ const r=await m.runApply({request});assert.equal(r.ok,true);assert.equal(r.action,'deployhq_node1_canonical_recreate_v1');assert.equal(r.schema_version,'prhm.host-action-result.v1');assert.equal(r.production_mutation,true);assert.equal(r.canonical_created,true);assert.equal(r.canonical_identifier,'new1');assert.equal(r.deployment_executed,false);assert.equal(r.command_executed,false);assert.equal(r.honartik_targets_mutated,false);
 });
 test('apply exact duplicate performs no mutation',async()=>{
  let calls=0;const request=async req=>{calls++;return {status:200,json:{ok:true,canonical:{state:'exact',identifier:'canon'},temp_honartik_ids:['t1']}}};const r=await m.runApply({request});assert.equal(calls,1);assert.equal(r.production_mutation,false);assert.equal(r.canonical_created,false);assert.equal(r.canonical_identifier,'canon');
@@ -44,4 +44,10 @@ test('helper source cannot access DeployHQ directly or credentials',()=>{
  const src=fs.readFileSync(__dirname+'/deployhq-node1-canonical-recreate-v1.js','utf8');
  for(const forbidden of ['deployhq.com','Authorization','deployhq_api_key','deployhq_email','Basic ']) assert.equal(src.includes(forbidden),false,forbidden);
  assert.match(src,/127\.0\.0\.1:8791/);
+});
+
+
+test('helper exposes fixed executor evidence path and atomic persistence function',()=>{
+ assert.equal(m.RESULT_PATH,'/var/lib/prhm-agent-selfmaint-exec/deployhq-node1-canonical-recreate-v1/latest.json');
+ assert.equal(typeof m.persistResult,'function');
 });
