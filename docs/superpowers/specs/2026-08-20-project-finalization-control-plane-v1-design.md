@@ -1,7 +1,7 @@
 # Project Finalization Control Plane V1 Design
 
 ## Status
-Review required. Architecture direction was approved in chat on 2026-08-20. Implementation must not begin until explicit approval of this written spec with `SPEC_REVIEW_APPROVED_PROJECT_FINALIZATION_CONTROL_PLANE_V1`.
+Self-reviewed; awaiting explicit user review approval. Architecture direction was approved in chat on 2026-08-20. Implementation must not begin until explicit approval of this written spec with `SPEC_REVIEW_APPROVED_PROJECT_FINALIZATION_CONTROL_PLANE_V1`.
 
 ## Goal
 Create one central, fail-closed finalization control plane that makes Git synchronization and Project Status synchronization a required completion gate for technical work across many projects, regardless of whether the work starts in ChatGPT, Codex, SSH Agent, Host Actions, or another approved agent.
@@ -30,6 +30,52 @@ The control plane must make synchronization an explicit invariant instead of a c
 6. **Least secret exposure.** Secrets, credentials, tokens, env values, database dumps, backup archives, logs, and runtime state are never stored in the project registry or Project Status sheet.
 7. **Project-scale operation.** Onboarding a new project must be a registry update, not a copy-paste of global policy into every chat or repository.
 
+## Canonical Source-of-Truth Paths
+
+V1 uses these versioned repository paths as the canonical source of truth:
+
+- Global policy: `policy/project-finalization-policy-v1.md`
+- Project registry: `config/project-registry-v1.json`
+- Registry schema: `config/project-registry-v1.schema.json`
+- Finalizer implementation unit: `actions/project-change-finalize-v1/`
+- This design spec: `docs/superpowers/specs/2026-08-20-project-finalization-control-plane-v1-design.md`
+
+Runtime installation paths may differ, but installed/runtime copies are derived artifacts. The repository paths above remain authoritative and must be fingerprinted against installed runtime state where applicable.
+
+## Minimum Project Registry Contract
+
+Every enrolled project record must contain at least:
+
+```json
+{
+  "project_key": "stable-project-key",
+  "display_name": "Human Name",
+  "repositories": [
+    {
+      "role": "main",
+      "repository": "owner/repo",
+      "allowed_branches": ["main"],
+      "required_for_release": true
+    }
+  ],
+  "sheet": {
+    "spreadsheet_id": "non-secret-id",
+    "tab": "Project Tab",
+    "adapter": "project_status_v1"
+  },
+  "deployment": {
+    "track_staging": false,
+    "track_production": true,
+    "production_verifier": "verifier-id-or-null"
+  },
+  "finalizer_ready": false
+}
+```
+
+Additional fields are allowed only through the validated schema. Repository identity, branch policy, sheet mapping, and verifier identity are registry-bound data, not free-form caller input.
+
+The spreadsheet ID and tab name are operational identifiers, not credentials. OAuth tokens, API keys, service-account secrets, SSH keys, passwords, credential-bearing URLs, or environment values are prohibited in the registry.
+
 ## Canonical Components
 
 ### 1. Global Finalization Policy
@@ -42,24 +88,19 @@ The policy distinguishes read-only tasks from mutating tasks. Pure read-only aud
 
 ### 2. Project Registry
 
-A machine-readable registry maps stable project keys to operational metadata. The first implementation should use JSON because the existing Host Actions runtime is Node.js and JSON supports deterministic schema validation without adding a parser dependency.
+A machine-readable registry maps stable project keys to operational metadata. The first implementation uses JSON because the existing Host Actions runtime is Node.js and JSON supports deterministic schema validation without adding a parser dependency.
 
-Proposed canonical path:
+Canonical path:
 
 `config/project-registry-v1.json`
 
-Each project record may include:
+Each project record may additionally include:
 
-- stable `project_key`;
-- display name;
-- one or more repositories with role names such as `front`, `back`, `infra`, or `main`;
-- permitted default/production branches;
-- Project Status spreadsheet identifier reference and sheet/tab name;
-- whether production SHA verification is required;
 - optional staging tracking;
 - whether multiple repositories must finalize atomically as one logical change;
 - per-project verification adapter identifiers;
-- approved source/runtime mapping references where required.
+- approved source/runtime mapping references where required;
+- project-specific normalized sheet field mappings when the default adapter is insufficient.
 
 The registry must contain references and identifiers only. It must not contain Google credentials, GitHub credentials, SSH credentials, environment values, database passwords, API tokens, or other secrets.
 
@@ -111,7 +152,7 @@ The finalizer does not stage files and does not manufacture the application comm
 
 Before a push is authorized, the workflow must confirm that the candidate commit does not introduce prohibited secret material or disallowed generated/runtime artifacts.
 
-The implementation may use repository-aware secret scanning plus deterministic path guards. A secret scan failure blocks push/finalization. Scanner findings must be sanitized and must never echo secret values.
+The implementation uses a deterministic scanner adapter selected by policy/registry plus path guards. A secret scan failure blocks push/finalization. Scanner findings are sanitized and never echo secret values.
 
 ### Gate 3 — Git Remote Synchronization
 
@@ -130,7 +171,7 @@ The action must not force-push, amend commits, rebase shared branches, or delete
 
 For `deploy_state=not_deployed`, this gate returns `N/A`.
 
-For staging or production, the project-specific verifier must determine the deployed identity using evidence appropriate to that project, for example:
+For staging or production, the project-specific verifier determines the deployed identity using evidence appropriate to that project, for example:
 
 - deployed release metadata;
 - service build/version endpoint;
@@ -140,7 +181,7 @@ For staging or production, the project-specific verifier must determine the depl
 
 Success for production requires a verified mapping to the expected Git SHA(s). HTTP health alone is insufficient because it cannot prove which commit is live.
 
-If the project currently lacks a reliable production-SHA verifier, the registry must mark that capability unavailable and production finalization returns `FINALIZE_PASS=NO` until the verifier is established. It must not infer production SHA from the latest GitHub commit.
+If the project currently lacks a reliable production-SHA verifier, the registry marks that capability unavailable and production finalization returns `FINALIZE_PASS=NO` until the verifier is established. It must not infer production SHA from the latest GitHub commit.
 
 ### Gate 5 — Project Status Update
 
@@ -263,9 +304,9 @@ This avoids destructive rollback of valid code simply because an administrative 
 
 ## Approval Boundary
 
-The finalization action must reuse the existing Approval/Host Actions security model rather than inventing a parallel trust system.
+The finalization action reuses the existing Approval/Host Actions security model rather than inventing a parallel trust system.
 
-The implementation plan must classify individual sub-actions by risk. Read-only Git/sheet checks should remain low-risk where existing policy permits. Git push, production verification that is truly read-only, and Google Sheet updates must use the existing approval model at the level justified by the actual mutation.
+The implementation plan must classify individual sub-actions by risk. Read-only Git/sheet checks should remain low-risk where existing policy permits. Git push and Google Sheet updates are explicit writes and use the existing approval model at the level justified by the actual mutation. Production verification remains read-only unless a project-specific verifier itself performs a mutation, in which case that verifier requires its own reviewed approval classification.
 
 No arbitrary shell command, repository, branch, spreadsheet, tab, file path, or deploy command may be supplied through user-controlled free-form parameters.
 
@@ -326,7 +367,7 @@ Until ready, the project may be worked on, but mutating tasks must report the fi
 
 ## Registry Validation
 
-The registry must have a schema and CI/static validator that rejects at minimum:
+The registry has a schema and CI/static validator that rejects at minimum:
 
 - duplicate project keys;
 - duplicate/conflicting repository role assignments inside one project;
@@ -342,7 +383,7 @@ Registry changes require normal code review because a registry error can direct 
 
 ## Required Result Contract
 
-The final action result must include a stable machine-readable summary such as:
+The final action result includes a stable machine-readable summary:
 
 ```text
 PROJECT=<project_key>
@@ -365,7 +406,7 @@ For multi-repo projects, per-repository SHA evidence is returned in structured r
 
 ## Break-Glass
 
-V1 should not normalize bypass as a routine option. If a future emergency break-glass path is needed, it must be a separately reviewed, explicitly approved action with an audit trail and mandatory subsequent reconciliation. Absence of the finalizer is not itself permission to bypass it.
+V1 does not normalize bypass as a routine option. If a future emergency break-glass path is needed, it must be a separately reviewed, explicitly approved action with an audit trail and mandatory subsequent reconciliation. Absence of the finalizer is not itself permission to bypass it.
 
 ## Verification Gates for Implementation
 
@@ -392,7 +433,9 @@ V1 should not normalize bypass as a routine option. If a future emergency break-
 
 ### Production Pilot
 
-Pilot on one non-critical or controlled project before broad rollout. Success requires:
+Pilot on one controlled project before broad rollout. The pilot project is selected during the implementation plan and must receive explicit approval before the first production-affecting finalizer write.
+
+Success requires:
 
 - expected Git SHA is verified remotely;
 - Project Status write and read-back match;
