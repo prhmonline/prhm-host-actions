@@ -179,7 +179,7 @@ Any other method/path returns fail-closed. There is no raw URL, raw API path, ge
 
 ### Credential boundary
 
-The DeployHQ credential MUST NOT exist in Git, chat, action requests, logs, persisted result JSON, environment dumps, command lines, or helper arguments. The service consumes a systemd credential named `deployhq_token` from `${CREDENTIALS_DIRECTORY}/deployhq_token`. The unit uses `LoadCredential=deployhq_token:<root-only-source>` and the bootstrap only verifies source metadata/presence; it never prints or copies the token into repository content.
+The DeployHQ credential MUST NOT exist in Git, chat, action requests, logs, persisted result JSON, environment dumps, command lines, or helper arguments. The service consumes two systemd credentials named `deployhq_email` and `deployhq_api_key` from `${CREDENTIALS_DIRECTORY}/deployhq_email` and `${CREDENTIALS_DIRECTORY}/deployhq_api_key`. The unit uses `LoadCredential=deployhq_email:<root-only-email-source>` and `LoadCredential=deployhq_api_key:<root-only-api-key-source>` and the bootstrap only verifies source metadata/presence; it never prints or copies the token into repository content.
 
 Permitted credential evidence is limited to:
 
@@ -207,7 +207,7 @@ Create-fixed performs exactly one server-target create using the fixed contract.
 
 11. Unknown adapter route/method -> 404/405 fail-closed, no outbound call.
 12. Request body attempts to override fixed node1 fields -> 400 fail-closed, no outbound mutation.
-13. Missing systemd credential -> health not-ready / mutation disabled; secret not requested from the caller.
+13. Missing either systemd credential -> health not-ready / mutation disabled; secret not requested from the caller.
 14. Credential value appears in thrown upstream error -> redacted before logs/evidence.
 15. DeployHQ response contains unexpected secret-like fields -> omitted/redacted from normalized adapter output.
 16. Adapter binds non-loopback address -> startup failure.
@@ -222,3 +222,7 @@ The work is split into two independently testable subsystems:
 
 No production installation, credential provisioning, adapter start/restart, or node1 recreation is authorized by this design amendment itself.
 
+
+### DeployHQ authentication correction
+
+Official DeployHQ API authentication uses HTTP Basic Authentication where the username is the account user email and the password is a 40-character API key. The adapter therefore loads `deployhq_email` and `deployhq_api_key` as separate systemd credentials, combines them only in memory to form the Basic Authorization header, and redacts both values from all errors/evidence. The fixed API origin for this installation is `https://mohammad-heidarypur.deployhq.com`; arbitrary origins are forbidden.
