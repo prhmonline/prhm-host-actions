@@ -1,0 +1,11 @@
+'use strict';
+const test=require('node:test');const assert=require('node:assert/strict');const fs=require('node:fs');const path=require('node:path');const crypto=require('node:crypto');
+const t=require('./control-plane-typed-bootstrap-transport-v1.js');
+const dir=path.join(__dirname,'packages/deployhq-control-adapter-node1-recreate-v1');
+const manifest=JSON.parse(fs.readFileSync(path.join(dir,'manifest.json'),'utf8'));
+const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
+test('package pins reviewed PR55 source commit and canonical manifest sha',()=>{assert.equal(manifest.source_commit,'cb180a622145062b07a314c43c2075d91446aa91');assert.equal(sha(t.canonicalManifestBytes(manifest)),t.PACKAGE.manifest_sha256)});
+test('package manifest records exactly match transport compiled records',()=>{assert.deepEqual(manifest.records,t.PACKAGE.records)});
+test('every package artifact hash matches manifest',()=>{for(const r of manifest.records){const name=path.basename(r.source_path);const b=fs.readFileSync(path.join(dir,name));assert.equal(sha(b),r.sha256,name)}});
+test('package destinations modes and ownership are exact',()=>{for(const r of manifest.records){assert.match(r.destination_path,/^(\/opt\/prhm-deployhq-control\/|\/opt\/prhm-agent-selfmaint-exec\/actions\/|\/etc\/systemd\/system\/prhm-deployhq-control\.service$)/);assert.equal(r.owner,'root');assert.equal(r.group,'root');assert.match(r.mode,/^0[0-7]{3}$/);assert.equal(r.replace_policy,'sha_bound_replace')}});
+test('package contains no embedded credential/private-key value',()=>{const safeNames=new Set(['deployhq_email','deployhq_api_key']);for(const name of fs.readdirSync(dir)){const p=path.join(dir,name);if(!fs.statSync(p).isFile())continue;const text=fs.readFileSync(p,'utf8');assert.doesNotMatch(text,/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/);assert.doesNotMatch(text,/Bearer\s+[A-Za-z0-9._-]{20,}/);assert.doesNotMatch(text,/Basic\s+[A-Za-z0-9+/=]{20,}/);if(name==='manifest.json'){const walk=v=>{if(Array.isArray(v))return v.forEach(walk);if(v&&typeof v==='object')for(const [k,x] of Object.entries(v)){assert.ok(!/(password|secret|token|authorization|private_key|credential_value)/i.test(k),k);walk(x)}};walk(JSON.parse(text));}}for(const n of safeNames)assert.ok(fs.readFileSync(path.join(dir,'prhm-deployhq-control.service'),'utf8').includes(n));});
