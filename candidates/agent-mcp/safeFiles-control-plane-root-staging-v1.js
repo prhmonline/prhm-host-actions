@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import zlib from 'node:zlib';
+import http from 'node:http';
 import { spawnSync } from 'node:child_process';
 import { z } from 'zod';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -335,6 +336,29 @@ function registerSourceMappingTools(mcp){
   mcp.registerTool('source_mapping_database_name_only',{title:'Source Mapping Database Name Only',description:'Fixed-scope database-name diagnostic for CF Park backend and Gisheh. Returns only the database/schema name and no host, username, password, DSN or source content.',inputSchema:{target:DatabaseTarget},annotations:SOURCE_RO},async args=>textResult(databaseNameOnly(args.target)));
 }
 
+const ROOT_STAGE_MEDIATOR_SOCKET='/run/prhm-root-scripts-stage-mediator-v1/mediator.sock';
+const RootStageRequestId=z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+const RootStageConfirm=z.literal('CONFIRM_LEVEL_4_CRITICAL');
+const ROOT_STAGE_RO={readOnlyHint:true,destructiveHint:false,idempotentHint:true,openWorldHint:false};
+const ROOT_STAGE_WR={readOnlyHint:false,destructiveHint:false,idempotentHint:false,openWorldHint:false};
+function rootStageMediatorCall(method,route,body){
+  return new Promise((resolve,reject)=>{
+    const bytes=body===undefined?null:Buffer.from(JSON.stringify(body));
+    const req=http.request({socketPath:ROOT_STAGE_MEDIATOR_SOCKET,method,path:route,headers:bytes?{'content-type':'application/json','content-length':String(bytes.length)}:{}},res=>{
+      const chunks=[];let total=0;
+      res.on('data',c=>{total+=c.length;if(total>131072){req.destroy(new Error('root_stage_mediator_response_too_large'));return;}chunks.push(c)});
+      res.on('end',()=>{try{const out=JSON.parse(Buffer.concat(chunks).toString('utf8')||'{}');if((res.statusCode||500)<200||(res.statusCode||500)>=300||out?.ok===false)throw new Error(String(out?.error||'root_stage_mediator_failed'));resolve(out)}catch(e){reject(e)}});
+    });
+    req.setTimeout(15000,()=>req.destroy(new Error('root_stage_mediator_timeout')));req.on('error',reject);if(bytes)req.end(bytes);else req.end();
+  });
+}
+function registerRootStageTools(mcp){
+  mcp.registerTool('control_plane_root_scripts_stage_transport_request_v1',{title:'Control Plane Root Scripts Stage Request V1',description:'Create the fixed Level-4 staging request through the privileged mediator.',inputSchema:{},annotations:ROOT_STAGE_WR},async()=>textResult(await rootStageMediatorCall('POST','/v1/request',{})));
+  mcp.registerTool('control_plane_root_scripts_stage_transport_apply_v1',{title:'Control Plane Root Scripts Stage Apply V1',description:'Consume one fixed approved request and stage the two immutable artifacts.',inputSchema:{request_id:RootStageRequestId,second_confirmation:RootStageConfirm},annotations:ROOT_STAGE_WR},async args=>textResult(await rootStageMediatorCall('POST','/v1/apply',args)));
+  mcp.registerTool('control_plane_root_scripts_stage_transport_status_v1',{title:'Control Plane Root Scripts Stage Status V1',description:'Read bounded non-secret state for one staging request.',inputSchema:{request_id:RootStageRequestId},annotations:ROOT_STAGE_RO},async args=>textResult(await rootStageMediatorCall('GET','/v1/status/'+encodeURIComponent(args.request_id))));
+  mcp.registerTool('control_plane_root_scripts_transport_preflight_v1',{title:'Control Plane Root Scripts Transport Preflight V1',description:'Run only the fixed staged bootstrap preflight mode.',inputSchema:{},annotations:ROOT_STAGE_RO},async()=>textResult(await rootStageMediatorCall('POST','/v1/preflight',{})));
+}
+
 function proxy(mcp){
   return new Proxy(mcp,{get(target,prop){
     if(prop==='registerTool')return (name,config,handler)=>{
@@ -370,4 +394,5 @@ function proxy(mcp){
 export function registerSafeFilesPlugin(mcp,context){
   base.registerSafeFilesPlugin(proxy(mcp),context);
   registerSourceMappingTools(mcp);
+  registerRootStageTools(mcp);
 }
