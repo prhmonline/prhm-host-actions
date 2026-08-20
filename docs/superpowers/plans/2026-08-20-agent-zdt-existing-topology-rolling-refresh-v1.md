@@ -393,3 +393,14 @@ Require both public endpoints healthy/ready and verify old backends remain avail
 - [ ] **Step 4: Do not auto-finalize**
 
 Present applied state and rollback window. Finalize or explicit rollback is a separate Level-4 decision.
+
+
+## Plan Amendment — Phase-Specific Host Actions
+
+Task 6 is amended so the installer registers three independent fixed Level-4 actions rather than one multi-mode action:
+
+1. `agent_zdt_existing_topology_rolling_refresh_v1` → fixed helper mode `--apply`.
+2. `agent_zdt_existing_topology_rolling_refresh_rollback_v1` → fixed helper mode `--rollback`.
+3. `agent_zdt_existing_topology_rolling_refresh_finalize_v1` → fixed helper mode `--finalize`.
+
+The shared helper remains `agent-zdt-existing-topology-rolling-refresh-v1.js`. The MCP enum, Base registry, Executor registry/dispatcher, approval-policy operations, and typed scopes must contain all three actions exactly once. No caller-controlled phase or mode is accepted. `--preflight-only` remains read-only and is executed separately before any Level-4 request.

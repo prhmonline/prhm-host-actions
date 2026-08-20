@@ -258,3 +258,14 @@ The design is accepted when tests prove:
 7. Create a fresh Level-4 request.
 8. Apply only after explicit `CONFIRM_LEVEL_4_CRITICAL`.
 9. Verify persisted evidence and public health before any finalize decision.
+
+
+## Approved Amendment — Three Fixed Phase Actions
+
+The Host Actions v2 interface accepts only a fixed action name and no caller-supplied phase argument. Therefore the rolling-refresh control surface is split into three independent zero-input Level-4 actions that share the same helper implementation:
+
+- `agent_zdt_existing_topology_rolling_refresh_v1` — executes `--apply` only.
+- `agent_zdt_existing_topology_rolling_refresh_rollback_v1` — executes `--rollback` only.
+- `agent_zdt_existing_topology_rolling_refresh_finalize_v1` — executes `--finalize` only.
+
+`--preflight-only` remains a read-only commit-pinned verification step and is not exposed as a mutating Host Action. Each phase action requires its own one-time Level-4 approval and typed scope. The Executor injects the fixed helper phase server-side; callers cannot provide a command, path, port, slot, action alias, or mode. Rollback and finalize remain evidence-gated and can only operate on a valid prior apply record. Automatic finalize is prohibited.
