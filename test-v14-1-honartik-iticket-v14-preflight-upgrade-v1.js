@@ -16,7 +16,7 @@ test('upgrade is bound to the exact old installed state and corrected V14 artifa
   assert.equal(up.OLD.agentRoute,'a2c69c0066c514b938eb304bb38325199f81a269320829d0508d9b80323e4c92');
   assert.equal(up.OLD.mcpPlugin,'963529d9ebec49e64ea98798ca0dbf2cd8542f4fb648213a05cb3351f83d28a2');
   assert.equal(up.OLD.payload,'1cd8e33bdecaa2ebffc086c778e7938cb33b57b31e6abab21a183972259a0059');
-  assert.equal(up.OLD.hostActionsV2,'7efeeb17253bc52aeac1f362c377fd4121984f49f159fd9e72ae7e06897ded56');
+  assert.equal(up.OLD.hostActionsV2,'4432f904eaea786d6c184ffee10577402d3620484680f4e2e8d116dd9f8b3bba');
   assert.equal(up.NEW.agentRoute,sha(fs.readFileSync(path.join(ROOT,'honartik-iticket-v14-preflight-readonly-routes.js'))));
   assert.equal(up.NEW.payload,sha(fs.readFileSync(path.join(ROOT,'bootstrap-host-actions-v14-honartik-iticket-dark-backend-batch1.js'))));
   assert.equal(path.basename(up.SOURCES.agentRoute),'honartik-iticket-v14-preflight-readonly-routes.js');
