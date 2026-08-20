@@ -20,10 +20,10 @@ const PATHS=Object.freeze({
   helper:'/opt/prhm-agent-selfmaint-exec/actions/honartik-iticket-dark-backend-batch1-v1.js'
 });
 const BASELINE=Object.freeze({
-  base:'b084b501b2ea572b39336e45673b4d987a6f7cdb10c769a4db3191ce86ca2877',
-  executor:'5346b24f88c19121898288bd197a8dbe2a18a8c587402cfcd5a27afcfeadacad',
-  mcp:'ebe988fb99794ed3e09b2cefa7496c2d47c967a850b900a117b6b762b388cc34',
-  policy:'c56f3f7c35e6ac22735f0689371e8ca4a7de6f8c375436a456798f8df0b7596a'
+  base:'b0ada3809307005d7715a1c7c970687b65ace82e765c8dfaeb5408061477b4ae',
+  executor:'6b945fcb3afe8ef3e074b07745912c5183f28826728bf4d14ed93c1161c961ba',
+  mcp:'7362fcf00bff04e46287df574f875110603d8c7da8b1bb207e9e609dc86c5b85',
+  policy:'139e5571086b5ead1805e959d9a66866bd9ef3be19ead760a6281c63956a0e18'
 });
 const FRONT=Object.freeze({root:'/home/honartik/domains/honartik.ir/public_html',target:'/home/honartik/worktrees/iticket-dark-v1-front',sha:'ecd3bfce8790b5cb3d32afbfbf45bc39839dba62',branch:'feature/iticket-dark-v1'});
 const BACK=Object.freeze({root:'/home/honartik/domains/dashboard.honartik.ir/public_html',target:'/home/honartik/worktrees/iticket-dark-v1-back',sha:'54d8038a64ce64e78c84dfeaffbb4cca36446108',branch:'feature/iticket-dark-v1'});

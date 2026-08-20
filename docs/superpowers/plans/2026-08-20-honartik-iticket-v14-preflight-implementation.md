@@ -12,10 +12,12 @@
 
 ## Global Constraints
 
+> Baseline refresh 2026-08-20: live V14 control-plane SHAs now bind Base `b0ada3809307005d7715a1c7c970687b65ace82e765c8dfaeb5408061477b4ae`, Executor `6b945fcb3afe8ef3e074b07745912c5183f28826728bf4d14ed93c1161c961ba`, MCP `7362fcf00bff04e46287df574f875110603d8c7da8b1bb207e9e609dc86c5b85`, and Approval Policy `139e5571086b5ead1805e959d9a66866bd9ef3be19ead760a6281c63956a0e18`. Refreshed V14 payload SHA is `420a7f817c99967819e3b5bae43d862b6158a483a8fb5665492917f5c641972b`. This refresh changes bindings only, not behavior.
+
 - Pinned merged V14 source commit: `1ecd932451d7464e354419b67f2c605d93135854`.
-- Pinned V14 payload SHA-256: `134ef8c0828b6c941b98e0d5c3ecb5d6ceaff1e1bf6ef73daabc79a92f5d8b78`.
+- Pinned V14 payload SHA-256: `420a7f817c99967819e3b5bae43d862b6158a483a8fb5665492917f5c641972b`.
 - Live Agent API baseline SHA-256 at plan time: `70368fdc8be24646b10d414f6159502c2f3d338ed1132451d5b5740d1270999c`.
-- Live MCP `hostActionsV2.js` immutable V14 baseline SHA-256: `ebe988fb99794ed3e09b2cefa7496c2d47c967a850b900a117b6b762b388cc34`; the adapter must never modify this file.
+- Live MCP `hostActionsV2.js` immutable V14 baseline SHA-256: `7362fcf00bff04e46287df574f875110603d8c7da8b1bb207e9e609dc86c5b85`; the adapter must never modify this file.
 - Live MCP registry `/home/agent/ssh-mcp-server/src/core/registry.js` baseline SHA-256 at plan correction time: `cf3681ca4d4632156df2f77886afe59c07da9a86dbcb68f4217577f811b22231`.
 - New MCP tool name: `honartik_iticket_v14_preflight_readonly`.
 - Agent API route: `POST /honartik/iticket/v14/preflight`.
@@ -41,7 +43,7 @@
 - Produces: `registerHonartikIticketV14PreflightRoutes(app, { auth })`.
 - Produces: `registerHonartikIticketPreflightPlugin(mcp, { agent })`, a zero-input MCP tool that calls only `agent.callAgent('/honartik/iticket/v14/preflight','POST',{})`.
 - Produces: internal `runPinnedPreflight()` returning validated `prhm.host-action-install-preflight.v1` JSON.
-- Consumes: exact payload path `/opt/prhm-agent-readonly-actions/honartik-iticket-v14-preflight.js` and SHA `134ef8c0828b6c941b98e0d5c3ecb5d6ceaff1e1bf6ef73daabc79a92f5d8b78`.
+- Consumes: exact payload path `/opt/prhm-agent-readonly-actions/honartik-iticket-v14-preflight.js` and SHA `420a7f817c99967819e3b5bae43d862b6158a483a8fb5665492917f5c641972b`.
 
 - [ ] **Step 1: Write failing runtime contract tests**
 
@@ -52,7 +54,7 @@ const route = require('./honartik-iticket-v14-preflight-readonly-routes.js');
 assert.equal(typeof route.registerHonartikIticketV14PreflightRoutes, 'function');
 assert.equal(route.TOOL, 'honartik_iticket_v14_preflight_readonly');
 assert.equal(route.ROUTE, '/honartik/iticket/v14/preflight');
-assert.equal(route.V14_SHA, '134ef8c0828b6c941b98e0d5c3ecb5d6ceaff1e1bf6ef73daabc79a92f5d8b78');
+assert.equal(route.V14_SHA, '420a7f817c99967819e3b5bae43d862b6158a483a8fb5665492917f5c641972b');
 ```
 
 Also assert from source/exports that the runtime has no generic command/path/ref argument, exports no mutation function, denies `node:http`/`node:https`/`node:net`, and the route rejects any body key before calling the runner.
@@ -75,7 +77,7 @@ Implement constants:
 const TOOL='honartik_iticket_v14_preflight_readonly';
 const ROUTE='/honartik/iticket/v14/preflight';
 const V14_PAYLOAD='/opt/prhm-agent-readonly-actions/honartik-iticket-v14-preflight.js';
-const V14_SHA='134ef8c0828b6c941b98e0d5c3ecb5d6ceaff1e1bf6ef73daabc79a92f5d8b78';
+const V14_SHA='420a7f817c99967819e3b5bae43d862b6158a483a8fb5665492917f5c641972b';
 ```
 
 `runPinnedPreflight()` must SHA-check the payload before compilation, temporarily intercept `Module._load`, provide a read-only `fs` proxy, a Git-only `child_process.spawnSync`, deny network modules, compile the payload with `require.main !== module`, restore `Module._load`, require an exported `preflight` function, call it, and validate the result safety flags before returning it.
@@ -111,7 +113,7 @@ git commit -m "feat: add iTicket V14 read-only preflight runtime"
 **Files:**
 - Create: `bootstrap-host-actions-v14-1-honartik-iticket-v14-preflight-readonly.js`
 - Modify: `test-v14-1-honartik-iticket-v14-preflight-readonly.js`
-- Verify immutable: `src/plugins/hostActionsV2.js` remains SHA `ebe988fb99794ed3e09b2cefa7496c2d47c967a850b900a117b6b762b388cc34`
+- Verify immutable: `src/plugins/hostActionsV2.js` remains SHA `7362fcf00bff04e46287df574f875110603d8c7da8b1bb207e9e609dc86c5b85`
 
 **Interfaces:**
 - Produces: `patchAgentServer(source)`, `patchRegistry(source)`, `preflight()`, and `install()`.
@@ -127,8 +129,8 @@ Add failing assertions that:
 ```js
 assert.equal(installer.EXPECTED.agentServer, '70368fdc8be24646b10d414f6159502c2f3d338ed1132451d5b5740d1270999c');
 assert.equal(installer.EXPECTED.registry, 'cf3681ca4d4632156df2f77886afe59c07da9a86dbcb68f4217577f811b22231');
-assert.equal(installer.IMMUTABLE_HOST_ACTIONS_V2_SHA, 'ebe988fb99794ed3e09b2cefa7496c2d47c967a850b900a117b6b762b388cc34');
-assert.equal(installer.V14_SHA, '134ef8c0828b6c941b98e0d5c3ecb5d6ceaff1e1bf6ef73daabc79a92f5d8b78');
+assert.equal(installer.IMMUTABLE_HOST_ACTIONS_V2_SHA, '7362fcf00bff04e46287df574f875110603d8c7da8b1bb207e9e609dc86c5b85');
+assert.equal(installer.V14_SHA, '420a7f817c99967819e3b5bae43d862b6158a483a8fb5665492917f5c641972b');
 ```
 
 Tests must prove `patchAgentServer()` injects the route import/register transformations exactly once into the current wrapper, `patchRegistry()` imports/registers only the dedicated read-only plugin exactly once, the dedicated plugin has an empty input schema and uses only `agent.callAgent()` for the fixed route, `hostActionsV2.js` remains immutable at its V14 SHA, and the installer does not reference Base/Executor/Approval Policy write paths.
