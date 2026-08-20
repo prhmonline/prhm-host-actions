@@ -110,3 +110,21 @@ test('helper locks execution and revalidates worktree identity after writes',()=
   assert.match(source,/_worktree_head_changed_after/);
   assert.match(source,/_worktree_branch_changed_after/);
 });
+
+
+test('preflight ownership validation does not pin whole-file global Host Action SHA baselines',()=>{
+  const src=fs.readFileSync(bootstrapPath,'utf8');
+  assert.doesNotMatch(src,/baseline_sha_mismatch/);
+  assert.doesNotMatch(src,/function verifyBaselines\(\).*BASELINE/s);
+  assert.match(src,/ownership_invariants:true/);
+});
+
+test('executor patch tolerates unrelated dispatch wrappers but still inserts iTicket before fallback',()=>{
+  const boot=require(bootstrapPath);
+  const current="applyHostActionV2=async function(action){if(action==='agent_zdt_existing_topology_rolling_refresh_v1')return applyAgentZdtExistingTopologyRollingApplyV1();if(action==='agent_zdt_existing_topology_rolling_refresh_rollback_v1')return applyAgentZdtExistingTopologyRollingRollbackV1();if(action==='agent_zdt_existing_topology_rolling_refresh_finalize_v1')return applyAgentZdtExistingTopologyRollingFinalizeV1();if(action==='imotion_marketing_target_register_v1')return applyImotionMarketingTargetRegisterV1();if(action==='host_action_v2_installer_v1')return applyHostActionV2InstallerV1();if(action==='agent_zero_downtime_bootstrap_v1')return applyAgentZeroDowntimeBootstrapV1();return applyHostActionV2Original(action);};";
+  const base="  agent_zero_downtime_bootstrap_v1:{operation:'host_action.agent_zero_downtime_bootstrap_v1',kind:'agent_zero_downtime_bootstrap_v1'}\nfunction verifyProcessSandboxV2(){}\nreturn json(res, 200, { ok: true, service: 'prhm-agent-selfmaint-exec', version: '1.12.4-host-actions-v2-verified-economics-fixture' });\n"+current;
+  const out=boot.patchExecutor(base);
+  assert.match(out,/agent_zdt_existing_topology_rolling_refresh_finalize_v1/);
+  assert.match(out,/if\(action==='honartik_iticket_dark_backend_batch1_v1'\)return applyHonartikIticketDarkBackendBatch1V1\(\);return applyHostActionV2Original\(action\);/);
+  assert.throws(()=>boot.patchExecutor(base.replace('return applyHostActionV2Original(action);','return somethingElse(action);')),/executor_dispatch_fallback_missing/);
+});
