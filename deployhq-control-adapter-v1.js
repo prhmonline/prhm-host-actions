@@ -1,6 +1,49 @@
 #!/usr/bin/env node
 'use strict';
 
+
+const crypto=require('node:crypto');
+const DEPLOYHQ_ORIGIN='https://mohammad-heidarypur.deployhq.com';
+const DEPLOYHQ_PROJECT='/projects/prhm-host-actions';
+function credentialPaths(env=process.env){
+  const dir=env&&env.CREDENTIALS_DIRECTORY;
+  if(!dir) throw new Error('credentials_directory_missing');
+  return {email:dir.replace(/\/$/,'')+'/deployhq_email',apiKey:dir.replace(/\/$/,'')+'/deployhq_api_key'};
+}
+function fp12(buf){return crypto.createHash('sha256').update(buf).digest('hex').slice(0,12)}
+function credentialEvidence({email,apiKey}){
+  const eb=Buffer.isBuffer(email)?email:Buffer.from(email||'');
+  const kb=Buffer.isBuffer(apiKey)?apiKey:Buffer.from(apiKey||'');
+  return {credential_present:eb.length>0&&kb.length>0,email_length:eb.length,api_key_length:kb.length,email_fingerprint:eb.length?fp12(eb):null,api_key_fingerprint:kb.length?fp12(kb):null};
+}
+function safeError(err,email,apiKey){
+  let msg=String(err&&err.message||err||'deployhq_request_failed');
+  for(const secret of [email,apiKey]) if(secret) msg=msg.split(String(secret)).join('[REDACTED]');
+  msg=String(redact(msg));
+  const e=new Error(msg); e.code='deployhq_request_failed'; return e;
+}
+function createDeployHQClient({email,apiKey,request}){
+  email=Buffer.isBuffer(email)?email.toString('utf8').trim():String(email||'').trim();
+  apiKey=Buffer.isBuffer(apiKey)?apiKey.toString('utf8').trim():String(apiKey||'').trim();
+  if(!email||!apiKey) throw new Error('deployhq_credential_missing');
+  if(typeof request!=='function') throw new Error('deployhq_request_adapter_missing');
+  const authorization='Basic '+Buffer.from(email+':'+apiKey).toString('base64');
+  async function call(method,path,body){
+    try{
+      const r=await request({origin:DEPLOYHQ_ORIGIN,method,path,headers:{accept:'application/json','content-type':'application/json',authorization},body});
+      if(!r||r.status<200||r.status>=300) throw new Error('deployhq_http_'+String(r&&r.status||'unknown'));
+      return redact(r.json);
+    }catch(err){throw safeError(err,email,apiKey)}
+  }
+  return Object.freeze({
+    listServers:async()=>{const j=await call('GET',DEPLOYHQ_PROJECT+'/servers');const arr=Array.isArray(j)?j:(j&&j.servers)||[];return arr.map(normalizeServer)},
+    createFixedServer:async()=>normalizeServer(await call('POST',DEPLOYHQ_PROJECT+'/servers',{server:FIXED_NODE1})),
+    deleteCreatedServer:async(identifier)=>{if(!/^[0-9a-f-]{36}$/i.test(String(identifier||''))&&!/^new\d+$/.test(String(identifier||''))) throw new Error('invalid_created_identifier');return call('DELETE',DEPLOYHQ_PROJECT+'/servers/'+encodeURIComponent(identifier))},
+    deploymentSnapshot:async()=>{const j=await call('GET',DEPLOYHQ_PROJECT+'/deployments');const arr=(j&&j.records)||j&&j.deployments||[];return {count:arr.length,last:arr[0]&&arr[0].identifier||null}},
+    commandSnapshot:async()=>{const j=await call('GET',DEPLOYHQ_PROJECT+'/commands');const arr=(j&&j.commands)||[];return {count:arr.length,last:arr[0]&&arr[0].identifier||null}},
+  });
+}
+
 const FIXED_NODE1=Object.freeze({
   name:'PRHM Host Bootstrap - node1',
   hostname:'185.191.76.138',
@@ -83,4 +126,4 @@ function createAdapter(deps){
     }catch(err){return send(res,400,{ok:false,error:err&&err.message||'bad_request'})}
   }
 }
-module.exports={FIXED_NODE1,redact,normalizeServer,classifyCanonical,createAdapter};
+module.exports={FIXED_NODE1,redact,normalizeServer,classifyCanonical,createAdapter,credentialPaths,credentialEvidence,createDeployHQClient};
