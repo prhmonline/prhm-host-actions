@@ -14,3 +14,36 @@ test('alternate path spelling and relative destination reject',()=>{const m=stru
 test('manifest chaining or extra fields reject',()=>{const m=structuredClone(manifest);m.records[0].next_manifest='x';assert.throws(()=>t.validateManifest(m),/manifest_record_fields_invalid/);const m2=structuredClone(manifest);m2.parent_manifest='x';assert.throws(()=>t.validateManifest(m2),/manifest_top_level_fields_invalid/)});
 test('secret-like manifest keys reject',()=>{const m=structuredClone(manifest);m.records[0].api_key_value='x';assert.throws(()=>t.validateManifest(m),/secret_like_manifest_key/)});
 test('redactEvidence hides auth and secret-like keys',()=>{const o=t.redactEvidence({token:'abc',msg:'Bearer abc',nested:{password:'p',ok:true}});assert.equal(o.token,'[REDACTED]');assert.equal(o.msg,'[REDACTED]');assert.equal(o.nested.password,'[REDACTED]');assert.equal(o.nested.ok,true)});
+
+test('preflight performs zero writes and returns required evidence',()=>{
+ const writes=[];
+ const fsApi={lstatSync(p){const e=new Error();e.code='ENOENT';throw e},writeFileSync(){writes.push('write')},renameSync(){writes.push('rename')}};
+ const execApi={verifyNode(){return {ok:true}},verifyUnit(){return {ok:true}}};
+ const out=t.preflight({fsApi,execApi,manifest,packageBytes:bytes,sourceCommit:t.PACKAGE.source_commit,manifestSha:t.PACKAGE.manifest_sha256,liveBaseline:{expected:{a:'1'},actual:{a:'1'}}});
+ assert.equal(writes.length,0);
+ assert.equal(out.ok,true);assert.equal(out.preflight_only,true);assert.equal(out.production_mutation,false);
+});
+
+test('preflight rejects wrong source commit and manifest sha',()=>{
+ const fsApi={lstatSync(){const e=new Error();e.code='ENOENT';throw e}};const execApi={verifyNode(){return {ok:true}},verifyUnit(){return {ok:true}}};
+ assert.throws(()=>t.preflight({fsApi,execApi,manifest,packageBytes:bytes,sourceCommit:'0'.repeat(40),manifestSha:t.PACKAGE.manifest_sha256,liveBaseline:{expected:{a:1},actual:{a:1}}}),/source_commit_mismatch/);
+ assert.throws(()=>t.preflight({fsApi,execApi,manifest,packageBytes:bytes,sourceCommit:t.PACKAGE.source_commit,manifestSha:'0'.repeat(64),liveBaseline:{expected:{a:1},actual:{a:1}}}),/manifest_sha_mismatch/);
+});
+test('preflight rejects artifact sha mismatch and syntax failure',()=>{
+ const fsApi={lstatSync(){const e=new Error();e.code='ENOENT';throw e}};const okExec={verifyNode(){return {ok:true}},verifyUnit(){return {ok:true}}};
+ const bad={...bytes,[manifest.records[1].source_path]:Buffer.from('bad')};
+ assert.throws(()=>t.preflight({fsApi,execApi:okExec,manifest,packageBytes:bad,sourceCommit:t.PACKAGE.source_commit,manifestSha:t.PACKAGE.manifest_sha256,liveBaseline:{expected:{a:1},actual:{a:1}}}),/artifact_sha_mismatch/);
+ const badExec={verifyNode(){return {ok:false}},verifyUnit(){return {ok:true}}};
+ assert.throws(()=>t.preflight({fsApi,execApi:badExec,manifest,packageBytes:bytes,sourceCommit:t.PACKAGE.source_commit,manifestSha:t.PACKAGE.manifest_sha256,liveBaseline:{expected:{a:1},actual:{a:1}}}),/syntax_failed/);
+});
+test('preflight rejects baseline drift and destination conflict',()=>{
+ const none={lstatSync(){const e=new Error();e.code='ENOENT';throw e}};const execApi={verifyNode(){return {ok:true}},verifyUnit(){return {ok:true}}};
+ assert.throws(()=>t.preflight({fsApi:none,execApi,manifest,packageBytes:bytes,sourceCommit:t.PACKAGE.source_commit,manifestSha:t.PACKAGE.manifest_sha256,liveBaseline:{expected:{a:1},actual:{a:2}}}),/baseline_drift/);
+ const conflict={lstatSync(p){if(p===manifest.records[0].destination_path)return {isSymbolicLink:()=>false,isDirectory:()=>true,isFile:()=>false};const e=new Error();e.code='ENOENT';throw e}};
+ assert.throws(()=>t.preflight({fsApi:conflict,execApi,manifest,packageBytes:bytes,sourceCommit:t.PACKAGE.source_commit,manifestSha:t.PACKAGE.manifest_sha256,liveBaseline:{expected:{a:1},actual:{a:1}}}),/destination_conflict/);
+});
+test('preflight evidence contains no auth or secret values',()=>{
+ const fsApi={lstatSync(){const e=new Error();e.code='ENOENT';throw e}};const execApi={verifyNode(){return {ok:true,token:'SHOULD_NOT_LEAK'}},verifyUnit(){return {ok:true,authorization:'Basic abc'}}};
+ const out=t.preflight({fsApi,execApi,manifest,packageBytes:bytes,sourceCommit:t.PACKAGE.source_commit,manifestSha:t.PACKAGE.manifest_sha256,liveBaseline:{expected:{a:1},actual:{a:1}}});
+ const text=JSON.stringify(out);assert.doesNotMatch(text,/SHOULD_NOT_LEAK|Basic abc/);
+});

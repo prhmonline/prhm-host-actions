@@ -41,4 +41,26 @@ function validateDestination(record,fsApi){
 }
 function validatePackageBytes(manifest,artifactBytes){validateManifest(manifest);for(const r of manifest.records){const b=artifactBytes[r.source_path];if(!Buffer.isBuffer(b))fail('artifact_missing');if(sha256(b)!==r.sha256)fail('artifact_sha_mismatch')}return true}
 function redactEvidence(v){if(Array.isArray(v))return v.map(redactEvidence);if(v&&typeof v==='object'){const o={};for(const [k,x] of Object.entries(v))o[k]=hasSecretKey(k)?'[REDACTED]':redactEvidence(x);return o}if(typeof v==='string'&&/(Bearer\s+\S+|Basic\s+\S+)/i.test(v))return '[REDACTED]';return v}
-module.exports={ACTION,OPERATION,REQUEST_FIELDS,PACKAGE,ALLOWLIST,canonicalManifestBytes,validateManifest,validateDestination,validatePackageBytes,redactEvidence,sha256};
+
+function sameJson(a,b){return JSON.stringify(stable(a))===JSON.stringify(stable(b))}
+function preflight({fsApi,execApi,manifest,packageBytes,sourceCommit,manifestSha,liveBaseline}){
+ if(sourceCommit!==PACKAGE.source_commit)fail('source_commit_mismatch');
+ if(manifestSha!==PACKAGE.manifest_sha256)fail('manifest_sha_mismatch');
+ validatePackageBytes(manifest,packageBytes);
+ let allow=true,symlink=true;
+ for(const r of manifest.records){
+  validateDestination(r,fsApi);
+  try{const st=fsApi.lstatSync(r.destination_path);if(st&&typeof st.isDirectory==='function'&&st.isDirectory())fail('destination_conflict');if(st&&typeof st.isFile==='function'&&!st.isFile()&&!(typeof st.isSymbolicLink==='function'&&st.isSymbolicLink()))fail('destination_conflict')}catch(e){if(!(e&&e.code==='ENOENT'))throw e}
+ }
+ if(!liveBaseline||!sameJson(liveBaseline.expected,liveBaseline.actual))fail('baseline_drift');
+ for(const r of manifest.records){
+  const b=packageBytes[r.source_path];let vr;
+  if(r.source_path.endsWith('.js')){if(!execApi||typeof execApi.verifyNode!=='function')fail('fixed_verifier_missing');vr=execApi.verifyNode(r.source_path,b)}
+  else if(r.source_path.endsWith('.service')){if(!execApi||typeof execApi.verifyUnit!=='function')fail('fixed_verifier_missing');vr=execApi.verifyUnit(r.source_path,b)}
+  else fail('artifact_type_not_supported');
+  if(!vr||vr.ok!==true)fail('syntax_failed');
+ }
+ return redactEvidence({ok:true,action:ACTION,schema_version:'prhm.bootstrap-preflight-result.v1',package_id:PACKAGE.package_id,preflight_only:true,production_mutation:false,source_commit_match:true,manifest_sha_match:true,all_file_sha_match:true,destination_allowlist_pass:allow,symlink_guard_pass:symlink,syntax_pass:true,baseline_match:true,deployhq_mutation:false,application_mutation:false,honartik_mutation:false,imotion_mutation:false});
+}
+
+module.exports={ACTION,OPERATION,REQUEST_FIELDS,PACKAGE,ALLOWLIST,canonicalManifestBytes,validateManifest,validateDestination,validatePackageBytes,redactEvidence,sha256,preflight};
