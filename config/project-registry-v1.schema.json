@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://prhm.ir/schemas/project-registry-v1.schema.json",
+  "title": "PRHM Project Finalization Registry V1",
+  "type": "object",
+  "required": ["version", "projects"],
+  "properties": {
+    "version": {"const": "1"},
+    "projects": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/project"}
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "project": {
+      "type": "object",
+      "required": ["project_key", "display_name", "repositories", "sheet", "deployment", "finalizer_ready"],
+      "properties": {
+        "project_key": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "display_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "repositories": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/repository"}
+        },
+        "sheet": {"$ref": "#/$defs/sheet"},
+        "deployment": {"$ref": "#/$defs/deployment"},
+        "atomic_multi_repo": {"type": "boolean"},
+        "source_mapping_ref": {
+          "type": ["string", "null"],
+          "maxLength": 300
+        },
+        "finalizer_ready": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "repository": {
+      "type": "object",
+      "required": ["role", "repository", "allowed_branches", "required_for_release"],
+      "properties": {
+        "role": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,31}$"
+        },
+        "repository": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+        },
+        "allowed_branches": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255,
+            "pattern": "^(?!.*\\.\\.)(?!.*[\\s~^:?*\\[\\\\]).+$"
+          }
+        },
+        "required_for_release": {"type": "boolean"},
+        "direct_push_enabled": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "sheet": {
+      "type": "object",
+      "required": ["spreadsheet_id", "tab", "adapter"],
+      "properties": {
+        "spreadsheet_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{20,200}$"
+        },
+        "tab": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "adapter": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "overview_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "field_labels": {
+          "type": "object",
+          "additionalProperties": {"type": "string"}
+        }
+      },
+      "additionalProperties": false
+    },
+    "deployment": {
+      "type": "object",
+      "required": ["track_staging", "track_production", "production_verifier"],
+      "properties": {
+        "track_staging": {"type": "boolean"},
+        "track_production": {"type": "boolean"},
+        "staging_verifier": {
+          "type": ["string", "null"],
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "production_verifier": {
+          "type": ["string", "null"],
+          "pattern": "^[a-z][a-z0-9_]*$"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,95 @@
+{
+  "version": "1",
+  "projects": [
+    {
+      "project_key": "park-bazar",
+      "display_name": "Park Bazar",
+      "repositories": [
+        {
+          "role": "main",
+          "repository": "prhmonline/park-bazar",
+          "allowed_branches": [
+            "main",
+            "baseline/live-import-20260819"
+          ],
+          "required_for_release": true,
+          "direct_push_enabled": false
+        }
+      ],
+      "sheet": {
+        "spreadsheet_id": "1kA4fQ8398Rj_5zYiPXHfssL3R42dr_MSmVHtIdxnP4k",
+        "tab": "Park Bazar",
+        "adapter": "project_status_v1",
+        "overview_name": "Park Bazar"
+      },
+      "deployment": {
+        "track_staging": false,
+        "track_production": true,
+        "production_verifier": null
+      },
+      "atomic_multi_repo": false,
+      "source_mapping_ref": "prhmonline/park-bazar:baseline/live-import-20260819/source-map.json",
+      "finalizer_ready": false
+    },
+    {
+      "project_key": "gisheh",
+      "display_name": "Gisheh",
+      "repositories": [
+        {
+          "role": "main",
+          "repository": "prhmonline/gisheh",
+          "allowed_branches": [
+            "main",
+            "baseline/live-import-20260819"
+          ],
+          "required_for_release": true,
+          "direct_push_enabled": false
+        }
+      ],
+      "sheet": {
+        "spreadsheet_id": "1kA4fQ8398Rj_5zYiPXHfssL3R42dr_MSmVHtIdxnP4k",
+        "tab": "Gisheh",
+        "adapter": "project_status_v1",
+        "overview_name": "Gisheh"
+      },
+      "deployment": {
+        "track_staging": false,
+        "track_production": true,
+        "production_verifier": null
+      },
+      "atomic_multi_repo": false,
+      "source_mapping_ref": "prhmonline/gisheh:baseline/live-import-20260819/source-map.json",
+      "finalizer_ready": false
+    },
+    {
+      "project_key": "solo-company",
+      "display_name": "Solo Company",
+      "repositories": [
+        {
+          "role": "main",
+          "repository": "prhmonline/solo-company",
+          "allowed_branches": [
+            "main",
+            "baseline/live-import-20260819"
+          ],
+          "required_for_release": true,
+          "direct_push_enabled": false
+        }
+      ],
+      "sheet": {
+        "spreadsheet_id": "1kA4fQ8398Rj_5zYiPXHfssL3R42dr_MSmVHtIdxnP4k",
+        "tab": "Solo Company",
+        "adapter": "project_status_v1",
+        "overview_name": "Solo Company"
+      },
+      "deployment": {
+        "track_staging": false,
+        "track_production": true,
+        "production_verifier": null
+      },
+      "atomic_multi_repo": false,
+      "source_mapping_ref": "prhmonline/solo-company:baseline/live-import-20260819/source-map.json",
+      "finalizer_ready": false
+    }
+  ]
+}
