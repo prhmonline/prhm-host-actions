@@ -48,3 +48,36 @@ test('helper includes rollback, PHP lint, Batch1 regression, Batch2 tests and no
   const src=require('node:fs').readFileSync(path.join(__dirname,'honartik-iticket-dark-backend-batch2-helper-v1.js'),'utf8');
   for(const needle of ['rollback','php_lint_failed','DarkGateTest.php','Batch2DarkNetworkTest.php','production_application_tree_mutation:false','database_mutation:false','deploy:false','external_network:false','token_read:false']) assert.match(src,new RegExp(needle.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
 });
+
+
+test('reconciliation classifies all-absent, all-exact and fails closed on partial or mismatch',()=>{
+  const fs=require('node:fs');
+  const os=require('node:os');
+  const root=fs.mkdtempSync(path.join(os.tmpdir(),'iticket-b2-reconcile-'));
+  const rendered={'a/x.txt':'one','b/y.txt':'two'};
+  try{
+    assert.equal(helper.classifyRenderedState(root,rendered),'all_absent');
+    fs.mkdirSync(path.join(root,'a'),{recursive:true});
+    fs.writeFileSync(path.join(root,'a/x.txt'),'one');
+    assert.throws(()=>helper.classifyRenderedState(root,rendered),/batch2_partial_existing_state/);
+    fs.mkdirSync(path.join(root,'b'),{recursive:true});
+    fs.writeFileSync(path.join(root,'b/y.txt'),'two');
+    assert.equal(helper.classifyRenderedState(root,rendered),'all_exact');
+    fs.writeFileSync(path.join(root,'b/y.txt'),'tampered');
+    assert.throws(()=>helper.classifyRenderedState(root,rendered),/batch2_existing_sha_mismatch:b\/y.txt/);
+  }finally{fs.rmSync(root,{recursive:true,force:true});}
+});
+
+test('result bridge persists latest.json atomically and exports the fixed result path',()=>{
+  const fs=require('node:fs');
+  const os=require('node:os');
+  const root=fs.mkdtempSync(path.join(os.tmpdir(),'iticket-b2-result-'));
+  try{
+    const target=path.join(root,'latest.json');
+    const result={ok:true,action:'honartik_iticket_dark_backend_batch2_v1'};
+    helper.persistResult(target,result);
+    assert.deepEqual(JSON.parse(fs.readFileSync(target,'utf8')),result);
+    assert.equal(fs.statSync(target).mode & 0o777,0o600);
+    assert.equal(helper.RESULT_FILE,'/var/lib/prhm-agent-selfmaint-exec/honartik-iticket-dark-backend-batch2-v1/latest.json');
+  }finally{fs.rmSync(root,{recursive:true,force:true});}
+});

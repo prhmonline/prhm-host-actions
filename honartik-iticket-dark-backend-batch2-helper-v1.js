@@ -7,6 +7,7 @@ const cp=require('node:child_process');
 const WORKTREE='/home/honartik/worktrees/iticket-dark-v1-back';
 const EXPECTED_HEAD='54d8038a64ce64e78c84dfeaffbb4cca36446108';
 const EXPECTED_BRANCH='feature/iticket-dark-v1';
+const RESULT_FILE='/var/lib/prhm-agent-selfmaint-exec/honartik-iticket-dark-backend-batch2-v1/latest.json';
 const BASELINE_SHA256={
   'app/components/iticket/IticketConfig.php':'033b636fd5b491006e2ee6f129720301aea1778f0b3e412423cc25b94ecce66f',
   'app/components/iticket/IticketClient.php':'d717f45ab691ff2da664a0fbfbe964f348f1944d75f80e2b6d9b0f79469ee723',
@@ -32,6 +33,8 @@ function sha(v){return crypto.createHash('sha256').update(v).digest('hex');}
 function renderFiles(){return {...FILES};}
 function git(args){return cp.execFileSync('/usr/bin/git',args,{cwd:WORKTREE,encoding:'utf8'}).trim();}
 function atomicWrite(abs,bytes){fs.mkdirSync(path.dirname(abs),{recursive:true,mode:0o755});const tmp=abs+'.'+process.pid+'.tmp';fs.writeFileSync(tmp,bytes,{mode:0o644,flag:'wx'});fs.renameSync(tmp,abs);}
+function classifyRenderedState(root,rendered){let absent=0,exact=0;for(const [rel,content] of Object.entries(rendered)){const abs=path.join(root,rel);if(!fs.existsSync(abs)){absent++;continue}const st=fs.statSync(abs);if(!st.isFile())throw new Error('batch2_existing_not_regular:'+rel);const got=sha(fs.readFileSync(abs));const want=sha(Buffer.from(content,'utf8'));if(got!==want)throw new Error('batch2_existing_sha_mismatch:'+rel);exact++;}if(absent===Object.keys(rendered).length)return 'all_absent';if(exact===Object.keys(rendered).length)return 'all_exact';throw new Error('batch2_partial_existing_state');}
+function persistResult(target,result){fs.mkdirSync(path.dirname(target),{recursive:true,mode:0o700});const tmp=target+'.'+process.pid+'.'+Date.now()+'.tmp';fs.writeFileSync(tmp,JSON.stringify(result)+'\n',{mode:0o600,flag:'wx'});fs.renameSync(tmp,target);fs.chmodSync(target,0o600);}
 function removeEmptyParents(abs){let d=path.dirname(abs);const stop=path.join(WORKTREE,'app/components/iticket');while(d.startsWith(stop)&&d!==stop){try{fs.rmdirSync(d);}catch{break}d=path.dirname(d);}}
 function verifyBaseline(){
   if(git(['branch','--show-current'])!==EXPECTED_BRANCH)throw new Error('batch2_branch_mismatch');
@@ -42,9 +45,9 @@ function verifyBaseline(){
 function execute(){
   verifyBaseline();
   const created=[];const rendered=renderFiles();
-  for(const rel of Object.keys(rendered)){if(fs.existsSync(path.join(WORKTREE,rel)))throw new Error('batch2_target_exists:'+rel);}
+  const state=classifyRenderedState(WORKTREE,rendered);
   try{
-    for(const [rel,content] of Object.entries(rendered)){const abs=path.join(WORKTREE,rel);atomicWrite(abs,Buffer.from(content,'utf8'));created.push(abs);}
+    if(state==='all_absent'){for(const [rel,content] of Object.entries(rendered)){const abs=path.join(WORKTREE,rel);atomicWrite(abs,Buffer.from(content,'utf8'));created.push(abs);}}
     const prod=Object.entries(rendered).filter(([p])=>!p.includes('/tests/')).map(([,s])=>s).join('\n');
     for(const needle of ['curl_init','curl_exec','Guzzle','stream_socket_client','fsockopen'])if(prod.includes(needle))throw new Error('batch2_direct_http_primitive:'+needle);
     const php='/usr/bin/php';if(!fs.existsSync(php))throw new Error('php_runtime_missing');
@@ -53,8 +56,10 @@ function execute(){
     const markers=[];for(const rel of tests){const r=cp.spawnSync(php,[path.join(WORKTREE,rel)],{encoding:'utf8',env:{PATH:process.env.PATH||'/usr/bin:/bin'}});if(r.status!==0)throw new Error('batch2_test_failed:'+rel+':'+(r.stderr||r.stdout||'').trim());markers.push((r.stdout||'').trim());}
     const diff=cp.spawnSync('/usr/bin/git',['diff','--quiet','--','app/components/iticket'],{cwd:WORKTREE});if(diff.status!==0)throw new Error('batch2_git_metadata_or_tracked_mutation');
     const status=git(['status','--porcelain=v1','-uall','--','app/components/iticket']).split(/\n/).filter(Boolean);
-    return {ok:true,schema_version:'prhm.host-action-result.v1',action:'honartik_iticket_dark_backend_batch2_v1',files:Object.entries(rendered).map(([p,s])=>({path:p,sha256:sha(Buffer.from(s,'utf8'))})),worktree_status:status,test_markers:markers,production_application_tree_mutation:false,worktree_application_mutation:true,git_metadata_mutation:false,database_mutation:false,deploy:false,external_network:false,token_read:false,rollback:{performed:false}};
+    const result={ok:true,schema_version:'prhm.host-action-result.v1',action:'honartik_iticket_dark_backend_batch2_v1',files:Object.entries(rendered).map(([p,s])=>({path:p,sha256:sha(Buffer.from(s,'utf8'))})),worktree_status:status,test_markers:markers,reconciliation:{state,existing_exact:state==='all_exact',created:state==='all_absent'},production_application_tree_mutation:false,worktree_application_mutation:true,git_metadata_mutation:false,database_mutation:false,deploy:false,external_network:false,token_read:false,rollback:{performed:false}};
+    persistResult(RESULT_FILE,result);
+    return result;
   }catch(e){for(const abs of created.reverse()){try{fs.unlinkSync(abs);removeEmptyParents(abs);}catch{}}e.rollback=true;throw e;}
 }
 if(require.main===module){try{process.stdout.write(JSON.stringify(execute())+'\n');}catch(e){process.stderr.write(String(e.stack||e)+'\n');process.exitCode=1;}}
-module.exports={WORKTREE,EXPECTED_HEAD,EXPECTED_BRANCH,BASELINE_SHA256,renderFiles,sha,verifyBaseline,execute};
+module.exports={WORKTREE,EXPECTED_HEAD,EXPECTED_BRANCH,RESULT_FILE,BASELINE_SHA256,renderFiles,sha,classifyRenderedState,persistResult,verifyBaseline,execute};
