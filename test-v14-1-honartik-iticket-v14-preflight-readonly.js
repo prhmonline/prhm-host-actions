@@ -52,7 +52,7 @@ test('dedicated MCP plugin exposes only the fixed zero-input Agent API call',()=
 
 test('installer patches only Agent wrapper and MCP registry while preserving hostActionsV2',()=>{
   const installer=require(path.join(__dirname,'bootstrap-host-actions-v14-1-honartik-iticket-v14-preflight-readonly.js'));
-  const agentFixture=`'use strict';\n${"const x=1;"}\nsource=replaceOnce(source,"'status'=>1,'created_at'=>$now","'status'=>2,'created_at'=>$now",'admin_active_status');\ntry { const compiled=1; }`;
+  const agentFixture=`'use strict';\nconst baseImotionMonitor=require('./imotionMonitorRoutes.js');\nfunction wrapped(app,deps){\n  const wrappedRunSSH=deps.runSSH;\n  return baseImotionMonitor.registerImotionMonitorRoutes(app,{...deps,runSSH:wrappedRunSSH});\n}`;
   const patchedAgent=installer.patchAgentServer(agentFixture);
   assert.match(patchedAgent,/registerHonartikIticketV14PreflightRoutes/);
   assert.match(patchedAgent,/honartikIticketV14PreflightRoutes/);
@@ -97,4 +97,13 @@ test('installer never writes or patches the V14-bound hostActionsV2 file',()=>{
   assert.doesNotMatch(source,/atomicWrite\(PATHS\.hostActionsV2/);
   assert.doesNotMatch(source,/backupFile\(PATHS\.hostActionsV2/);
   assert.match(source,/assertSha\('hostActionsV2'/);
+});
+
+test('installer injects read-only route via live iMotion wrapper hook without migration-backup route anchors',()=>{
+  const source=fs.readFileSync(path.join(__dirname,'bootstrap-host-actions-v14-1-honartik-iticket-v14-preflight-readonly.js'),'utf8');
+  assert.equal(source.includes('verifyMigrationBaseAnchors'),false);
+  assert.match(source,/const AGENT_IMPORT_ANCHOR=/);
+  assert.match(source,/const AGENT_REGISTER_ANCHOR=/);
+  assert.match(source,/registerHonartikIticketV14PreflightRoutes/);
+  assert.match(source,/deps\.auth/);
 });
