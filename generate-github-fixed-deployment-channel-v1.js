@@ -81,14 +81,57 @@ if(require.main===module)main();
 `;
 }
 
+
+function hostKeyMaterial(line){
+  const parts=line.split(/ +/);
+  return parts[0]+' '+parts[1];
+}
+
+function makeWorkflowYaml(input){
+  const knownHostToken=input.sshPort===22?input.sshHost:`[${input.sshHost}]:${input.sshPort}`;
+  const knownHostsLine=`${knownHostToken} ${hostKeyMaterial(input.hostPublicKey)}`;
+  return `name: PRHM Host Actions Fixed Deploy V1
+on:
+  workflow_dispatch:
+permissions: {}
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Materialize fixed SSH identity
+        shell: bash
+        env:
+          PRHM_DEPLOY_KEY: \${{ secrets.PRHM_HOST_ACTIONS_DEPLOY_KEY }}
+        run: |
+          set -euo pipefail
+          umask 077
+          key_file="$RUNNER_TEMP/prhm_host_actions_deploy_key"
+          known_hosts="$RUNNER_TEMP/prhm_host_actions_known_hosts"
+          printf '%s\\n' "$PRHM_DEPLOY_KEY" > "$key_file"
+          chmod 600 "$key_file"
+          cat > "$known_hosts" <<'PRHM_KNOWN_HOSTS'
+${knownHostsLine}
+PRHM_KNOWN_HOSTS
+          chmod 600 "$known_hosts"
+          ssh -p ${input.sshPort} -i "$key_file" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$known_hosts" prhm-host-actions-deploy@${input.sshHost}
+      - name: Cleanup fixed SSH identity
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f "$RUNNER_TEMP/prhm_host_actions_deploy_key" "$RUNNER_TEMP/prhm_host_actions_known_hosts"
+`;
+}
+
 function generate(raw){
   const input=validateSealInput(raw);
   const dispatcherSource=fs.readFileSync(DISPATCHER_PATH,'utf8');
   const line=authorizedKeysLine(input.deployPublicKey);
   const bootstrapSource=makeBootstrapSource(dispatcherSource,line);
+  const workflowYaml=makeWorkflowYaml(input);
   const result={
     authorizedKeysLine:line,
-    workflowYaml:'',
+    workflowYaml,
     bootstrapSource,
     manifest:{
       schema_version:'prhm.github-fixed-deployment-seal.v1',
@@ -99,7 +142,7 @@ function generate(raw){
       dispatcher_sha256:sha(dispatcherSource),
       authorized_keys_line_sha256:sha(line+'\n'),
       bootstrap_sha256:sha(bootstrapSource),
-      workflow_sha256:null
+      workflow_sha256:sha(workflowYaml)
     }
   };
   return Object.freeze(result);

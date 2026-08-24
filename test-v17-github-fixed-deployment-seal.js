@@ -38,3 +38,28 @@ test('generator is deterministic and emits fixed forced-command restrictions',()
   assert.equal(a.manifest.authorized_keys_line_sha256,sha(a.authorizedKeysLine+'\n'));
   assert.equal(a.manifest.bootstrap_sha256,sha(a.bootstrapSource));
 });
+
+test('generated workflow is manual, zero-input, least-privilege and uses strict host verification',()=>{
+  const g=require(generatorPath);
+  const sealed=g.generate(input);
+  const yaml=sealed.workflowYaml;
+  assert.match(yaml,/workflow_dispatch:\s*\n/);
+  assert.doesNotMatch(yaml,/workflow_dispatch:[\s\S]*?inputs:/);
+  assert.match(yaml,/permissions:\s*\{\}/);
+  assert.doesNotMatch(yaml,/pull_request_target:|\npush:|\nschedule:/);
+  assert.match(yaml,/secrets\.PRHM_HOST_ACTIONS_DEPLOY_KEY/);
+  assert.match(yaml,/BatchMode=yes/);
+  assert.match(yaml,/IdentitiesOnly=yes/);
+  assert.match(yaml,/StrictHostKeyChecking=yes/);
+  assert.match(yaml,/UserKnownHostsFile="\$known_hosts"/);
+  assert.doesNotMatch(yaml,/StrictHostKeyChecking=no|UserKnownHostsFile=\/dev\/null/);
+  assert.doesNotMatch(yaml,/\bscp\s|\bsftp\s|\brsync\s/);
+  assert.doesNotMatch(yaml,/\$\{\{\s*inputs\./);
+  const sshLine=yaml.split('\n').find(line=>line.trim().startsWith('ssh '));
+  assert.ok(sshLine,'ssh invocation must exist');
+  assert.match(sshLine,/prhm-host-actions-deploy@agent\.prhm\.ir\s*$/);
+  assert.doesNotMatch(sshLine,/\s(?:bash|sh|node|sudo|id|cat|cp|mv|rm)\s/);
+  assert.match(yaml,/\[agent\.prhm\.ir\]:40222 ssh-ed25519 /);
+  assert.match(yaml,/if:\s*always\(\)/);
+  assert.equal(sealed.manifest.workflow_sha256,sha(yaml));
+});
