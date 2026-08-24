@@ -1,0 +1,22 @@
+name: temporary-ssh-host-key-discovery
+
+on:
+  push:
+    branches:
+      - integration/github-fixed-deployment-channel-v1
+
+permissions: {}
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Scan production SSH host key
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$(ssh-keyscan -T 10 -p 22022 -t ed25519 185.191.76.138 2>/dev/null | grep -v '^#' | head -n 1)"
+          test -n "$key"
+          printf '%s\n' "HOST_KEY=$key"
+          printf '%s\n' "$key" > /tmp/prhm-host-key
+          ssh-keygen -lf /tmp/prhm-host-key -E sha256
