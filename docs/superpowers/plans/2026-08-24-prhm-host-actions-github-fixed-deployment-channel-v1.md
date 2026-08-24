@@ -545,6 +545,6 @@ That later gate must freshly discover and pin the actual SSH endpoint, port, hos
 Before claiming this implementation plan complete:
 
 1. **Spec coverage:** Tasks 1-2 cover fixed promotion semantics, preflight, atomic replacement, verification, idempotence, and rollback. Tasks 3-4 cover the dedicated SSH forced-command boundary, deterministic sealing, minimal GitHub permissions, zero runtime inputs, host-key verification, and secret-handling rules. Task 5 covers the RED/GREEN acceptance matrix. Task 6 preserves the separate production execution gate and Level-4 boundary.
-2. **Placeholder scan:** The plan contains no `TBD`, `TODO`, guessed host/port/key value, generic "implement later" instruction, or unbound production destination. Live endpoint/key values are deliberately discovered only in the separate execution gate and are never guessed.
+2. **Placeholder scan:** The plan contains no unresolved placeholders, guessed host/port/key value, deferred implementation markers, or unbound production destination. Live endpoint/key values are deliberately discovered only in the separate execution gate and are never guessed.
 3. **Interface consistency:** `CONTRACT`, `validateInvocation(argv, env)`, `createDispatcher(ops)`, and `validateSealInput({deployPublicKey,sshHost,sshPort,hostPublicKey})` are the only named implementation interfaces shared across tasks.
 4. **Scope:** Repository TDD and artifact generation only. Production SSH, GitHub secret, control-plane mutation, DrTarjomeh mutation, and actual promotion remain outside this plan execution.
