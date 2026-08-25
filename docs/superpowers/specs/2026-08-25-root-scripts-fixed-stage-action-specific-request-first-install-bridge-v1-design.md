@@ -1,7 +1,7 @@
 # Root Scripts Fixed Stage Action-Specific Request First-Install Bridge V1 — Design
 
 ## Status
-Design approved in chat via `SPEC_APPROVED_PRHM_ROOT_SCRIPTS_FIXED_STAGE_ACTION_SPECIFIC_REQUEST_FIRST_INSTALL_BRIDGE_V1`. This document captures the approved architecture for written review. Implementation is not authorized until this written spec is reviewed.
+Design approved in chat via `SPEC_APPROVED_PRHM_ROOT_SCRIPTS_FIXED_STAGE_ACTION_SPECIFIC_REQUEST_FIRST_INSTALL_BRIDGE_V1`. Written-spec self-review found one critical architectural prerequisite: **no already-live lower-level first-install primitive is currently registered in the Base or Executor.** Therefore implementation is fail-closed until a sanctioned lower-level execution primitive is identified or separately designed and approved. This document captures that amendment explicitly.
 
 ## Purpose
 Resolve the circular-bootstrap problem for the already verified `root_scripts_fixed_stage_request_v1` recovery candidate by introducing one fixed, zero-input, SHA-bound, self-retiring first-install bridge. The bridge exists only to install that exact candidate through a Level-4 control-plane boundary without DeployHQ, raw shell, generic privileged writes, repurposing ZDT, or repurposing the Honartik-specific Host Actions installer.
@@ -33,9 +33,23 @@ Before implementation, and again immediately before any live preflight/apply, th
 
 These values are evidence, not permanent assumptions. Any drift fails closed before mutation. Rebinding requires compatibility review and fresh tests; SHA guards are never disabled.
 
+## Critical Bootstrap Prerequisite
+A First-Install Bridge cannot install itself. Before implementation may begin, an **already-live, sanctioned lower-level primitive** must exist that can invoke this exact bridge candidate without first requiring the Base/Policy/MCP registration that this bridge is meant to create.
+
+Fresh live inspection found no matching `first_install`, `first-install`, `typed_bootstrap_first_install`, `control_plane_typed_bootstrap_first_install_bridge_v1`, or `root_scripts_fixed_stage_action_specific_request_first_install_bridge_v1` registration in the current Base/Executor surfaces.
+
+Therefore:
+- this spec does **not** authorize implementation merely by adding another Host Actions v2 action;
+- this spec does **not** authorize `ops_execute access=write`, generic shell, generic file write, path tricks, or policy broadening as the missing primitive;
+- this spec does **not** authorize repurposing ZDT or the Honartik installer;
+- implementation planning must stop if no lower-level sanctioned primitive is identified;
+- if a new lower-level primitive is required, it needs its own architecture/spec/approval before this bridge can move to TDD.
+
+This prerequisite prevents recursive bootstrap designs from being mistaken for executable recovery paths.
+
 ## Why Existing Primitives Are Not Reused
 ### `selfmaint_request` / `selfmaint_apply`
-They remain scoped to the existing Agent API/MCP self-maintenance boundary. Expanding them to arbitrary Base/Policy/Registry targets would create a generic privileged writer and is forbidden.
+They remain scoped to the existing Agent API/MCP self-maintenance boundary. Expanding them to arbitrary Base/Policy/Registry targets would create a generic privileged writer and is forbidden. Prior direct Level-4 apply attempts were also blocked before reaching Agent 2, so this pair is not considered the lower-level bootstrap prerequisite for this design.
 
 ### `agent_zero_downtime_bootstrap_v1`
 This action owns ZDT topology/migration semantics. It must not become a package or registration installer.
@@ -47,7 +61,7 @@ The live installer is hard-bound to the Honartik flow. It must not be repurposed
 The account is suspended for non-payment and is intentionally removed from this execution path.
 
 ## First-Install Bridge Scope
-The bridge may only:
+Once the Critical Bootstrap Prerequisite is independently satisfied, the bridge may only:
 1. verify the exact candidate bytes and candidate SHA;
 2. verify all live baseline SHA bindings;
 3. verify the bridge has not previously completed successfully;
@@ -190,20 +204,23 @@ At minimum:
 18. rollback failure emits explicit critical evidence;
 19. executor/helper remain byte-identical;
 20. application/database/DeployHQ remain untouched;
-21. concurrent unrelated Base/Policy/MCP additions are preserved by compatible rebase logic and never overwritten by stale whole-file assumptions.
+21. runtime never merges around drift: any live SHA mismatch fails closed. Preservation of concurrent unrelated additions requires a separate compatibility rebind, candidate regeneration, and fresh review before a new request.
 
 ## Gate Sequence
-1. Written spec approval.
-2. Implementation plan.
-3. TDD RED → GREEN on isolated branch.
-4. Draft PR / independent review.
-5. Fresh live read-only baseline capture and compatibility rebase if needed.
-6. Fixed bridge preflight through a permitted bootstrap path.
-7. Fresh Level-4 confirmation for bridge apply.
-8. Verify bridge retirement and `root_scripts_fixed_stage_request_v1` exposure.
-9. Only then create a fresh request for `root_scripts_fixed_stage_v1`.
+1. Written spec review approval.
+2. Verify or design a sanctioned lower-level bootstrap primitive.
+3. If no primitive exists, stop this Gate and enter a separate architecture Gate for that primitive.
+4. Only after prerequisite satisfaction: implementation plan.
+5. TDD RED → GREEN on isolated branch.
+6. Draft PR / independent review.
+7. Fresh live read-only baseline capture and compatibility rebind if needed.
+8. Fixed bridge preflight through the already-approved lower-level primitive.
+9. Fresh Level-4 confirmation for bridge apply.
+10. Verify bridge retirement and `root_scripts_fixed_stage_request_v1` exposure.
+11. Only then create a fresh request for `root_scripts_fixed_stage_v1`.
 
 ## Out of Scope
+- inventing or installing the lower-level bootstrap primitive inside this spec;
 - executing `root_scripts_fixed_stage_v1` itself;
 - installing DrTarjomeh root seed;
 - staging clone backend implementation;
@@ -213,4 +230,4 @@ At minimum:
 - any generic privileged transport or writer.
 
 ## Security Principle
-This bridge is a single-purpose bootstrap exception with a closed-world candidate identity and one successful lifetime. It must never evolve into a reusable arbitrary installer. Future privileged changes must use the recovered fixed request surface or a separately reviewed architecture.
+This bridge is a single-purpose bootstrap exception with a closed-world candidate identity and one successful lifetime. It must never evolve into a reusable arbitrary installer. If the lower-level bootstrap prerequisite is absent, the correct result is a blocked Gate, not another recursive bridge.
