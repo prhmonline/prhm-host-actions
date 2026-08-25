@@ -24,7 +24,8 @@ test('registers only the fixed root-scripts transport action in base, executor, 
   assert.match(out.executor, new RegExp(ACTION));
   const p = JSON.parse(out.policy);
   assert.equal(p.operations['host_action.' + ACTION].level, 4);
-  assert.equal(p.typed_scopes.filter(x => x.action === ACTION).length, 1);
+  assert.equal(p.typed_scopes.filter(x => x.action === ACTION && x.tool === 'control_plane_root_scripts_stage_transport_apply_v1').length, 1);
+  assert.equal(p.typed_scopes.filter(x => x.action === ACTION && x.tool === 'host_action_v2_apply').length, 1);
 });
 
 test('rejects missing or duplicate structural anchors', () => {
