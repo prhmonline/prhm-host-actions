@@ -70,3 +70,88 @@ test('seed contract excludes generic root inputs and production app/database cap
     assert.equal(src.includes(forbidden), false, forbidden);
   }
 });
+
+function makeAdapter(options={}){
+  const files={base:fixtureBase,executor:fixtureExecutor,policy:fixturePolicy,transport:'fixed-helper'};
+  const originals={...files};
+  const stats={base:{isFile:true,isSymlink:false,mode:0o640,uid:0,gid:0},executor:{isFile:true,isSymlink:false,mode:0o640,uid:0,gid:0},policy:{isFile:true,isSymlink:false,mode:0o640,uid:0,gid:0},transport:{isFile:true,isSymlink:false,mode:0o644,uid:0,gid:0}};
+  const writes=[]; const restores=[]; const restarts=[]; let healthCalls=0;
+  if(options.symlink) stats[options.symlink].isSymlink=true;
+  const hashMap={...mod.BASELINE_SHA,transport:mod.TRANSPORT_HELPER_SHA,...(options.hashMap||{})};
+  return {
+    files,originals,stats,writes,restores,restarts,
+    getuid(){return 0;},
+    stat(layer){return stats[layer];},
+    read(layer){return Buffer.from(files[layer]);},
+    hash(layer){return hashMap[layer];},
+    syntaxCheck(layer){if(options.syntaxFailure===layer) throw new Error('candidate_syntax_invalid:'+layer);},
+    beginBackup(){return {id:'fixture-backup'};},
+    atomicWrite(layer,bytes){files[layer]=Buffer.from(bytes).toString('utf8');writes.push(layer);if(options.failAfterWrite===layer) throw new Error('failure_after_'+layer+'_write');},
+    restore(layer,bytes){files[layer]=Buffer.from(bytes).toString('utf8');restores.push(layer);if(options.restoreFailure===layer) throw new Error('restore_failed:'+layer);},
+    restart(service){restarts.push(service);if(options.restartFailure && restarts.length===1) throw new Error('failure_during_service_restart');},
+    health(service){healthCalls++;if(options.healthFailure && healthCalls===1) throw new Error('failure_during_post_health');return true;},
+    verifyInstalled(layer,expected){return require('node:crypto').createHash('sha256').update(Buffer.from(files[layer])).digest('hex')===expected;},
+    verifyRestored(layer){return files[layer]===originals[layer];}
+  };
+}
+
+test('preflight rejects baseline drift before writes', async () => {
+  const a=makeAdapter({hashMap:{base:'0'.repeat(64)}});
+  await assert.rejects(() => mod.executeWithAdapter(a), /baseline_sha_mismatch:base/);
+  assert.deepEqual(a.writes,[]);
+});
+
+test('preflight rejects symlink targets before writes', async () => {
+  const a=makeAdapter({symlink:'executor'});
+  await assert.rejects(() => mod.executeWithAdapter(a), /target_symlink_rejected:executor/);
+  assert.deepEqual(a.writes,[]);
+});
+
+test('preflight rejects transport helper SHA mismatch before writes', async () => {
+  const a=makeAdapter({hashMap:{transport:'1'.repeat(64)}});
+  await assert.rejects(() => mod.executeWithAdapter(a), /transport_helper_sha_mismatch/);
+  assert.deepEqual(a.writes,[]);
+});
+
+test('preflight rejects candidate syntax failure before writes', async () => {
+  const a=makeAdapter({syntaxFailure:'executor'});
+  await assert.rejects(() => mod.executeWithAdapter(a), /candidate_syntax_invalid:executor/);
+  assert.deepEqual(a.writes,[]);
+});
+
+for(const layer of ['base','executor','policy']){
+  test('verified rollback after injected '+layer+' write failure', async () => {
+    const a=makeAdapter({failAfterWrite:layer});
+    const out=await mod.executeWithAdapter(a);
+    assert.equal(out.result,'FAILED_ROLLED_BACK');
+    assert.equal(out.rollback_performed,true);
+    assert.deepEqual(a.files,a.originals);
+  });
+}
+
+test('verified rollback after service restart failure', async () => {
+  const a=makeAdapter({restartFailure:true});
+  const out=await mod.executeWithAdapter(a);
+  assert.equal(out.result,'FAILED_ROLLED_BACK');
+  assert.deepEqual(a.files,a.originals);
+});
+
+test('verified rollback after post-health failure', async () => {
+  const a=makeAdapter({healthFailure:true});
+  const out=await mod.executeWithAdapter(a);
+  assert.equal(out.result,'FAILED_ROLLED_BACK');
+  assert.deepEqual(a.files,a.originals);
+});
+
+test('rollback verification failure is surfaced as incomplete', async () => {
+  const a=makeAdapter({failAfterWrite:'executor',restoreFailure:'base'});
+  const out=await mod.executeWithAdapter(a);
+  assert.equal(out.result,'FAILED_ROLLBACK_INCOMPLETE');
+});
+
+test('preflight rejects malformed policy before writes', async () => {
+  const a=makeAdapter();
+  a.files.policy='{';
+  await assert.rejects(() => mod.executeWithAdapter(a), /JSON|Unexpected|position/);
+  assert.deepEqual(a.writes,[]);
+});

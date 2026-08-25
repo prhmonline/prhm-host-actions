@@ -2,6 +2,10 @@
 'use strict';
 
 const crypto = require('node:crypto');
+const fs = require('node:fs');
+const path = require('node:path');
+const cp = require('node:child_process');
+const http = require('node:http');
 
 const ACTION = 'control_plane_root_scripts_stage_transport_v1';
 const OPERATION = 'host_action.control_plane_root_scripts_stage_transport_v1';
@@ -20,6 +24,8 @@ const BASELINE_SHA = Object.freeze({
   policy: '76cca4574708709c921d67e91068e9f25508c6769f4d150718c8b068f870233d'
 });
 const TRANSPORT_HELPER_SHA = 'c64d2fb4c2ae2b048f7f57f6a5e4923588b76ae8a134a540e791b03285ff4d87';
+const BACKUP_ROOT = '/var/backups/prhm-root-of-trust-fixed-seed-v1';
+const SERVICE_BY_LAYER = Object.freeze({base:'prhm-agent-selfmaint.service',executor:'prhm-agent-selfmaint-exec.service'});
 
 const BASE_ANCHOR = "  imotion_credential_bind_v1: { operation: 'host_action.imotion_credential_bind_v1', rollback: 'host-action-v2:imotion-credential-bind-v1:remote-controller-backup-restore' }";
 const BASE_ENTRY = "  control_plane_root_scripts_stage_transport_v1: { operation: 'host_action.control_plane_root_scripts_stage_transport_v1', rollback: 'host-action-v2:control-plane-root-scripts-stage-transport-v1:registration-only' },";
@@ -123,4 +129,119 @@ function preflightFrom(snapshot){
   return {ok:true,schema_version:'prhm.root-of-trust-seed-preflight.v1',seed_id:VERSION,action_registered:ACTION,already_applied:out.alreadyApplied,before_sha256:{base:sha(snapshot.base),executor:sha(snapshot.executor),policy:sha(snapshot.policy)},after_sha256:{base:sha(out.base),executor:sha(out.executor),policy:sha(out.policy)},control_plane_mutation:false,database_mutation:false,transport_executed:false};
 }
 
-module.exports={ACTION,OPERATION,VERSION,POLICY_VERSION,RUNTIME_INPUTS,PATHS,BASELINE_SHA,TRANSPORT_HELPER_SHA,BASE_ANCHOR,EXEC_SPEC_ANCHOR,DISPATCH_ANCHOR,sha,verifyFixedContract,patchBase,patchExecutor,patchPolicy,buildPatchedFrom,preflightFrom};
+
+async function preflightWithAdapter(adapter){
+  verifyFixedContract();
+  if(!adapter||typeof adapter!=='object') fail('adapter_required');
+  if(adapter.getuid()!==0) fail('root_required');
+  const layers=['base','executor','policy','transport'];
+  const stats={};
+  for(const layer of layers){
+    const st=adapter.stat(layer);
+    if(!st||st.isSymlink===true) fail('target_symlink_rejected:'+layer);
+    if(st.isFile!==true) fail('target_not_regular:'+layer);
+    stats[layer]=st;
+  }
+  const originals={};
+  for(const layer of layers) originals[layer]=Buffer.from(adapter.read(layer));
+  const snapshot={base:originals.base.toString('utf8'),executor:originals.executor.toString('utf8'),policy:originals.policy.toString('utf8')};
+  const patched=buildPatchedFrom(snapshot);
+  if(adapter.hash('transport')!==TRANSPORT_HELPER_SHA) fail('transport_helper_sha_mismatch');
+  if(!patched.alreadyApplied){
+    for(const layer of ['base','executor','policy']) if(adapter.hash(layer)!==BASELINE_SHA[layer]) fail('baseline_sha_mismatch:'+layer);
+    JSON.parse(patched.policy);
+    adapter.syntaxCheck('base',Buffer.from(patched.base,'utf8'));
+    adapter.syntaxCheck('executor',Buffer.from(patched.executor,'utf8'));
+  }
+  const candidates={base:Buffer.from(patched.base,'utf8'),executor:Buffer.from(patched.executor,'utf8'),policy:Buffer.from(patched.policy,'utf8')};
+  const beforeSha={base:sha(originals.base),executor:sha(originals.executor),policy:sha(originals.policy)};
+  const afterSha={base:sha(candidates.base),executor:sha(candidates.executor),policy:sha(candidates.policy)};
+  return {ok:true,alreadyApplied:patched.alreadyApplied,stats,originals,candidates,beforeSha,afterSha};
+}
+
+async function rollbackWithAdapter(adapter,ctx,changedServices){
+  const errors=[];
+  for(const layer of ['policy','executor','base']){
+    try{adapter.restore(layer,ctx.originals[layer],ctx.stats[layer]);}catch(e){errors.push('restore:'+layer+':'+String(e?.message||e));}
+  }
+  for(const service of changedServices){
+    try{await adapter.restart(service);}catch(e){errors.push('restart:'+service+':'+String(e?.message||e));}
+  }
+  for(const layer of ['base','executor','policy']){
+    try{if(!adapter.verifyRestored(layer,ctx.beforeSha[layer])) errors.push('verify_restored:'+layer);}catch(e){errors.push('verify_restored:'+layer+':'+String(e?.message||e));}
+  }
+  for(const service of changedServices){
+    try{if(await adapter.health(service)!==true) errors.push('health:'+service);}catch(e){errors.push('health:'+service+':'+String(e?.message||e));}
+  }
+  return {ok:errors.length===0,errors};
+}
+
+async function executeWithAdapter(adapter){
+  const ctx=await preflightWithAdapter(adapter);
+  if(ctx.alreadyApplied){
+    return {ok:true,schema_version:'prhm.root-of-trust-seed-result.v1',seed_id:VERSION,action_registered:true,services_healthy:true,rollback_performed:false,result:'ALREADY_APPLIED',before_sha256:ctx.beforeSha,after_sha256:ctx.afterSha,transport_executed:false,database_mutation:false};
+  }
+  adapter.beginBackup(ctx.originals,ctx.stats);
+  let mutationStarted=false;
+  const changedServices=[];
+  try{
+    for(const layer of ['base','executor','policy']){
+      if(Buffer.compare(ctx.originals[layer],ctx.candidates[layer])===0) continue;
+      mutationStarted=true;
+      adapter.atomicWrite(layer,ctx.candidates[layer],ctx.stats[layer]);
+      if(!adapter.verifyInstalled(layer,ctx.afterSha[layer])) fail('postwrite_sha_mismatch:'+layer);
+      if(SERVICE_BY_LAYER[layer]&&!changedServices.includes(SERVICE_BY_LAYER[layer])) changedServices.push(SERVICE_BY_LAYER[layer]);
+    }
+    for(const service of changedServices) await adapter.restart(service);
+    for(const service of changedServices) if(await adapter.health(service)!==true) fail('service_health_failed:'+service);
+    return {ok:true,schema_version:'prhm.root-of-trust-seed-result.v1',seed_id:VERSION,action_registered:true,services_healthy:true,rollback_performed:false,result:'APPLIED',before_sha256:ctx.beforeSha,after_sha256:ctx.afterSha,transport_executed:false,database_mutation:false};
+  }catch(error){
+    if(!mutationStarted) throw error;
+    const rb=await rollbackWithAdapter(adapter,ctx,changedServices.length?changedServices:Object.values(SERVICE_BY_LAYER));
+    return {ok:false,schema_version:'prhm.root-of-trust-seed-result.v1',seed_id:VERSION,action_registered:false,services_healthy:rb.ok,rollback_performed:true,result:rb.ok?'FAILED_ROLLED_BACK':'FAILED_ROLLBACK_INCOMPLETE',error:String(error?.message||error),rollback_errors:rb.errors,transport_executed:false,database_mutation:false};
+  }
+}
+
+function atomicFileWrite(abs,bytes,st){
+  const dir=path.dirname(abs),tmp=path.join(dir,'.'+path.basename(abs)+'.root-seed-'+process.pid+'-'+Date.now()+'.tmp');
+  let fd;
+  try{
+    fd=fs.openSync(tmp,'wx',st.mode&0o777);
+    fs.writeFileSync(fd,bytes);fs.fsyncSync(fd);fs.closeSync(fd);fd=undefined;
+    fs.chmodSync(tmp,st.mode&0o777);fs.chownSync(tmp,st.uid,st.gid);fs.renameSync(tmp,abs);
+    const dfd=fs.openSync(dir,fs.constants.O_RDONLY|fs.constants.O_DIRECTORY);try{fs.fsyncSync(dfd);}finally{fs.closeSync(dfd);}
+  }catch(e){try{if(fd!==undefined)fs.closeSync(fd);}catch{}try{fs.unlinkSync(tmp);}catch{}throw e;}
+}
+function serviceHealth(service){
+  const socket=service==='prhm-agent-selfmaint.service'?'/run/prhm-agent-selfmaint/selfmaint.sock':'/run/prhm-agent-selfmaint-exec/exec.sock';
+  return new Promise((resolve,reject)=>{
+    const req=http.request({socketPath:socket,path:'/health',method:'GET',timeout:10000},res=>{
+      let size=0;const chunks=[];res.on('data',c=>{size+=c.length;if(size<=200000)chunks.push(c)});res.on('end',()=>{if(size>200000)return reject(new Error('health_response_too_large'));let o;try{o=JSON.parse(Buffer.concat(chunks).toString('utf8')||'{}')}catch{return reject(new Error('health_invalid_json'))}resolve(res.statusCode===200&&o&&o.ok===true);});
+    });
+    req.on('timeout',()=>req.destroy(new Error('health_timeout')));req.on('error',reject);req.end();
+  });
+}
+function productionAdapter(){
+  let backupDir=null;
+  const fixed={base:PATHS.base,executor:PATHS.executor,policy:PATHS.policy,transport:PATHS.transport};
+  return {
+    getuid:()=>process.getuid?process.getuid():-1,
+    stat(layer){const s=fs.lstatSync(fixed[layer]);return{isFile:s.isFile(),isSymlink:s.isSymbolicLink(),mode:s.mode,uid:s.uid,gid:s.gid};},
+    read:layer=>fs.readFileSync(fixed[layer]),
+    hash:layer=>sha(fs.readFileSync(fixed[layer])),
+    syntaxCheck(layer,bytes){const dir=fs.mkdtempSync('/tmp/prhm-root-seed-check-');const f=path.join(dir,layer+'.js');try{fs.writeFileSync(f,bytes,{mode:0o600});const r=cp.spawnSync('/usr/local/bin/prhm-node',['--check',f],{encoding:'utf8',timeout:15000,maxBuffer:200000,env:{PATH:'/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',LC_ALL:'C',HOME:'/nonexistent'}});if(r.error||r.status!==0)fail('candidate_syntax_invalid:'+layer);}finally{try{fs.rmSync(dir,{recursive:true,force:true});}catch{}}},
+    beginBackup(originals,stats){const stamp=new Date().toISOString().replace(/[-:.TZ]/g,'').slice(0,14);backupDir=path.join(BACKUP_ROOT,stamp+'-'+process.pid);fs.mkdirSync(backupDir,{recursive:true,mode:0o700});for(const layer of ['base','executor','policy']){const f=path.join(backupDir,layer+'.bak');fs.writeFileSync(f,originals[layer],{flag:'wx',mode:0o600});fs.chownSync(f,stats[layer].uid,stats[layer].gid);}return{backup_dir:backupDir};},
+    atomicWrite(layer,bytes,st){atomicFileWrite(fixed[layer],bytes,st);},
+    restore(layer,bytes,st){atomicFileWrite(fixed[layer],bytes,st);},
+    async restart(service){cp.execFileSync('/usr/bin/systemctl',['restart',service],{stdio:'pipe',timeout:120000});const a=cp.execFileSync('/usr/bin/systemctl',['is-active',service],{encoding:'utf8',timeout:10000}).trim();if(a!=='active')fail('service_not_active:'+service);return true;},
+    health:service=>serviceHealth(service),
+    verifyInstalled(layer,expected){return sha(fs.readFileSync(fixed[layer]))===expected;},
+    verifyRestored(layer,expected){return sha(fs.readFileSync(fixed[layer]))===expected;}
+  };
+}
+
+module.exports={ACTION,OPERATION,VERSION,POLICY_VERSION,RUNTIME_INPUTS,PATHS,BASELINE_SHA,TRANSPORT_HELPER_SHA,BACKUP_ROOT,BASE_ANCHOR,EXEC_SPEC_ANCHOR,DISPATCH_ANCHOR,sha,verifyFixedContract,patchBase,patchExecutor,patchPolicy,buildPatchedFrom,preflightFrom,preflightWithAdapter,executeWithAdapter,productionAdapter};
+if(require.main===module){
+  if(process.argv.length!==2){console.error(JSON.stringify({ok:false,seed_id:VERSION,error:'unexpected_arguments'}));process.exit(2);}
+  executeWithAdapter(productionAdapter()).then(out=>{process.stdout.write(JSON.stringify(out)+'\n');process.exit(out.ok===false?1:0);}).catch(error=>{console.error(JSON.stringify({ok:false,seed_id:VERSION,error:String(error?.message||error)}));process.exit(1);});
+}
