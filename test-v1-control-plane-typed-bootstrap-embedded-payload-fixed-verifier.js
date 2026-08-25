@@ -23,6 +23,7 @@ test('fixed contract exposes no arbitrary input',()=>{
   assert.equal(v.EXPECTED.bootstrap.bytes,109634);
   assert.equal(v.EXPECTED.bootstrap.sha256,'d3be569a4fd63b8e0c78e370ad689a27aa2751ea772891cb6b7ffe7fbd49b35e');
   assert.equal(v.RESULT_SCHEMA,'prhm.control-plane-typed-bootstrap-embedded-payload-integrity.v1');
+  assert.equal(v.runFixedVerifier.length,0);
 });
 
 test('verifier independently decompresses and hashes both payloads',()=>{
@@ -37,12 +38,16 @@ test('verifier independently decompresses and hashes both payloads',()=>{
   assert.equal(out.bootstrap.verified,true);
 });
 
-test('verifier fails closed on SHA mismatch',()=>{
+test('verifier fails closed on SHA mismatch after decompression',()=>{
   const t=Buffer.from('transport fixture'); const b=Buffer.from('bootstrap fixture');
-  assert.throws(()=>v.verifyMediatorSource(makeMediator(t,b),{
-    transport:{name:'control-plane-typed-bootstrap-transport-v1.js',bytes:t.length,sha256:'0'.repeat(64)},
+  const expected={
+    transport:{name:'control-plane-typed-bootstrap-transport-v1.js',bytes:t.length,sha256:sha(t)},
     bootstrap:{name:'bootstrap-host-actions-control-plane-typed-bootstrap-transport-v1.js',bytes:b.length,sha256:sha(b)}
-  }),/artifact_integrity_mismatch/);
+  };
+  const good=zlib.brotliCompressSync(t).toString('base64');
+  const tampered=zlib.brotliCompressSync(Buffer.from('transport fixturf')).toString('base64');
+  const source=makeMediator(t,b).replace(good,tampered);
+  assert.throws(()=>v.verifyMediatorSource(source,expected),/artifact_integrity_mismatch:transport/);
 });
 
 test('verifier rejects malformed or ambiguous mediator declarations',()=>{
