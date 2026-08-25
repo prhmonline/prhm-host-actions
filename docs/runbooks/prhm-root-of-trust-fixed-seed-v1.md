@@ -1,8 +1,8 @@
 # PRHM Root-of-Trust Fixed Seed V1 — Provider Console Runbook
 
-Artifact commit: `fddfb5b12fdcdab7661f1bb25537b77f8f1e1144`
+Artifact commit: `2486de0eb11a5dbde5b4a07bf0f7c8d7058eb5e2`
 
-Artifact SHA-256: `049dfc79f796fc47bcf156d3f1d44b09a35f6dc45e6538067ae9b5b2cd706805`
+Artifact SHA-256: `93c10ad47c28bc0894b283d0251b96d7a6e00ca9cd46157438116829f240469a`
 
 ## Trust boundary
 
@@ -16,8 +16,8 @@ Stop immediately if artifact SHA verification fails, the seed reports baseline m
 set -euo pipefail
 install -d -m 0700 /root/prhm-root-seed-v1
 cd /root/prhm-root-seed-v1
-curl --fail --silent --show-error --location "https://raw.githubusercontent.com/prhmonline/prhm-host-actions/fddfb5b12fdcdab7661f1bb25537b77f8f1e1144/bootstrap-prhm-root-of-trust-fixed-seed-v1.js" -o seed.js
-printf '%s  %s\n' '049dfc79f796fc47bcf156d3f1d44b09a35f6dc45e6538067ae9b5b2cd706805' 'seed.js' | sha256sum -c -
+curl --fail --silent --show-error --location "https://raw.githubusercontent.com/prhmonline/prhm-host-actions/2486de0eb11a5dbde5b4a07bf0f7c8d7058eb5e2/bootstrap-prhm-root-of-trust-fixed-seed-v1.js" -o seed.js
+printf '%s  %s\n' '93c10ad47c28bc0894b283d0251b96d7a6e00ca9cd46157438116829f240469a' 'seed.js' | sha256sum -c -
 /usr/local/bin/prhm-node --check seed.js
 /usr/local/bin/prhm-node seed.js
 
