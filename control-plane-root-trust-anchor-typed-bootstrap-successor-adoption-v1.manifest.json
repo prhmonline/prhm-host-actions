@@ -1,0 +1,20 @@
+{
+  "schema_version": "prhm.root-trust-anchor-typed-bootstrap-successor-adoption-manifest.v1",
+  "action": "control_plane_root_scripts_stage_transport_v1",
+  "operation": "host_action.control_plane_root_scripts_stage_transport_v1",
+  "artifacts": {
+    "transport": {
+      "bytes": 72854,
+      "sha256": "049250921dda0aa98ade7cf3707634668590bd66163606de5906841f5ca34335e"
+    },
+    "bootstrap": {
+      "bytes": 109634,
+      "sha256": "d3be569a4fd63b8e0c78e370ad689a27aa2751ea772891cb6b7ffe7fbd49b35e"
+    }
+  },
+  "implementation_sha256": "a8563589f78884a3d9f150ba5f1104a05a216b8804fb5a86005bbc1f70f67377",
+  "test_sha256": "ee78ec8971d9a82f3875132e1a305ec535cec69b0f536a70ec1941d2fd52f96a",
+  "legacy_fallback": false,
+  "production_application_mutation": false,
+  "level4_required": true
+}
