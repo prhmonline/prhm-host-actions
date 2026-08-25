@@ -155,3 +155,24 @@ test('preflight rejects malformed policy before writes', async () => {
   await assert.rejects(() => mod.executeWithAdapter(a), /JSON|Unexpected|position/);
   assert.deepEqual(a.writes,[]);
 });
+
+test('sealed manifest matches the exact root seed artifact and fixed contract', () => {
+  const manifest = require('./prhm-root-of-trust-fixed-seed-v1.manifest.json');
+  const actual = require('node:crypto').createHash('sha256').update(fs.readFileSync('bootstrap-prhm-root-of-trust-fixed-seed-v1.js')).digest('hex');
+  assert.equal(manifest.schema_version, 'prhm.root-of-trust-seed-manifest.v1');
+  assert.equal(manifest.seed_id, 'prhm-root-of-trust-fixed-seed-v1');
+  assert.equal(manifest.action_registered, ACTION);
+  assert.match(manifest.artifact_sha256, /^[a-f0-9]{64}$/);
+  assert.equal(manifest.artifact_sha256, actual);
+  assert.deepEqual(manifest.runtime_inputs, []);
+  assert.deepEqual(manifest.baseline_sha256, mod.BASELINE_SHA);
+  assert.equal(manifest.transport_helper_sha256, mod.TRANSPORT_HELPER_SHA);
+});
+
+test('seed and sealer expose no prohibited generic execution surface', () => {
+  const sources=['bootstrap-prhm-root-of-trust-fixed-seed-v1.js','seal-prhm-root-of-trust-fixed-seed-v1.js'].map(x=>fs.readFileSync(x,'utf8')).join('\n');
+  for(const forbidden of ['process.argv.slice(2)','authorized_keys','ssh-rsa','BEGIN OPENSSH PRIVATE KEY','createServer(','mysql2','node:pg','/home/drtarjomeh/domains/','shell:true','shell: true','.exec(']) {
+    assert.equal(sources.includes(forbidden),false,forbidden);
+  }
+  assert.equal(sources.includes('http.createServer'),false);
+});

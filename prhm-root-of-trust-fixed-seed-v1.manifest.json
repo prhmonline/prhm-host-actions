@@ -1,0 +1,22 @@
+{
+  "schema_version": "prhm.root-of-trust-seed-manifest.v1",
+  "seed_id": "prhm-root-of-trust-fixed-seed-v1",
+  "action_registered": "control_plane_root_scripts_stage_transport_v1",
+  "operation": "host_action.control_plane_root_scripts_stage_transport_v1",
+  "artifact": "bootstrap-prhm-root-of-trust-fixed-seed-v1.js",
+  "artifact_sha256": "049dfc79f796fc47bcf156d3f1d44b09a35f6dc45e6538067ae9b5b2cd706805",
+  "runtime_inputs": [],
+  "baseline_sha256": {
+    "base": "e186036e8efd9c9663b977a20f62fb90cedb70b48bfa0f1fb48cbc53a64020cd",
+    "executor": "1e683d0962bc1e0503b9deb1f0d266ad44d6fc5d3c1566dc87f2f7733d4802bd",
+    "policy": "76cca4574708709c921d67e91068e9f25508c6769f4d150718c8b068f870233d"
+  },
+  "transport_helper_sha256": "c64d2fb4c2ae2b048f7f57f6a5e4923588b76ae8a134a540e791b03285ff4d87",
+  "production_mutation_scope": [
+    "/opt/prhm-agent-selfmaint/server.js",
+    "/opt/prhm-agent-selfmaint-exec/server.js",
+    "/opt/prhm-company-control-plane/config/approval-policy.json"
+  ],
+  "transport_executed_by_seed": false,
+  "database_mutation": false
+}
