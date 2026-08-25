@@ -4,12 +4,18 @@ const fs = require('node:fs');
 const mod = require('./bootstrap-prhm-root-of-trust-fixed-seed-v1.js');
 
 const ACTION = 'control_plane_root_scripts_stage_transport_v1';
-const fixtureBase = "const HOST_ACTION_V2={\n  root_scripts_fixed_stage_v1: { operation: 'host_action.root_scripts_fixed_stage_v1', rollback: 'host-action-v2:root-scripts-fixed-stage-v1:automatic' },\n};\n";
-const fixtureExecutor = "const HOST_ACTION_V2_SPECS={\n  root_scripts_fixed_stage_v1:{operation:'host_action.root_scripts_fixed_stage_v1',kind:'root_scripts_fixed_stage_v1'},\n};\nconst applyHostActionV2Original=applyHostActionV2;\napplyHostActionV2=async function(action){if(action==='root_scripts_fixed_stage_v1')return applyRootScriptsFixedStageV1();return applyHostActionV2Original(action);};\n";
+const fixtureBase = "const HOST_ACTION_V2={\n  imotion_credential_bind_v1: { operation: 'host_action.imotion_credential_bind_v1', rollback: 'host-action-v2:imotion-credential-bind-v1:remote-controller-backup-restore' }\n});\n";
+const fixtureExecutor = "const HOST_ACTION_V2_SPECS={\n  imotion_credential_bind_v1:{operation:'host_action.imotion_credential_bind_v1',kind:'imotion_credential_bind_v1'}\n});\nconst applyHostActionV2Original=applyHostActionV2;\napplyHostActionV2=async function(action){if(action==='imotion_credential_bind_v1')return applyImotionCredentialBindV1();return applyHostActionV2Original(action);};\n";
 const fixturePolicy = JSON.stringify({
   version:'fixture',
-  operations:{'host_action.root_scripts_fixed_stage_v1':{level:4}},
-  typed_scopes:[{tool:'host_action_v2_apply',project:'control_plane',environment:'production',action:'root_scripts_fixed_stage_v1',risk:'critical',operation:'host_action.root_scripts_fixed_stage_v1',principals:[{principal_id:'mohammad',roles:['mcp-operator']}]}]
+  operations:{
+    'host_action.control_plane_root_scripts_stage_transport_v1':{level:4},
+    'host_action.imotion_credential_bind_v1':{level:4}
+  },
+  typed_scopes:[
+    {tool:'control_plane_root_scripts_stage_transport_apply_v1',project:'control_plane',environment:'production',action:'control_plane_root_scripts_stage_transport_v1',risk:'critical',operation:'host_action.control_plane_root_scripts_stage_transport_v1',principals:[{principal_id:'mohammad',roles:['mcp-operator']}]},
+    {tool:'host_action_v2_apply',project:'control_plane',environment:'production',action:'imotion_credential_bind_v1',risk:'critical',operation:'host_action.imotion_credential_bind_v1',principals:[{principal_id:'mohammad',roles:['mcp-operator']}]}
+  ]
 });
 
 test('registers only the fixed root-scripts transport action in base, executor, and policy', () => {
@@ -22,12 +28,26 @@ test('registers only the fixed root-scripts transport action in base, executor, 
 });
 
 test('rejects missing or duplicate structural anchors', () => {
-  assert.throws(() => mod.buildPatchedFrom({base:'const HOST_ACTION_V2={};\n', executor:fixtureExecutor, policy:fixturePolicy}), /base_root_scripts_anchor_missing/);
+  assert.throws(() => mod.buildPatchedFrom({base:'const HOST_ACTION_V2={};\n', executor:fixtureExecutor, policy:fixturePolicy}), /base_imotion_anchor_missing/);
   assert.throws(() => mod.buildPatchedFrom({
-    base:"const HOST_ACTION_V2={\n  root_scripts_fixed_stage_v1: { operation: 'host_action.root_scripts_fixed_stage_v1', rollback: 'x' },\n  root_scripts_fixed_stage_v1: { operation: 'host_action.root_scripts_fixed_stage_v1', rollback: 'x' },\n};\n",
+    base:"const HOST_ACTION_V2={\n  imotion_credential_bind_v1: { operation: 'host_action.imotion_credential_bind_v1', rollback: 'x' },\n  imotion_credential_bind_v1: { operation: 'host_action.imotion_credential_bind_v1', rollback: 'x' }\n});\n",
     executor:fixtureExecutor,
     policy:fixturePolicy
-  }), /base_root_scripts_anchor_duplicate/);
+  }), /base_imotion_anchor_duplicate/);
+});
+
+test('completes compatible policy-only partial registration without deleting action-specific scope', () => {
+  const out = mod.buildPatchedFrom({base:fixtureBase, executor:fixtureExecutor, policy:fixturePolicy});
+  const p = JSON.parse(out.policy);
+  assert.equal(p.operations['host_action.' + ACTION].level, 4);
+  assert.equal(p.typed_scopes.filter(x => x.action === ACTION && x.tool === 'control_plane_root_scripts_stage_transport_apply_v1').length, 1);
+  assert.equal(p.typed_scopes.filter(x => x.action === ACTION && x.tool === 'host_action_v2_apply').length, 1);
+});
+
+test('rejects conflicting existing target policy operation', () => {
+  const p = JSON.parse(fixturePolicy);
+  p.operations['host_action.' + ACTION] = {level:3};
+  assert.throws(() => mod.buildPatchedFrom({base:fixtureBase, executor:fixtureExecutor, policy:JSON.stringify(p)}), /conflicting_existing_registration/);
 });
 
 test('rejects any unexpected runtime argument surface', () => {

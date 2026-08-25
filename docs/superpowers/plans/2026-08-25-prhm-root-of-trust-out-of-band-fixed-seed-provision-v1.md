@@ -32,6 +32,23 @@
 
 ---
 
+## Implementation-Time Amendment 1 — Live Structural Anchors (2026-08-25)
+
+Fresh read-only production discovery after Task 1 showed that the approved baseline SHA values are unchanged, but the structural predecessor assumption in Task 2 was too narrow:
+
+- `/opt/prhm-agent-selfmaint/server.js` does **not** contain `root_scripts_fixed_stage_v1`; its unique common tail anchor is `imotion_credential_bind_v1`.
+- `/opt/prhm-agent-selfmaint-exec/server.js` contains both `root_scripts_fixed_stage_v1` and `imotion_credential_bind_v1`; V1 uses `imotion_credential_bind_v1` as the common unique spec/dispatcher anchor.
+- `/opt/prhm-company-control-plane/config/approval-policy.json` already contains an exact Level-4 operation for `host_action.control_plane_root_scripts_stage_transport_v1` plus an action-specific typed scope whose tool is `control_plane_root_scripts_stage_transport_apply_v1`. It does not contain `root_scripts_fixed_stage_v1`.
+
+This amendment does not change the approved action, operation, Level-4 risk, zero-input boundary, mutation scope, or out-of-band execution model. It supersedes only the structural-predecessor details in Tasks 1-2:
+
+1. `patchBase()` and `patchExecutor()` require exactly one `imotion_credential_bind_v1` structural anchor.
+2. `patchPolicy()` preserves an existing target operation only when it is exactly `{level:4}`; any incompatible target operation is `conflicting_existing_registration`.
+3. The pre-existing action-specific target scope is preserved byte-semantically. The seed adds exactly one missing `host_action_v2_apply` scope for the same target action/operation/principal.
+4. A full exact registration across base, executor, target operation, existing action-specific scope, and new Host Actions v2 scope is `ALREADY_APPLIED`; partial compatible state is completed; incompatible partial state fails closed.
+
+---
+
 ### Task 1: Add the Root Seed Contract Tests
 
 **Files:**
