@@ -1,0 +1,51 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const mod = require('./bootstrap-prhm-root-of-trust-fixed-seed-v1.js');
+
+const ACTION = 'control_plane_root_scripts_stage_transport_v1';
+const fixtureBase = "const HOST_ACTION_V2={\n  root_scripts_fixed_stage_v1: { operation: 'host_action.root_scripts_fixed_stage_v1', rollback: 'host-action-v2:root-scripts-fixed-stage-v1:automatic' },\n};\n";
+const fixtureExecutor = "const HOST_ACTION_V2_SPECS={\n  root_scripts_fixed_stage_v1:{operation:'host_action.root_scripts_fixed_stage_v1',kind:'root_scripts_fixed_stage_v1'},\n};\nconst applyHostActionV2Original=applyHostActionV2;\napplyHostActionV2=async function(action){if(action==='root_scripts_fixed_stage_v1')return applyRootScriptsFixedStageV1();return applyHostActionV2Original(action);};\n";
+const fixturePolicy = JSON.stringify({
+  version:'fixture',
+  operations:{'host_action.root_scripts_fixed_stage_v1':{level:4}},
+  typed_scopes:[{tool:'host_action_v2_apply',project:'control_plane',environment:'production',action:'root_scripts_fixed_stage_v1',risk:'critical',operation:'host_action.root_scripts_fixed_stage_v1',principals:[{principal_id:'mohammad',roles:['mcp-operator']}]}]
+});
+
+test('registers only the fixed root-scripts transport action in base, executor, and policy', () => {
+  const out = mod.buildPatchedFrom({base: fixtureBase, executor: fixtureExecutor, policy: fixturePolicy});
+  assert.match(out.base, new RegExp(ACTION));
+  assert.match(out.executor, new RegExp(ACTION));
+  const p = JSON.parse(out.policy);
+  assert.equal(p.operations['host_action.' + ACTION].level, 4);
+  assert.equal(p.typed_scopes.filter(x => x.action === ACTION).length, 1);
+});
+
+test('rejects missing or duplicate structural anchors', () => {
+  assert.throws(() => mod.buildPatchedFrom({base:'const HOST_ACTION_V2={};\n', executor:fixtureExecutor, policy:fixturePolicy}), /base_root_scripts_anchor_missing/);
+  assert.throws(() => mod.buildPatchedFrom({
+    base:"const HOST_ACTION_V2={\n  root_scripts_fixed_stage_v1: { operation: 'host_action.root_scripts_fixed_stage_v1', rollback: 'x' },\n  root_scripts_fixed_stage_v1: { operation: 'host_action.root_scripts_fixed_stage_v1', rollback: 'x' },\n};\n",
+    executor:fixtureExecutor,
+    policy:fixturePolicy
+  }), /base_root_scripts_anchor_duplicate/);
+});
+
+test('rejects any unexpected runtime argument surface', () => {
+  assert.deepEqual(mod.RUNTIME_INPUTS, []);
+});
+
+test('pins the production baseline hashes and transport helper SHA', () => {
+  assert.deepEqual(mod.BASELINE_SHA, {
+    base: 'e186036e8efd9c9663b977a20f62fb90cedb70b48bfa0f1fb48cbc53a64020cd',
+    executor: '1e683d0962bc1e0503b9deb1f0d266ad44d6fc5d3c1566dc87f2f7733d4802bd',
+    policy: '76cca4574708709c921d67e91068e9f25508c6769f4d150718c8b068f870233d'
+  });
+  assert.equal(mod.TRANSPORT_HELPER_SHA, 'c64d2fb4c2ae2b048f7f57f6a5e4923588b76ae8a134a540e791b03285ff4d87');
+});
+
+test('seed contract excludes generic root inputs and production app/database capabilities', () => {
+  const src = fs.readFileSync(require.resolve('./bootstrap-prhm-root-of-trust-fixed-seed-v1.js'),'utf8');
+  for (const forbidden of ['process.argv.slice(2)','authorized_keys','ssh-rsa','BEGIN OPENSSH PRIVATE KEY','createServer(','mysql2','node:pg','/home/drtarjomeh/domains/']) {
+    assert.equal(src.includes(forbidden), false, forbidden);
+  }
+});
