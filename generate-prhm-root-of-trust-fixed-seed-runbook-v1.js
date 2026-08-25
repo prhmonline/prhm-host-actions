@@ -7,9 +7,7 @@ const crypto=require('node:crypto');
 const manifest=require('./prhm-root-of-trust-fixed-seed-v1.manifest.json');
 
 function sha(bytes){return crypto.createHash('sha256').update(bytes).digest('hex');}
-function buildRunbook(){
-  if(process.argv.length!==2) throw new Error('unexpected_arguments');
-  const commit=cp.execFileSync('/usr/bin/git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
+function buildRunbookForCommit(commit){
   if(!/^[a-f0-9]{40}$/.test(commit)) throw new Error('invalid_artifact_commit');
   if(!/^[a-f0-9]{64}$/.test(manifest.artifact_sha256)) throw new Error('invalid_artifact_sha');
   const artifact=fs.readFileSync('bootstrap-prhm-root-of-trust-fixed-seed-v1.js');
@@ -30,11 +28,16 @@ function buildRunbook(){
 'systemctl is-active prhm-agent-selfmaint.service\n'+
 'systemctl is-active prhm-agent-selfmaint-exec.service\n```\n';
 }
+function buildRunbook(){
+  if(process.argv.length!==2) throw new Error('unexpected_arguments');
+  const commit=cp.execFileSync('/usr/bin/git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
+  return buildRunbookForCommit(commit);
+}
 function main(){
   const body=buildRunbook();
   fs.mkdirSync('docs/runbooks',{recursive:true});
   fs.writeFileSync('docs/runbooks/prhm-root-of-trust-fixed-seed-v1.md',body,'utf8');
   process.stdout.write(JSON.stringify({ok:true,runbook:'docs/runbooks/prhm-root-of-trust-fixed-seed-v1.md'})+'\n');
 }
-module.exports={buildRunbook};
+module.exports={buildRunbook,buildRunbookForCommit};
 if(require.main===module){try{main();}catch(e){console.error(JSON.stringify({ok:false,error:String(e?.message||e)}));process.exit(1);}}

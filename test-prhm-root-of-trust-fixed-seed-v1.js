@@ -176,3 +176,13 @@ test('seed and sealer expose no prohibited generic execution surface', () => {
   }
   assert.equal(sources.includes('http.createServer'),false);
 });
+
+test('runbook generator pure builder pins a validated immutable commit and manifest SHA', () => {
+  const gen=require('./generate-prhm-root-of-trust-fixed-seed-runbook-v1.js');
+  const commit='a'.repeat(40);
+  const body=gen.buildRunbookForCommit(commit);
+  assert.match(body,new RegExp(commit));
+  const manifest=require('./prhm-root-of-trust-fixed-seed-v1.manifest.json');
+  assert.match(body,new RegExp(manifest.artifact_sha256));
+  assert.throws(()=>gen.buildRunbookForCommit('bad'),/invalid_artifact_commit/);
+});
