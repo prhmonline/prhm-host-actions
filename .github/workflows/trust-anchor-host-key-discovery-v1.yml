@@ -1,0 +1,26 @@
+name: trust-anchor-host-key-discovery-v1
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Scan fixed SSH endpoint Ed25519 key
+        shell: bash
+        run: |
+          set -euo pipefail
+          host='185.191.76.138'
+          port='22022'
+          tmp="$(mktemp)"
+          trap 'rm -f "$tmp"' EXIT
+          ssh-keyscan -T 10 -t ed25519 -p "$port" "$host" > "$tmp"
+          test -s "$tmp"
+          echo "HOST=$host"
+          echo "PORT=$port"
+          cat "$tmp"
+          ssh-keygen -lf "$tmp" -E sha256
