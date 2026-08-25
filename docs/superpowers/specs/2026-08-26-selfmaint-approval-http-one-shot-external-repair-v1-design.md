@@ -32,18 +32,32 @@ The primitive accepts no caller-supplied path, command, content, URL, host, port
 
 The only semantic change is within `approvalHttp()`.
 
-Broken behavior:
+The current implementation constructs argv beginning with:
 
-- resolve Registry PID;
-- execute curl via `nsenter -t <registry_pid> -n`;
-- call fixed Approval Center URL `http://127.0.0.1:18133` from the Registry network namespace.
+`['-t', registryPid(), '-n', 'curl', ...fixed curl arguments...]`
 
-Fixed behavior:
+and invokes:
 
-- execute curl from the host namespace directly;
-- keep the fixed Approval Center URL `http://127.0.0.1:18133` unchanged.
+`cp.spawnSync('nsenter', args, ...)`.
 
-The repair removes only the `nsenter -t registryPid() -n` execution prefix from the approval HTTP call. It does not change:
+The repaired implementation must instead construct argv containing only the existing fixed curl arguments:
+
+`['-sS', '--max-time', '8', '-X', method, ...existing headers/body..., fixed URL]`
+
+and invoke:
+
+`cp.spawnSync('curl', args, ...)`.
+
+Therefore the approved semantic delta has exactly two coupled parts:
+
+1. executable: `nsenter` -> `curl`;
+2. argv prefix: remove exactly `'-t', registryPid(), '-n', 'curl'`.
+
+Applying only one of these two changes is invalid and must fail verification.
+
+The fixed Approval Center URL remains exactly `http://127.0.0.1:18133`.
+
+The repair does not change:
 
 - Approval Center URL;
 - approval request/decision endpoints;
@@ -70,12 +84,12 @@ Preflight is zero-write and must fail closed unless every condition passes:
 3. target is not a symlink;
 4. target realpath equals the exact target path;
 5. current SHA-256 equals the frozen preimage SHA;
-6. broken patch anchor occurs exactly once;
-7. fixed patch anchor occurs zero times;
+6. the exact broken `approvalHttp()` anchor occurs once;
+7. the exact fixed `approvalHttp()` anchor occurs zero times;
 8. Approval Center service is active;
 9. host-loopback `127.0.0.1:18133` is reachable;
 10. generated candidate passes Node syntax validation;
-11. generated candidate differs only by the approved semantic delta.
+11. generated candidate differs from the preimage only by the two coupled changes defined in Exact Repair Contract.
 
 Any mismatch produces a non-zero failure before any persistent write.
 
@@ -84,15 +98,16 @@ Any mismatch produces a non-zero failure before any persistent write.
 1. Repeat all preflight checks immediately before mutation.
 2. Generate the complete fixed candidate in memory.
 3. Validate candidate syntax with the fixed Node runtime.
-4. Create an invocation-bound backup under a fixed repair-specific backup root.
-5. Preserve original ownership and mode.
-6. Write to a temporary file in the target filesystem and atomically rename over the target.
-7. Verify the installed SHA equals the deterministic expected postimage SHA computed from the approved preimage and exact patch.
-8. Restart only `prhm-agent-selfmaint.service`.
-9. Verify the service is active and its `/health` response is healthy.
-10. Perform a request-only end-to-end acceptance using the already-prepared MCP selfmaint replacement contract.
-11. Persist bounded success evidence.
-12. Persist retirement state so subsequent executions perform no mutation.
+4. Compute and bind the deterministic candidate/postimage SHA-256 before mutation.
+5. Create an invocation-bound backup under a fixed repair-specific backup root.
+6. Preserve original ownership and mode.
+7. Write to a temporary file in the target filesystem and atomically rename over the target.
+8. Verify the installed SHA equals the bound deterministic postimage SHA.
+9. Restart only `prhm-agent-selfmaint.service`.
+10. Verify the service is active and its `/health` response is healthy.
+11. Perform a request-only end-to-end acceptance using the immutable embedded MCP selfmaint replacement bytes defined below.
+12. Persist bounded success evidence.
+13. Persist retirement state so subsequent executions perform no mutation.
 
 ## Acceptance Probe
 
@@ -105,7 +120,9 @@ Acceptance target:
 - expected live SHA-256: `0cc9fd75a064fdee5e4c2f161fa8bc0c4470e65cb3b079ce3abe67113b6676ab`
 - prepared candidate SHA-256: `59498a1de0b9607b73674e44c2aaa8e12652cff567e0927f508a57dcb764ffdb`
 
-Acceptance succeeds only if a correctly bound Level-4 request ID is returned. The probe must not invoke `selfmaint_apply`.
+The implementation artifact must contain the complete prepared MCP candidate bytes internally as immutable data or as an immutable build-time sibling artifact whose exact SHA is hard-coded. It must verify those bytes equal `59498a1de0b9607b73674e44c2aaa8e12652cff567e0927f508a57dcb764ffdb` before issuing the acceptance request. It may not read replacement content from an arbitrary runtime path, URL, repository, stdin, environment variable, or caller input.
+
+Acceptance succeeds only if a correctly bound Level-4 request ID is returned for the exact MCP target/path/preimage/candidate. The probe must not invoke `selfmaint_apply`.
 
 ## Rollback
 
@@ -119,6 +136,8 @@ If any verification after the first persistent write fails:
 6. return failure.
 
 If rollback itself fails, persist explicit critical evidence and never record success or retirement.
+
+A failed acceptance probe after the selfmaint source change counts as a post-write verification failure and therefore triggers rollback.
 
 ## Retirement
 
@@ -137,7 +156,7 @@ Successful state must include at least:
 - timestamp;
 - rollback status.
 
-A second execution returns `already_completed` and performs zero writes and zero service operations.
+A second execution returns `already_completed` and performs zero writes, zero requests, and zero service operations.
 
 The executable artifact may remain present for audit. Code presence does not imply re-execution authority.
 
@@ -152,15 +171,20 @@ Implementation must be test-first and cover at least:
 - zero-write preflight;
 - broken anchor occurs exactly once;
 - missing/duplicate anchor rejection;
+- both coupled transport edits required together;
 - candidate syntax success;
 - semantic delta limited to the approved repair;
+- deterministic postimage SHA binding;
+- immutable acceptance candidate SHA verification;
 - backup and atomic replacement;
 - service restart failure rollback;
 - post-restart health failure rollback;
 - postimage SHA mismatch rollback;
 - request-only acceptance success;
+- acceptance binding exact target/path/preimage/candidate;
 - acceptance does not apply the MCP patch;
-- second execution returns already-completed with no mutation;
+- acceptance failure triggers rollback;
+- second execution returns already-completed with no request/mutation;
 - rollback failure records critical evidence.
 
 ## Execution Authority and Bootstrap Constraint
