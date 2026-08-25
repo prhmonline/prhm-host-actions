@@ -136,10 +136,12 @@ test('verified rollback after service restart failure', async () => {
   assert.deepEqual(a.files,a.originals);
 });
 
-test('verified rollback after post-health failure', async () => {
-  const a=makeAdapter({healthFailure:true});
+test('permanent post-health failure is surfaced as rollback incomplete', async () => {
+  const a=makeAdapter();
+  a.sleep=async()=>{};
+  a.health=async()=>{throw new Error('failure_during_post_health');};
   const out=await mod.executeWithAdapter(a);
-  assert.equal(out.result,'FAILED_ROLLED_BACK');
+  assert.equal(out.result,'FAILED_ROLLBACK_INCOMPLETE');
   assert.deepEqual(a.files,a.originals);
 });
 
@@ -156,6 +158,29 @@ test('preflight rejects malformed policy before writes', async () => {
   assert.deepEqual(a.writes,[]);
 });
 
+
+
+test('retries transient post-restart health errors before declaring failure', async () => {
+  const a=makeAdapter();
+  let calls=0;
+  a.sleep=async()=>{};
+  a.health=async()=>{calls++;if(calls<3)throw new Error('connect ECONNREFUSED fixture.sock');return true;};
+  const out=await mod.executeWithAdapter(a);
+  assert.equal(out.result,'APPLIED');
+  assert.equal(out.rollback_performed,false);
+  assert.ok(calls>=3);
+});
+
+test('retries transient rollback health errors before declaring rollback incomplete', async () => {
+  const a=makeAdapter({failAfterWrite:'executor'});
+  let calls=0;
+  a.sleep=async()=>{};
+  a.health=async()=>{calls++;if(calls<3)throw new Error('connect ENOENT fixture.sock');return true;};
+  const out=await mod.executeWithAdapter(a);
+  assert.equal(out.result,'FAILED_ROLLED_BACK');
+  assert.equal(out.rollback_performed,true);
+  assert.ok(calls>=3);
+});
 test('sealed manifest matches the exact root seed artifact and fixed contract', () => {
   const manifest = require('./prhm-root-of-trust-fixed-seed-v1.manifest.json');
   const actual = require('node:crypto').createHash('sha256').update(fs.readFileSync('bootstrap-prhm-root-of-trust-fixed-seed-v1.js')).digest('hex');

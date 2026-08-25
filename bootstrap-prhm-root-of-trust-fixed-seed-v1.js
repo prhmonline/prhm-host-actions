@@ -159,6 +159,23 @@ async function preflightWithAdapter(adapter){
   return {ok:true,alreadyApplied:patched.alreadyApplied,stats,originals,candidates,beforeSha,afterSha};
 }
 
+const HEALTH_ATTEMPTS=20;
+const HEALTH_RETRY_MS=250;
+async function healthWithRetry(adapter,service){
+  let lastError=null;
+  for(let attempt=1;attempt<=HEALTH_ATTEMPTS;attempt++){
+    try{
+      if(await adapter.health(service)===true) return true;
+      lastError=new Error('health_not_ready:'+service);
+    }catch(e){lastError=e;}
+    if(attempt<HEALTH_ATTEMPTS){
+      if(typeof adapter.sleep==='function') await adapter.sleep(HEALTH_RETRY_MS);
+      else await new Promise(resolve=>setTimeout(resolve,HEALTH_RETRY_MS));
+    }
+  }
+  throw lastError||new Error('health_not_ready:'+service);
+}
+
 async function rollbackWithAdapter(adapter,ctx,changedServices){
   const errors=[];
   for(const layer of ['policy','executor','base']){
@@ -171,7 +188,7 @@ async function rollbackWithAdapter(adapter,ctx,changedServices){
     try{if(!adapter.verifyRestored(layer,ctx.beforeSha[layer])) errors.push('verify_restored:'+layer);}catch(e){errors.push('verify_restored:'+layer+':'+String(e?.message||e));}
   }
   for(const service of changedServices){
-    try{if(await adapter.health(service)!==true) errors.push('health:'+service);}catch(e){errors.push('health:'+service+':'+String(e?.message||e));}
+    try{if(await healthWithRetry(adapter,service)!==true) errors.push('health:'+service);}catch(e){errors.push('health:'+service+':'+String(e?.message||e));}
   }
   return {ok:errors.length===0,errors};
 }
@@ -193,7 +210,7 @@ async function executeWithAdapter(adapter){
       if(SERVICE_BY_LAYER[layer]&&!changedServices.includes(SERVICE_BY_LAYER[layer])) changedServices.push(SERVICE_BY_LAYER[layer]);
     }
     for(const service of changedServices) await adapter.restart(service);
-    for(const service of changedServices) if(await adapter.health(service)!==true) fail('service_health_failed:'+service);
+    for(const service of changedServices) if(await healthWithRetry(adapter,service)!==true) fail('service_health_failed:'+service);
     return {ok:true,schema_version:'prhm.root-of-trust-seed-result.v1',seed_id:VERSION,action_registered:true,services_healthy:true,rollback_performed:false,result:'APPLIED',before_sha256:ctx.beforeSha,after_sha256:ctx.afterSha,transport_executed:false,database_mutation:false};
   }catch(error){
     if(!mutationStarted) throw error;
@@ -235,12 +252,13 @@ function productionAdapter(){
     restore(layer,bytes,st){atomicFileWrite(fixed[layer],bytes,st);},
     async restart(service){cp.execFileSync('/usr/bin/systemctl',['restart',service],{stdio:'pipe',timeout:120000});const a=cp.execFileSync('/usr/bin/systemctl',['is-active',service],{encoding:'utf8',timeout:10000}).trim();if(a!=='active')fail('service_not_active:'+service);return true;},
     health:service=>serviceHealth(service),
+    sleep:ms=>new Promise(resolve=>setTimeout(resolve,ms)),
     verifyInstalled(layer,expected){return sha(fs.readFileSync(fixed[layer]))===expected;},
     verifyRestored(layer,expected){return sha(fs.readFileSync(fixed[layer]))===expected;}
   };
 }
 
-module.exports={ACTION,OPERATION,VERSION,POLICY_VERSION,RUNTIME_INPUTS,PATHS,BASELINE_SHA,TRANSPORT_HELPER_SHA,BACKUP_ROOT,BASE_ANCHOR,EXEC_SPEC_ANCHOR,DISPATCH_ANCHOR,sha,verifyFixedContract,patchBase,patchExecutor,patchPolicy,buildPatchedFrom,preflightFrom,preflightWithAdapter,executeWithAdapter,productionAdapter};
+module.exports={ACTION,OPERATION,VERSION,POLICY_VERSION,RUNTIME_INPUTS,PATHS,BASELINE_SHA,TRANSPORT_HELPER_SHA,BACKUP_ROOT,BASE_ANCHOR,EXEC_SPEC_ANCHOR,DISPATCH_ANCHOR,HEALTH_ATTEMPTS,HEALTH_RETRY_MS,sha,verifyFixedContract,patchBase,patchExecutor,patchPolicy,buildPatchedFrom,preflightFrom,preflightWithAdapter,healthWithRetry,executeWithAdapter,productionAdapter};
 if(require.main===module){
   if(process.argv.length!==2){console.error(JSON.stringify({ok:false,seed_id:VERSION,error:'unexpected_arguments'}));process.exit(2);}
   executeWithAdapter(productionAdapter()).then(out=>{process.stdout.write(JSON.stringify(out)+'\n');process.exit(out.ok===false?1:0);}).catch(error=>{console.error(JSON.stringify({ok:false,seed_id:VERSION,error:String(error?.message||error)}));process.exit(1);});

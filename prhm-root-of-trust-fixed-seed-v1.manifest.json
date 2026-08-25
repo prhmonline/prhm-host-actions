@@ -4,7 +4,7 @@
   "action_registered": "control_plane_root_scripts_stage_transport_v1",
   "operation": "host_action.control_plane_root_scripts_stage_transport_v1",
   "artifact": "bootstrap-prhm-root-of-trust-fixed-seed-v1.js",
-  "artifact_sha256": "049dfc79f796fc47bcf156d3f1d44b09a35f6dc45e6538067ae9b5b2cd706805",
+  "artifact_sha256": "93c10ad47c28bc0894b283d0251b96d7a6e00ca9cd46157438116829f240469a",
   "runtime_inputs": [],
   "baseline_sha256": {
     "base": "e186036e8efd9c9663b977a20f62fb90cedb70b48bfa0f1fb48cbc53a64020cd",
