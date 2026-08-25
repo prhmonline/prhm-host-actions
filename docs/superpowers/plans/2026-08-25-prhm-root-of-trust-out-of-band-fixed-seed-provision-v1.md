@@ -87,9 +87,28 @@ Expected: FAIL because `bootstrap-prhm-root-of-trust-fixed-seed-v1.js` does not 
 Add tests that require all of these behaviors:
 
 ```js
-test('rejects missing or duplicate structural anchors', () => { /* call buildPatchedFrom with missing/duplicate anchors and assert.throws */ });
-test('rejects any unexpected runtime argument surface', () => { assert.equal(mod.RUNTIME_INPUTS.length, 0); });
-test('pins the four production baseline hashes and transport helper SHA', () => {
+const fixtureExecutor = "const HOST_ACTION_V2_SPECS={\n  root_scripts_fixed_stage_v1:{operation:'host_action.root_scripts_fixed_stage_v1',kind:'root_scripts_fixed_stage_v1'},\n};\nconst applyHostActionV2Original=applyHostActionV2;\napplyHostActionV2=async function(action){if(action==='root_scripts_fixed_stage_v1')return applyRootScriptsFixedStageV1();return applyHostActionV2Original(action);};\n";
+const fixturePolicy = JSON.stringify({
+  version:'fixture',
+  operations:{'host_action.root_scripts_fixed_stage_v1':{level:4}},
+  typed_scopes:[{tool:'host_action_v2_apply',project:'control_plane',environment:'production',action:'root_scripts_fixed_stage_v1',risk:'critical',operation:'host_action.root_scripts_fixed_stage_v1',principals:[{principal_id:'mohammad',roles:['mcp-operator']}]}]
+});
+
+test('rejects missing or duplicate structural anchors', () => {
+  assert.throws(() => mod.buildPatchedFrom({
+    base:'const HOST_ACTION_V2={};\n', executor:fixtureExecutor, policy:fixturePolicy
+  }), /base_root_scripts_anchor_missing/);
+  assert.throws(() => mod.buildPatchedFrom({
+    base:"const HOST_ACTION_V2={\n  root_scripts_fixed_stage_v1: { operation: 'host_action.root_scripts_fixed_stage_v1', rollback: 'x' },\n  root_scripts_fixed_stage_v1: { operation: 'host_action.root_scripts_fixed_stage_v1', rollback: 'x' },\n};\n",
+    executor:fixtureExecutor, policy:fixturePolicy
+  }), /base_root_scripts_anchor_duplicate/);
+});
+
+test('rejects any unexpected runtime argument surface', () => {
+  assert.deepEqual(mod.RUNTIME_INPUTS, []);
+});
+
+test('pins the production baseline hashes and transport helper SHA', () => {
   assert.deepEqual(mod.BASELINE_SHA, {
     base: 'e186036e8efd9c9663b977a20f62fb90cedb70b48bfa0f1fb48cbc53a64020cd',
     executor: '1e683d0962bc1e0503b9deb1f0d266ad44d6fc5d3c1566dc87f2f7733d4802bd',
@@ -97,7 +116,13 @@ test('pins the four production baseline hashes and transport helper SHA', () => 
   });
   assert.equal(mod.TRANSPORT_HELPER_SHA, 'c64d2fb4c2ae2b048f7f57f6a5e4923588b76ae8a134a540e791b03285ff4d87');
 });
-test('registration does not contain DrTarjomeh app, database, deploy, network, token, ssh, webhook, or transport execution primitives', () => { /* inspect exported source/contract and assert forbidden capabilities absent */ });
+
+test('seed contract excludes generic root inputs and production app/database capabilities', () => {
+  const src = require('node:fs').readFileSync(require.resolve('./bootstrap-prhm-root-of-trust-fixed-seed-v1.js'),'utf8');
+  for (const forbidden of ['process.argv.slice(2)','authorized_keys','ssh-rsa','BEGIN OPENSSH PRIVATE KEY','createServer(','mysql2','node:pg','/home/drtarjomeh/domains/']) {
+    assert.equal(src.includes(forbidden), false, forbidden);
+  }
+});
 ```
 
 - [ ] **Step 4: Run the suite and verify all new tests are RED for the intended reasons**
@@ -350,24 +375,20 @@ git commit -m "feat: make root trust seed rollback safe"
 
 Require the manifest schema:
 
-```json
-{
-  "schema_version": "prhm.root-of-trust-seed-manifest.v1",
-  "seed_id": "prhm-root-of-trust-fixed-seed-v1",
-  "action_registered": "control_plane_root_scripts_stage_transport_v1",
-  "artifact": "bootstrap-prhm-root-of-trust-fixed-seed-v1.js",
-  "artifact_sha256": "<64 lowercase hex>",
-  "runtime_inputs": [],
-  "baseline_sha256": {
-    "base": "e186036e8efd9c9663b977a20f62fb90cedb70b48bfa0f1fb48cbc53a64020cd",
-    "executor": "1e683d0962bc1e0503b9deb1f0d266ad44d6fc5d3c1566dc87f2f7733d4802bd",
-    "policy": "76cca4574708709c921d67e91068e9f25508c6769f4d150718c8b068f870233d"
-  },
-  "transport_helper_sha256": "c64d2fb4c2ae2b048f7f57f6a5e4923588b76ae8a134a540e791b03285ff4d87"
-}
+```js
+const fs = require('node:fs');
+const crypto = require('node:crypto');
+const manifest = require('./prhm-root-of-trust-fixed-seed-v1.manifest.json');
+const actual = crypto.createHash('sha256').update(fs.readFileSync('bootstrap-prhm-root-of-trust-fixed-seed-v1.js')).digest('hex');
+assert.equal(manifest.schema_version, 'prhm.root-of-trust-seed-manifest.v1');
+assert.equal(manifest.seed_id, 'prhm-root-of-trust-fixed-seed-v1');
+assert.equal(manifest.action_registered, 'control_plane_root_scripts_stage_transport_v1');
+assert.match(manifest.artifact_sha256, /^[a-f0-9]{64}$/);
+assert.equal(manifest.artifact_sha256, actual);
+assert.deepEqual(manifest.runtime_inputs, []);
+assert.deepEqual(manifest.baseline_sha256, mod.BASELINE_SHA);
+assert.equal(manifest.transport_helper_sha256, mod.TRANSPORT_HELPER_SHA);
 ```
-
-The final test must replace the angle-bracket example with the actual literal artifact hash and assert it equals a fresh hash of the seed file.
 
 - [ ] **Step 2: Implement the zero-argument sealer**
 
@@ -397,42 +418,59 @@ git add bootstrap-prhm-root-of-trust-fixed-seed-v1.js seal-prhm-root-of-trust-fi
 git commit -m "feat: seal root trust fixed seed artifact"
 ```
 
-### Task 5: Add the Out-of-Band Provider/VM Console Runbook
+### Task 5: Generate the Out-of-Band Provider/VM Console Runbook
 
 **Files:**
+- Create: `generate-prhm-root-of-trust-fixed-seed-runbook-v1.js`
 - Create: `docs/runbooks/prhm-root-of-trust-fixed-seed-v1.md`
 
 **Interfaces:**
-- Consumes: committed seed artifact, manifest, commit SHA, artifact SHA.
-- Produces: exact one-shot operator procedure that does not create credentials or a persistent listener.
+- Consumes: committed seed artifact, manifest, and the current immutable artifact commit SHA.
+- Produces: exact one-shot operator procedure with literal commit and artifact hashes; no manual substitution step exists.
 
-- [ ] **Step 1: Document the only supported transfer/execution method**
+- [ ] **Step 1: Write the runbook generator**
 
-The runbook must require a provider/hypervisor/VM-console root shell independent of Agent API/MCP. It must fetch from a commit-pinned public GitHub URL, not from `main`, and verify the manifest-pinned SHA before execution.
+The generator accepts no CLI arguments. It obtains the artifact commit with `git rev-parse HEAD`, reads the manifest artifact SHA, validates both, and emits the runbook with literals:
 
-The command shape is fixed as follows; during implementation replace `COMMIT_SHA` and `ARTIFACT_SHA256` with the literal values from the final sealing commit and manifest before committing the runbook:
-
-```bash
-set -euo pipefail
-install -d -m 0700 /root/prhm-root-seed-v1
-cd /root/prhm-root-seed-v1
-curl --fail --silent --show-error --location \
-  "https://raw.githubusercontent.com/prhmonline/prhm-host-actions/COMMIT_SHA/bootstrap-prhm-root-of-trust-fixed-seed-v1.js" \
-  -o seed.js
-printf '%s  %s\n' 'ARTIFACT_SHA256' 'seed.js' | sha256sum -c -
-/usr/local/bin/prhm-node --check seed.js
-/usr/local/bin/prhm-node seed.js
+```js
+'use strict';
+const fs=require('node:fs');
+const cp=require('node:child_process');
+const manifest=require('./prhm-root-of-trust-fixed-seed-v1.manifest.json');
+const commit=cp.execFileSync('/usr/bin/git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
+if(!/^[a-f0-9]{40}$/.test(commit)) throw new Error('invalid_artifact_commit');
+if(!/^[a-f0-9]{64}$/.test(manifest.artifact_sha256)) throw new Error('invalid_artifact_sha');
+const url=`https://raw.githubusercontent.com/prhmonline/prhm-host-actions/${commit}/bootstrap-prhm-root-of-trust-fixed-seed-v1.js`;
+const body=`# PRHM Root-of-Trust Fixed Seed V1 — Provider Console Runbook\n\n`+
+`Artifact commit: \`${commit}\`\n\nArtifact SHA-256: \`${manifest.artifact_sha256}\`\n\n`+
+'```bash\nset -euo pipefail\ninstall -d -m 0700 /root/prhm-root-seed-v1\ncd /root/prhm-root-seed-v1\n'+
+`curl --fail --silent --show-error --location "${url}" -o seed.js\n`+
+`printf '%s  %s\n' '${manifest.artifact_sha256}' 'seed.js' | sha256sum -c -\n`+
+'/usr/local/bin/prhm-node --check seed.js\n/usr/local/bin/prhm-node seed.js\n```\n';
+fs.mkdirSync('docs/runbooks',{recursive:true});
+fs.writeFileSync('docs/runbooks/prhm-root-of-trust-fixed-seed-v1.md',body,'utf8');
 ```
 
-The committed runbook MUST contain no placeholder tokens; `COMMIT_SHA` and `ARTIFACT_SHA256` are replaced with final literals before merge.
+- [ ] **Step 2: Commit the final artifact/manifest before generating the runbook**
 
-- [ ] **Step 2: Add explicit stop conditions**
+```bash
+git add bootstrap-prhm-root-of-trust-fixed-seed-v1.js seal-prhm-root-of-trust-fixed-seed-v1.js prhm-root-of-trust-fixed-seed-v1.manifest.json test-prhm-root-of-trust-fixed-seed-v1.js generate-prhm-root-of-trust-fixed-seed-runbook-v1.js
+git commit -m "feat: seal root trust fixed seed artifact"
+```
 
-The operator must stop on any baseline mismatch, helper mismatch, syntax error, symlink detection, rollback-incomplete result, service health failure, or artifact SHA mismatch. No manual edit/retry with altered paths is allowed.
+- [ ] **Step 3: Generate the runbook from that immutable artifact commit**
 
-- [ ] **Step 3: Add post-execution evidence commands**
+```bash
+node generate-prhm-root-of-trust-fixed-seed-runbook-v1.js
+grep -F "$(git rev-parse HEAD)" docs/runbooks/prhm-root-of-trust-fixed-seed-v1.md
+grep -F "$(node -p "require('./prhm-root-of-trust-fixed-seed-v1.manifest.json').artifact_sha256")" docs/runbooks/prhm-root-of-trust-fixed-seed-v1.md
+```
 
-Document read-only checks for:
+Expected: both grep commands succeed; the runbook URL is commit-pinned and the `sha256sum -c` line contains the literal manifest hash.
+
+- [ ] **Step 4: Add explicit stop conditions and evidence commands to the generated body**
+
+Extend the generator body so the committed runbook states that the operator stops on baseline mismatch, helper mismatch, syntax error, symlink detection, rollback-incomplete result, service health failure, or artifact SHA mismatch. Append these read-only evidence commands:
 
 ```bash
 sha256sum /opt/prhm-agent-selfmaint/server.js
@@ -442,14 +480,16 @@ systemctl is-active prhm-agent-selfmaint.service
 systemctl is-active prhm-agent-selfmaint-exec.service
 ```
 
-The runbook must explicitly state that these are evidence only and that the transport action is not executed in this Gate.
+The runbook explicitly states that the transport action is not executed in this Gate.
 
-- [ ] **Step 4: Commit the runbook**
+- [ ] **Step 5: Commit only the generated runbook**
 
 ```bash
 git add docs/runbooks/prhm-root-of-trust-fixed-seed-v1.md
-git commit -m "docs: add root trust seed console runbook"
+git commit -m "docs: pin root trust seed console runbook"
 ```
+
+The artifact and manifest must remain byte-identical in this second commit.
 
 ### Task 6: Final Repository Verification Before Any Production Seed Execution
 
@@ -495,11 +535,11 @@ test-prhm-root-of-trust-fixed-seed-v1.js
 docs/runbooks/prhm-root-of-trust-fixed-seed-v1.md
 ```
 
-plus this implementation plan. No production app code, credentials, workflows, deploy keys, or generic installers.
+plus `generate-prhm-root-of-trust-fixed-seed-runbook-v1.js` and this implementation plan. No production app code, credentials, workflows, deploy keys, or generic installers.
 
 - [ ] **Step 5: Commit any final deterministic sealing/runbook SHA update**
 
-If the final runbook needs the final commit-pinned URL, perform a deterministic two-commit seal: first commit final artifact and manifest, then commit only the runbook with that immutable artifact commit SHA. The artifact SHA must not change in the second commit.
+Perform the deterministic two-commit seal defined in Task 5: artifact/manifest/generator first, generated runbook second. Verify the artifact SHA does not change in the second commit.
 
 ### Task 7: Out-of-Band Seed Execution and Registration Acceptance
 
@@ -555,6 +595,6 @@ Mark `CONTROL_PLANE_ROOT_OF_TRUST_OUT_OF_BAND_FIXED_SEED_PROVISION_V1=PASS` only
 ## Self-Review Checklist
 
 - Spec coverage: every Security Boundary, Fixed Scope, Preflight, Mutation Scope, Registration Semantics, Atomicity/Rollback, Idempotency, Post-Install Verification, TDD, Out-of-Band Provisioning, Non-Goals, and Acceptance Criteria requirement maps to Tasks 1-7.
-- Placeholder scan: implementation artifacts and the committed runbook may contain no `TBD`, `TODO`, `COMMIT_SHA`, `ARTIFACT_SHA256`, or similar placeholder at completion. The strings appear in this plan only to define the deterministic replacement step.
+- Generated-value scan: implementation artifacts and the committed runbook must contain literal, validated hashes produced by the sealer/runbook generator; no manual substitution step is permitted.
 - Type consistency: the fixed action is always `control_plane_root_scripts_stage_transport_v1`; operation is always `host_action.control_plane_root_scripts_stage_transport_v1`; seed identity is always `prhm-root-of-trust-fixed-seed-v1`.
 - Safety: the transport action is never applied in this plan; only its registration is installed and requestability is tested.
