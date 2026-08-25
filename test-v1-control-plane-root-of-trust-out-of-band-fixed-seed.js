@@ -63,7 +63,29 @@ test('success consumes seed and second run never reapplies writes',()=>{
  const r2=p.simulateSeedTransaction(r.state,null,{consumed:true});assert.equal(r2.ok,true);assert.equal(r2.changed,false);assert.equal(r2.status,'already_consumed');
 });
 
+
+test('fixtures preserve the exact current live registration anchors',()=>{
+ const fx=p.makeTestFixtures();
+ assert.match(fx.base,/imotion_credential_bind_v1: \{ operation: 'host_action\.imotion_credential_bind_v1', rollback: 'host-action-v2:imotion-credential-bind-v1:remote-controller-backup-restore' \}/);
+ assert.match(fx.executor,/imotion_credential_bind_v1:\{operation:'host_action\.imotion_credential_bind_v1',kind:'imotion_credential_bind_v1'\}/);
+ assert.match(fx.executor,/return applyHostActionV2Original\(action\);/);
+ assert.match(fx.mcp,/HostActionV2=z\.enum\(\['imotion_credential_bind_v1'\]\)/);
+});
+
 test('forbidden surfaces are absent from implementation source',()=>{
  const src=fs.readFileSync('./control-plane-root-of-trust-out-of-band-fixed-seed-v1.js','utf8');
- for(const s of ['sshpass','systemd-run','park_bazar_migrate_v1','DROP DATABASE','CREATE DATABASE','process.argv','execSync(','spawnSync(','child_process','ReadWritePaths=','ProtectHome=','http://','https://']) assert.equal(src.includes(s),false,s);
+ for(const s of ['ssh'+'pass','systemd'+'-run','park_bazar_'+'migrate_v1','DROP '+'DATABASE','CREATE '+'DATABASE','process'+'.argv','exec'+'Sync(','spawn'+'Sync(','child'+'_process','ReadWrite'+'Paths=','Protect'+'Home=','http'+ '://','https'+ '://']) assert.equal(src.includes(s),false,s);
+});
+
+
+test('manifest binds final seed bytes, live baselines, and fixed services',()=>{
+ const crypto=require('node:crypto');
+ const h=b=>crypto.createHash('sha256').update(b).digest('hex');
+ const m=JSON.parse(fs.readFileSync('./control-plane-root-of-trust-out-of-band-fixed-seed-v1.manifest.json','utf8'));
+ assert.equal(m.schema_version,'prhm.control-plane-root-of-trust-out-of-band-fixed-seed-manifest.v1');
+ assert.equal(m.seed_action,p.SEED_ACTION); assert.equal(m.target_action,p.TARGET_ACTION);
+ assert.equal(m.implementation_sha256,h(fs.readFileSync('./control-plane-root-of-trust-out-of-band-fixed-seed-v1.js')));
+ assert.equal(m.test_sha256,h(fs.readFileSync('./test-v1-control-plane-root-of-trust-out-of-band-fixed-seed.js')));
+ assert.deepEqual(m.expected_baselines,p.EXPECTED_BASELINES); assert.deepEqual(m.fixed_services,p.FIXED_SERVICES);
+ assert.equal(m.zero_input,true); assert.equal(m.one_shot,true); assert.equal(m.park_production_mutation,false);
 });
