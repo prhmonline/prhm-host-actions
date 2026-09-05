@@ -1,1 +1,43 @@
-{"package_id":"deployhq_control_adapter_node1_recreate_v1","records":[{"destination_path":"/opt/prhm-deployhq-control/server.js","group":"root","mode":"0755","owner":"root","replace_policy":"sha_bound_replace","sha256":"1ed4b4fd18ca68ec11dd7bb0b3283e94caa2e75cef3aa2f1abdac4475a397dc1","source_path":"packages/deployhq-control-adapter-node1-recreate-v1/deployhq-control-adapter-v1.js"},{"destination_path":"/opt/prhm-agent-selfmaint-exec/actions/bootstrap-deployhq-control-adapter-v1.js","group":"root","mode":"0750","owner":"root","replace_policy":"sha_bound_replace","sha256":"e620637c9384a82e5ee3eff9c925f3bdd757243976f06550a34ed71ed0fe90a3","source_path":"packages/deployhq-control-adapter-node1-recreate-v1/bootstrap-deployhq-control-adapter-v1.js"},{"destination_path":"/opt/prhm-agent-selfmaint-exec/actions/deployhq-node1-canonical-recreate-v1.js","group":"root","mode":"0750","owner":"root","replace_policy":"sha_bound_replace","sha256":"91a301736937cb937265475e4cd2f6473353df0b7991e3805f165af452d17135","source_path":"packages/deployhq-control-adapter-node1-recreate-v1/deployhq-node1-canonical-recreate-v1.js"},{"destination_path":"/opt/prhm-agent-selfmaint-exec/actions/bootstrap-host-actions-deployhq-node1-recreate-v1.js","group":"root","mode":"0750","owner":"root","replace_policy":"sha_bound_replace","sha256":"5f2a903e226c0cab1b5281e21ee1d5c436eca55d6dbb935f3f1bf109c44f89dd","source_path":"packages/deployhq-control-adapter-node1-recreate-v1/bootstrap-host-actions-deployhq-node1-recreate-v1.js"},{"destination_path":"/etc/systemd/system/prhm-deployhq-control.service","group":"root","mode":"0644","owner":"root","replace_policy":"sha_bound_replace","sha256":"84d0c6907edc1081526a86accf9ce4fcc428db6da94e102f99f86200249d0097","source_path":"packages/deployhq-control-adapter-node1-recreate-v1/prhm-deployhq-control.service"}],"source_commit":"cb180a622145062b07a314c43c2075d91446aa91","source_repo":"prhmonline/prhm-host-actions"}
+{
+  "package_id": "deployhq_control_adapter_node1_recreate_v1",
+  "records": [
+    {
+      "destination_path": "/opt/prhm-deployhq-control/server.js",
+      "group": "root",
+      "mode": "0755",
+      "owner": "root",
+      "replace_policy": "sha_bound_replace",
+      "sha256": "1ed4b4fd18ca68ec11dd7bb0b3283e94caa2e75cef3aa2f1abdac4475a397dc1",
+      "source_path": "packages/deployhq-control-adapter-node1-recreate-v1/deployhq-control-adapter-v1.js"
+    },
+    {
+      "destination_path": "/opt/prhm-agent-selfmaint-exec/actions/bootstrap-deployhq-control-adapter-v1.js",
+      "group": "root",
+      "mode": "0750",
+      "owner": "root",
+      "replace_policy": "sha_bound_replace",
+      "sha256": "e620637c9384a82e5ee3eff9c925f3bdd757243976f06550a34ed71ed0fe90a3",
+      "source_path": "packages/deployhq-control-adapter-node1-recreate-v1/bootstrap-deployhq-control-adapter-v1.js"
+    },
+    {
+      "destination_path": "/opt/prhm-agent-selfmaint-exec/actions/deployhq-node1-canonical-recreate-v1.js",
+      "group": "root",
+      "mode": "0750",
+      "owner": "root",
+      "replace_policy": "sha_bound_replace",
+      "sha256": "91a301736937cb937265475e4cd2f6473353df0b7991e3805f165af452d17135",
+      "source_path": "packages/deployhq-control-adapter-node1-recreate-v1/deployhq-node1-canonical-recreate-v1.js"
+    },
+    {
+      "destination_path": "/opt/prhm-agent-selfmaint-exec/actions/bootstrap-host-actions-deployhq-node1-recreate-v1.js",
+      "group": "root",
+      "mode": "0750",
+      "owner": "root",
+      "replace_policy": "sha_bound_replace",
+      "sha256": "5f2a903e226c0cab1b5281e21ee1d5c436eca55d6dbb935f3f1bf109c44f89dd",
+      "source_path": "packages/deployhq-control-adapter-node1-recreate-v1/bootstrap-host-actions-deployhq-node1-recreate-v1.js"
+    }
+  ],
+  "source_commit": "cb180a622145062b07a314c43c2075d91446aa91",
+  "source_repo": "prhmonline/prhm-host-actions"
+}
