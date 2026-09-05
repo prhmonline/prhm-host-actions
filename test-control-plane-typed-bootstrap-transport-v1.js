@@ -81,3 +81,13 @@ test('no unrelated service or MCP runtime restart occurs',()=>{const d=makeApply
 test('embedded runtime package bytes match compiled manifest hashes',()=>{const b=t.embeddedPackageBytes();assert.equal(t.validatePackageBytes(t.runtimeManifest(),b),true)});
 test('production node verifier is fileless and unit verifier is exact-byte structural',()=>{const e=t.productionExecApi({nodeBin:process.execPath});assert.equal(e.verifyNode('x.js',Buffer.from("'use strict';\nconst x=1;\n")).ok,true);const unitRec=t.runtimeManifest().records.find(r=>r.source_path.endsWith('.service'));const b=t.embeddedPackageBytes()[unitRec.source_path];assert.equal(e.verifyUnit(unitRec.source_path,b).ok,true);assert.equal(e.verifyUnit(unitRec.source_path,Buffer.from('[Service]\nExecStart=/bin/false\n')).ok,false)});
 test('CLI rejects arbitrary arguments without mutation',()=>assert.throws(()=>t.main(['--command=sh']),/unexpected_arguments/));
+
+
+test('production installAtomic promotes through destination-local temp to avoid EXDEV', () => {
+  const src=require('node:fs').readFileSync(require.resolve('./control-plane-typed-bootstrap-transport-v1.js'),'utf8');
+  assert.equal(src.includes("fs.renameSync(sp,dp)"),false);
+  assert.equal(src.includes("fs.copyFileSync(sp,tmp,fs.constants.COPYFILE_EXCL)"),true);
+  assert.equal(src.includes("const tmp=dp+'.candidate-'"),true);
+  assert.equal(src.includes("fs.renameSync(tmp,dp)"),true);
+  assert.equal(src.includes("fs.fsyncSync(dfd)"),true);
+});

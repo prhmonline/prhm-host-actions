@@ -138,7 +138,7 @@ function productionIo(){return {
  persistJournal(j){const p=path.join(STATE_ROOT,'invocations',j.invocation_id,'journal.json');atomicWrite(p,Buffer.from(JSON.stringify(redactEvidence(j),null,2)+'\n'),0o600)},
  stageCandidate(id,r,b){const dir=path.join(STATE_ROOT,'invocations',id,'stage');fs.mkdirSync(dir,{recursive:true,mode:0o700});const p=path.join(dir,sha256(Buffer.from(r.source_path))+'.candidate');fs.writeFileSync(p,b,{mode:parseInt(r.mode,8),flag:'wx'});fs.chmodSync(p,parseInt(r.mode,8));return p},
  readStage:p=>fs.readFileSync(p),
- installAtomic(sp,dp,r){fs.mkdirSync(path.dirname(dp),{recursive:true,mode:0o755});fs.renameSync(sp,dp);fs.chmodSync(dp,parseInt(r.mode,8))},
+ installAtomic(sp,dp,r){fs.mkdirSync(path.dirname(dp),{recursive:true,mode:0o755});const tmp=dp+'.candidate-'+process.pid+'-'+crypto.randomUUID();let fd=null;try{fs.copyFileSync(sp,tmp,fs.constants.COPYFILE_EXCL);fs.chmodSync(tmp,parseInt(r.mode,8));fd=fs.openSync(tmp,'r');fs.fsyncSync(fd);fs.closeSync(fd);fd=null;fs.renameSync(tmp,dp);const dfd=fs.openSync(path.dirname(dp),'r');try{fs.fsyncSync(dfd)}finally{fs.closeSync(dfd)};fs.chmodSync(dp,parseInt(r.mode,8));fs.unlinkSync(sp)}catch(e){if(fd!==null){try{fs.closeSync(fd)}catch{}};try{fs.unlinkSync(tmp)}catch(x){if(x.code!=='ENOENT')throw x};throw e}},
  readInstalled:p=>fs.readFileSync(p),
  persistResult(r){atomicWrite(RESULT_PATH,Buffer.from(JSON.stringify(redactEvidence(r),null,2)+'\n'),0o600)}
 }}
