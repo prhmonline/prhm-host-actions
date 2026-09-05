@@ -80,11 +80,11 @@ function execute(){
   fs.mkdirSync(BACKUP_DIR,{recursive:true,mode:0o700});const stamp=new Date().toISOString().replace(/[-:.TZ]/g,'').slice(0,14);for(const [k,v] of Object.entries(live))fs.writeFileSync(path.join(BACKUP_DIR,stamp+'-'+k+'.bak'),v,{mode:0o600,flag:'wx'});
   let mutated=false;
   try{
-    atomic(PATHS.base,Buffer.from(patched.base),0o644);atomic(PATHS.executor,Buffer.from(patched.executor),0o644);atomic(PATHS.mcp,Buffer.from(patched.mcp),0o644);atomic(PATHS.policy,Buffer.from(patched.policy),0o640);mutated=true;
+    atomic(PATHS.base,Buffer.from(patched.base),0o644);atomic(PATHS.executor,Buffer.from(patched.executor),0o644);atomic(PATHS.mcp,Buffer.from(patched.mcp),0o644);atomic(PATHS.policy,Buffer.from(patched.policy),0o644);mutated=true;
     restart('prhm-company-approval.service');restart('prhm-agent-selfmaint.service');restart('prhm-agent-selfmaint-exec.service');restart('prhm-agent-mcp.service');
     const result={ok:true,schema_version:'prhm.host-action-registration-result.v1',action:ACTION,installed:true,control_plane_mutation:true,production_application_tree_mutation:false,database_mutation:false,dns_mutation:false,firewall_mutation:false,rollback_performed:false};atomic(RESULT,Buffer.from(JSON.stringify(result)+'\n'),0o600);return result;
   }catch(e){
-    if(mutated){for(const [k,v] of Object.entries(live))atomic(PATHS[k],Buffer.from(v),k==='policy'?0o640:0o644);try{restart('prhm-company-approval.service');restart('prhm-agent-selfmaint.service');restart('prhm-agent-selfmaint-exec.service');restart('prhm-agent-mcp.service')}catch{}e.rollback_performed=true}
+    if(mutated){for(const [k,v] of Object.entries(live))atomic(PATHS[k],Buffer.from(v),0o644);try{restart('prhm-company-approval.service');restart('prhm-agent-selfmaint.service');restart('prhm-agent-selfmaint-exec.service');restart('prhm-agent-mcp.service')}catch{}e.rollback_performed=true}
     throw e;
   }
 }

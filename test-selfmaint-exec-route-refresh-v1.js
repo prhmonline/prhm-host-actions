@@ -28,7 +28,7 @@ test('executor action has no arbitrary input and schedules only prhm-agent-selfm
   assert.match(block,/prhm-agent-selfmaint-exec\.service/);
   assert.match(block,/--on-active=2s/);
   assert.match(block,/systemd-run/);
-  assert.doesNotMatch(block,/req\.body|input\.service|body\.service|execSync|shell:true/);
+  assert.doesNotMatch(block,/req\.body|input\.service|body\.service|spawn\([^)]*shell|execSync/);
   assert.doesNotMatch(block,/prhm-agent-api\.service|prhm-agent-mcp\.service|prhm-agent-selfmaint\.service/);
 });
 
@@ -37,4 +37,9 @@ test('registration patch is fail-closed on missing structural anchors',()=>{
   assert.throws(()=>b.patchBase('no anchor'),/base_anchor_invalid/);
   assert.throws(()=>b.patchExecutor('no anchor'),/executor_spec_anchor_invalid/);
   assert.throws(()=>b.patchMcp('const HostActionV2=z.enum([]);'),/mcp_anchor_invalid/);
+});
+
+test('approval policy remains world-readable for DynamicUser approval service',()=>{
+  const src=fs.readFileSync(require.resolve('./bootstrap-host-actions-selfmaint-exec-route-refresh-v1.js'),'utf8');
+  assert.match(src,/atomic\(PATHS\.policy,Buffer\.from\(patched\.policy\),0o644\)/);
 });
