@@ -75,6 +75,8 @@ function preflight({fsApi,execApi,manifest,packageBytes,sourceCommit,manifestSha
 
 
 const SERVICE='prhm-deployhq-control.service';
+const READINESS_ATTEMPTS=5;
+const READINESS_RETRY_MS=2000;
 function persistResult(result,deps){if(!deps||!deps.io||typeof deps.io.persistResult!=='function')fail('result_persistence_missing');deps.io.persistResult(redactEvidence(result));return result}
 function rollbackJournal(journal,deps){
  const errors=[];const io=deps.io,service=deps.serviceApi;
@@ -104,7 +106,8 @@ function applyTransaction(deps){
   for(const {r,stagePath} of staged){io.installAtomic(stagePath,r.destination_path,r);const now=io.readInstalled(r.destination_path);if(sha256(now)!==r.sha256)fail('post_write_sha_mismatch')}
   if(unitChanged)serviceApi.daemonReload();
   const start=serviceApi.startOrRestart(SERVICE);
-  const health=(start&&start.reason==='deployhq_credentials_missing')?{ok:false,reason:'deployhq_credentials_missing'}:healthApi.checkAdapter();
+  let health=(start&&start.reason==='deployhq_credentials_missing')?{ok:false,reason:'deployhq_credentials_missing'}:null;
+  if(!health){for(let attempt=1;attempt<=READINESS_ATTEMPTS;attempt++){health=healthApi.checkAdapter();if(health&&health.ok===true)break;if(health&&health.reason==='deployhq_credentials_missing')break;if(attempt<READINESS_ATTEMPTS){if(typeof healthApi.sleep==='function')healthApi.sleep(READINESS_RETRY_MS);}}}
   let adapterReady=true,readinessReason=null;
   if(!health||health.ok!==true){if(health&&health.reason==='deployhq_credentials_missing'){adapterReady=false;readinessReason='deployhq_credentials_missing'}else fail('adapter_health_failed')}
   const out={ok:true,action:ACTION,schema_version:'prhm.bootstrap-result.v1',package_id:PACKAGE.package_id,installed:true,adapter_installed:true,adapter_ready:adapterReady,readiness_reason:readinessReason,host_action_registration_installed:false,mcp_refresh_required:false,deployhq_mutation:false,application_mutation:false,honartik_mutation:false,imotion_mutation:false,rollback_performed:false,rollback_failed:false,invocation_id:invocationId,preflight:pf};
@@ -146,9 +149,9 @@ function productionServiceApi(){return {
  startOrRestart(s){if(!fs.existsSync(CREDENTIAL_SOURCES.email)||!fs.existsSync(CREDENTIAL_SOURCES.apiKey))return {started:false,reason:'deployhq_credentials_missing'};systemctl(['restart',s]);return {started:true}},
  restoreState(s,state){if(state.active)systemctl(['start',s]);else systemctl(['stop',s],true);if(state.enabled)systemctl(['enable',s]);else systemctl(['disable',s],true)}
 }}
-function productionHealthApi(){return {checkAdapter(){const r=cp.spawnSync('/usr/bin/curl',['-fsS','--max-time','5','http://127.0.0.1:8791/health'],{encoding:'utf8',timeout:10000,maxBuffer:50000});if(r.error||r.status!==0)return {ok:false,reason:'adapter_unhealthy'};try{const j=JSON.parse(r.stdout);return {ok:j&&j.ok===true}}catch{return {ok:false,reason:'adapter_health_invalid'}}}}}
+function productionHealthApi(){return {checkAdapter(){const r=cp.spawnSync('/usr/bin/curl',['-fsS','--max-time','1','http://127.0.0.1:8791/health'],{encoding:'utf8',timeout:3000,maxBuffer:50000});if(r.error||r.status!==0)return {ok:false,reason:'adapter_unhealthy'};try{const j=JSON.parse(r.stdout);return {ok:j&&j.ok===true}}catch{return {ok:false,reason:'adapter_health_invalid'}}},sleep(ms){Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,ms)}}}
 function productionDeps(){const actual=readLiveBaseline();return {manifest:runtimeManifest(),packageBytes:embeddedPackageBytes(),sourceCommit:PACKAGE.source_commit,manifestSha:PACKAGE.manifest_sha256,liveBaseline:{expected:PRE_REGISTRATION_BASELINE,actual},fsApi:productionFsApi(),execApi:productionExecApi(),io:productionIo(),serviceApi:productionServiceApi(),healthApi:productionHealthApi()}}
 function main(argv=process.argv.slice(2)){if(argv.length!==1||!['--preflight-only','--apply'].includes(argv[0]))fail('unexpected_arguments');const deps=productionDeps();const out=argv[0]==='--preflight-only'?preflight(deps):applyTransaction(deps);process.stdout.write(JSON.stringify(redactEvidence(out))+'\n');if(out&&out.ok===false)process.exitCode=1;return out}
 
 if(require.main===module){try{main()}catch(e){process.stderr.write(String(e.message||e)+'\n');process.exitCode=1}}
-module.exports={ACTION,OPERATION,REQUEST_FIELDS,PACKAGE,ALLOWLIST,SERVICE,PRE_REGISTRATION_BASELINE,BASELINE_PATHS,EMBEDDED_PACKAGE_B64,RESULT_PATH,canonicalManifestBytes,validateManifest,validateDestination,validatePackageBytes,redactEvidence,sha256,preflight,applyTransaction,rollbackJournal,persistResult,embeddedPackageBytes,runtimeManifest,productionExecApi,main};
+module.exports={ACTION,OPERATION,REQUEST_FIELDS,PACKAGE,ALLOWLIST,SERVICE,READINESS_ATTEMPTS,READINESS_RETRY_MS,PRE_REGISTRATION_BASELINE,BASELINE_PATHS,EMBEDDED_PACKAGE_B64,RESULT_PATH,canonicalManifestBytes,validateManifest,validateDestination,validatePackageBytes,redactEvidence,sha256,preflight,applyTransaction,rollbackJournal,persistResult,embeddedPackageBytes,runtimeManifest,productionExecApi,main};
