@@ -1,4 +1,10 @@
-# PRHM Root-of-Trust Typed-Bootstrap Helper Refresh V2 — Provider Console Runbook
+# SUPERSEDED — DO NOT EXECUTE
+
+This V2 seed is superseded because its candidate helper contains a stale production baseline binding. Do not execute V2. Use `prhm-root-of-trust-typed-bootstrap-helper-refresh-v3` only.
+
+---
+
+# PRHM Root-of-Trust Typed-Bootstrap Helper Refresh V2 â Provider Console Runbook
 
 Artifact commit: `0c62ca67cb0625057fafd74a4bf5d5963e31d533`  
 Artifact SHA-256: `b7ba8d4efd57a3e095d6e556328ad1d3e7d127281c0112d3845ee28cb63b54f0`
