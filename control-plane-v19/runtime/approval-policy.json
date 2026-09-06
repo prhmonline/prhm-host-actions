@@ -1,0 +1,1051 @@
+{
+  "schema_version": "prhm.approval-policy.v1",
+  "version": "2026-09-05.3-autonomous-operator-v1",
+  "default_deny": true,
+  "issuer": "prhm-company-approval",
+  "clock_skew_seconds": 0,
+  "one_time_use": true,
+  "high_risk_approver": "mohammad",
+  "rollback_required_from_level": 2,
+  "levels": {
+    "0": {
+      "name": "read-only",
+      "risks": [
+        "read-only"
+      ],
+      "max_ttl_seconds": 300,
+      "human_approval": false
+    },
+    "1": {
+      "name": "draft-analysis",
+      "risks": [
+        "low"
+      ],
+      "max_ttl_seconds": 900,
+      "human_approval": false
+    },
+    "2": {
+      "name": "controlled-change",
+      "risks": [
+        "medium"
+      ],
+      "max_ttl_seconds": 600,
+      "human_approval": false
+    },
+    "3": {
+      "name": "production-sensitive",
+      "risks": [
+        "high"
+      ],
+      "max_ttl_seconds": 300,
+      "human_approval": false
+    },
+    "4": {
+      "name": "destructive-critical",
+      "risks": [
+        "critical"
+      ],
+      "max_ttl_seconds": 180,
+      "human_approval": true,
+      "required_approver": "mohammad",
+      "second_confirmation_required": true
+    }
+  },
+  "operations": {
+    "company.status": {
+      "level": 0
+    },
+    "agent.status": {
+      "level": 0
+    },
+    "project.status": {
+      "level": 0
+    },
+    "service.status": {
+      "level": 0
+    },
+    "logs.read": {
+      "level": 0
+    },
+    "git.status": {
+      "level": 0
+    },
+    "git.diff": {
+      "level": 0
+    },
+    "docker.status": {
+      "level": 0
+    },
+    "app.health_check": {
+      "level": 0
+    },
+    "file.read_safe": {
+      "level": 0
+    },
+    "report.generate": {
+      "level": 0
+    },
+    "work_order.draft": {
+      "level": 1
+    },
+    "analysis.generate": {
+      "level": 1
+    },
+    "proposal.build": {
+      "level": 1
+    },
+    "staging.check": {
+      "level": 1
+    },
+    "service.restart": {
+      "level": 2
+    },
+    "cache.clear": {
+      "level": 2
+    },
+    "docker.restart": {
+      "level": 2
+    },
+    "file.patch_safe": {
+      "level": 2
+    },
+    "config.patch_safe": {
+      "level": 2
+    },
+    "deploy.staging": {
+      "level": 2
+    },
+    "database.backup": {
+      "level": 2
+    },
+    "deploy.production": {
+      "level": 3
+    },
+    "database.migrate": {
+      "level": 3
+    },
+    "database.change": {
+      "level": 3
+    },
+    "dns.change": {
+      "level": 3
+    },
+    "firewall.change": {
+      "level": 4
+    },
+    "ssh.change": {
+      "level": 4
+    },
+    "message.mass_send": {
+      "level": 4
+    },
+    "delete.destructive": {
+      "level": 4
+    },
+    "credential.rotate": {
+      "level": 4
+    },
+    "server.decommission": {
+      "level": 4
+    },
+    "financial.action": {
+      "level": 4
+    },
+    "ops.db_insert": {
+      "level": 3
+    },
+    "ops.db_update": {
+      "level": 3
+    },
+    "ops.db_compensating_insert": {
+      "level": 4
+    },
+    "selfmaint.patch_control_plane": {
+      "level": 3
+    },
+    "telegram.control.level4": {
+      "level": 4
+    },
+    "host_action.harden_agent_api_v1": {
+      "level": 4
+    },
+    "host_action.agent_api_process_sandbox_v1": {
+      "level": 4
+    },
+    "host_action.agent_api_filesystem_confinement_v1": {
+      "level": 4
+    },
+    "host_action.agent_api_capability_minimize_v1": {
+      "level": 4
+    },
+    "host_action.leadops_language_gate_v1": {
+      "level": 3,
+      "risk": "high"
+    },
+    "host_action.mcp_candidate_schema_compare_v1": {
+      "level": 3,
+      "risk": "high"
+    },
+    "host_action.leadops_economics_inputs_foundation_v1": {
+      "level": 3,
+      "risk": "high"
+    },
+    "host_action.solo_company_selftest_v1": {
+      "level": 3,
+      "risk": "high"
+    },
+    "host_action.real_market_shadow_uat_v1": {
+      "level": 3,
+      "risk": "high"
+    },
+    "host_action.real_market_verified_economics_uat_v1": {
+      "level": 3,
+      "risk": "high"
+    },
+    "host_action.company_os_dashboard_v1": {
+      "level": 3,
+      "risk": "high"
+    },
+    "host_action.company_os_dashboard_credentials_reset_v1": {
+      "level": 4
+    },
+    "host_action.company_os_dashboard_persian_v1": {
+      "level": 3,
+      "risk": "high"
+    },
+    "host_action.leadops_parscoders_runtime_v3_restore_v1": {
+      "level": 3,
+      "risk": "high"
+    },
+    "host_action.leadops_parscoders_selinux_exec_remediate_v1": {
+      "level": 4
+    },
+    "host_action.agent_zero_downtime_bootstrap_v1": {
+      "level": 3
+    },
+    "host_action.host_action_v2_installer_v1": {
+      "level": 3
+    },
+    "host_action.imotion_marketing_target_register_v1": {
+      "level": 3,
+      "risk": "high"
+    },
+    "host_action.drtarjomeh_security_containment_v1": {
+      "level": 4
+    },
+    "host_action.agent_zdt_existing_topology_rolling_refresh_v1": {
+      "level": 3
+    },
+    "host_action.agent_zdt_existing_topology_rolling_refresh_rollback_v1": {
+      "level": 3
+    },
+    "host_action.agent_zdt_existing_topology_rolling_refresh_finalize_v1": {
+      "level": 3
+    },
+    "host_action.imotion_marketing_targets_register_v2": {
+      "level": 3,
+      "risk": "high"
+    },
+    "host_action.honartik_iticket_dark_backend_batch1_v1": {
+      "level": 3,
+      "risk": "high"
+    },
+    "host_action.honartik_iticket_dark_backend_batch2_v1": {
+      "level": 3,
+      "risk": "high"
+    },
+    "host_action.honartik_iticket_dark_backend_batch2_result_bridge_helper_refresh_v1": {
+      "level": 3,
+      "risk": "high",
+      "one_time_use": true,
+      "requested_approver": "mohammad",
+      "expires_seconds": 300,
+      "policy_version": "2026-08-21.1-honartik-iticket-batch2-result-bridge-helper-refresh-v1",
+      "rollback_reference": "host-action-v2:honartik-iticket-batch2-result-bridge-helper-refresh-v1:helper-file-rollback"
+    },
+    "host_action.control_plane_root_scripts_stage_transport_v1": {
+      "level": 3
+    },
+    "host_action.imotion_credential_bind_v1": {
+      "level": 4
+    },
+    "backup.central_offsite_enable_v1": {
+      "level": 4,
+      "risk": "critical",
+      "requires_second_confirmation": true,
+      "one_time_use": true,
+      "requested_approver": "mohammad",
+      "expires_seconds": 180,
+      "policy_version": "2026-08-25.1-backup-assurance-central-offsite-v1",
+      "rollback_reference": "central-offsite-enable:restore-timer-prestate"
+    },
+    "host_action.control_plane_typed_bootstrap_transport_v1": {
+      "level": 3
+    },
+    "host_action.selfmaint_exec_route_refresh_v1": {
+      "level": 3,
+      "risk": "high",
+      "requires_second_confirmation": true,
+      "one_time_use": true,
+      "requested_approver": "mohammad",
+      "expires_seconds": 180,
+      "policy_version": "2026-09-05.1-selfmaint-exec-route-refresh-v1",
+      "rollback_reference": "host-action-v2:selfmaint-exec-route-refresh-v1:no-file-mutation"
+    }
+  },
+  "enabled": true,
+  "scope_state": "selfmaint-drtarjomeh-production",
+  "scope_freeze": true,
+  "typed_scopes": [
+    {
+      "tool": "safe_file_write",
+      "project": "honartik_front_staging",
+      "environment": "staging",
+      "action": "write",
+      "risk": "medium",
+      "operation": "file.patch_safe",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "ops_execute",
+      "project": "imotion_admin_prod",
+      "environment": "production",
+      "action": "write",
+      "risk": "high",
+      "operation": "ops.db_insert",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "ops_execute",
+      "project": "imotion_admin_prod",
+      "environment": "production",
+      "action": "write",
+      "risk": "high",
+      "operation": "ops.db_update",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "ops_execute",
+      "project": "imotion_admin_prod",
+      "environment": "production",
+      "action": "write",
+      "risk": "critical",
+      "operation": "ops.db_compensating_insert",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "selfmaint_apply",
+      "project": "agent_api",
+      "environment": "production",
+      "action": "write",
+      "risk": "high",
+      "operation": "selfmaint.patch_control_plane",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "selfmaint_apply",
+      "project": "agent_mcp",
+      "environment": "production",
+      "action": "write",
+      "risk": "high",
+      "operation": "selfmaint.patch_control_plane",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "ops_execute",
+      "project": "drtarjomeh_prod",
+      "environment": "production",
+      "action": "write",
+      "risk": "high",
+      "operation": "ops.db_insert",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "ops_execute",
+      "project": "drtarjomeh_prod",
+      "environment": "production",
+      "action": "write",
+      "risk": "high",
+      "operation": "ops.db_update",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "telegram_control",
+      "project": "drtarjomeh_leadops",
+      "environment": "production",
+      "action": "deploy_p0",
+      "risk": "critical",
+      "operation": "telegram.control.level4",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "telegram_control",
+      "project": "drtarjomeh_leadops",
+      "environment": "production",
+      "action": "rollback_p0",
+      "risk": "critical",
+      "operation": "telegram.control.level4",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "telegram_control",
+      "project": "drtarjomeh_leadops",
+      "environment": "production",
+      "action": "enable_p0_live",
+      "risk": "critical",
+      "operation": "telegram.control.level4",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "telegram_control",
+      "project": "drtarjomeh_leadops",
+      "environment": "production",
+      "action": "enable_proposal_auto_send",
+      "risk": "critical",
+      "operation": "telegram.control.level4",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "telegram_control",
+      "project": "drtarjomeh_leadops",
+      "environment": "production",
+      "action": "enable_auto_negotiation",
+      "risk": "critical",
+      "operation": "telegram.control.level4",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "host_action_apply",
+      "project": "control_plane",
+      "environment": "production",
+      "action": "harden_agent_api_v1",
+      "risk": "critical",
+      "operation": "host_action.harden_agent_api_v1",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "host_action_v2_apply",
+      "project": "control_plane",
+      "environment": "production",
+      "action": "agent_api_process_sandbox_v1",
+      "risk": "critical",
+      "operation": "host_action.agent_api_process_sandbox_v1",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "host_action_v2_apply",
+      "project": "control_plane",
+      "environment": "production",
+      "action": "agent_api_filesystem_confinement_v1",
+      "risk": "critical",
+      "operation": "host_action.agent_api_filesystem_confinement_v1",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "host_action_v2_apply",
+      "project": "control_plane",
+      "environment": "production",
+      "action": "agent_api_capability_minimize_v1",
+      "risk": "critical",
+      "operation": "host_action.agent_api_capability_minimize_v1",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "imotion_next_safe_deploy",
+      "project": "imotion_front_prod",
+      "environment": "production",
+      "action": "imotion_next_safe_deploy",
+      "risk": "high",
+      "operation": "deploy.production",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "host_action_v2_apply",
+      "project": "control_plane",
+      "environment": "production",
+      "action": "leadops_language_gate_v1",
+      "risk": "high",
+      "operation": "host_action.leadops_language_gate_v1",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "host_action_v2_apply",
+      "project": "control_plane",
+      "environment": "production",
+      "action": "mcp_candidate_schema_compare_v1",
+      "risk": "high",
+      "operation": "host_action.mcp_candidate_schema_compare_v1",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "host_action_v2_apply",
+      "project": "control_plane",
+      "environment": "production",
+      "action": "leadops_economics_inputs_foundation_v1",
+      "risk": "high",
+      "operation": "host_action.leadops_economics_inputs_foundation_v1",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "host_action_v2_apply",
+      "project": "control_plane",
+      "environment": "production",
+      "action": "solo_company_selftest_v1",
+      "risk": "high",
+      "operation": "host_action.solo_company_selftest_v1",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "host_action_v2_apply",
+      "project": "control_plane",
+      "environment": "production",
+      "action": "real_market_shadow_uat_v1",
+      "risk": "high",
+      "operation": "host_action.real_market_shadow_uat_v1",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "host_action_v2_apply",
+      "project": "control_plane",
+      "environment": "production",
+      "action": "real_market_verified_economics_uat_v1",
+      "risk": "high",
+      "operation": "host_action.real_market_verified_economics_uat_v1",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "host_action_v2_apply",
+      "project": "control_plane",
+      "environment": "production",
+      "action": "company_os_dashboard_v1",
+      "risk": "high",
+      "operation": "host_action.company_os_dashboard_v1",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "host_action_v2_apply",
+      "project": "control_plane",
+      "environment": "production",
+      "action": "company_os_dashboard_credentials_reset_v1",
+      "risk": "critical",
+      "operation": "host_action.company_os_dashboard_credentials_reset_v1",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "host_action_v2_apply",
+      "project": "control_plane",
+      "environment": "production",
+      "action": "company_os_dashboard_persian_v1",
+      "risk": "high",
+      "operation": "host_action.company_os_dashboard_persian_v1",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "host_action_v2_apply",
+      "project": "control_plane",
+      "environment": "production",
+      "action": "leadops_parscoders_runtime_v3_restore_v1",
+      "risk": "high",
+      "operation": "host_action.leadops_parscoders_runtime_v3_restore_v1",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "host_action_v2_apply",
+      "project": "control_plane",
+      "environment": "production",
+      "action": "leadops_parscoders_selinux_exec_remediate_v1",
+      "risk": "critical",
+      "operation": "host_action.leadops_parscoders_selinux_exec_remediate_v1",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "host_action_v2_apply",
+      "project": "control_plane",
+      "environment": "production",
+      "action": "agent_zero_downtime_bootstrap_v1",
+      "risk": "high",
+      "operation": "host_action.agent_zero_downtime_bootstrap_v1",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "host_action_v2_apply",
+      "project": "control_plane",
+      "environment": "production",
+      "action": "host_action_v2_installer_v1",
+      "risk": "high",
+      "operation": "host_action.host_action_v2_installer_v1",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "host_action_v2_apply",
+      "project": "control_plane",
+      "environment": "production",
+      "action": "imotion_marketing_target_register_v1",
+      "risk": "high",
+      "operation": "host_action.imotion_marketing_target_register_v1",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "host_action_v2_apply",
+      "project": "control_plane",
+      "environment": "production",
+      "action": "drtarjomeh_security_containment_v1",
+      "risk": "critical",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ],
+      "operation": "host_action.drtarjomeh_security_containment_v1"
+    },
+    {
+      "tool": "host_action_v2_apply",
+      "project": "control_plane",
+      "environment": "production",
+      "action": "agent_zdt_existing_topology_rolling_refresh_v1",
+      "risk": "high",
+      "operation": "host_action.agent_zdt_existing_topology_rolling_refresh_v1",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "host_action_v2_apply",
+      "project": "control_plane",
+      "environment": "production",
+      "action": "agent_zdt_existing_topology_rolling_refresh_rollback_v1",
+      "risk": "high",
+      "operation": "host_action.agent_zdt_existing_topology_rolling_refresh_rollback_v1",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "host_action_v2_apply",
+      "project": "control_plane",
+      "environment": "production",
+      "action": "agent_zdt_existing_topology_rolling_refresh_finalize_v1",
+      "risk": "high",
+      "operation": "host_action.agent_zdt_existing_topology_rolling_refresh_finalize_v1",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "host_action_v2_apply",
+      "project": "control_plane",
+      "environment": "production",
+      "action": "imotion_marketing_targets_register_v2",
+      "risk": "high",
+      "operation": "host_action.imotion_marketing_targets_register_v2",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "host_action_v2_apply",
+      "project": "control_plane",
+      "environment": "production",
+      "action": "honartik_iticket_dark_backend_batch1_v1",
+      "risk": "high",
+      "operation": "host_action.honartik_iticket_dark_backend_batch1_v1",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "host_action_v2_apply",
+      "project": "control_plane",
+      "environment": "production",
+      "action": "honartik_iticket_dark_backend_batch2_v1",
+      "risk": "high",
+      "operation": "host_action.honartik_iticket_dark_backend_batch2_v1",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "host_action_v2_apply",
+      "project": "control_plane",
+      "environment": "production",
+      "action": "honartik_iticket_dark_backend_batch2_result_bridge_helper_refresh_v1",
+      "risk": "high",
+      "operation": "host_action.honartik_iticket_dark_backend_batch2_result_bridge_helper_refresh_v1",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "control_plane_root_scripts_stage_transport_apply_v1",
+      "project": "control_plane",
+      "environment": "production",
+      "action": "control_plane_root_scripts_stage_transport_v1",
+      "risk": "high",
+      "operation": "host_action.control_plane_root_scripts_stage_transport_v1",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "host_action_v2_apply",
+      "project": "control_plane",
+      "environment": "production",
+      "action": "imotion_credential_bind_v1",
+      "risk": "critical",
+      "operation": "host_action.imotion_credential_bind_v1",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "central_offsite_enable_apply",
+      "project": "control_plane",
+      "environment": "production",
+      "action": "central_offsite_enable_v1",
+      "risk": "critical",
+      "operation": "backup.central_offsite_enable_v1",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "host_action_v2_apply",
+      "project": "control_plane",
+      "environment": "production",
+      "action": "control_plane_root_scripts_stage_transport_v1",
+      "risk": "high",
+      "operation": "host_action.control_plane_root_scripts_stage_transport_v1",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "host_action_v2_apply",
+      "project": "control_plane",
+      "environment": "production",
+      "action": "control_plane_typed_bootstrap_transport_v1",
+      "risk": "high",
+      "operation": "host_action.control_plane_typed_bootstrap_transport_v1",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    },
+    {
+      "tool": "host_action_v2_apply",
+      "project": "control_plane",
+      "environment": "production",
+      "action": "selfmaint_exec_route_refresh_v1",
+      "risk": "high",
+      "operation": "host_action.selfmaint_exec_route_refresh_v1",
+      "principals": [
+        {
+          "principal_id": "mohammad",
+          "roles": [
+            "mcp-operator"
+          ]
+        }
+      ]
+    }
+  ],
+  "autonomous_operator": {
+    "enabled": true,
+    "auto_continue_levels": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "human_confirmation_levels": [
+      4
+    ],
+    "rollback_required_for_production_mutation": true,
+    "no_step_by_step_confirmation": true
+  }
+}
