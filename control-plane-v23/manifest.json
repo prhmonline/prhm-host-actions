@@ -1,0 +1,9 @@
+{
+  "version": "v23",
+  "purpose": "Make MCP self-maintenance request/status/apply stateless across multi-instance topology",
+  "base_runtime_sha256": "659f486701e3c448d6cd4b94f2345d9a3bc4f61206c0579eab00c9c193f38f96",
+  "candidate_runtime_sha256": "f934787ec208fee13a605b780d79ed6a48dc53fb776656c5d53ac1aeec50973a",
+  "test_sha256": "c78588369edad21b111f32a942959de496352fb3b4471ffc92ef6a7473e961b4",
+  "level3_tool": "selfmaint_apply_level3",
+  "confirmation": "CONFIRM_LEVEL_3_PRODUCTION"
+}
