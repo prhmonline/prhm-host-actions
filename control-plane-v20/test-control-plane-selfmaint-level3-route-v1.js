@@ -7,6 +7,8 @@ const {transformSource,EXPECTED_OLD_SHA}=require('./control-plane-selfmaint-leve
 const source=fs.readFileSync(process.argv[2]||'control-plane-v19/runtime/agent-selfmaint-server.js','utf8');
 assert.equal(crypto.createHash('sha256').update(source).digest('hex'),EXPECTED_OLD_SHA,'fixture must equal reconciled production baseline');
 const out=transformSource(source);
+const candidatePath=process.argv[3];
+if(candidatePath){assert.equal(out,fs.readFileSync(candidatePath,'utf8'),'generated candidate must byte-match committed runtime snapshot');}
 assert.ok(out.includes("'src/plugins/hostActionsV2.js'"),'hostActionsV2 must be allowlisted');
 assert.ok(out.includes("environment: 'production', action: 'write', risk: 'high', operation: OPERATION"),'Level-3/high risk binding must be emitted');
 assert.ok(out.includes("arguments: spec, ttl_seconds: 300"),'Level-3 request TTL must be 300');
