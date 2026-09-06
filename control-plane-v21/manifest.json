@@ -1,0 +1,16 @@
+{
+  "schema_version": "prhm.control-plane-selfmaint-agent-api-proxy.v1",
+  "target": "/home/agent/ssh-agent-api/selfmaintRoutes.js",
+  "expected_old_sha256": "41fbbe9e7ce3304a1bb1c2de635b5f91f4e42ec2aa6f78368e39cf877056bab6",
+  "expected_new_sha256": "01e11a69b4c5a110aad16d4ee71efd11bdd6c52c6594d09117b5d4bb339ace20",
+  "test_sha256": "3076c0f4a1a1489ddc2642263cd3e0f3448d7c30e10d893c11cd26e99071e803",
+  "base_branch": "feature/control-plane-selfmaint-level3-route-v20",
+  "changes": [
+    "proxy /selfmaint/request to /v1/request except fixed root-stage sentinel",
+    "proxy /selfmaint/confirm to /v1/confirm",
+    "proxy /selfmaint/apply to /v1/apply",
+    "preserve auth-first ordering and legacy handlers behind the proxy",
+    "preserve fixed root-stage mediator sentinel"
+  ],
+  "production_application_mutation": false
+}
