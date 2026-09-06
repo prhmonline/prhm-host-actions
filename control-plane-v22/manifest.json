@@ -1,0 +1,11 @@
+{
+  "schema_version": "prhm.control-plane-selfmaint-mcp-direct.v1",
+  "target": "/home/agent/ssh-mcp-server/src/plugins/selfmaint.js",
+  "expected_old_sha256": "11306f34d23f88524be269bc97f26a93b78649aa21de291e6f110c125bddfdd2",
+  "expected_new_sha256": "23f2be39ff2e261f0a92377b7c8ebedcd44da2447b89550548cb3d7834f9b1f8",
+  "test_sha256": "fb30b8236ca6497c1b31413a32431272b2b6a0a723abbdcdc771d42c0609b1d2",
+  "base_sha256": "e4871d509022c293ed0026c60283e18cd157c746b22751394b6933b543105248",
+  "preserves_root_stage_sentinel": true,
+  "removes_import_time_cleanup_side_effect": true,
+  "production_application_mutation": false
+}
