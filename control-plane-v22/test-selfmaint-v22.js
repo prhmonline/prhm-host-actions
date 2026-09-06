@@ -11,7 +11,9 @@ for(const marker of [
   "callExec('/v1/status','POST',toolArgs)",
   "callExec('/v1/execute','POST',toolArgs,1200000)",
   "if(exactRootStageSentinel(toolArgs))return legacy(toolArgs);",
-  "return base.registerSelfmaintPlugin(directProxy(mcp),context);"
+  "base.registerSelfmaintPlugin(directProxy(mcp),context);",
+  "mcp.registerTool('selfmaint_apply_level3'",
+  "z.literal('CONFIRM_LEVEL_3_PRODUCTION')"
 ]) assert.ok(src.includes(marker),'missing contract marker: '+marker);
 
 assert.ok(!src.includes('cleanupOnce();'),'import-time cleanup side effect must be absent');

@@ -3,6 +3,7 @@ import path from 'node:path';
 import http from 'node:http';
 import crypto from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { z } from 'zod';
 import { textResult } from '../core/result.js';
 
 const BASE_SHA='e4871d509022c293ed0026c60283e18cd157c746b22751394b6933b543105248';
@@ -110,7 +111,18 @@ const base=await import(pathToFileURL(BASE_FILE).href+'?sha='+BASE_SHA);
 if(typeof base.registerSelfmaintPlugin!=='function')throw new Error('selfmaint_v22_base_export_missing');
 
 export function registerSelfmaintPlugin(mcp,context){
-  return base.registerSelfmaintPlugin(directProxy(mcp),context);
+  const result=base.registerSelfmaintPlugin(directProxy(mcp),context);
+  mcp.registerTool('selfmaint_apply_level3',{
+    title:'Apply Approved Level-3 Self-maintenance Request',
+    description:'Execute only a previously created Level-3/high SHA-bound self-maintenance request using the Level-3 production confirmation literal.',
+    inputSchema:{
+      request_id:z.string().uuid(),
+      second_confirmation:z.literal('CONFIRM_LEVEL_3_PRODUCTION'),
+      note:z.string().min(3).max(1000).optional()
+    },
+    annotations:{readOnlyHint:false,destructiveHint:true,idempotentHint:false,openWorldHint:false}
+  },async args=>textResult(await callExec('/v1/execute','POST',args,1200000)));
+  return result;
 }
 
 export const __selfmaintV22Test={exactRootStageSentinel};
