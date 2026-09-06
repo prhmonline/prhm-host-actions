@@ -1,0 +1,16 @@
+{
+  "schema_version": "prhm.control-plane-selfmaint-level3-route.v1",
+  "target": "/opt/prhm-agent-selfmaint/server.js",
+  "expected_old_sha256": "e265b63953571de826e86740386f60c9b13bbf6e4c684418a2e82a1094295213",
+  "expected_new_sha256": "a23b4fec52123f8ad484f31576281c2f1933f24a3c811cd98c28e764a292e315",
+  "installer_sha256": "e1c09080160b69cd16a4ab42368a5764c358625c0c3b160468689bcc1211e1d7",
+  "test_sha256": "58f1760ba03926769a0ecb2f855c5cff9fdd363ba49bb87e242f3329ce98f779",
+  "changes": [
+    "allowlist src/plugins/hostActionsV2.js for agent_mcp self-maintenance",
+    "bind selfmaint.patch_control_plane requests and applies as risk high / Level-3 policy",
+    "use 300 second Level-3 request TTL",
+    "require and forward CONFIRM_LEVEL_3_PRODUCTION on self-maintenance confirmation route"
+  ],
+  "unrelated_level4_gates_preserved": true,
+  "production_application_mutation": false
+}
