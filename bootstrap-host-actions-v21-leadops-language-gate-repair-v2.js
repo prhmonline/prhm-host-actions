@@ -14,7 +14,7 @@ function fail(m){throw new Error(m)}
 function once(s,a,b,l){const n=s.split(a).length-1;if(n!==1)fail('anchor_mismatch:'+l+':'+n);return s.replace(a,b)}
 function patchSource(src){
  let out=src;
- out=once(out,"BEGIN;\nCREATE TEMP TABLE leadops_language_gate_targets ON COMMIT DROP AS", "BEGIN;\nLOCK TABLE automation.outbox_events IN SHARE ROW EXCLUSIVE MODE;\nLOCK TABLE marketplace.opportunities IN SHARE ROW EXCLUSIVE MODE;\nCREATE TEMP TABLE leadops_language_gate_targets ON COMMIT DROP AS",'db_locks');
+ out=once(out,"CREATE TEMP TABLE leadops_language_gate_targets ON COMMIT DROP AS", "LOCK TABLE automation.outbox_events IN SHARE ROW EXCLUSIVE MODE;\\nLOCK TABLE marketplace.opportunities IN SHARE ROW EXCLUSIVE MODE;\\nCREATE TEMP TABLE leadops_language_gate_targets ON COMMIT DROP AS",'db_locks');
  out=once(out,"SELECT CASE WHEN count(*)<=${MAX_TARGETS} THEN 1 ELSE 1/0 END FROM leadops_language_gate_targets;", "SELECT 1 / CASE WHEN count(*)<=${MAX_TARGETS} THEN 1 ELSE 0 END FROM leadops_language_gate_targets;",'target_limit_assertion');
  const zero="SELECT CASE WHEN count(*)=0 THEN 1 ELSE 1/0 END";
  if((out.split(zero).length-1)!==2)fail('zero_assertion_count');
