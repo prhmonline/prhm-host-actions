@@ -22,7 +22,7 @@ const REL_PROVIDER='app/components/external/base.php';
 const REL_TEST='app/components/external/IticketExternalProviderTest.php';
 const EXPECTED_PATHS=Object.freeze([REL_PROVIDER,REL_TEST].sort());
 const OPERATION='honartik_iticket_pretoken_git_sync_v1';
-const CONFIRMATION='CONFIRM_LEVEL_3_PRODUCTION';
+const COMMAND='HONARTIK_ITICKET_PRETOKEN_GIT_SYNC_V1:CONFIRM_LEVEL_3_PRODUCTION';
 const MAX=500000;
 const H=b=>createHash('sha256').update(b).digest('hex');
 const F=x=>{throw new Error(x)};
@@ -52,13 +52,6 @@ function git(cwd,args,timeout=180000){return ok(run('/usr/bin/git',args,cwd,time
 function phpBin(){for(const x of ['/usr/local/php83/bin/php','/usr/local/bin/php','/usr/bin/php'])try{if(fs.lstatSync(x).isFile())return x}catch{}F('php_cli_missing');}
 function shaFile(file){const st=fs.lstatSync(file);if(st.isSymbolicLink()||!st.isFile())F('unsafe_file:'+file);return H(fs.readFileSync(file));}
 function atomicCopy(src,dst){const parent=path.dirname(dst);const pst=fs.lstatSync(parent);if(pst.isSymbolicLink()||!pst.isDirectory())F('unsafe_parent:'+parent);const bytes=fs.readFileSync(src);const tmp=dst+'.iticket-'+process.pid+'-'+Date.now()+'.tmp';fs.writeFileSync(tmp,bytes,{mode:0o644,flag:'wx'});fs.renameSync(tmp,dst);}
-function parse(command){
-  let s;try{s=JSON.parse(String(command||'').trim())}catch{return null}
-  if(!s||typeof s!=='object'||Array.isArray(s)||s.operation!==OPERATION)return null;
-  if(Object.keys(s).sort().join(',')!=='confirmation,operation')F('iticket_git_sync_exact_arguments_required');
-  if(s.confirmation!==CONFIRMATION)F('iticket_git_sync_level3_confirmation_required');
-  return s;
-}
 function changedPaths(cwd){
   const raw=git(cwd,['status','--porcelain=v1','--untracked-files=all']);
   return raw?raw.split(/\r?\n/).filter(Boolean).map(x=>x.slice(3)).sort():[];
@@ -127,9 +120,9 @@ function apply(){
   }
 }
 async function handle(a,h){
-  const s=parse(a?.command);if(!s)return h(a);
-  if(a?.project!=='honartik_admin_prod'||a?.access!=='write'||a?.risk!=='high'||a?.acknowledgeRisk!==true)F('iticket_git_sync_high_ack_write_required');
+  if(a?.project!=='honartik_admin_prod'||a?.command!==COMMAND)return h(a);
+  if(a?.mode!=='approved-risky')F('iticket_git_sync_approved_risky_mode_required');
   return textResult(apply());
 }
-function proxy(m){return new Proxy(m,{get(t,k){if(k==='tool')return(n,d,s,h)=>t.tool(n,d,s,n==='ops_execute'?a=>handle(a,h):h);if(k==='registerTool')return(n,c,h)=>t.registerTool(n,c,n==='ops_execute'?a=>handle(a,h):h);const v=t[k];return typeof v==='function'?v.bind(t):v}})}
+function proxy(m){return new Proxy(m,{get(t,k){if(k==='tool')return(n,d,s,h)=>t.tool(n,d,s,n==='run_project_command'?a=>handle(a,h):h);if(k==='registerTool')return(n,c,h)=>t.registerTool(n,c,n==='run_project_command'?a=>handle(a,h):h);const v=t[k];return typeof v==='function'?v.bind(t):v}})}
 export function registerProjectPlugin(mcp,context){return old.registerProjectPlugin(proxy(mcp),context)}

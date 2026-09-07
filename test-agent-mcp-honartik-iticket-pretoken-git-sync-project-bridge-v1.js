@@ -16,15 +16,14 @@ test('bridge is bound to exact current runtime and Honartik pre-token artifacts'
   assert.match(src,/const TEST_SHA='275bc08e326917d5787082bdc72e819c980950effefc142e3eae2f49199d712c'/);
 });
 
-test('bridge only accepts one fixed JSON operation and explicit Level-3 literal',()=>{
+test('bridge only accepts the fixed run_project_command token in approved-risky mode',()=>{
   const src=fs.readFileSync(FILE,'utf8');
-  assert.match(src,/honartik_iticket_pretoken_git_sync_v1/);
-  assert.match(src,/CONFIRM_LEVEL_3_PRODUCTION/);
-  assert.match(src,/Object\.keys\(s\)\.sort\(\)\.join\(','\)!=='confirmation,operation'/);
+  assert.match(src,/const COMMAND='HONARTIK_ITICKET_PRETOKEN_GIT_SYNC_V1:CONFIRM_LEVEL_3_PRODUCTION'/);
   assert.match(src,/a\?\.project!=='honartik_admin_prod'/);
-  assert.match(src,/a\?\.access!=='write'/);
-  assert.match(src,/a\?\.risk!=='high'/);
-  assert.match(src,/a\?\.acknowledgeRisk!==true/);
+  assert.match(src,/a\?\.command!==COMMAND/);
+  assert.match(src,/a\?\.mode!=='approved-risky'/);
+  assert.match(src,/n==='run_project_command'/);
+  assert.doesNotMatch(src,/n==='ops_execute'/);
 });
 
 test('git sync is local-only, exact-path and production-preserving by construction',()=>{
