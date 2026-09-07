@@ -1,0 +1,13 @@
+'use strict';
+const fs=require('node:fs');
+const assert=require('node:assert/strict');
+const src=fs.readFileSync(process.argv[2],'utf8');
+assert.match(src,/BASE_SHA='5c816e0b3c1bef97124f3eb918b15ca1d656a90f2109284f52cc16ae50423ed1'/);
+assert.match(src,/OLD_SYNC='control_plane_agent_zdt_v19_worktree_git_sync_v1'/);
+assert.match(src,/REBUILD='control_plane_agent_zdt_v19_rebuild_current_baseline_v1'/);
+assert.match(src,/NEW_SYNC='control_plane_agent_zdt_v19_worktree_git_sync_v2'/);
+assert.match(src,/await rebuildHandler\(\{\}\)/);
+assert.match(src,/return await syncHandler\(\{\}\)/);
+assert.doesNotMatch(src,/force\s*:\s*true/);
+assert.doesNotMatch(src,/ProtectHome=read-write/);
+console.log('ZDT_V32_EXPOSED_SYNC_BRIDGE_TEST=PASS');
