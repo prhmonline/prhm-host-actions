@@ -19,10 +19,11 @@ function patchSource(src){
  const zero="SELECT CASE WHEN count(*)=0 THEN 1 ELSE 1/0 END";
  if((out.split(zero).length-1)!==2)fail('zero_assertion_count');
  out=out.split(zero).join("SELECT 1 / CASE WHEN count(*)=0 THEN 1 ELSE 0 END");
+ const timerHelper=/function restoreParscodersTimer\(wasActive\)\{[\s\S]*?\n\}\n(?=function main\(\)\{)/g; const timerHelperMatches=out.match(timerHelper)||[]; if(timerHelperMatches.length>1)fail('timer_helper_ambiguous:'+timerHelperMatches.length); if(timerHelperMatches.length===1)out=out.replace(timerHelper,'');
  out=once(out,"    systemctl(['stop','leadops-parscoders-v3.timer'],{allowFailure:true,timeout:15000});\n", "",'no_timer_stop');
  out=once(out,"    restoreParscodersTimer(timerWasActive);\n    const result=", "    const result=",'no_success_timer_restore');
  out=once(out,"    if(timerStateCaptured){try{restoreParscodersTimer(timerWasActive)}catch(e){rollbackErrors.push('timer:'+e.message)}}\n", "",'no_rollback_timer_restore');
- if(out.includes("systemctl(['stop','leadops-parscoders-v3.timer']"))fail('timer_stop_remaining');
+ if(out.includes("systemctl(['stop','leadops-parscoders-v3.timer']")||out.includes("systemctl(['start','leadops-parscoders-v3.timer']"))fail('timer_mutation_remaining');
  if(out.includes('ELSE 1/0 END'))fail('constant_fold_assertion_remaining');
  if(!out.includes('LOCK TABLE automation.outbox_events IN SHARE ROW EXCLUSIVE MODE'))fail('outbox_lock_missing');
  if(!out.includes('LOCK TABLE marketplace.opportunities IN SHARE ROW EXCLUSIVE MODE'))fail('opportunity_lock_missing');
