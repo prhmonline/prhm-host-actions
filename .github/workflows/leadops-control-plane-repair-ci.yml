@@ -15,6 +15,8 @@ on:
       - 'test-leadops-language-gate-repair-v2.js'
       - 'bootstrap-host-actions-v22-leadops-language-gate-summary-parser.js'
       - 'test-v22-leadops-language-gate-summary-parser.js'
+      - 'bootstrap-host-actions-v23-leadops-language-gate-migration-telemetry.js'
+      - 'test-v23-leadops-language-gate-migration-telemetry.js'
       - '.github/workflows/leadops-control-plane-repair-ci.yml'
 
 permissions:
@@ -36,3 +38,5 @@ jobs:
       - run: node --test test-leadops-language-gate-repair-v2.js
       - run: node --check bootstrap-host-actions-v22-leadops-language-gate-summary-parser.js
       - run: node --test test-v22-leadops-language-gate-summary-parser.js
+      - run: node --check bootstrap-host-actions-v23-leadops-language-gate-migration-telemetry.js
+      - run: node --test test-v23-leadops-language-gate-migration-telemetry.js
