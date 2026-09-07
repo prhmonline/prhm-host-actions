@@ -11,6 +11,8 @@ on:
       - 'bootstrap-host-actions-v5-leadops-economics-foundation.js'
       - 'bootstrap-host-actions-v20-leadops-control-plane-repair-v1.js'
       - 'test-leadops-control-plane-repair-v1.js'
+      - 'bootstrap-host-actions-v21-leadops-language-gate-repair-v2.js'
+      - 'test-leadops-language-gate-repair-v2.js'
       - '.github/workflows/leadops-control-plane-repair-ci.yml'
 
 permissions:
@@ -28,3 +30,5 @@ jobs:
       - run: node --check bootstrap-host-actions-v5-leadops-economics-foundation.js
       - run: node --check bootstrap-host-actions-v20-leadops-control-plane-repair-v1.js
       - run: node --test test-leadops-control-plane-repair-v1.js
+      - run: node --check bootstrap-host-actions-v21-leadops-language-gate-repair-v2.js
+      - run: node --test test-leadops-language-gate-repair-v2.js
