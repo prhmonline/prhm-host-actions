@@ -11,8 +11,8 @@ test('embedded Solo installer plugins are exact and fixed',()=>{
   const c=Buffer.from(mod.SOLO_CORE_B64,'base64');
   assert.equal(H(p),mod.SOLO_PLUGIN_SHA);
   assert.equal(H(c),mod.SOLO_CORE_SHA);
-  assert.equal(mod.SOLO_PLUGIN_SHA,'a41955c6f0afb92a027788070b7a60cd51ae48f1593e97327e2bc39d079f8281');
-  assert.equal(mod.SOLO_CORE_SHA,'bc905fd1ebc94a7b3147535785286ac75e16eea45642a65378d4f66f7831d563');
+  assert.equal(mod.SOLO_PLUGIN_SHA,'60cac9151ab434ff0b5a0f8c86651a226f8478a6c825a0513fd2a88c1c20ea5f');
+  assert.equal(mod.SOLO_CORE_SHA,'9e4139c7b8f126284c8aaced743e5daecb49fafd0c4a41bde47d61cbc4ffe223');
 });
 
 test('registry patch adds exactly one Solo import and registration without altering HostActionsV2',()=>{
