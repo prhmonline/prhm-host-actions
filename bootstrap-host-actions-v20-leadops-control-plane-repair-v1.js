@@ -68,10 +68,16 @@ function atomicWrite(file,bytes,mode){fs.mkdirSync(path.dirname(file),{recursive
 function nodeCheck(bytes,label){const r=cp.spawnSync('/usr/local/bin/prhm-node',['--check','-'],{input:bytes,encoding:'utf8',timeout:15000,maxBuffer:200000});if(r.error||r.status!==0)fail('syntax_failed:'+label+':'+String(r.stderr||r.stdout||'').slice(0,1000));}
 function persist(result){atomicWrite(PATHS.result,Buffer.from(JSON.stringify(result,null,2)+'\n'),0o600);}
 
+function equivalentSafeDropin(text){
+  const s=String(text||'').replace(/\r/g,'');
+  const hasRuntime=/^RuntimeDirectory=prhm-p0-shadow-worker$/m.test(s);
+  const mode=/^RuntimeDirectoryMode=(0700|0750)$/m.exec(s);
+  return hasRuntime&&!!mode;
+}
 function preflight(){
   if(shaFile(PATHS.language)!==EXPECTED.language)fail('language_baseline_drift:'+shaFile(PATHS.language));
   if(shaFile(PATHS.executor)!==EXPECTED.executor)fail('executor_baseline_drift:'+shaFile(PATHS.executor));
-  if(fs.existsSync(PATHS.dropin)){const d=fs.readFileSync(PATHS.dropin,'utf8');if(d!==DROPIN)fail('runtime_dropin_conflict');}
+  if(fs.existsSync(PATHS.dropin)){const d=fs.readFileSync(PATHS.dropin,'utf8');if(!equivalentSafeDropin(d))fail('runtime_dropin_conflict');}
   const language=patchLanguageHelper(fs.readFileSync(PATHS.language,'utf8'));
   const executor=patchExecutor(fs.readFileSync(PATHS.executor,'utf8'));
   nodeCheck(Buffer.from(language),'language');nodeCheck(Buffer.from(executor),'executor');
@@ -88,7 +94,7 @@ function apply(){
   try{
     atomicWrite(PATHS.language,Buffer.from(patchLanguageHelper(oldLanguage.toString('utf8'))),0o700);
     atomicWrite(PATHS.executor,Buffer.from(patchExecutor(oldExecutor.toString('utf8'))),0o755);
-    atomicWrite(PATHS.dropin,Buffer.from(DROPIN),0o644);mutated=true;
+    if(!dropinExisted)atomicWrite(PATHS.dropin,Buffer.from(DROPIN),0o644);mutated=true;
     systemctl(['daemon-reload']);
     systemctl(['restart','prhm-agent-selfmaint-exec.service'],{timeout:60000});
     const active=systemctl(['is-active','prhm-agent-selfmaint-exec.service']);if(String(active.stdout||'').trim()!=='active')fail('executor_service_not_active');
@@ -106,4 +112,4 @@ function apply(){
 
 function main(argv=process.argv.slice(2)){if(argv.length!==1||!['--preflight-only','--apply'].includes(argv[0]))fail('unexpected_arguments');const out=argv[0]==='--preflight-only'?preflight():apply();process.stdout.write(JSON.stringify(out)+'\n');return out;}
 if(require.main===module){try{main()}catch(e){process.stderr.write(String(e.stack||e)+'\n');process.exit(1)}}
-module.exports={ACTION,PATHS,EXPECTED,DROPIN,patchLanguageHelper,patchExecutor,preflight,apply,main};
+module.exports={ACTION,PATHS,EXPECTED,DROPIN,equivalentSafeDropin,patchLanguageHelper,patchExecutor,preflight,apply,main};

@@ -51,3 +51,14 @@ test('repair is bound to exact live SHA baselines and fixed paths',()=>{
   assert.equal(repair.PATHS.executor,'/opt/prhm-agent-selfmaint-exec/server.js');
   assert.equal(repair.PATHS.dropin,'/etc/systemd/system/prhm-p0-shadow-worker.service.d/runtime-directory.conf');
 });
+
+
+test('existing equivalent safe RuntimeDirectory drop-in is accepted without overwrite',()=>{
+  assert.equal(repair.equivalentSafeDropin('[Service]\nRuntimeDirectory=prhm-p0-shadow-worker\nRuntimeDirectoryMode=0700\n'),true);
+  assert.equal(repair.equivalentSafeDropin('[Service]\nRuntimeDirectory=prhm-p0-shadow-worker\nRuntimeDirectoryMode=0750\n'),true);
+});
+
+test('runtime drop-in contract still fails closed for wrong directory or over-broad mode',()=>{
+  assert.equal(repair.equivalentSafeDropin('[Service]\nRuntimeDirectory=other\nRuntimeDirectoryMode=0700\n'),false);
+  assert.equal(repair.equivalentSafeDropin('[Service]\nRuntimeDirectory=prhm-p0-shadow-worker\nRuntimeDirectoryMode=0777\n'),false);
+});
