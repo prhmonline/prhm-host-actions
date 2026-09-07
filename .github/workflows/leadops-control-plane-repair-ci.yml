@@ -13,6 +13,8 @@ on:
       - 'test-leadops-control-plane-repair-v1.js'
       - 'bootstrap-host-actions-v21-leadops-language-gate-repair-v2.js'
       - 'test-leadops-language-gate-repair-v2.js'
+      - 'bootstrap-host-actions-v22-leadops-language-gate-summary-parser.js'
+      - 'test-v22-leadops-language-gate-summary-parser.js'
       - '.github/workflows/leadops-control-plane-repair-ci.yml'
 
 permissions:
@@ -32,3 +34,5 @@ jobs:
       - run: node --test test-leadops-control-plane-repair-v1.js
       - run: node --check bootstrap-host-actions-v21-leadops-language-gate-repair-v2.js
       - run: node --test test-leadops-language-gate-repair-v2.js
+      - run: node --check bootstrap-host-actions-v22-leadops-language-gate-summary-parser.js
+      - run: node --test test-v22-leadops-language-gate-summary-parser.js
