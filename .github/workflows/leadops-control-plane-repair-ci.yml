@@ -1,0 +1,30 @@
+name: LeadOps Control Plane Repair CI
+
+on:
+  push:
+    branches:
+      - main
+      - 'feature/leadops-control-plane-repair-v1'
+  pull_request:
+    paths:
+      - 'bootstrap-host-actions-v3-leadops-language-gate.js'
+      - 'bootstrap-host-actions-v5-leadops-economics-foundation.js'
+      - 'bootstrap-host-actions-v20-leadops-control-plane-repair-v1.js'
+      - 'test-leadops-control-plane-repair-v1.js'
+      - '.github/workflows/leadops-control-plane-repair-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node --check bootstrap-host-actions-v3-leadops-language-gate.js
+      - run: node --check bootstrap-host-actions-v5-leadops-economics-foundation.js
+      - run: node --check bootstrap-host-actions-v20-leadops-control-plane-repair-v1.js
+      - run: node --test test-leadops-control-plane-repair-v1.js
