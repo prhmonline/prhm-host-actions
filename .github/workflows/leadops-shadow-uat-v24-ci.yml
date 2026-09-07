@@ -1,0 +1,31 @@
+name: LeadOps Shadow UAT V24 CI
+
+on:
+  pull_request:
+    paths:
+      - 'real-market-shadow-uat-v1.js'
+      - 'bootstrap-host-actions-v24-real-market-shadow-uat-historical-replay.js'
+      - 'test-v24-real-market-shadow-uat-historical-replay.js'
+      - '.github/workflows/leadops-shadow-uat-v24-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'real-market-shadow-uat-v1.js'
+      - 'bootstrap-host-actions-v24-real-market-shadow-uat-historical-replay.js'
+      - 'test-v24-real-market-shadow-uat-historical-replay.js'
+      - '.github/workflows/leadops-shadow-uat-v24-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node --check real-market-shadow-uat-v1.js
+      - run: node --check bootstrap-host-actions-v24-real-market-shadow-uat-historical-replay.js
+      - run: node --test test-v24-real-market-shadow-uat-historical-replay.js
