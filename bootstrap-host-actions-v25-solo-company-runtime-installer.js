@@ -7,7 +7,7 @@ const cp=require('node:child_process');
 
 const ACTION='solo_company_runtime_install_surface_v1';
 const EXPECTED_REGISTRY_SHA='0d69b284f8bcf9b772a711dff962a614bd0c1234ee03b87f3faa70877eadb48c';
-const IMMUTABLE_HOST_ACTIONS_V2_SHA='597701ccc1a6c39d54aef9bd22d1c8732c88536e36e12251511a509bde439b46';
+const IMMUTABLE_HOST_ACTIONS_V2_SHA='001619fc2485202162da5c20fe1348cc430d4d8f119b41d38d0be4dbf8bdb8b4';
 const SOLO_PLUGIN_SHA='60cac9151ab434ff0b5a0f8c86651a226f8478a6c825a0513fd2a88c1c20ea5f';
 const SOLO_CORE_SHA='9e4139c7b8f126284c8aaced743e5daecb49fafd0c4a41bde47d61cbc4ffe223';
 const PATHS=Object.freeze({registry:'/home/agent/ssh-mcp-server/src/core/registry.js',hostActionsV2:'/home/agent/ssh-mcp-server/src/plugins/hostActionsV2.js',soloPlugin:'/home/agent/ssh-mcp-server/src/plugins/soloCompanyRuntimeInstall.js',soloCore:'/home/agent/ssh-mcp-server/src/plugins/soloCompanyRuntimeInstallCore.js'});
