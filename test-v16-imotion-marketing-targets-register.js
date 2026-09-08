@@ -76,6 +76,13 @@ test('policy and MCP schema add only V2',()=>{
   assert.match(mo,/'imotion_marketing_target_register_v1','imotion_marketing_targets_register_v2','drtarjomeh_security_containment_v1'/);
 });
 
+test('bootstrap embeds the fixed v2 helper bytes',()=>{
+  assert.equal(bootstrap.HELPER_TEMPLATE_SHA,'3b1ee5632ffa0ae2e34b465b4b50e88fa04c5073f28287da9e290e6ec008e755');
+  const materialized=bootstrap.helperForZdt('f'.repeat(64)).toString('utf8');
+  assert.match(materialized,/verifyTargetRoots\(\)/);
+  assert.doesNotMatch(materialized,/verifyTargetRoot\(\)/);
+});
+
 test('ZDT patch refreshes stale bindings to current/candidate hashes',()=>{
   const src=`'7efeeb17253bc52aeac1f362c377fd4121984f49f159fd9e72ae7e06897ded56' '70368fdc8be24646b10d414f6159502c2f3d338ed1132451d5b5740d1270999c' '85229ccd95e98523e9d87468df1fcaec4107c6834f5c4e0bc108b265a0a499cf' '6bd9c56b4d5889c1d70d8278bcd66f48cab9561f2429cd3489a5b42ab1bbc35f'`;
   const h={mcp:'1'.repeat(64),base:'2'.repeat(64),executor:'3'.repeat(64)};
