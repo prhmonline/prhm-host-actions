@@ -1,0 +1,11 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {patchHelperSource}=require('./control-plane-mediator-level3-repair-v1.js');
+const anchor="const args=['--unit='+unit,'--quiet','--property=Type=oneshot'";
+const source=`'use strict';\n${anchor},'--property=RemainAfterExit=yes'];\n`;
+const out=patchHelperSource(source);
+assert.equal((out.match(/'--no-block'/g)||[]).length,1);
+assert.ok(out.includes("const args=['--unit='+unit,'--quiet','--no-block','--property=Type=oneshot'"));
+assert.throws(()=>patchHelperSource(source+source),/noblock_anchor_count_2/);
+assert.throws(()=>patchHelperSource("'use strict';\nconst x=1;\n"),/noblock_anchor_count_0/);
+console.log('MEDIATOR_LEVEL3_REPAIR_WRAPPER_TEST=PASS');
