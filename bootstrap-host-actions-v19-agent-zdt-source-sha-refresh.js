@@ -4,9 +4,9 @@ const crypto = require('node:crypto');
 
 const ACTION = 'agent_zdt_existing_topology_rolling_refresh_source_sha_refresh_v19';
 const TARGET_PATH = '/opt/prhm-agent-selfmaint-exec/actions/agent-zdt-existing-topology-rolling-refresh-v1.js';
-const OLD_ACTION_SHA = 'd6e9b9d1478f680986773d9ac4fddf4c4c292a4b83421aabc9025ac33d7215c3';
-const OLD_API_SHA = '7897c7e50d73bc9f00eb7efcc9bde7b25e2a0107175d592dad0d8b9180db78f9';
-const NEW_API_SHA = 'c59283afb1d03c523d22d649765ebdaf388857d49e3d86e5a2abab8543fcf69a';
+const OLD_ACTION_SHA = '6b110621eb7dbff73d04ca0c16d9493d9ec58411dc806c1415efa93b6dac84ec';
+const OLD_API_SHA = 'c592835c75cfe3b02d613ba895d811340200bfd06f33d2a77373a28e267691eb';
+const NEW_API_SHA = '02e7587d0319865bbb1767568edde18d1350aaa39bb0fedc92c5867fd639e3e2';
 
 function fail(message) {
   throw new Error(message);
