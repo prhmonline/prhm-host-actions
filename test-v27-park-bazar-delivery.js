@@ -71,3 +71,79 @@ test('helper contract is fixed to Park tenant, exact preimages, and no database 
   assert.ok(helper.includes("rollback_performed"));
   assert.equal(/process\.argv\[[^\]]+\].*path|process\.env\.(TARGET|PATH_TO_WRITE)/.test(helper),false);
 });
+
+
+test('helper enforces Git-first commit push remote parity and deploys exact committed bytes',()=>{
+  const m=load();
+  const helper=m.buildHelperSource();
+  assert.ok(helper.includes("const CANONICAL_MAIN='38a6702d7ec1d3a3bc608d65b51168bd68e6437c'"));
+  assert.ok(helper.includes("const WORKTREE='/home/cfpark/worktrees/park-bazar-delivery-v27'"));
+  assert.ok(helper.includes("const BRANCH='feature/park-bazar-delivery-v27-app'"));
+  assert.ok(helper.includes("git(['fetch','origin','main'])"));
+  assert.ok(helper.includes("git(['worktree','add','-b',BRANCH,WORKTREE,'origin/main'])"));
+  assert.ok(helper.includes("gitWt(['diff','--check'])"));
+  assert.ok(helper.includes("gitWt(['commit','-m','fix(park-bazar): harden tenant delivery'])"));
+  assert.ok(helper.includes("gitWt(['push','origin','HEAD:refs/heads/'+BRANCH])"));
+  assert.ok(helper.includes("git(['ls-remote','origin','refs/heads/'+BRANCH])"));
+  assert.ok(helper.includes("remote_sha!==commit_sha"));
+  assert.ok(helper.includes("deployFromWorktree"));
+  assert.ok(helper.includes("destination_sha_parity"));
+  assert.ok(helper.includes("deleteRemoteBranch"));
+  assert.ok(helper.includes("git(['worktree','remove','--force',WORKTREE])"));
+  assert.equal(helper.includes('push --force'),false);
+  assert.equal(helper.includes("['push','--force'"),false);
+});
+
+
+test('base candidate registers Park as Level-4 without adding it to Level-3 set',()=>{
+  const m=load();
+  assert.equal(m.BASE_SHA,'a23b4fec52123f8ad484f31576281c2f1933f24a3c811cd98c28e764a292e315');
+  const src=[
+    "const HOST_ACTION_V2_SPECS = Object.freeze({",
+    "  control_plane_root_scripts_stage_transport_v1: { operation: 'host_action.control_plane_root_scripts_stage_transport_v1', rollback: 'host-action-v2:control-plane-root-scripts-stage-transport-v1:registration-only' },",
+    "  imotion_credential_bind_v1: { operation: 'host_action.imotion_credential_bind_v1', rollback: 'host-action-v2:imotion-credential-bind-v1:remote-controller-backup-restore' }",
+    "});",
+    "const HOST_ACTION_V2_LEVEL3 = new Set([\"control_plane_root_scripts_stage_transport_v1\"]);"
+  ].join('\n');
+  const out=m.buildBaseCandidate(src);
+  assert.ok(out.includes("park_bazar_delivery_patch_v1: { operation: 'host_action.park_bazar_delivery_patch_v1', rollback: 'host-action-v2:park-bazar-delivery-patch-v1:file-and-git-rollback' }"));
+  const level3=out.match(/HOST_ACTION_V2_LEVEL3 = new Set\((\[[^;]+\])\)/)?.[1]||'';
+  assert.equal(level3.includes('park_bazar_delivery_patch_v1'),false);
+  assert.throws(()=>m.buildBaseCandidate(out),/already_present/);
+});
+
+test('executor runs Park helper only in fixed transient sandbox with bounded writable paths',()=>{
+  const m=load();
+  const src=[
+    "const ACTION_SPECS={control_plane_root_scripts_stage_transport_v1:{operation:'host_action.control_plane_root_scripts_stage_transport_v1',kind:'control_plane_root_scripts_stage_transport_v1'},};",
+    "applyHostActionV2=async function(action){if(action==='control_plane_root_scripts_stage_transport_v1')return applyControlPlaneRootScriptsStageTransportV1();return applyHostActionV2Original(action);};"
+  ].join('\n');
+  const out=m.buildExecCandidate(src,'f'.repeat(64));
+  assert.ok(out.includes("'/usr/bin/systemd-run'"));
+  assert.ok(out.includes("'--property=ProtectSystem=strict'"));
+  assert.ok(out.includes("'--property=ProtectHome=read-only'"));
+  assert.ok(out.includes("'--property=ReadWritePaths=/home/cfpark /var/backups /var/lib/prhm-agent-selfmaint-exec'"));
+  assert.ok(out.includes("'--property=NoNewPrivileges=true'"));
+  assert.ok(out.includes("'--property=RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6'"));
+  assert.ok(out.includes("PARK_BAZAR_DELIVERY_RESULT"));
+});
+
+test('installer plan is fixed, SHA-bound, syntax-checkable, and rollback-capable',()=>{
+  const m=load();
+  assert.equal(typeof m.buildInstallPlan,'function');
+  assert.equal(typeof m.preflight,'function');
+  assert.equal(typeof m.install,'function');
+  assert.deepEqual(m.PATHS,{
+    base:'/opt/prhm-agent-selfmaint/server.js',
+    exec:'/opt/prhm-agent-selfmaint-exec/server.js',
+    policy:'/opt/prhm-company-control-plane/config/approval-policy.json',
+    mcp:'/home/agent/ssh-mcp-server/src/plugins/hostActionsV2.js',
+    helper:'/opt/prhm-agent-selfmaint-exec/actions/park-bazar-delivery-patch-v1.js'
+  });
+  const source=m.install.toString();
+  assert.ok(source.includes('buildInstallPlan'));
+  assert.ok(source.includes('backup'));
+  assert.ok(source.includes('rollback'));
+  assert.ok(source.includes('restart'));
+  assert.equal(source.includes('process.argv['),false);
+});
