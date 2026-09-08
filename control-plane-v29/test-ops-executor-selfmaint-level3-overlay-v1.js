@@ -1,0 +1,17 @@
+'use strict';
+const fs=require('node:fs');
+const assert=require('node:assert/strict');
+const crypto=require('node:crypto');
+const {transformSource,EXPECTED_SHA,BRIDGE_SHA}=require('./ops-executor-selfmaint-level3-overlay-v1.js');
+const source=fs.readFileSync(process.argv[2],'utf8');
+assert.equal(crypto.createHash('sha256').update(source).digest('hex'),EXPECTED_SHA);
+const out=transformSource(source);
+assert.ok(out.includes("const OPS_SELFMAINT_BRIDGE_SHA='"+BRIDGE_SHA+"';"));
+assert.ok(out.includes("request==='./opsSelfmaintBridge'||request==='./opsSelfmaintBridge.js'"));
+assert.ok(out.includes("CONFIRM_LEVEL_3_PRODUCTION"));
+assert.ok(out.includes("Level-3 confirmation required"));
+assert.ok(out.includes("const originalLoad=Module._load;"));
+assert.ok(out.includes("finally{Module._load=originalLoad;}"));
+assert.equal((out.match(/opsSelfmaintBridge\.level3-overlay-v1\.js/g)||[]).length,1);
+assert.equal((out.match(/request==='\.\/opsSelfmaintBridge'/g)||[]).length,1);
+console.log('OPS_EXECUTOR_SELFMAINT_LEVEL3_OVERLAY_V1=PASS');
