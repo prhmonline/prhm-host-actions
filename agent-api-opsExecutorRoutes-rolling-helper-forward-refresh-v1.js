@@ -66,11 +66,11 @@ function rollingHelperCandidate(){
 }
 function rollingCommand(req){
   const b=req&&req.body;
-  if(!b||typeof b!=='object'||Array.isArray(b)||b.project!=='control_plane'||b.access!=='write'||b.risk!=='high'||b.acknowledgeRisk!==true)return null;
+  if(!b||typeof b!=='object'||Array.isArray(b)||b.project!=='control_plane'||b.access!=='write'||b.risk!=='critical'||b.acknowledgeRisk!==true)return null;
   let s;try{s=JSON.parse(String(b.command||''));}catch{return null;}
   if(!s||Array.isArray(s)||typeof s!=='object')return null;
   if(s.operation==='rolling_helper_api_forward_refresh_preflight'&&Object.keys(s).length===1)return s;
-  if(s.operation==='rolling_helper_api_forward_refresh_apply'&&Object.keys(s).length===2&&s.second_confirmation==='CONFIRM_LEVEL_3_PRODUCTION')return s;
+  if(s.operation==='rolling_helper_api_forward_refresh_apply'&&Object.keys(s).length===2&&s.second_confirmation==='CONFIRM_LEVEL_4_CRITICAL')return s;
   return null;
 }
 function rollingPreflight(){
