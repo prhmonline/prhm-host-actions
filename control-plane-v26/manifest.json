@@ -1,0 +1,19 @@
+{
+  "schema_version": "prhm.selfmaint-base-fixed-refresh.v1",
+  "name": "selfmaint-base-fixed-refresh-v1",
+  "preimage": {
+    "api": "01e11a69b4c5a110aad16d4ee71efd11bdd6c52c6594d09117b5d4bb339ace20",
+    "mcp": "b3cfc90b72cf3f13fecf9c0737369646c6625cda7ca527ed017c78834385a7e4",
+    "base": "a23b4fec52123f8ad484f31576281c2f1933f24a3c811cd98c28e764a292e315"
+  },
+  "expected_pid": 4015906,
+  "service": "prhm-agent-selfmaint.service",
+  "candidates": {
+    "api": "3fa6954c7d71241a18a01d8cd2bf75947dc1366827212ecac97f63ae8b060548",
+    "mcp": "929065fa3ba1eee09d94fb8eb2f7682ac033f13e59ec75e2886d99e34a9ddd93"
+  },
+  "arbitrary_input": false,
+  "file_mutation_by_refresh": false,
+  "database_mutation": false,
+  "application_mutation": false
+}
