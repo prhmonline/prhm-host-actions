@@ -1,0 +1,24 @@
+'use strict';
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const FILE=path.join(__dirname,'agent-mcp-central-offsite-registry-registration-v1.js');
+test('Central Offsite registry wrapper is exact-state, atomic, idempotent and preserves current MCP server',()=>{
+  assert.equal(fs.existsSync(FILE),true,'implementation must exist');
+  const s=fs.readFileSync(FILE,'utf8');
+  assert.match(s,/5d631a1c94208ba2d3daa515e45f3bd3717cf705a1d918f3e8bd9f9d85a97176/);
+  assert.match(s,/0d69b284f8bcf9b772a711dff962a614bd0c1234ee03b87f3faa70877eadb48c/);
+  assert.match(s,/registerCentralOffsitePlugin\(mcp, context\)/);
+  assert.match(s,/central_offsite_registry_import_anchor_mismatch/);
+  assert.match(s,/central_offsite_registry_call_anchor_mismatch/);
+  assert.match(s,/isSymbolicLink/);
+  assert.match(s,/realpathSync/);
+  assert.match(s,/--check/);
+  assert.match(s,/renameSync/);
+  assert.match(s,/backup/i);
+  assert.match(s,/pathToFileURL/);
+  assert.doesNotMatch(s,/process\.argv\[[23]/);
+  assert.doesNotMatch(s,/req\.body/);
+  assert.doesNotMatch(s,/destinationPath/);
+});
