@@ -1,0 +1,17 @@
+'use strict';
+const fs=require('node:fs');
+const assert=require('node:assert/strict');
+const crypto=require('node:crypto');
+const {transformSource,EXPECTED_SERVER_SHA,BRIDGE_SHA}=require('./agent-api-ops-selfmaint-level3-overlay-v1.js');
+const source=fs.readFileSync(process.argv[2],'utf8');
+const sourceSha=crypto.createHash('sha256').update(source).digest('hex');
+assert.equal(sourceSha,EXPECTED_SERVER_SHA,'fixture must match current Agent API server preimage');
+const out=transformSource(source);
+assert.ok(out.includes("const OPS_SELFMAINT_BRIDGE_SHA='"+BRIDGE_SHA+"';"),'candidate must bind exact bridge SHA');
+assert.ok(out.includes("if(request==='./opsSelfmaintBridge'||request==='./opsSelfmaintBridge.js')"),'candidate must intercept only the selfmaint bridge module');
+assert.ok(out.includes("CONFIRM_LEVEL_3_PRODUCTION"),'candidate must contain Level-3 confirmation literal');
+assert.ok(out.includes("Level-3 confirmation required"),'candidate must expose Level-3 guard');
+assert.ok(out.includes("CONFIRM_LEVEL_4_CRITICAL"),'unrelated legacy/Level-4 code elsewhere must remain present');
+assert.equal((out.match(/opsSelfmaintBridge\.level3-overlay-v1\.js/g)||[]).length,1,'overlay compile target must be unique');
+assert.equal((out.match(/request==='\.\/opsSelfmaintBridge'/g)||[]).length,1,'bridge intercept must be unique');
+console.log('AGENT_API_OPS_SELFMAINT_LEVEL3_OVERLAY_V1=PASS');
