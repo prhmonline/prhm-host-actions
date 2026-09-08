@@ -26,12 +26,12 @@ test('policy candidate adds only one critical typed Park scope',()=>{
   const p=JSON.parse(out);
   assert.equal(p.version,m.POLICY_VERSION);
   assert.deepEqual(p.operations[m.OPERATION],{
-    level:4,risk:'critical',requires_second_confirmation:true,one_time_use:true,requested_approver:'mohammad',expires_seconds:180,policy_version:m.POLICY_VERSION,rollback_reference:'host-action-v2:park-bazar-delivery-patch-v1:file-and-git-rollback'
+    level:3,risk:'high',requires_second_confirmation:false,one_time_use:true,requested_approver:'mohammad',expires_seconds:180,policy_version:m.POLICY_VERSION,rollback_reference:'host-action-v2:park-bazar-delivery-patch-v1:file-rollback'
   });
   const scopes=p.typed_scopes.filter(s=>s.action===m.ACTION);
   assert.equal(scopes.length,1);
   assert.deepEqual(scopes[0],{
-    tool:'host_action_v2_apply',project:'control_plane',environment:'production',action:m.ACTION,risk:'critical',operation:m.OPERATION,
+    tool:'host_action_v2_apply',project:'control_plane',environment:'production',action:m.ACTION,risk:'high',operation:m.OPERATION,
     principals:[{principal_id:'mohammad',roles:['mcp-operator']}]
   });
   assert.throws(()=>m.buildPolicyCandidate(out),/already_present/);
@@ -63,39 +63,35 @@ test('helper contract is fixed to Park tenant, exact preimages, and no database 
   const m=load();
   const helper=m.buildHelperSource();
   assert.ok(helper.includes("const ACTION='park_bazar_delivery_patch_v1'"));
-  assert.ok(helper.includes("const SOURCE='/home/cfpark/domains/dashboard.cfpark.ir/public_html'"));
-  assert.ok(helper.includes("const DEST='/home/cfpark/domains/dashboard.park.prhm.ir/public_html'"));
-  assert.ok(helper.includes("const PLACE_ID=1"));
-  assert.ok(helper.includes("const EVENT_IDS=Object.freeze([190,193,244])"));
+  assert.ok(helper.includes("const RELEASE_COMMIT='451501c30fb4fcb71ce4220cacb0bee169796399'"));
+  assert.ok(helper.includes("const DEST='/home/cfpark/domains/dashboard.park.prhm.ir/public_html/app'"));
+  assert.ok(helper.includes("const PREIMAGE=Object.freeze"));
+  assert.ok(helper.includes("const RELEASE=Object.freeze"));
   assert.ok(helper.includes("database_mutation:false"));
   assert.ok(helper.includes("rollback_performed"));
   assert.equal(/process\.argv\[[^\]]+\].*path|process\.env\.(TARGET|PATH_TO_WRITE)/.test(helper),false);
 });
 
 
-test('helper enforces Git-first commit push remote parity and deploys exact committed bytes',()=>{
+test('helper deploys exact Git-published release bytes with no runtime Git mutation',()=>{
   const m=load();
   const helper=m.buildHelperSource();
-  assert.ok(helper.includes("const CANONICAL_MAIN='38a6702d7ec1d3a3bc608d65b51168bd68e6437c'"));
-  assert.ok(helper.includes("const WORKTREE='/home/cfpark/worktrees/park-bazar-delivery-v27'"));
-  assert.ok(helper.includes("const BRANCH='feature/park-bazar-delivery-v27-app'"));
-  assert.ok(helper.includes("git(['fetch','origin','main'])"));
-  assert.ok(helper.includes("git(['worktree','add','-b',BRANCH,WORKTREE,'origin/main'])"));
-  assert.ok(helper.includes("gitWt(['diff','--check'])"));
-  assert.ok(helper.includes("gitWt(['commit','-m','fix(park-bazar): harden tenant delivery'])"));
-  assert.ok(helper.includes("gitWt(['push','origin','HEAD:refs/heads/'+BRANCH])"));
-  assert.ok(helper.includes("git(['ls-remote','origin','refs/heads/'+BRANCH])"));
-  assert.ok(helper.includes("remote_sha!==commit_sha"));
-  assert.ok(helper.includes("deployFromWorktree"));
-  assert.ok(helper.includes("destination_sha_parity"));
-  assert.ok(helper.includes("deleteRemoteBranch"));
-  assert.ok(helper.includes("git(['worktree','remove','--force',WORKTREE])"));
+  assert.ok(helper.includes("const RELEASE_COMMIT='451501c30fb4fcb71ce4220cacb0bee169796399'"));
+  for(const digest of [
+    'f065f436e934c4b5f13d35012bc5e94099cc2879fd8f2f3a8128e70ebe48d755',
+    '6dbc336c45ab3157b39050c78077a254f3229bba89983e06380cc2acc29d587e',
+    '0f4aaee23daba71468f3780fd85e0d63de5ba87854f527141cacdc03d2f730ce'
+  ]) assert.ok(helper.includes(digest));
+  assert.ok(helper.includes('destination_sha_parity:true'));
+  assert.ok(helper.includes('php_lint_failed'));
+  assert.ok(helper.includes('runtime_probe_failed'));
+  assert.equal(helper.includes("'/usr/bin/git'"),false);
+  assert.equal(helper.includes('worktree'),false);
   assert.equal(helper.includes('push --force'),false);
-  assert.equal(helper.includes("['push','--force'"),false);
 });
 
 
-test('base candidate registers Park as Level-4 without adding it to Level-3 set',()=>{
+test('base candidate registers Park in fixed specs and Level-3 set',()=>{
   const m=load();
   assert.equal(m.BASE_SHA,'a23b4fec52123f8ad484f31576281c2f1933f24a3c811cd98c28e764a292e315');
   const src=[
@@ -106,9 +102,9 @@ test('base candidate registers Park as Level-4 without adding it to Level-3 set'
     "const HOST_ACTION_V2_LEVEL3 = new Set([\"control_plane_root_scripts_stage_transport_v1\"]);"
   ].join('\n');
   const out=m.buildBaseCandidate(src);
-  assert.ok(out.includes("park_bazar_delivery_patch_v1: { operation: 'host_action.park_bazar_delivery_patch_v1', rollback: 'host-action-v2:park-bazar-delivery-patch-v1:file-and-git-rollback' }"));
+  assert.ok(out.includes("park_bazar_delivery_patch_v1: { operation: 'host_action.park_bazar_delivery_patch_v1', rollback: 'host-action-v2:park-bazar-delivery-patch-v1:file-rollback' }"));
   const level3=out.match(/HOST_ACTION_V2_LEVEL3 = new Set\((\[[^;]+\])\)/)?.[1]||'';
-  assert.equal(level3.includes('park_bazar_delivery_patch_v1'),false);
+  assert.equal(level3.includes('park_bazar_delivery_patch_v1'),true);
   assert.throws(()=>m.buildBaseCandidate(out),/already_present/);
 });
 
@@ -122,7 +118,7 @@ test('executor runs Park helper only in fixed transient sandbox with bounded wri
   assert.ok(out.includes("'/usr/bin/systemd-run'"));
   assert.ok(out.includes("'--property=ProtectSystem=strict'"));
   assert.ok(out.includes("'--property=ProtectHome=read-only'"));
-  assert.ok(out.includes("'--property=ReadWritePaths=/home/cfpark /var/backups /var/lib/prhm-agent-selfmaint-exec'"));
+  assert.ok(out.includes("'--property=ReadWritePaths=/home/cfpark/domains/dashboard.park.prhm.ir/public_html/app /var/backups/park-bazar-delivery-v27 /var/lib/prhm-agent-selfmaint-exec/park-bazar-delivery-patch-v1'"));
   assert.ok(out.includes("'--property=NoNewPrivileges=true'"));
   assert.ok(out.includes("'--property=RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6'"));
   assert.ok(out.includes("PARK_BAZAR_DELIVERY_RESULT"));
