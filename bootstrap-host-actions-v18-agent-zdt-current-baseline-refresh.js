@@ -7,10 +7,24 @@ const LEGACY_SHA256='344d9fa1a87f29dfac402229722d55dd8c6f1708f6277926e7f13f18a58
 const legacyBytes=cp.execFileSync('/usr/bin/git',['-C',__dirname,'cat-file','blob',LEGACY_BLOB],{encoding:null,timeout:30000,maxBuffer:1000000});
 const legacySha=crypto.createHash('sha256').update(legacyBytes).digest('hex');
 if(legacySha!==LEGACY_SHA256)throw new Error('legacy_blob_sha_mismatch:'+legacySha);
+const LEGACY_MCP_BASELINE_OLD='7c566cdb1dbc1dcb4ac9d6a1b0670acc98cbc366a663771937e365d700671510';
+const LEGACY_MCP_BASELINE_NEW='001619fc2485202162da5c20fe1348cc430d4d8f119b41d38d0be4dbf8bdb8b4';
+const LEGACY_MCP_CANDIDATE_OLD='9fa041e09a02370ca803e32a7465b471d5a7ce86415a3ed49a457ffe4611a2f0';
+const LEGACY_MCP_CANDIDATE_NEW='956d5da190e7eb7af24207c0600cbe80f1c8911c6cb722b88d2ac7713e3d27ce';
+let legacySource=legacyBytes.toString('utf8');
+for(const [oldValue,newValue,label] of [
+ [LEGACY_MCP_BASELINE_OLD,LEGACY_MCP_BASELINE_NEW,'baseline'],
+ [LEGACY_MCP_CANDIDATE_OLD,LEGACY_MCP_CANDIDATE_NEW,'candidate'],
+]){
+ const count=legacySource.split(oldValue).length-1;
+ if(count!==1)throw new Error('v19_mcp_forward_rebase_anchor_'+label+'_'+count);
+ legacySource=legacySource.replace(oldValue,newValue);
+}
+if(legacySource.includes(LEGACY_MCP_BASELINE_OLD)||legacySource.includes(LEGACY_MCP_CANDIDATE_OLD))throw new Error('v19_mcp_forward_rebase_postcondition');
 const legacyModule=new Module(module.filename+'.legacy',module.parent);
 legacyModule.filename=module.filename+'.legacy';
 legacyModule.paths=module.paths;
-legacyModule._compile(legacyBytes.toString('utf8'),legacyModule.filename);
+legacyModule._compile(legacySource,legacyModule.filename);
 const base=legacyModule.exports;
 
 /* V19 static L4 semantic anchors; inert compatibility markers for runtime guard.

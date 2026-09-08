@@ -10,13 +10,13 @@ const REG_BASE=Object.freeze({
  base:'a23b4fec52123f8ad484f31576281c2f1933f24a3c811cd98c28e764a292e315',
  exec:'451c5a4762a4c7a04d64d526a79cf6e86b0cf7c978c559cf303d874e0f08fc48',
  policy:'494e95e3173695407c84b6d082f09e57d971cb193518be813a53131cdb389a70',
- mcp:'7c566cdb1dbc1dcb4ac9d6a1b0670acc98cbc366a663771937e365d700671510',
+ mcp:'001619fc2485202162da5c20fe1348cc430d4d8f119b41d38d0be4dbf8bdb8b4',
 });
 const REG_CAND=Object.freeze({
  base:'aa6f3ed4f682dd4f50f56483edad435fc05454310449a21e9bc7a412b57efb60',
  exec:'0e5698778545923500750240be0f38bee1b819a4e05e9fcef1e9ceb4808bb2a6',
  policy:'fcaee257f33cfaf5035eb97ada018af3f9115df9ac7afbd5ba55ce5961913574',
- mcp:'9fa041e09a02370ca803e32a7465b471d5a7ce86415a3ed49a457ffe4611a2f0',
+ mcp:'956d5da190e7eb7af24207c0600cbe80f1c8911c6cb722b88d2ac7713e3d27ce',
 });
 test('01 exports fixed promotion action',()=>{const m=load();assert.equal(m.ACTION,'control_plane_typed_bootstrap_current_baseline_refresh_v1');assert.equal(m.PROMOTION_OPERATION,'host_action.control_plane_typed_bootstrap_current_baseline_refresh_v1')});
 test('02 validates exact stage evidence',()=>{const m=load();assert.equal(m.validateStageEvidence({transport:{path:m.STAGE_ARTIFACTS.transport.path,sha256:m.STAGE_ARTIFACTS.transport.sha256,exists:true,regular:true,symlink:false},bootstrap:{path:m.STAGE_ARTIFACTS.bootstrap.path,sha256:m.STAGE_ARTIFACTS.bootstrap.sha256,exists:true,regular:true,symlink:false}}),true)});
