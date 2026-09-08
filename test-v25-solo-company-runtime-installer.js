@@ -34,6 +34,6 @@ test('registry patch adds exactly one Solo import and registration without alter
 
 test('production materialization is fixed to current active baseline and create-only Solo paths',()=>{
   assert.equal(mod.EXPECTED_REGISTRY_SHA,'0d69b284f8bcf9b772a711dff962a614bd0c1234ee03b87f3faa70877eadb48c');
-  assert.equal(mod.IMMUTABLE_HOST_ACTIONS_V2_SHA,'597701ccc1a6c39d54aef9bd22d1c8732c88536e36e12251511a509bde439b46');
+  assert.equal(mod.IMMUTABLE_HOST_ACTIONS_V2_SHA,'001619fc2485202162da5c20fe1348cc430d4d8f119b41d38d0be4dbf8bdb8b4');
   assert.deepEqual(mod.PATHS,{registry:'/home/agent/ssh-mcp-server/src/core/registry.js',hostActionsV2:'/home/agent/ssh-mcp-server/src/plugins/hostActionsV2.js',soloPlugin:'/home/agent/ssh-mcp-server/src/plugins/soloCompanyRuntimeInstall.js',soloCore:'/home/agent/ssh-mcp-server/src/plugins/soloCompanyRuntimeInstallCore.js'});
 });
