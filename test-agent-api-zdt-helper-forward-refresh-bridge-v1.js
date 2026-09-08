@@ -41,6 +41,8 @@ test('sentinel is exact and rejects caller-controlled extra mutation fields',()=
  const m=load();
  assert.equal(m.isSentinelRequest({body:{target:'root_scripts',path:m.SENTINEL}}),true);
  assert.equal(m.isSentinelRequest({query:{target:'root_scripts',path:m.SENTINEL}}),true);
+ assert.equal(m.isSentinelRequest({params:{target:'root_scripts',path:m.SENTINEL}}),true);
+ assert.equal(m.isSentinelRequest({params:{target:'root_scripts','0':m.SENTINEL}}),true);
  assert.equal(m.isSentinelRequest({body:{target:'root_scripts',path:m.SENTINEL,command:'x'}}),false);
  assert.equal(m.isSentinelRequest({body:{target:'agent_api',path:m.SENTINEL}}),false);
  assert.equal(m.isSentinelRequest({body:{target:'root_scripts',path:'other.sh'}}),false);
