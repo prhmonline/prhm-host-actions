@@ -29,6 +29,12 @@ test('target verification distinguishes static front and WordPress sale without 
   fs.rmSync(tmp,{recursive:true,force:true});
 });
 
+test('v16 apply binds target verification to verifyTargetRoots',()=>{
+  const src=helper.apply.toString();
+  assert.match(src,/verifyTargetRoots\(\)/);
+  assert.doesNotMatch(src,/verifyTargetRoot\(\)/);
+});
+
 test('Agent API project injection adds both targets exactly once',()=>{
   const src=`const projects={\n  imotion_front_prod:{root:'/mnt/imotion-prod-vm/domains/i-motion.ir/public_html',remoteRoot:'/home/imotion/domains/i-motion.ir/public_html'},\n  imotion_admin_prod:{root:'/mnt/imotion-prod-vm/domains/admin.i-motion.ir/public_html'}\n};`;
   const out=helper.injectImotionMarketingProjects(src);
