@@ -1,0 +1,11 @@
+const fs=require('node:fs');const assert=require('node:assert/strict');
+const p=process.argv[2];const s=fs.readFileSync(p,'utf8');
+assert.match(s,/TARGET='\/home\/agent\/ssh-mcp-server\/src\/plugins\/hostActions\.js'/);
+assert.match(s,/EXPECTED_OLD='22ecf31569cb7ef9e1b13263f5ee799b380e3b1f410324d430a2520f14765d3b'/);
+assert.match(s,/EXPECTED_NEW='70f163f24d6431d6e5a11672c0ee4115cd31e5fdee767766fbca28000720cfbc'/);
+assert.match(s,/registerCentralOffsitePlugin/);
+assert.match(s,/systemctl restart prhm-agent-mcp\.service/);
+assert.match(s,/\/usr\/local\/bin\/prhm-node --check/);
+assert.match(s,/rollback/);
+assert.match(s,/install -m 0644/);
+console.log('AGENT_MCP_CENTRAL_OFFSITE_BOOTSTRAP_V2_CONTRACT_OK');
