@@ -11,7 +11,7 @@ test('exports fixed Park Bazar delivery Host Action contract',()=>{
   assert.equal(m.OPERATION,'host_action.park_bazar_delivery_patch_v1');
   assert.equal(m.POLICY_SHA,'494e95e3173695407c84b6d082f09e57d971cb193518be813a53131cdb389a70');
   assert.equal(m.EXEC_SHA,'451c5a4762a4c7a04d64d526a79cf6e86b0cf7c978c559cf303d874e0f08fc48');
-  assert.equal(m.MCP_SHA,'7c566cdb1dbc1dcb4ac9d6a1b0670acc98cbc366a663771937e365d700671510');
+  assert.equal(m.MCP_SHA,'001619fc2485202162da5c20fe1348cc430d4d8f119b41d38d0be4dbf8bdb8b4');
   assert.deepEqual(m.FIXED_FILES,[
     ['app/web/index.php','a66dfb4b4afa2affe8322e302718e0e9010edfd244b30153f88c44a923fa1a18'],
     ['app/yii','63dc92a76e44e9b71ccb28d8a57567d15206229b0fe6e39ebfa257b793bfc1c3'],
