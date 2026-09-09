@@ -1,67 +1,28 @@
-const fs=require('fs'),path=require('path'),http=require('http'),crypto=require('crypto'),cp=require('child_process');
-const SOCKET='/run/prhm-agent-selfmaint/selfmaint.sock';
-const EXEC_SOCKET='/run/prhm-agent-selfmaint-exec/exec.sock';
-const ROOT='/home/agent/ssh-agent-runtime/selfmaint-stage';
-const MEDIATOR_HELPER='/home/agent/ssh-agent-api/control-plane-mediator-level3-repair-v1.js';
-const MEDIATOR_HELPER_SHA='f6850b38ecfca63946969f290a2fc51380b84e3a9e2e7bf108bd68ede5c9c2e6';
-const MAX_TOTAL=120000,MAX_CHUNK=12000,SHA=/^[a-f0-9]{64}$/,UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const CENTRAL_OFFSITE_ROUTES='/opt/prhm-agent-selfmaint-exec/centralOffsiteRoutes.js';
-const CENTRAL_OFFSITE_OLD_SHA='cb30d1ade4f2164e149ca1ecb49eddde3642ed74dffbb9adda717da9beb35263';
-const CENTRAL_OFFSITE_OLD="function tstate(){const enabled=sys(['is-enabled',TIMER],10000),active=sys(['is-active',TIMER],10000);if(!['enabled','disabled'].includes(enabled)||!['active','inactive'].includes(active))throw Error('central_offsite_timer_state_unexpected');return{enabled,active}}";
-const CENTRAL_OFFSITE_NEW="function sysState(a,t=10000){try{return sys(a,t)}catch(e){const out=String(e&&e.stdout||'').trim();if(out)return out;throw e}}\nfunction tstate(){const enabled=sysState(['is-enabled',TIMER],10000),active=sysState(['is-active',TIMER],10000);if(!['enabled','disabled'].includes(enabled)||!['active','inactive'].includes(active))throw Error('central_offsite_timer_state_unexpected');return{enabled,active}}";
-const CENTRAL_OFFSITE_BACKUPS='/var/backups/prhm-central-offsite-tstate-repair-v1';
-const fail=m=>{throw Error(m)},sum=b=>crypto.createHash('sha256').update(b).digest('hex');
-function root(){fs.mkdirSync(ROOT,{recursive:true,mode:0o700});try{fs.chmodSync(ROOT,0o700)}catch{}}
-function rel(v){if(typeof v!=='string'||!v||v.length>300||v.includes('\0')||v.includes('\\')||path.posix.isAbsolute(v))fail('invalid selfmaint path');const n=path.posix.normalize(v);if(n==='.'||n==='..'||n.startsWith('../'))fail('selfmaint path traversal blocked');if(n.split('/').some(x=>x==='.env'||x==='.ssh'||x==='authorized_keys'||x.startsWith('.env')))fail('sensitive selfmaint path blocked');return n}
-function base(s){if(!s||Array.isArray(s)||typeof s!=='object')fail('invalid selfmaint spec');if(!['agent_api','agent_mcp'].includes(s.target))fail('invalid selfmaint target');if(typeof s.expected_sha256!=='string'||!SHA.test(s.expected_sha256))fail('invalid expected_sha256');if(typeof s.reason!=='string'||s.reason.trim().length<3||s.reason.length>1000)fail('invalid reason');return{target:s.target,path:rel(s.path),expected_sha256:s.expected_sha256,reason:s.reason}}
-function callOn(socket,p,m='GET',body){return new Promise((ok,no)=>{const d=body===undefined?null:Buffer.from(JSON.stringify(body)),h=d?{'content-type':'application/json','content-length':d.length}:{};const q=http.request({socketPath:socket,path:p,method:m,headers:h},r=>{let n=0,c=[];r.on('data',x=>{n+=x.length;if(n<=400000)c.push(x)});r.on('end',()=>{if(n>400000)return no(Error('selfmaint_response_too_large'));let o={};try{o=JSON.parse(Buffer.concat(c).toString('utf8')||'{}')}catch{return no(Error('selfmaint_invalid_response'))}if(r.statusCode<200||r.statusCode>=300||o.ok!==true)return no(Error(String(o.error||`selfmaint_rejected_${r.statusCode}`)));ok(o)})});q.setTimeout(90000,()=>q.destroy(Error('selfmaint_timeout')));q.on('error',e=>no(Error('selfmaint_bridge_error:'+e.message)));d?q.end(d):q.end()})}
-function call(p,m='GET',body){return callOn(SOCKET,p,m,body)}
-function execCall(p,m='GET',body){return callOn(EXEC_SOCKET,p,m,body)}
-function pp(id){if(typeof id!=='string'||!UUID.test(id))fail('invalid stage_id');root();return{m:path.join(ROOT,id+'.json'),d:path.join(ROOT,id+'.bin')}}
-function save(id,o){const p=pp(id),t=p.m+'.'+process.pid+'.'+Date.now()+'.tmp';fs.writeFileSync(t,JSON.stringify(o)+'\n',{flag:'w',mode:0o600});fs.renameSync(t,p.m)}
-function load(id){const p=pp(id);if(!fs.existsSync(p.m)||!fs.existsSync(p.d))fail('stage not found');let s;try{s=JSON.parse(fs.readFileSync(p.m,'utf8'))}catch{fail('invalid stage metadata')}return{...p,s}}
-function clean(id){const p=pp(id);for(const f of[p.d,p.m])try{if(fs.existsSync(f))fs.unlinkSync(f)}catch{}}
-function chunk(v){if(typeof v!=='string'||!v||v.length>17000||!/^[A-Za-z0-9+/]*={0,2}$/.test(v))fail('invalid base64 chunk');const b=Buffer.from(v,'base64'),a=v.replace(/=+$/,''),z=b.toString('base64').replace(/=+$/,'');if(a!==z)fail('invalid base64 encoding');if(b.length>MAX_CHUNK)fail('chunk too large');return b}
-function parse(c){if(typeof c!=='string'||c.length<2||c.length>20000)fail('invalid control-plane command');let s;try{s=JSON.parse(c)}catch{fail('control_plane requires typed JSON')}if(!s||Array.isArray(s)||typeof s!=='object')fail('invalid control-plane spec');return s}
-function full(id){const x=load(id),b=fs.readFileSync(x.d);if(b.length!==x.s.total_bytes||x.s.received_bytes!==x.s.total_bytes)fail('stage incomplete');if(sum(b)!==x.s.new_sha256)fail('new sha mismatch');const t=b.toString('utf8');if(!Buffer.from(t,'utf8').equals(b))fail('content must be UTF-8');return{target:x.s.target,path:x.s.path,expected_sha256:x.s.expected_sha256,new_content:t,reason:x.s.reason}}
-function fixedMediatorHelper(){const st=fs.lstatSync(MEDIATOR_HELPER);if(!st.isFile()||st.isSymbolicLink()||fs.realpathSync(MEDIATOR_HELPER)!==MEDIATOR_HELPER)fail('mediator helper invalid');const b=fs.readFileSync(MEDIATOR_HELPER);if(sum(b)!==MEDIATOR_HELPER_SHA)fail('mediator helper sha mismatch');delete require.cache[require.resolve(MEDIATOR_HELPER)];const h=require(MEDIATOR_HELPER);if(!h||typeof h.preflight!=='function'||typeof h.apply!=='function')fail('mediator helper contract invalid');return h}
-function exact(obj,keys){for(const k of Object.keys(obj))if(!keys.includes(k))fail('unexpected control-plane field');for(const k of keys)if(!(k in obj))fail('missing control-plane field')}
-function centralOffsiteCandidate(){const st=fs.lstatSync(CENTRAL_OFFSITE_ROUTES);if(!st.isFile()||st.isSymbolicLink()||fs.realpathSync(CENTRAL_OFFSITE_ROUTES)!==CENTRAL_OFFSITE_ROUTES)fail('central_offsite_routes_invalid');const raw=fs.readFileSync(CENTRAL_OFFSITE_ROUTES);if(sum(raw)!==CENTRAL_OFFSITE_OLD_SHA)fail('central_offsite_routes_sha_mismatch');const text=raw.toString('utf8');if(text.split(CENTRAL_OFFSITE_OLD).length-1!==1||text.includes('function sysState(a,t=10000)'))fail('central_offsite_tstate_anchor_mismatch');const next=text.replace(CENTRAL_OFFSITE_OLD,CENTRAL_OFFSITE_NEW),buf=Buffer.from(next,'utf8');return{st,raw,buf,new_sha256:sum(buf)}}
-function centralOffsiteRepair(preflightOnly){const c=centralOffsiteCandidate();if(preflightOnly)return{ok:true,action:'central_offsite_tstate_repair_v1',preflight_only:true,old_sha256:CENTRAL_OFFSITE_OLD_SHA,new_sha256:c.new_sha256,replacement_count:1,production_mutation:false};const syntax=cp.spawnSync('/usr/local/bin/prhm-node',['--check','-'],{input:c.buf,encoding:null,timeout:30000,maxBuffer:500000});if(syntax.error||syntax.status!==0)fail('central_offsite_candidate_syntax_invalid');fs.mkdirSync(CENTRAL_OFFSITE_BACKUPS,{recursive:true,mode:0o700});const backup=path.join(CENTRAL_OFFSITE_BACKUPS,'centralOffsiteRoutes-'+Date.now()+'-'+CENTRAL_OFFSITE_OLD_SHA+'.bak');fs.writeFileSync(backup,c.raw,{mode:0o600,flag:'wx'});const tmp=CENTRAL_OFFSITE_ROUTES+'.repair-'+process.pid+'-'+Date.now()+'.tmp';let wrote=false;try{fs.writeFileSync(tmp,c.buf,{mode:c.st.mode&0o777,flag:'wx'});fs.chownSync(tmp,c.st.uid,c.st.gid);fs.chmodSync(tmp,c.st.mode&0o777);fs.renameSync(tmp,CENTRAL_OFFSITE_ROUTES);wrote=true;if(sum(fs.readFileSync(CENTRAL_OFFSITE_ROUTES))!==c.new_sha256)fail('central_offsite_postwrite_sha_mismatch');cp.execFileSync('/usr/bin/systemctl',['restart','prhm-agent-selfmaint-exec.service'],{timeout:90000,stdio:['ignore','pipe','pipe']});let ready=false;for(let i=0;i<40;i++){let active='';try{active=cp.execFileSync('/usr/bin/systemctl',['is-active','prhm-agent-selfmaint-exec.service'],{encoding:'utf8',timeout:10000}).trim()}catch{}if(active==='active'&&fs.existsSync(EXEC_SOCKET)){ready=true;break}Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,250)}if(!ready)fail('central_offsite_executor_reload_failed');return{ok:true,action:'central_offsite_tstate_repair_v1',preflight_only:false,old_sha256:CENTRAL_OFFSITE_OLD_SHA,new_sha256:c.new_sha256,replacement_count:1,backup_path:backup,production_mutation:true,rollback_performed:false}}catch(e){try{if(fs.existsSync(tmp))fs.unlinkSync(tmp)}catch{}if(wrote){const rb=CENTRAL_OFFSITE_ROUTES+'.rollback-'+process.pid+'-'+Date.now()+'.tmp';fs.writeFileSync(rb,c.raw,{mode:c.st.mode&0o777,flag:'wx'});fs.chownSync(rb,c.st.uid,c.st.gid);fs.chmodSync(rb,c.st.mode&0o777);fs.renameSync(rb,CENTRAL_OFFSITE_ROUTES);try{cp.execFileSync('/usr/bin/systemctl',['restart','prhm-agent-selfmaint-exec.service'],{timeout:90000})}catch{}}throw e}}
-
-const CENTRAL_OFFSITE_MANIFEST_ROOT='/var/backups/prhm-central';
-const CENTRAL_OFFSITE_SNAPSHOT_RE=/^20[0-9]{6}T[0-9]{6}Z$/;
-function centralOffsiteManifestDiagnostic(){
-  const snaps=fs.readdirSync(CENTRAL_OFFSITE_MANIFEST_ROOT,{withFileTypes:true})
-    .filter(x=>x.isDirectory()&&CENTRAL_OFFSITE_SNAPSHOT_RE.test(x.name)).map(x=>x.name).sort();
-  if(!snaps.length)fail('central_offsite_snapshot_missing');
-  const snapshot=snaps.at(-1),root=path.join(CENTRAL_OFFSITE_MANIFEST_ROOT,snapshot),manifest=path.join(root,'MANIFEST');
-  const st=fs.lstatSync(manifest);
-  if(!st.isFile()||st.isSymbolicLink()||fs.realpathSync(manifest)!==manifest)fail('central_offsite_manifest_invalid');
-  const manifest_sha256=sum(fs.readFileSync(manifest));
-  const r=cp.spawnSync('/usr/bin/sha256sum',['-c','MANIFEST'],{cwd:root,encoding:'utf8',timeout:180000,maxBuffer:400000});
-  const lines=(String(r.stdout||'')+'\n'+String(r.stderr||'')).split(/\r?\n/).map(x=>x.trim()).filter(Boolean).slice(0,256);
-  const failures=[];
-  for(const line of lines){const m=line.match(/^(.*?):\s*(OK|FAILED)$/);if(!m||m[2]==='OK')continue;failures.push({entry:path.basename(m[1]).slice(0,180),status:'FAILED'});if(failures.length>=64)break;}
-  return {ok:true,action:'central_offsite_manifest_diagnostic_v1',read_only:true,snapshot,manifest_sha256,manifest_ok:r.status===0,exit_code:Number.isInteger(r.status)?r.status:null,signal:r.signal||null,spawn_error:r.error?String(r.error.message||r.error).slice(0,240):null,checked_line_count:lines.length,failures};
+#!/usr/local/bin/prhm-node
+'use strict';
+const fs=require('fs'),path=require('path'),crypto=require('crypto'),cp=require('child_process'),Module=require('module');
+const BASE_SHA='f767b783f90af1d860a81439cdbcb48534d943fcfa1b13c87c93520a34f5eedd';
+const SNAP_ROOT='/var/backups/prhm-central';
+const SNAP_RE=/^20[0-9]{6}T[0-9]{6}Z$/;
+const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
+function fail(m){throw new Error(m)}
+function loadBase(){
+  const names=fs.readdirSync(__dirname).filter(n=>n.startsWith('opsSelfmaintBridge.js.agent-backup.')).sort().reverse();
+  for(const name of names){const p=path.join(__dirname,name);let st;try{st=fs.lstatSync(p)}catch{continue}if(!st.isFile()||st.isSymbolicLink())continue;const b=fs.readFileSync(p);if(sha(b)===BASE_SHA)return b}
+  fail('central_offsite_manifest_diag_base_backup_missing');
 }
-
-function createOpsSelfmaintBridge(){return{async execute(command,ctx={}){const s=parse(command),op=s.operation;
-if(op==='selfmaint_health')return{...(await call('/health')),operation:op};
-if(op==='selfmaint_stage_start'){const b=base(s);if(typeof s.new_sha256!=='string'||!SHA.test(s.new_sha256))fail('invalid new_sha256');if(!Number.isInteger(s.total_bytes)||s.total_bytes<0||s.total_bytes>MAX_TOTAL)fail('invalid total_bytes');const id=crypto.randomUUID(),p=pp(id),st={stage_id:id,...b,new_sha256:s.new_sha256,total_bytes:s.total_bytes,received_bytes:0,created_at:new Date().toISOString(),reason_context:String(ctx.reason||'').slice(0,1000)};fs.writeFileSync(p.d,Buffer.alloc(0),{flag:'wx',mode:0o600});save(id,st);return{ok:true,operation:op,stage_id:id,total_bytes:st.total_bytes,received_bytes:0}}
-if(op==='selfmaint_stage_chunk'){const x=load(s.stage_id);if(!Number.isInteger(s.offset)||s.offset!==x.s.received_bytes)fail('stage offset mismatch');const b=chunk(s.content_base64);if(x.s.received_bytes+b.length>x.s.total_bytes)fail('stage exceeds total_bytes');fs.appendFileSync(x.d,b);x.s.received_bytes+=b.length;x.s.updated_at=new Date().toISOString();save(x.s.stage_id,x.s);return{ok:true,operation:op,stage_id:x.s.stage_id,total_bytes:x.s.total_bytes,received_bytes:x.s.received_bytes,complete:x.s.received_bytes===x.s.total_bytes}}
-if(op==='selfmaint_stage_status'){const x=load(s.stage_id),n=fs.statSync(x.d).size;return{ok:true,operation:op,stage_id:x.s.stage_id,target:x.s.target,path:x.s.path,total_bytes:x.s.total_bytes,received_bytes:x.s.received_bytes,stored_bytes:n,complete:n===x.s.total_bytes&&x.s.received_bytes===x.s.total_bytes}}
-if(op==='selfmaint_request_staged')return{...(await call('/v1/request','POST',full(s.stage_id))),operation:op,stage_id:s.stage_id};
-if(op==='selfmaint_confirm'){if(typeof s.request_id!=='string'||!UUID.test(s.request_id))fail('invalid request_id');if(s.second_confirmation!=='CONFIRM_LEVEL_4_CRITICAL')fail('Level-4 confirmation required');if(s.note!==undefined&&(typeof s.note!=='string'||s.note.length<3||s.note.length>1000))fail('invalid note');return{...(await call('/v1/confirm','POST',{request_id:s.request_id,second_confirmation:s.second_confirmation,...(s.note?{note:s.note}:{})})),operation:op}}
-if(op==='selfmaint_apply_staged'){if(typeof s.approval_token!=='string'||s.approval_token.length<32||s.approval_token.length>16384)fail('approval_token required');const out=await call('/v1/apply','POST',{spec:full(s.stage_id),approval_token:s.approval_token});clean(s.stage_id);return{...out,operation:op,stage_id:s.stage_id}}
-if(op==='selfmaint_stage_cancel'){load(s.stage_id);clean(s.stage_id);return{ok:true,operation:op,stage_id:s.stage_id,cancelled:true}}
-if(op==='central_offsite_manifest_diagnostic'){exact(s,['operation']);return{...centralOffsiteManifestDiagnostic(),operation:op}}
-if(op==='central_offsite_enable_request'){exact(s,['operation']);return{...(await execCall('/v1/central-offsite/request','POST',{})),operation:op}}
-if(op==='central_offsite_enable_apply'){const keys=s.note===undefined?['operation','request_id','second_confirmation']:['operation','request_id','second_confirmation','note'];exact(s,keys);if(typeof s.request_id!=='string'||!UUID.test(s.request_id))fail('invalid request_id');if(s.second_confirmation!=='CONFIRM_LEVEL_4_CRITICAL')fail('Level-4 confirmation required');if(s.note!==undefined&&(typeof s.note!=='string'||s.note.length<3||s.note.length>1000))fail('invalid note');return{...(await execCall('/v1/central-offsite/execute','POST',{request_id:s.request_id,second_confirmation:s.second_confirmation,...(s.note?{note:s.note}:{})})),operation:op}}
-if(op==='central_offsite_enable_status'){exact(s,['operation','request_id']);if(typeof s.request_id!=='string'||!UUID.test(s.request_id))fail('invalid request_id');return{...(await execCall('/v1/central-offsite/status','POST',{request_id:s.request_id})),operation:op}}
-if(op==='central_offsite_tstate_repair_preflight'){exact(s,['operation']);return{...centralOffsiteRepair(true),operation:op}}
-if(op==='central_offsite_tstate_repair_apply'){exact(s,['operation','second_confirmation']);if(s.second_confirmation!=='CONFIRM_LEVEL_3_PRODUCTION')fail('Level-3 confirmation required');return{...centralOffsiteRepair(false),operation:op}}
-if(op==='mediator_level3_repair_preflight'){exact(s,['operation']);return{...fixedMediatorHelper().preflight(),operation:op}}
-if(op==='mediator_level3_repair_apply'){exact(s,['operation','second_confirmation']);if(s.second_confirmation!=='CONFIRM_LEVEL_3_PRODUCTION')fail('Level-3 confirmation required');return{...fixedMediatorHelper().apply(s.second_confirmation),operation:op}}
-fail('unsupported control-plane operation')}}}
-module.exports={createOpsSelfmaintBridge,run:centralOffsiteManifestDiagnostic,SNAP_ROOT:CENTRAL_OFFSITE_MANIFEST_ROOT};
+let bm=null;
+function loadBaseModule(){if(bm)return bm;const bytes=loadBase();const m=new Module(__filename,module);m.filename=__filename;m.paths=module.paths;m._compile(bytes.toString('utf8'),__filename);if(!m.exports||typeof m.exports.createOpsSelfmaintBridge!=='function')fail('central_offsite_manifest_diag_base_contract_invalid');bm=m;return bm}
+function run(){
+  const snaps=fs.readdirSync(SNAP_ROOT,{withFileTypes:true}).filter(x=>x.isDirectory()&&SNAP_RE.test(x.name)).map(x=>x.name).sort();
+  if(!snaps.length)fail('central_offsite_snapshot_missing');
+  const snapshot=snaps.at(-1),root=path.join(SNAP_ROOT,snapshot),manifest=path.join(root,'MANIFEST');
+  const st=fs.lstatSync(manifest);if(!st.isFile()||st.isSymbolicLink()||fs.realpathSync(manifest)!==manifest)fail('central_offsite_manifest_invalid');
+  const manifest_sha256=sha(fs.readFileSync(manifest));
+  const r=cp.spawnSync('/usr/bin/sha256sum',['-c','MANIFEST'],{cwd:root,encoding:'utf8',timeout:180000,maxBuffer:400000});
+  const lines=(String(r.stdout||'')+'\n'+String(r.stderr||'')).split(/\r?\n/).map(x=>x.trim()).filter(Boolean).slice(0,256),failures=[];
+  for(const line of lines){const m=line.match(/^(.*?):\s*(OK|FAILED)$/);if(!m||m[2]==='OK')continue;failures.push({entry:path.basename(m[1]).slice(0,180),status:'FAILED'});if(failures.length>=64)break}
+  return{ok:true,action:'central_offsite_manifest_diagnostic_v1',read_only:true,snapshot,manifest_sha256,manifest_ok:r.status===0,exit_code:Number.isInteger(r.status)?r.status:null,signal:r.signal||null,spawn_error:r.error?String(r.error.message||r.error).slice(0,240):null,checked_line_count:lines.length,failures};
+}
+function createOpsSelfmaintBridge(){const base=loadBaseModule().exports.createOpsSelfmaintBridge();return{async execute(command,ctx={}){let s=null;try{s=JSON.parse(command)}catch{}if(s&&s.operation==='central_offsite_manifest_diagnostic'){if(Object.keys(s).length!==1)fail('unexpected control-plane field');return run()}return base.execute(command,ctx)}}}
+module.exports={createOpsSelfmaintBridge,run,SNAP_ROOT};
