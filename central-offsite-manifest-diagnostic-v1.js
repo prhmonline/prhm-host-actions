@@ -13,6 +13,16 @@ function loadBase(){
 }
 let bm=null;
 function loadBaseModule(){if(bm)return bm;const bytes=loadBase();const m=new Module(__filename,module);m.filename=__filename;m.paths=module.paths;m._compile(bytes.toString('utf8'),__filename);if(!m.exports||typeof m.exports.createOpsSelfmaintBridge!=='function')fail('central_offsite_manifest_diag_base_contract_invalid');bm=m;return bm}
+function classifyManifestText(text){
+  const lines=String(text||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean).slice(0,512);
+  let formatted_line_count=0;
+  for(const line of lines)if(/^[a-f0-9]{64}\s+\*?.+$/i.test(line))formatted_line_count++;
+  let format='other';
+  if(lines.length&&formatted_line_count===lines.length)format='sha256sum';
+  else if(lines.length&&lines.every(x=>/^[a-f0-9]{64}$/i.test(x)))format='sha256_only';
+  else if(lines.length&&(['{','['].includes(lines[0][0])))format='json';
+  return{line_count:lines.length,formatted_line_count,format};
+}
 function parseCheckLines(lines){
   const failures=[];let warning_count=0;
   for(const raw of lines.slice(0,256)){
@@ -29,10 +39,10 @@ function run(){
   if(!snaps.length)fail('central_offsite_snapshot_missing');
   const snapshot=snaps.at(-1),root=path.join(SNAP_ROOT,snapshot),manifest=path.join(root,'MANIFEST');
   const st=fs.lstatSync(manifest);if(!st.isFile()||st.isSymbolicLink()||fs.realpathSync(manifest)!==manifest)fail('central_offsite_manifest_invalid');
-  const manifest_sha256=sha(fs.readFileSync(manifest));
+  const manifestBytes=fs.readFileSync(manifest),manifest_sha256=sha(manifestBytes),manifest_format=classifyManifestText(manifestBytes.toString('utf8'));
   const r=cp.spawnSync('/usr/bin/sha256sum',['-c','MANIFEST'],{cwd:root,encoding:'utf8',timeout:180000,maxBuffer:400000});
   const lines=(String(r.stdout||'')+'\n'+String(r.stderr||'')).split(/\r?\n/).map(x=>x.trim()).filter(Boolean).slice(0,256),parsed=parseCheckLines(lines);
-  return{ok:true,action:'central_offsite_manifest_diagnostic_v1',read_only:true,snapshot,manifest_sha256,manifest_ok:r.status===0,exit_code:Number.isInteger(r.status)?r.status:null,signal:r.signal||null,spawn_error:r.error?String(r.error.message||r.error).slice(0,240):null,checked_line_count:lines.length,failures:parsed.failures,warning_count:parsed.warning_count};
+  return{ok:true,action:'central_offsite_manifest_diagnostic_v1',read_only:true,snapshot,manifest_sha256,manifest_ok:r.status===0,exit_code:Number.isInteger(r.status)?r.status:null,signal:r.signal||null,spawn_error:r.error?String(r.error.message||r.error).slice(0,240):null,checked_line_count:lines.length,failures:parsed.failures,warning_count:parsed.warning_count,manifest_line_count:manifest_format.line_count,formatted_line_count:manifest_format.formatted_line_count,manifest_format:manifest_format.format};
 }
 function createOpsSelfmaintBridge(){const base=loadBaseModule().exports.createOpsSelfmaintBridge();return{async execute(command,ctx={}){let s=null;try{s=JSON.parse(command)}catch{}if(s&&s.operation==='central_offsite_manifest_diagnostic'){if(Object.keys(s).length!==1)fail('unexpected control-plane field');return run()}return base.execute(command,ctx)}}}
-module.exports={createOpsSelfmaintBridge,run,SNAP_ROOT,parseCheckLines};
+module.exports={createOpsSelfmaintBridge,run,SNAP_ROOT,parseCheckLines,classifyManifestText};
