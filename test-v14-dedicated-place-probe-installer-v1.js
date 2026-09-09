@@ -10,7 +10,7 @@ const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
 
 assert.equal(
   m.NEW_SHA,
-  'df5c2ad6991eda64224db059388703db18fe2045aea7798d48e13efd4de62bbb'
+  '49e38d08562597d07b88db2c6e6dbc91fd167a3a5249129c7df7e05ae9f49034'
 );
 
 assert.equal(

@@ -12,10 +12,10 @@ const SOURCE=
 const TARGET='/home/agent/ssh-agent-api/opsExecutorRoutes.js';
 
 const OLD_SHA=
-  '4ad033759ad14b07213b7a4f6b033f6f6a7dd134dc4589bf55a18badfc8ea8c7';
+  'df5c2ad6991eda64224db059388703db18fe2045aea7798d48e13efd4de62bbb';
 
 const NEW_SHA=
-  'df5c2ad6991eda64224db059388703db18fe2045aea7798d48e13efd4de62bbb';
+  '49e38d08562597d07b88db2c6e6dbc91fd167a3a5249129c7df7e05ae9f49034';
 
 const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
 
