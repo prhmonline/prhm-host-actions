@@ -13,6 +13,17 @@ function loadBase(){
 }
 let bm=null;
 function loadBaseModule(){if(bm)return bm;const bytes=loadBase();const m=new Module(__filename,module);m.filename=__filename;m.paths=module.paths;m._compile(bytes.toString('utf8'),__filename);if(!m.exports||typeof m.exports.createOpsSelfmaintBridge!=='function')fail('central_offsite_manifest_diag_base_contract_invalid');bm=m;return bm}
+function parseCheckLines(lines){
+  const failures=[];let warning_count=0;
+  for(const raw of lines.slice(0,256)){
+    const line=String(raw||'').trim();if(!line)continue;
+    if(/^sha256sum:\s+WARNING:/.test(line)){warning_count++;continue}
+    let m=line.match(/^sha256sum:\s+(.*?):\s+No such file or directory$/);if(m){failures.push({entry:path.basename(m[1]).slice(0,180),reason:'missing'});continue}
+    m=line.match(/^(.*?):\s*FAILED open or read$/);if(m){failures.push({entry:path.basename(m[1]).slice(0,180),reason:'unreadable'});continue}
+    m=line.match(/^(.*?):\s*FAILED$/);if(m){failures.push({entry:path.basename(m[1]).slice(0,180),reason:'checksum'});continue}
+  }
+  return{failures:failures.slice(0,64),warning_count};
+}
 function run(){
   const snaps=fs.readdirSync(SNAP_ROOT,{withFileTypes:true}).filter(x=>x.isDirectory()&&SNAP_RE.test(x.name)).map(x=>x.name).sort();
   if(!snaps.length)fail('central_offsite_snapshot_missing');
@@ -20,9 +31,8 @@ function run(){
   const st=fs.lstatSync(manifest);if(!st.isFile()||st.isSymbolicLink()||fs.realpathSync(manifest)!==manifest)fail('central_offsite_manifest_invalid');
   const manifest_sha256=sha(fs.readFileSync(manifest));
   const r=cp.spawnSync('/usr/bin/sha256sum',['-c','MANIFEST'],{cwd:root,encoding:'utf8',timeout:180000,maxBuffer:400000});
-  const lines=(String(r.stdout||'')+'\n'+String(r.stderr||'')).split(/\r?\n/).map(x=>x.trim()).filter(Boolean).slice(0,256),failures=[];
-  for(const line of lines){const m=line.match(/^(.*?):\s*(OK|FAILED)$/);if(!m||m[2]==='OK')continue;failures.push({entry:path.basename(m[1]).slice(0,180),status:'FAILED'});if(failures.length>=64)break}
-  return{ok:true,action:'central_offsite_manifest_diagnostic_v1',read_only:true,snapshot,manifest_sha256,manifest_ok:r.status===0,exit_code:Number.isInteger(r.status)?r.status:null,signal:r.signal||null,spawn_error:r.error?String(r.error.message||r.error).slice(0,240):null,checked_line_count:lines.length,failures};
+  const lines=(String(r.stdout||'')+'\n'+String(r.stderr||'')).split(/\r?\n/).map(x=>x.trim()).filter(Boolean).slice(0,256),parsed=parseCheckLines(lines);
+  return{ok:true,action:'central_offsite_manifest_diagnostic_v1',read_only:true,snapshot,manifest_sha256,manifest_ok:r.status===0,exit_code:Number.isInteger(r.status)?r.status:null,signal:r.signal||null,spawn_error:r.error?String(r.error.message||r.error).slice(0,240):null,checked_line_count:lines.length,failures:parsed.failures,warning_count:parsed.warning_count};
 }
 function createOpsSelfmaintBridge(){const base=loadBaseModule().exports.createOpsSelfmaintBridge();return{async execute(command,ctx={}){let s=null;try{s=JSON.parse(command)}catch{}if(s&&s.operation==='central_offsite_manifest_diagnostic'){if(Object.keys(s).length!==1)fail('unexpected control-plane field');return run()}return base.execute(command,ctx)}}}
-module.exports={createOpsSelfmaintBridge,run,SNAP_ROOT};
+module.exports={createOpsSelfmaintBridge,run,SNAP_ROOT,parseCheckLines};
