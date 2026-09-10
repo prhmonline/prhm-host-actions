@@ -8,9 +8,9 @@ const legacyBytes=cp.execFileSync('/usr/bin/git',['-C',__dirname,'cat-file','blo
 const legacySha=crypto.createHash('sha256').update(legacyBytes).digest('hex');
 if(legacySha!==LEGACY_SHA256)throw new Error('legacy_blob_sha_mismatch:'+legacySha);
 const LEGACY_MCP_BASELINE_OLD='7c566cdb1dbc1dcb4ac9d6a1b0670acc98cbc366a663771937e365d700671510';
-const LEGACY_MCP_BASELINE_NEW='001619fc2485202162da5c20fe1348cc430d4d8f119b41d38d0be4dbf8bdb8b4';
+const LEGACY_MCP_BASELINE_NEW='703a8f8ee0726fac47d008a69c759e3f52254c980cf551ea3f2660cc46321283';
 const LEGACY_MCP_CANDIDATE_OLD='9fa041e09a02370ca803e32a7465b471d5a7ce86415a3ed49a457ffe4611a2f0';
-const LEGACY_MCP_CANDIDATE_NEW='956d5da190e7eb7af24207c0600cbe80f1c8911c6cb722b88d2ac7713e3d27ce';
+const LEGACY_MCP_CANDIDATE_NEW='b71b271cf3de3c314cf63491db3873a58336bf25f064271b218a5f602c5bc7eb';
 let legacySource=legacyBytes.toString('utf8');
 for(const [oldValue,newValue,label] of [
  [LEGACY_MCP_BASELINE_OLD,LEGACY_MCP_BASELINE_NEW,'baseline'],
