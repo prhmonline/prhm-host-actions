@@ -1,0 +1,359 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+umask 077
+export LC_ALL=C
+
+[[ "$(hostname -s)" == 'prhm-production' ]] || {
+  echo 'FAIL: wrong host' >&2
+  exit 10
+}
+
+SNAP_ROOT='/var/backups/prhm-central'
+PASSFILE='/etc/prhm-production-central-gdrive-restic.password'
+RCLONE='/var/lib/prhm-central-gdrive-restic/rclone-1.75.0'
+RCLONE_CONFIG='/etc/prhm-rclone/rclone.conf'
+REMOTE='gdrive-backup'
+REMOTE_DIR='PRHM-Backups/bundles/central'
+RESTIC_IMAGE='restic/restic:0.19.1'
+LOCAL_SERVICE='prhm-production-central-backup.service'
+STATE_DIR='/var/lib/prhm-central-gdrive-bundle'
+LOCK_FILE='/run/lock/prhm-production-central-offsite-backup.lock'
+RETENTION_PLAN='/usr/local/libexec/prhm-central-retention-plan.py'
+
+exec 9>"$LOCK_FILE"
+flock -n 9 || {
+  echo 'FAIL: another offsite run is active' >&2
+  exit 11
+}
+
+for _ in $(seq 1 120); do
+  [[ "$(systemctl is-active "$LOCAL_SERVICE" 2>/dev/null || true)" != 'active' ]] && break
+  sleep 15
+done
+[[ "$(systemctl is-active "$LOCAL_SERVICE" 2>/dev/null || true)" != 'active' ]] || {
+  echo 'FAIL: local central backup remained active for 30 minutes' >&2
+  exit 12
+}
+
+[[ -x "$RCLONE" ]] || { echo 'FAIL: rclone binary missing' >&2; exit 13; }
+[[ -x "$RETENTION_PLAN" ]] || { echo 'FAIL: retention planner missing' >&2; exit 131; }
+[[ -s "$RCLONE_CONFIG" ]] || { echo 'FAIL: rclone config missing' >&2; exit 14; }
+[[ "$(stat -c '%a' "$RCLONE_CONFIG")" == '600' ]] || {
+  echo 'FAIL: rclone config mode must be 600' >&2
+  exit 15
+}
+[[ -s "$PASSFILE" ]] || { echo 'FAIL: restic password missing' >&2; exit 16; }
+[[ "$(stat -c '%a' "$PASSFILE")" == '600' ]] || {
+  echo 'FAIL: restic password mode must be 600' >&2
+  exit 17
+}
+
+LATEST=''
+while IFS= read -r candidate; do
+  snapshot_id="${candidate##*/}"
+  [[ "$snapshot_id" =~ ^20[0-9]{6}T[0-9]{6}Z$ ]] || continue
+  [[ -f "$candidate/COMPLETE" && -f "$candidate/SHA256SUMS" ]] || continue
+  LATEST="$candidate"
+done < <(find "$SNAP_ROOT" -mindepth 1 -maxdepth 1 -type d -name '20*' -print | sort)
+
+[[ -n "$LATEST" ]] || { echo 'FAIL: no COMPLETE local snapshot found' >&2; exit 18; }
+SNAPSHOT_ID="${LATEST##*/}"
+BUNDLE_NAME="${SNAPSHOT_ID}.restic-repo.tar"
+DEST="${REMOTE}:${REMOTE_DIR}/${BUNDLE_NAME}"
+SNAPSHOT_STATE_DIR="$STATE_DIR/snapshots"
+STATE_FILE="$SNAPSHOT_STATE_DIR/${SNAPSHOT_ID}.json"
+LATEST_STATE="$STATE_DIR/latest.json"
+
+echo "SNAPSHOT=$SNAPSHOT_ID"
+echo 'STAGE=local_snapshot_integrity'
+(
+  cd "$LATEST"
+  sha256sum -c SHA256SUMS
+)
+echo 'LOCAL_SNAPSHOT_SHA256=PASS'
+
+rclone_common=(
+  --config "$RCLONE_CONFIG"
+  --tpslimit 0.5
+  --tpslimit-burst 1
+  --drive-pacer-min-sleep 2s
+  --drive-pacer-burst 1
+  --transfers 1
+  --checkers 1
+  --retries 12
+  --low-level-retries 30
+  --retries-sleep 10s
+  --contimeout 1m
+  --timeout 30m
+)
+
+remote_metadata() {
+  local raw
+  raw="$("$RCLONE" lsjson "${REMOTE}:${REMOTE_DIR}" \
+    "${rclone_common[@]}" \
+    --files-only \
+    --max-depth 1 \
+    --include "$BUNDLE_NAME")"
+  python3 - "$BUNDLE_NAME" "$raw" <<'PY'
+import json
+import sys
+
+name = sys.argv[1]
+items = json.loads(sys.argv[2])
+matches = [x for x in items if x.get("Path") == name or x.get("Name") == name]
+if len(matches) > 1:
+    raise SystemExit("duplicate remote bundle objects")
+size = int(matches[0]["Size"]) if matches else 0
+print(len(matches), size)
+PY
+}
+
+remote_inventory_json() {
+  "$RCLONE" lsjson "${REMOTE}:${REMOTE_DIR}" \
+    "${rclone_common[@]}" \
+    --files-only \
+    --max-depth 1
+}
+
+enforce_remote_retention() {
+  local before after name
+  local -a prune=()
+
+  before="$(mktemp /var/tmp/prhm-central-retention-before.XXXXXX.json)"
+  after="$(mktemp /var/tmp/prhm-central-retention-after.XXXXXX.json)"
+
+  remote_inventory_json >"$before"
+
+  mapfile -t prune < <(
+    "$RETENTION_PLAN" \
+      --current "$BUNDLE_NAME" \
+      --latest-state "$LATEST_STATE" \
+      --inventory "$before"
+  )
+
+  for name in "${prune[@]}"; do
+    [[ "$name" =~ ^20[0-9]{6}T[0-9]{6}Z\.restic-repo\.tar$ ]] || {
+      echo "FAIL: retention planner emitted invalid bundle name: $name" >&2
+      return 131
+    }
+
+    [[ "$name" != "$BUNDLE_NAME" ]] || {
+      echo 'FAIL: retention attempted current bundle deletion' >&2
+      return 132
+    }
+
+    echo "RETENTION_DELETE=$name"
+
+    "$RCLONE" deletefile \
+      "${REMOTE}:${REMOTE_DIR}/${name}" \
+      "${rclone_common[@]}" \
+      --drive-use-trash=false
+  done
+
+  remote_inventory_json >"$after"
+
+  remaining="$(
+    "$RETENTION_PLAN" \
+      --current "$BUNDLE_NAME" \
+      --latest-state "$LATEST_STATE" \
+      --inventory "$after"
+  )"
+
+  [[ -z "$remaining" ]] || {
+    echo 'FAIL: retention target not reached after deletion' >&2
+    return 133
+  }
+
+  rm -f "$before" "$after"
+}
+
+mkdir -p "$SNAPSHOT_STATE_DIR"
+chmod 0700 "$STATE_DIR" "$SNAPSHOT_STATE_DIR"
+
+echo 'STAGE=remote_retention_guard'
+enforce_remote_retention
+echo 'REMOTE_RETENTION=PASS'
+
+read -r REMOTE_COUNT REMOTE_SIZE < <(remote_metadata)
+[[ "$REMOTE_COUNT" =~ ^[01]$ && "$REMOTE_SIZE" =~ ^[0-9]+$ ]] || {
+  echo 'FAIL: invalid remote metadata' >&2
+  exit 19
+}
+
+if [[ -f "$STATE_FILE" ]]; then
+  state_info="$(python3 - "$STATE_FILE" "$SNAPSHOT_ID" "$DEST" <<'PY'
+import json
+import re
+import sys
+
+path, snapshot, remote = sys.argv[1:]
+with open(path, encoding="utf-8") as f:
+    obj = json.load(f)
+if obj.get("schema") != "prhm.central-gdrive-single-bundle.v1":
+    raise SystemExit("bad state schema")
+if obj.get("status") != "pass" or obj.get("snapshot") != snapshot or obj.get("remote") != remote:
+    raise SystemExit("state binding mismatch")
+size = obj.get("bundle_size")
+sha = obj.get("bundle_sha256")
+if not isinstance(size, int) or size <= 0 or not isinstance(sha, str) or not re.fullmatch(r"[a-f0-9]{64}", sha):
+    raise SystemExit("invalid state metadata")
+print(size, sha)
+PY
+)"
+  read -r STATE_SIZE STATE_SHA <<<"$state_info"
+  [[ "$REMOTE_COUNT" == '1' && "$REMOTE_SIZE" == "$STATE_SIZE" ]] || {
+    echo 'FAIL: persisted success state does not match the remote object' >&2
+    exit 20
+  }
+  echo "BUNDLE_SHA256=$STATE_SHA"
+  echo "REMOTE_SIZE=$REMOTE_SIZE"
+  echo 'OFFSITE_ALREADY_VERIFIED=PASS'
+  exit 0
+fi
+
+[[ "$REMOTE_COUNT" == '0' ]] || {
+  echo 'FAIL: remote object exists without matching verified local state' >&2
+  exit 21
+}
+
+SNAPSHOT_KB="$(du -sk "$LATEST" | awk '{print $1}')"
+AVAILABLE_KB="$(df -Pk /var/tmp | awk 'NR==2 {print $4}')"
+[[ "$SNAPSHOT_KB" =~ ^[0-9]+$ && "$AVAILABLE_KB" =~ ^[0-9]+$ ]] || {
+  echo 'FAIL: cannot determine disk-space requirement' >&2
+  exit 22
+}
+MIN_KB=$((SNAPSHOT_KB * 2 + 1024 * 1024))
+(( MIN_KB < 10 * 1024 * 1024 )) && MIN_KB=$((10 * 1024 * 1024))
+(( AVAILABLE_KB >= MIN_KB )) || {
+  echo "FAIL: insufficient /var/tmp space; available_kb=$AVAILABLE_KB required_kb=$MIN_KB" >&2
+  exit 23
+}
+
+WORK="$(mktemp -d "/var/tmp/prhm-central-gdrive-bundle-${SNAPSHOT_ID}.XXXXXX")"
+REPO="$WORK/repo"
+BUNDLE="$WORK/$BUNDLE_NAME"
+mkdir -p "$REPO"
+chmod 0700 "$WORK" "$REPO"
+
+on_error() {
+  rc=$?
+  echo "OFFSITE_FAILURE_EXIT=$rc" >&2
+  echo "WORKSPACE_RETAINED=$WORK" >&2
+  exit "$rc"
+}
+trap on_error ERR
+
+restic_local() {
+  docker run --rm \
+    --hostname prhm-production \
+    -e 'RESTIC_REPOSITORY=/repo' \
+    -e 'RESTIC_PASSWORD_FILE=/run/secrets/restic-password' \
+    -v "$REPO:/repo" \
+    -v "$PASSFILE:/run/secrets/restic-password:ro" \
+    "$RESTIC_IMAGE" "$@"
+}
+
+echo 'STAGE=encrypted_repository_create'
+restic_local init
+docker run --rm \
+  --hostname prhm-production \
+  -e 'RESTIC_REPOSITORY=/repo' \
+  -e 'RESTIC_PASSWORD_FILE=/run/secrets/restic-password' \
+  -v "$REPO:/repo" \
+  -v "$PASSFILE:/run/secrets/restic-password:ro" \
+  -v "$LATEST:/data/snapshot:ro" \
+  "$RESTIC_IMAGE" \
+  backup /data/snapshot \
+  --host prhm-production \
+  --tag prhm-central-gdrive-bundle \
+  --tag "local-snapshot-$SNAPSHOT_ID"
+
+echo 'STAGE=encrypted_repository_check_5pct'
+restic_local check --read-data-subset=5%
+echo 'LOCAL_ENCRYPTED_REPO_CHECK=PASS'
+
+echo 'STAGE=single_bundle_create'
+tar -C "$WORK" --numeric-owner -cf "$BUNDLE" repo
+chmod 0600 "$BUNDLE"
+BUNDLE_SIZE="$(stat -c '%s' "$BUNDLE")"
+BUNDLE_SHA256="$(sha256sum "$BUNDLE" | awk '{print $1}')"
+[[ "$BUNDLE_SIZE" =~ ^[0-9]+$ && "$BUNDLE_SIZE" -gt 0 && "$BUNDLE_SHA256" =~ ^[a-f0-9]{64}$ ]] || {
+  echo 'FAIL: invalid local bundle metadata' >&2
+  exit 24
+}
+
+echo "BUNDLE_SIZE=$BUNDLE_SIZE"
+echo "BUNDLE_SHA256=$BUNDLE_SHA256"
+echo 'STAGE=single_file_google_drive_upload'
+"$RCLONE" copyto \
+  "$BUNDLE" "$DEST" \
+  "${rclone_common[@]}" \
+  --ignore-times \
+  --drive-chunk-size 64M \
+  --stats 30s -v
+
+echo 'STAGE=remote_exact_size_verify'
+REMOTE_COUNT=0
+REMOTE_SIZE=0
+for _ in $(seq 1 12); do
+  read -r REMOTE_COUNT REMOTE_SIZE < <(remote_metadata)
+  [[ "$REMOTE_COUNT" == '1' && "$REMOTE_SIZE" == "$BUNDLE_SIZE" ]] && break
+  sleep 10
+done
+[[ "$REMOTE_COUNT" == '1' && "$REMOTE_SIZE" == "$BUNDLE_SIZE" ]] || {
+  echo "FAIL: remote size mismatch; count=$REMOTE_COUNT remote=$REMOTE_SIZE local=$BUNDLE_SIZE" >&2
+  exit 25
+}
+
+echo 'STAGE=atomic_success_state'
+RUNNER_SHA256="$(sha256sum "$0" | awk '{print $1}')"
+python3 - \
+  "$STATE_FILE" "$LATEST_STATE" "$SNAPSHOT_ID" "$DEST" \
+  "$BUNDLE_SIZE" "$BUNDLE_SHA256" "$RUNNER_SHA256" <<'PY'
+import json
+import os
+import sys
+from datetime import datetime, timezone
+
+state_file, latest_file, snapshot, remote, size, sha, runner_sha = sys.argv[1:]
+obj = {
+    "schema": "prhm.central-gdrive-single-bundle.v1",
+    "status": "pass",
+    "snapshot": snapshot,
+    "remote": remote,
+    "bundle_size": int(size),
+    "bundle_sha256": sha,
+    "runner_sha256": runner_sha,
+    "local_snapshot_sha256": "pass",
+    "local_encrypted_repository_check_5pct": "pass",
+    "remote_object_exact_size": "pass",
+    "completed_utc": datetime.now(timezone.utc).isoformat(),
+}
+
+def atomic(path, value):
+    parent = os.path.dirname(path)
+    os.makedirs(parent, mode=0o700, exist_ok=True)
+    tmp = f"{path}.{os.getpid()}.tmp"
+    with open(tmp, "x", encoding="utf-8") as f:
+        json.dump(value, f, separators=(",", ":"))
+        f.write("\n")
+        f.flush()
+        os.fsync(f.fileno())
+    os.chmod(tmp, 0o600)
+    os.replace(tmp, path)
+    fd = os.open(parent, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+atomic(state_file, obj)
+atomic(latest_file, obj)
+PY
+
+trap - ERR
+rm -rf -- "$WORK"
+echo 'REMOTE_OBJECT_EXACT_SIZE=PASS'
+echo 'PERSISTED_SUCCESS_STATE=PASS'
+echo 'WORKSPACE_CLEANUP=PASS'
+echo 'GOOGLE_SINGLE_BUNDLE_UPLOAD=PASS'

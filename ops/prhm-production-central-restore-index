@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+umask 077
+
+REPORT_DIR='/var/backups/prhm-central/restore-reports'
+TARGET_DIR='/var/lib/prhm-backup/restore-tests'
+TARGET="$TARGET_DIR/latest.json"
+
+latest="$(
+  find "$REPORT_DIR" \
+    -maxdepth 1 \
+    -type f \
+    -regextype posix-extended \
+    -regex '.*/20[0-9]{6}T[0-9]{6}Z\.json' \
+    -print |
+  sort |
+  tail -n 1
+)"
+
+[[ -n "$latest" && -s "$latest" ]] || {
+  echo 'FAIL: no central restore report found' >&2
+  exit 1
+}
+
+python3 - "$latest" <<'PY'
+import json,sys
+with open(sys.argv[1], encoding='utf-8') as f:
+    obj=json.load(f)
+if not isinstance(obj,dict):
+    raise SystemExit('restore_report_not_object')
+PY
+
+install -d -m 0700 "$TARGET_DIR"
+
+tmp="$TARGET.tmp.$$"
+install -m 0600 "$latest" "$tmp"
+mv -f "$tmp" "$TARGET"
+
+echo "RESTORE_INDEX_SOURCE=$latest"
+echo "RESTORE_INDEX_TARGET=$TARGET"
+echo 'RESTORE_INDEX=PASS'
