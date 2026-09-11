@@ -1,0 +1,63 @@
+{
+  "schema": "PRHM_PBCINEMA_CUTOVER_CLOSURE_V1",
+  "date": "2026-09-11",
+  "status": "PASS",
+  "domains": {
+    "apex": "pbcinema.ir",
+    "www": "www.pbcinema.ir",
+    "dashboard": "dashboard.pbcinema.ir",
+    "legacy_front": "park.prhm.ir",
+    "legacy_dashboard": "dashboard.park.prhm.ir"
+  },
+  "git": {
+    "frontend": {
+      "repository": "prhmonline/cfpark_new_front",
+      "commit": "98f3a2e0cf79c53f41959d16e977f988e6c610a9"
+    },
+    "admin": {
+      "repository": "prhmonline/cfpark-back-new",
+      "commit": "ebc4331be26fa78b996bbe81c5df31eada310101",
+      "preserved_preceding_commit": "852fc01538e756e7df90249675b0952b2b7c65d2"
+    }
+  },
+  "origin": {
+    "host": "10.71.0.118",
+    "apache_config": "/etc/httpd/conf.d/pbcinema-vhosts.conf",
+    "apache_sha256": "2b0e554a7c685731ccc1987f1ec37b9b27f0752f875aec6ae521102774915e92",
+    "backup": "/var/backups/pbcinema-origin-v8/20260911-165207"
+  },
+  "edge": {
+    "public_ip": "185.191.76.138",
+    "nginx_config": "/etc/nginx/nginx.phase7b.conf",
+    "nginx_sha256": "a17a19a7a96b403ebba8ce6adf7ada6eaf3ca62e53f0dee0bc02303a1a700727",
+    "cert_deploy_script": "/usr/local/sbin/prhm-edge-cert-deploy",
+    "cert_deploy_sha256": "0fcc75579b799b2883a110adf9cee9fb09a9b4a0bd50d664169f76e06d5ba4ae",
+    "backup": "/var/backups/pbcinema-edge/20260911-170726"
+  },
+  "tls": {
+    "lineage": "pbcinema.ir-edge",
+    "sans": [
+      "pbcinema.ir",
+      "www.pbcinema.ir",
+      "dashboard.pbcinema.ir"
+    ],
+    "combined_cert_sha256": "b01cde0f7c67f96227e08fbae418fb19f5aeda04fe642245a120e6ed7d0cc4b7",
+    "expires": "2026-12-10",
+    "renewal_dry_run": "PASS"
+  },
+  "runtime_sha256": {
+    "frontend_middleware": "e9d6e2d78599ee38bb8bf377e8b544c50b2965e5bb6983ddbfffd57d625adabe",
+    "frontend_api_routes": "e233cd324d0c1664ce91153063e8988b23ab4e1ddd8ac76a7a828fa786b9c4bb",
+    "frontend_next_config": "51a66916ec68659bcf4fb66ef61566866fec111b19b5eb4406008394dd7d7fd8",
+    "admin_reserve_controller": "2e1b6e5f326a170da8fa20e548d5c47569c1518f3cd1023304504a70b7719e49",
+    "admin_transaction_controller": "5722c86ad723ca651190261cdfe5419c14cc32db827dc1072f04ab84756e3146"
+  },
+  "public_regression": {
+    "pbcinema_home": 200,
+    "www_pbcinema": 301,
+    "dashboard_pbcinema": 302,
+    "dashboard_api": 200,
+    "legacy_front": 307,
+    "legacy_dashboard": 302
+  }
+}
