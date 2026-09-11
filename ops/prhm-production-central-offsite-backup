@@ -124,12 +124,22 @@ enforce_remote_retention() {
 
   remote_inventory_json >"$before"
 
-  mapfile -t prune < <(
+  local plan_output remaining
+  prune=()
+
+  if ! plan_output="$(
     "$RETENTION_PLAN" \
       --current "$BUNDLE_NAME" \
       --latest-state "$LATEST_STATE" \
       --inventory "$before"
-  )
+  )"; then
+    echo 'FAIL: retention planner rejected remote inventory' >&2
+    return 130
+  fi
+
+  if [[ -n "$plan_output" ]]; then
+    mapfile -t prune <<<"$plan_output"
+  fi
 
   for name in "${prune[@]}"; do
     [[ "$name" =~ ^20[0-9]{6}T[0-9]{6}Z\.restic-repo\.tar$ ]] || {
