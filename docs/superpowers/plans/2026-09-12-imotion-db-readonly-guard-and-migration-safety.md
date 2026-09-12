@@ -309,20 +309,20 @@ git commit -m "feat(imotion): add Level-4 DB guard installer action"
 
 The test must fail unless `final-sync-binding.json` exists and contains exactly:
 
-```json
-{
-  "node1_host": "server-185-191-76-138",
-  "node1_public_ip": "185.191.76.138",
-  "node1_private_source": "10.71.0.1",
-  "production_host": "prhm-production.prhm.ir",
-  "production_private_ip": "10.71.0.118",
-  "directadmin_target": "10.71.0.10",
-  "path": "<absolute regular-file path discovered at execution time>",
-  "sha256": "<64 lowercase hex discovered at execution time>"
-}
+The committed binding JSON must contain the six fixed topology fields below plus two discovery-derived literal fields:
+
+```text
+node1_host = server-185-191-76-138
+node1_public_ip = 185.191.76.138
+node1_private_source = 10.71.0.1
+production_host = prhm-production.prhm.ir
+production_private_ip = 10.71.0.118
+directadmin_target = 10.71.0.10
+path = an absolute regular-file path returned by the successful discovery gate
+sha256 = the exact 64-character lowercase SHA-256 returned twice for that same file
 ```
 
-The test must reject symlink paths, non-absolute paths, all-zero SHA, and any host/IP drift. The two angle-bracket values above are test descriptions only; the committed JSON must contain literal discovered values, never placeholders.
+The test must reject symlink paths, non-absolute paths, all-zero SHA, host/IP drift, and any binding whose path/SHA pair is not backed by the two-read discovery evidence. The committed JSON must contain only literal discovered values, never descriptive sentinel strings.
 
 - [ ] **Step 2: Run RED**
 
