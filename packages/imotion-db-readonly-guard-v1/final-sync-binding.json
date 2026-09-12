@@ -1,0 +1,57 @@
+{
+  "schema_version": "prhm.imotion-final-sync-binding.v1",
+  "status": "legacy_rejected_replacement_required",
+  "node1": {
+    "hostname": "server-185-191-76-138",
+    "public_ip": "185.191.76.138",
+    "private_source_ip": "10.71.0.1"
+  },
+  "production_source": {
+    "host": "prhm-production.prhm.ir",
+    "private_ip": "10.71.0.118",
+    "mariadb_container": "imotion-db",
+    "readonly_wrapper": "/usr/local/sbin/imotion-db-readonly-window"
+  },
+  "desired_directadmin_target": "10.71.0.10",
+  "legacy_programs": [
+    {
+      "path": "/root/imotion-final-precutover-sync-v2.sh",
+      "sha256": "025df56e027a54df02fa253facf8a1a343bf89896a259ac578a0606b26ee225a",
+      "classification": "precutover_only",
+      "accepted_for_v1": false
+    },
+    {
+      "path": "/root/imotion-level4-final-cutover.sh",
+      "sha256": "b7b3103071de037a38a9c7b6356f43408faba442da017f224ec6830d8af836a7",
+      "classification": "unsafe_direct_readonly_setter",
+      "accepted_for_v1": false
+    },
+    {
+      "path": "/root/imotion-level4-cutover-resume-v2.sh",
+      "sha256": "f227a5ee6d7f2267c65989ba323767bacdb5fa54af8d7662b7e690d70de24774",
+      "classification": "root_cause_unsafe_direct_readonly_setter",
+      "accepted_for_v1": false
+    }
+  ],
+  "root_cause_evidence": {
+    "direct_readonly_on": true,
+    "success_path_disables_rollback_trap": true,
+    "success_path_preserves_source_for_rollback": true,
+    "persistent_readonly_outage_explained": true
+  },
+  "replacement_contract": {
+    "git_owned": true,
+    "fixed_input": true,
+    "level": 4,
+    "risk": "critical",
+    "arbitrary_command_input": false,
+    "arbitrary_sql_input": false,
+    "arbitrary_host_input": false,
+    "direct_set_global_read_only_on_allowed": false,
+    "must_use_production_readonly_wrapper": true,
+    "must_restore_production_writable_on_success": true,
+    "must_restore_production_writable_on_failure": true,
+    "must_verify_target_before_freeze": true,
+    "must_persist_post_cutover_success_evidence": true
+  }
+}
