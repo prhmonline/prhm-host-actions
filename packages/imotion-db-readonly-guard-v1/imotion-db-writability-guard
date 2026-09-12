@@ -1,0 +1,220 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+CONTAINER="imotion-db"
+LEASE="/run/imotion-db-readonly-authorized"
+MARKER="/run/imotion-db-readonly-alerted"
+LOGDIR="/var/log/imotion/db-readonly-events"
+EXPECTED_SERVER_ID="1"
+GRACE_SECONDS=10
+
+install -d -m 0750 "$LOGDIR"
+
+exec 9>/run/imotion-db-writability-guard.lock
+flock -n 9 || exit 0
+
+dbq() {
+    local sql="$1"
+
+    docker exec \
+      -e IMOTION_GUARD_SQL="$sql" \
+      "$CONTAINER" \
+      sh -lc '
+        exec mariadb \
+          -N -B \
+          -uroot \
+          -p"$(cat /run/secrets/db_root_password)" \
+          -e "$IMOTION_GUARD_SQL"
+      '
+}
+
+lease_is_valid() {
+    local now uid expires
+
+    [[ -f "$LEASE" && ! -L "$LEASE" ]] || return 1
+
+    uid="$(stat -c '%u' "$LEASE" 2>/dev/null || echo -1)"
+    [[ "$uid" == "0" ]] || return 1
+
+    expires="$(
+      awk -F= '
+        $1=="expires_epoch" && $2 ~ /^[0-9]+$/ {print $2}
+      ' "$LEASE" 2>/dev/null | tail -n1
+    )"
+
+    [[ "$expires" =~ ^[0-9]+$ ]] || return 1
+
+    now="$(date +%s)"
+
+    (( expires >= now )) || return 1
+    (( expires - now <= 3600 )) || return 1
+
+    return 0
+}
+
+lease_reason() {
+    awk -F= '
+      $1=="reason" {
+        sub(/^reason=/,"")
+        print
+      }
+    ' "$LEASE" 2>/dev/null | tail -n1
+}
+
+capture_evidence() {
+    local ro="$1"
+    local server_id="$2"
+    local ts evidence
+
+    [[ ! -e "$MARKER" ]] || return 0
+
+    date -Is >"$MARKER"
+    chmod 0600 "$MARKER"
+
+    ts="$(date '+%Y%m%d-%H%M%S')"
+    evidence="$LOGDIR/read-only-$ts.log"
+
+    {
+        echo "IMOTION_DB_READ_ONLY_INCIDENT=1"
+        echo "timestamp=$(date -Is)"
+        echo "hostname=$(hostname -f 2>/dev/null || hostname)"
+        echo "read_only=$ro"
+        echo "server_id=$server_id"
+        echo "lease_valid=0"
+
+        echo
+        echo "===== DB PROCESSLIST ====="
+        dbq 'SHOW FULL PROCESSLIST;' || true
+
+        echo
+        echo "===== REPLICATION STATE ====="
+        dbq 'SHOW SLAVE STATUS;' || true
+
+        echo
+        echo "===== HOST PROCESSES ====="
+        ps -eo pid,ppid,lstart,etime,user,tty,stat,args \
+          | grep -Ei 'docker|maria|mysql|imotion|ssh' \
+          | grep -v grep \
+          | tail -n 250 || true
+
+        echo
+        echo "===== RECENT SSH JOURNAL ====="
+        journalctl \
+          -u sshd \
+          --since '-5 minutes' \
+          --no-pager \
+          2>/dev/null \
+          | tail -n 300 || true
+
+        echo
+        echo "===== DOCKER STATE ====="
+        docker ps \
+          --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}' \
+          || true
+
+    } >"$evidence" 2>&1
+
+    chmod 0600 "$evidence"
+
+    logger -p daemon.crit -t imotion-db-guard \
+      "CRITICAL unauthorized MariaDB read_only=ON server_id=$server_id evidence=$evidence"
+}
+
+ro="$(dbq 'SELECT @@global.read_only;' | tr -d '\r\n ')"
+server_id="$(dbq 'SELECT @@global.server_id;' | tr -d '\r\n ')"
+
+if [[ "$ro" == "0" ]]; then
+    rm -f "$MARKER"
+    exit 0
+fi
+
+if [[ "$ro" != "1" ]]; then
+    logger -p daemon.err -t imotion-db-guard \
+      "invalid read_only value=$ro server_id=$server_id"
+    exit 1
+fi
+
+if lease_is_valid; then
+    reason="$(lease_reason)"
+    logger -p daemon.notice -t imotion-db-guard \
+      "AUTHORIZED read_only=ON server_id=$server_id reason=${reason:-unspecified}"
+    exit 0
+fi
+
+if [[ "$server_id" != "$EXPECTED_SERVER_ID" ]]; then
+    logger -p daemon.crit -t imotion-db-guard \
+      "REFUSING auto-heal: unexpected server_id=$server_id expected=$EXPECTED_SERVER_ID"
+    exit 1
+fi
+
+slave_state="$(dbq 'SHOW SLAVE STATUS;' 2>/dev/null || true)"
+
+if [[ -n "$slave_state" ]]; then
+    logger -p daemon.crit -t imotion-db-guard \
+      "REFUSING auto-heal: replication slave state detected"
+    exit 1
+fi
+
+capture_evidence "$ro" "$server_id"
+
+logger -p daemon.warning -t imotion-db-guard \
+  "unauthorized read_only=ON; waiting ${GRACE_SECONDS}s before recovery"
+
+sleep "$GRACE_SECONDS"
+
+if lease_is_valid; then
+    reason="$(lease_reason)"
+    logger -p daemon.notice -t imotion-db-guard \
+      "auto-heal cancelled: valid maintenance lease appeared reason=${reason:-unspecified}"
+    exit 0
+fi
+
+ro2="$(dbq 'SELECT @@global.read_only;' | tr -d '\r\n ')"
+
+if [[ "$ro2" == "0" ]]; then
+    rm -f "$MARKER"
+
+    logger -p daemon.notice -t imotion-db-guard \
+      "read_only self-cleared during grace period"
+
+    exit 0
+fi
+
+[[ "$ro2" == "1" ]] || {
+    logger -p daemon.crit -t imotion-db-guard \
+      "REFUSING auto-heal: unexpected recheck value=$ro2"
+    exit 1
+}
+
+server_id2="$(dbq 'SELECT @@global.server_id;' | tr -d '\r\n ')"
+
+[[ "$server_id2" == "$EXPECTED_SERVER_ID" ]] || {
+    logger -p daemon.crit -t imotion-db-guard \
+      "REFUSING auto-heal after grace: server_id changed to $server_id2"
+    exit 1
+}
+
+slave_state2="$(dbq 'SHOW SLAVE STATUS;' 2>/dev/null || true)"
+
+[[ -z "$slave_state2" ]] || {
+    logger -p daemon.crit -t imotion-db-guard \
+      "REFUSING auto-heal after grace: replication slave state detected"
+    exit 1
+}
+
+dbq 'SET GLOBAL read_only=OFF;' >/dev/null
+
+verify="$(dbq 'SELECT @@global.read_only;' | tr -d '\r\n ')"
+
+if [[ "$verify" != "0" ]]; then
+    logger -p daemon.crit -t imotion-db-guard \
+      "AUTO-HEAL FAILED: read_only remains value=$verify"
+    exit 1
+fi
+
+rm -f "$MARKER"
+
+logger -p daemon.crit -t imotion-db-guard \
+  "RECOVERED unauthorized MariaDB read_only=ON -> OFF server_id=$server_id2"
+
+exit 0

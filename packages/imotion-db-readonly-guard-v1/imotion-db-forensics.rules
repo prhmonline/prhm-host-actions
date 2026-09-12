@@ -1,0 +1,2 @@
+-a always,exit -F arch=b64 -S execve -F exe=/usr/bin/docker -F auid=0 -k imotion-db-docker-root
+-a always,exit -F arch=b32 -S execve -F exe=/usr/bin/docker -F auid=0 -k imotion-db-docker-root

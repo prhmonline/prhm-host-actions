@@ -1,0 +1,125 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+CONTAINER="imotion-db"
+LEASE="/run/imotion-db-readonly-authorized"
+LOCK="/run/imotion-db-readonly-window.lock"
+
+usage() {
+    echo "Usage:"
+    echo "  $0 <reason> <ttl-seconds> -- <command> [args...]"
+    exit 2
+}
+
+[[ $# -ge 4 ]] || usage
+
+reason="$1"
+ttl="$2"
+shift 2
+
+[[ "${1:-}" == "--" ]] || usage
+shift
+
+[[ "$ttl" =~ ^[0-9]+$ ]] || {
+    echo "INVALID_TTL"
+    exit 2
+}
+
+(( ttl >= 30 && ttl <= 3600 )) || {
+    echo "TTL_MUST_BE_30_TO_3600"
+    exit 2
+}
+
+[[ $# -gt 0 ]] || usage
+
+reason="${reason//$'\n'/ }"
+reason="${reason//$'\r'/ }"
+reason="${reason:0:160}"
+
+exec 9>"$LOCK"
+flock -n 9 || {
+    echo "READONLY_WINDOW_ALREADY_ACTIVE"
+    exit 20
+}
+
+dbq() {
+    local sql="$1"
+
+    docker exec \
+      -e IMOTION_WINDOW_SQL="$sql" \
+      "$CONTAINER" \
+      sh -lc '
+        exec mariadb \
+          -N -B \
+          -uroot \
+          -p"$(cat /run/secrets/db_root_password)" \
+          -e "$IMOTION_WINDOW_SQL"
+      '
+}
+
+orig="$(dbq 'SELECT @@global.read_only;' | tr -d '\r\n ')"
+
+[[ "$orig" == "0" || "$orig" == "1" ]] || {
+    echo "UNEXPECTED_ORIGINAL_READ_ONLY=$orig"
+    exit 30
+}
+
+started="$(date +%s)"
+expires="$((started + ttl))"
+cleaned=0
+
+cleanup() {
+    rc=$?
+
+    if [[ "$cleaned" == "1" ]]; then
+        return "$rc"
+    fi
+
+    cleaned=1
+    trap - EXIT ERR INT TERM HUP
+
+    if [[ "$orig" == "0" ]]; then
+        if ! dbq 'SET GLOBAL read_only=OFF;' >/dev/null; then
+            logger -p daemon.crit -t imotion-db-window \
+              "FAILED restoring read_only=OFF reason=$reason"
+        fi
+    fi
+
+    rm -f "$LEASE"
+
+    final="$(dbq 'SELECT @@global.read_only;' 2>/dev/null | tr -d '\r\n ' || true)"
+
+    logger -t imotion-db-window \
+      "CLOSED reason=$reason original=$orig final=${final:-unknown} rc=$rc"
+
+    return "$rc"
+}
+
+trap cleanup EXIT ERR INT TERM HUP
+
+umask 077
+
+cat >"$LEASE" <<LEASE
+pid=$$
+started_epoch=$started
+expires_epoch=$expires
+original_read_only=$orig
+reason=$reason
+LEASE
+
+chown root:root "$LEASE"
+chmod 0600 "$LEASE"
+
+logger -t imotion-db-window \
+  "OPEN reason=$reason ttl=$ttl original=$orig"
+
+dbq 'SET GLOBAL read_only=ON;' >/dev/null
+
+verify="$(dbq 'SELECT @@global.read_only;' | tr -d '\r\n ')"
+
+[[ "$verify" == "1" ]] || {
+    echo "FAILED_TO_ENABLE_READ_ONLY"
+    exit 40
+}
+
+"$@"

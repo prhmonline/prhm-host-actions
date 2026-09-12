@@ -1,0 +1,35 @@
+{
+  "schema_version": "prhm.imotion-db-readonly-guard-manifest.v1",
+  "payloads": [
+    {
+      "source": "imotion-db-writability-guard",
+      "destination": "/usr/local/sbin/imotion-db-writability-guard",
+      "mode": "0750",
+      "sha256": "707b55b34455c16e8c4d6b9506b6a226b2dc1e44d37dbaf90e7279616b4b75e0"
+    },
+    {
+      "source": "imotion-db-readonly-window",
+      "destination": "/usr/local/sbin/imotion-db-readonly-window",
+      "mode": "0750",
+      "sha256": "7db224c36ccf503cb38a7e1ec2aeebae80ca333079bee2d4cb4fe9176ded93d2"
+    },
+    {
+      "source": "imotion-db-writability-guard.service",
+      "destination": "/etc/systemd/system/imotion-db-writability-guard.service",
+      "mode": "0644",
+      "sha256": "f091670309ec0befcd5bef7f0b6f173e87cdd06de1b89a53e37fac6dd5040a8f"
+    },
+    {
+      "source": "imotion-db-writability-guard.timer",
+      "destination": "/etc/systemd/system/imotion-db-writability-guard.timer",
+      "mode": "0644",
+      "sha256": "3d6f446dc782e4703f634b2c91ee35628cbf4468e2d28d0bbb19f4cc94a06bf7"
+    },
+    {
+      "source": "imotion-db-forensics.rules",
+      "destination": "/etc/audit/rules.d/imotion-db-forensics.rules",
+      "mode": "0640",
+      "sha256": "7ec95213643a6346ce096a801f8bd8f55a3a93b206b28b01ae88c31bcea31fa0"
+    }
+  ]
+}
