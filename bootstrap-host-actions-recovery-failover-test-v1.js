@@ -14,7 +14,13 @@ const SOURCE_BRANCH = 'feature/recovery-failover-test-v1';
 const WORKTREE = '/home/prhm/worktrees/prhm-host-actions-recovery-failover-v1';
 const CORE_FILE = 'recovery-failover-test-v1.js';
 const TEST_FILE = 'test-recovery-failover-test-v1.js';
+const SECOND_TEST_FILE = 'test-recovery-preflight-restart-v1.js';
 const BOOTSTRAP_FILE = 'bootstrap-host-actions-recovery-failover-test-v1.js';
+const EXPECTED_SOURCE_BLOBS = Object.freeze({
+  [CORE_FILE]: 'cf85b1c244da63d406f11b45276ab53e2ad0141a',
+  [TEST_FILE]: '072b6d69fc3c0b4b534e1665db7dc640b7ddf3d3',
+  [SECOND_TEST_FILE]: '4044ce71a1adb7f07a5bda74bc5e92536890391e',
+});
 const EXPECTED_SERVER_SHA = '5a8f3a391145452a9c70a7fbe227903e482829a409bc6c1a960bf4ce56d52472';
 const PREIMAGE = Object.freeze({
   base: '981a430f5448a1b0dc3c25886756ecf7cd655352660bb49905ab2650a131d764',
@@ -148,12 +154,16 @@ function prepareWorktree() {
   const localHead = exec('/usr/bin/git', ['-C', WORKTREE, 'rev-parse', 'HEAD']);
   const remoteHead = exec('/usr/bin/git', ['-C', WORKTREE, 'rev-parse', remoteRef]);
   if (localHead !== remoteHead) fail('worktree_head_mismatch');
-  for (const f of [CORE_FILE, TEST_FILE, BOOTSTRAP_FILE]) if (!fs.existsSync(path.join(WORKTREE, f))) fail('worktree_artifact_missing:'+f);
-  return {repo:SOURCE_REPO, worktree:WORKTREE, branch:SOURCE_BRANCH, head:localHead, clean:true};
+  for (const f of [CORE_FILE, TEST_FILE, SECOND_TEST_FILE, BOOTSTRAP_FILE]) if (!fs.existsSync(path.join(WORKTREE, f))) fail('worktree_artifact_missing:'+f);
+  for (const [file, expectedBlob] of Object.entries(EXPECTED_SOURCE_BLOBS)) {
+    const actualBlob = exec('/usr/bin/git', ['-C', WORKTREE, 'hash-object', file]);
+    if (actualBlob !== expectedBlob) fail(`source_blob_drift:${file}:${actualBlob}`);
+  }
+  return {repo:SOURCE_REPO, worktree:WORKTREE, branch:SOURCE_BRANCH, head:localHead, clean:true, source_blobs:EXPECTED_SOURCE_BLOBS};
 }
 
 function runContracts() {
-  exec('/usr/local/bin/prhm-node', ['--test', TEST_FILE], {timeout:120000, cwd:WORKTREE});
+  exec('/usr/local/bin/prhm-node', ['--test', TEST_FILE, SECOND_TEST_FILE], {timeout:120000, cwd:WORKTREE});
   exec('/usr/local/bin/prhm-node', [BOOTSTRAP_FILE, '--selftest-only'], {timeout:120000, cwd:WORKTREE});
   return true;
 }
@@ -219,6 +229,7 @@ function applyInstaller() {
 
 function selftest() {
   for(const h of Object.values(PREIMAGE)) if(!/^[a-f0-9]{64}$/.test(h)) fail('invalid_preimage_sha');
+  for(const h of Object.values(EXPECTED_SOURCE_BLOBS)) if(!/^[a-f0-9]{40}$/.test(h)) fail('invalid_source_blob');
   if(TARGET_ACTION!=='recovery_failover_test_v1'||OPERATION!=='host_action.recovery_failover_test_v1') fail('identity_drift');
   if(WORKTREE!=='/home/prhm/worktrees/prhm-host-actions-recovery-failover-v1'||SOURCE_BRANCH!=='feature/recovery-failover-test-v1') fail('worktree_scope_drift');
   if(PATHS.helper!=='/opt/prhm-agent-selfmaint-exec/actions/recovery-failover-test-v1.js') fail('helper_path_drift');
@@ -241,4 +252,4 @@ function main(argv=process.argv.slice(2)) {
   process.stdout.write(JSON.stringify(out)+'\n'); return out;
 }
 if(require.main===module){try{main()}catch(e){process.stderr.write(String(e.stack||e)+'\n');process.exit(1)}}
-module.exports={TARGET_ACTION,OPERATION,INSTALLER_ACTION,SOURCE_REPO,SOURCE_BRANCH,WORKTREE,PREIMAGE,PATHS,patchBase,patchExecutor,patchPolicy,patchMcp,runtimeSuffix,buildHelper,prepareWorktree,preflight,applyInstaller,selftest};
+module.exports={TARGET_ACTION,OPERATION,INSTALLER_ACTION,SOURCE_REPO,SOURCE_BRANCH,WORKTREE,EXPECTED_SOURCE_BLOBS,PREIMAGE,PATHS,patchBase,patchExecutor,patchPolicy,patchMcp,runtimeSuffix,buildHelper,prepareWorktree,preflight,applyInstaller,selftest};
