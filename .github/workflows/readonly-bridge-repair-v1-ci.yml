@@ -1,0 +1,50 @@
+name: Readonly Bridge Repair v1 CI
+
+on:
+  push:
+    branches:
+      - feature/readonly-bridge-repair-v1
+    paths:
+      - 'readonly-bridge-repair-v1.js'
+      - 'readonly-bridge-repair-v1.test.js'
+      - 'bootstrap-host-actions-readonly-bridge-repair-v1.js'
+      - 'bootstrap-host-actions-readonly-bridge-repair-v1.test.js'
+      - '.github/workflows/readonly-bridge-repair-v1-ci.yml'
+  pull_request:
+    paths:
+      - 'readonly-bridge-repair-v1.js'
+      - 'readonly-bridge-repair-v1.test.js'
+      - 'bootstrap-host-actions-readonly-bridge-repair-v1.js'
+      - 'bootstrap-host-actions-readonly-bridge-repair-v1.test.js'
+      - '.github/workflows/readonly-bridge-repair-v1-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Syntax check helper
+        run: node --check readonly-bridge-repair-v1.js
+      - name: Run helper tests
+        run: node --test readonly-bridge-repair-v1.test.js
+      - name: Syntax check installer when present
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -f bootstrap-host-actions-readonly-bridge-repair-v1.js ]]; then
+            node --check bootstrap-host-actions-readonly-bridge-repair-v1.js
+          fi
+      - name: Run installer tests when present
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -f bootstrap-host-actions-readonly-bridge-repair-v1.test.js ]]; then
+            node --test bootstrap-host-actions-readonly-bridge-repair-v1.test.js
+          fi
