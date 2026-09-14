@@ -1,0 +1,30 @@
+name: Recovery Failover Test V1 CI
+
+on:
+  push:
+    branches:
+      - 'feature/recovery-failover-test-v1'
+    paths:
+      - 'recovery-failover-test-v1.js'
+      - 'test-recovery-failover-test-v1.js'
+      - 'bootstrap-host-actions-recovery-failover-test-v1.js'
+      - '.github/workflows/recovery-failover-test-v1-ci.yml'
+  pull_request:
+    paths:
+      - 'recovery-failover-test-v1.js'
+      - 'test-recovery-failover-test-v1.js'
+      - 'bootstrap-host-actions-recovery-failover-test-v1.js'
+      - '.github/workflows/recovery-failover-test-v1-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node --test test-recovery-failover-test-v1.js
