@@ -7,20 +7,26 @@ const LEGACY_SHA256='344d9fa1a87f29dfac402229722d55dd8c6f1708f6277926e7f13f18a58
 const legacyBytes=cp.execFileSync('/usr/bin/git',['-C',__dirname,'cat-file','blob',LEGACY_BLOB],{encoding:null,timeout:30000,maxBuffer:1000000});
 const legacySha=crypto.createHash('sha256').update(legacyBytes).digest('hex');
 if(legacySha!==LEGACY_SHA256)throw new Error('legacy_blob_sha_mismatch:'+legacySha);
+const LEGACY_BASE_BASELINE_OLD='a23b4fec52123f8ad484f31576281c2f1933f24a3c811cd98c28e764a292e315';
+const LEGACY_BASE_BASELINE_NEW='981a430f5448a1b0dc3c25886756ecf7cd655352660bb49905ab2650a131d764';
+const LEGACY_BASE_CANDIDATE_OLD='aa6f3ed4f682dd4f50f56483edad435fc05454310449a21e9bc7a412b57efb60';
+const LEGACY_BASE_CANDIDATE_NEW='a7e8199e8197f35a306dd9be161541fcf4832605ef8e5db601c0ed6e42214bed';
 const LEGACY_MCP_BASELINE_OLD='7c566cdb1dbc1dcb4ac9d6a1b0670acc98cbc366a663771937e365d700671510';
 const LEGACY_MCP_BASELINE_NEW='703a8f8ee0726fac47d008a69c759e3f52254c980cf551ea3f2660cc46321283';
 const LEGACY_MCP_CANDIDATE_OLD='9fa041e09a02370ca803e32a7465b471d5a7ce86415a3ed49a457ffe4611a2f0';
 const LEGACY_MCP_CANDIDATE_NEW='b71b271cf3de3c314cf63491db3873a58336bf25f064271b218a5f602c5bc7eb';
 let legacySource=legacyBytes.toString('utf8');
 for(const [oldValue,newValue,label] of [
- [LEGACY_MCP_BASELINE_OLD,LEGACY_MCP_BASELINE_NEW,'baseline'],
- [LEGACY_MCP_CANDIDATE_OLD,LEGACY_MCP_CANDIDATE_NEW,'candidate'],
+ [LEGACY_BASE_BASELINE_OLD,LEGACY_BASE_BASELINE_NEW,'base_baseline'],
+ [LEGACY_BASE_CANDIDATE_OLD,LEGACY_BASE_CANDIDATE_NEW,'base_candidate'],
+ [LEGACY_MCP_BASELINE_OLD,LEGACY_MCP_BASELINE_NEW,'mcp_baseline'],
+ [LEGACY_MCP_CANDIDATE_OLD,LEGACY_MCP_CANDIDATE_NEW,'mcp_candidate'],
 ]){
  const count=legacySource.split(oldValue).length-1;
  if(count!==1)throw new Error('v19_mcp_forward_rebase_anchor_'+label+'_'+count);
  legacySource=legacySource.replace(oldValue,newValue);
 }
-if(legacySource.includes(LEGACY_MCP_BASELINE_OLD)||legacySource.includes(LEGACY_MCP_CANDIDATE_OLD))throw new Error('v19_mcp_forward_rebase_postcondition');
+if(legacySource.includes(LEGACY_BASE_BASELINE_OLD)||legacySource.includes(LEGACY_BASE_CANDIDATE_OLD)||legacySource.includes(LEGACY_MCP_BASELINE_OLD)||legacySource.includes(LEGACY_MCP_CANDIDATE_OLD))throw new Error('v19_forward_rebase_postcondition');
 const legacyModule=new Module(module.filename+'.legacy',module.parent);
 legacyModule.filename=module.filename+'.legacy';
 legacyModule.paths=module.paths;

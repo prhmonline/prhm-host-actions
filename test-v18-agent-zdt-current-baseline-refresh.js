@@ -7,13 +7,13 @@ const IMPL=path.join(__dirname,'bootstrap-host-actions-v18-agent-zdt-current-bas
 function load(){delete require.cache[require.resolve(IMPL)];return require(IMPL)}
 const sha=s=>crypto.createHash('sha256').update(s,'utf8').digest('hex');
 const REG_BASE=Object.freeze({
- base:'a23b4fec52123f8ad484f31576281c2f1933f24a3c811cd98c28e764a292e315',
+ base:'981a430f5448a1b0dc3c25886756ecf7cd655352660bb49905ab2650a131d764',
  exec:'451c5a4762a4c7a04d64d526a79cf6e86b0cf7c978c559cf303d874e0f08fc48',
  policy:'494e95e3173695407c84b6d082f09e57d971cb193518be813a53131cdb389a70',
  mcp:'703a8f8ee0726fac47d008a69c759e3f52254c980cf551ea3f2660cc46321283',
 });
 const REG_CAND=Object.freeze({
- base:'aa6f3ed4f682dd4f50f56483edad435fc05454310449a21e9bc7a412b57efb60',
+ base:'a7e8199e8197f35a306dd9be161541fcf4832605ef8e5db601c0ed6e42214bed',
  exec:'0e5698778545923500750240be0f38bee1b819a4e05e9fcef1e9ceb4808bb2a6',
  policy:'fcaee257f33cfaf5035eb97ada018af3f9115df9ac7afbd5ba55ce5961913574',
  mcp:'b71b271cf3de3c314cf63491db3873a58336bf25f064271b218a5f602c5bc7eb',
