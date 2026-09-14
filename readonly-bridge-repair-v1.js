@@ -2,6 +2,17 @@
 'use strict';
 
 const ACTION='readonly_bridge_repair_v1';
+const expectedEndpoints=Object.freeze({
+  recovery:'http://10.71.0.118:8140/health',
+  bridge:'http://127.0.0.1:8141/health',
+  bridgePrivate:'http://10.71.0.118:8141/health',
+  agentApi:'http://127.0.0.1:8099/health',
+  mcp:Object.freeze([
+    'http://127.0.0.1:8123/health',
+    'http://127.0.0.1:8124/health',
+    'http://127.0.0.1:8125/health'
+  ])
+});
 
 function fail(message){throw new Error(message);}
 
@@ -67,4 +78,13 @@ function buildPreflightReport(fields){
   };
 }
 
-module.exports={ACTION,parseBridgeEnv,rewriteBridgeEnv,diffAllowed,validateEnvMetadata,buildPreflightReport};
+function identityOk(kind,health){
+  if(!health||health.ok!==true||typeof health.service!=='string')return false;
+  if(kind==='recovery')return health.service==='prhm-recovery-agent';
+  if(kind==='bridge')return health.service==='prhm-readonly-http';
+  if(kind==='agentApi')return health.service==='ssh-agent-api';
+  if(kind==='mcp')return health.service==='prhm-dev-agent-mcp';
+  return false;
+}
+
+module.exports={ACTION,expectedEndpoints,parseBridgeEnv,rewriteBridgeEnv,diffAllowed,validateEnvMetadata,buildPreflightReport,identityOk};
