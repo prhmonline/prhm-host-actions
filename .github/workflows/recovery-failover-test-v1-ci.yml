@@ -7,12 +7,14 @@ on:
     paths:
       - 'recovery-failover-test-v1.js'
       - 'test-recovery-failover-test-v1.js'
+      - 'test-recovery-preflight-restart-v1.js'
       - 'bootstrap-host-actions-recovery-failover-test-v1.js'
       - '.github/workflows/recovery-failover-test-v1-ci.yml'
   pull_request:
     paths:
       - 'recovery-failover-test-v1.js'
       - 'test-recovery-failover-test-v1.js'
+      - 'test-recovery-preflight-restart-v1.js'
       - 'bootstrap-host-actions-recovery-failover-test-v1.js'
       - '.github/workflows/recovery-failover-test-v1-ci.yml'
 
@@ -27,5 +29,5 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - run: node --test test-recovery-failover-test-v1.js
+      - run: node --test test-recovery-failover-test-v1.js test-recovery-preflight-restart-v1.js
       - run: node bootstrap-host-actions-recovery-failover-test-v1.js --selftest-only
