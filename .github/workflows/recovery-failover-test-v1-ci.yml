@@ -28,3 +28,4 @@ jobs:
         with:
           node-version: '20'
       - run: node --test test-recovery-failover-test-v1.js
+      - run: node bootstrap-host-actions-recovery-failover-test-v1.js --selftest-only
