@@ -82,10 +82,10 @@ function apply(deps) {
     if (typeof deps[name] !== 'function') fail(`missing_dep:${name}`);
   }
 
-  const preflight = deps.recoveryStatus();
-  assertPreflight(preflight);
-
   try {
+    const preflight = deps.recoveryStatus();
+    assertPreflight(preflight);
+
     deps.stopRouter();
     if (deps.routerActive() !== false) fail('router_still_active_after_stop');
 
