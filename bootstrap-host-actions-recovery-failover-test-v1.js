@@ -49,7 +49,10 @@ function replaceOnce(source, before, after, label) {
   return source.replace(before, after);
 }
 function exec(file, args, opts = {}) {
-  return cp.execFileSync(file, args, {encoding:'utf8', stdio:['ignore','pipe','pipe'], timeout:opts.timeout || 120000, maxBuffer:1000000}).trim();
+  return cp.execFileSync(file, args, {
+    encoding:'utf8', stdio:['ignore','pipe','pipe'], timeout:opts.timeout || 120000,
+    maxBuffer:1000000, ...(opts.cwd ? {cwd:opts.cwd} : {}),
+  }).trim();
 }
 function atomicWrite(file, bytes, mode) {
   fs.mkdirSync(path.dirname(file), {recursive:true, mode:0o755});
@@ -225,8 +228,10 @@ function selftest() {
   if(count(patchMcp(mcpFixture),TARGET_ACTION)!==1) fail('mcp_patch_selftest_failed');
   const policy=patchPolicy(JSON.stringify({operations:{},typed_scopes:[]}));const parsed=JSON.parse(policy);if(parsed.operations[OPERATION].level!==4||parsed.typed_scopes[0].risk!=='critical')fail('policy_patch_selftest_failed');
   const suffix=runtimeSuffix();
-  for(const fixed of ['http://10.71.0.118:8140/health','http://127.0.0.1:8100/health','prhm-agent-mcp-router.service',EXPECTED_SERVER_SHA]) if(!suffix.includes(fixed)) fail('runtime_binding_missing');
+  for(const fixed of ['http://10.71.0.118:8140/health','http://127.0.0.1:8100/health',EXPECTED_SERVER_SHA]) if(!suffix.includes(fixed)) fail('runtime_binding_missing');
+  if(!suffix.includes('SERVICES.router')) fail('runtime_router_binding_missing');
   if(!suffix.includes("process.argv.length!==2")) fail('runtime_argument_guard_missing');
+  if(!String(exec).includes('cwd:opts.cwd')) fail('contract_cwd_guard_missing');
   return {ok:true,action:INSTALLER_ACTION,target_action:TARGET_ACTION,selftest_only:true,level:4,risk:'critical',arbitrary_command:false,arbitrary_path:false,arbitrary_service:false};
 }
 
