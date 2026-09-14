@@ -1,8 +1,17 @@
 #!/usr/local/bin/prhm-node
 'use strict';
 
+const fs=require('node:fs');
+const path=require('node:path');
 const crypto=require('node:crypto');
+const cp=require('node:child_process');
+const http=require('node:http');
+const net=require('node:net');
+
 const ACTION='readonly_bridge_repair_v1';
+const ENV_PATH='/etc/prhm-readonly-http.env';
+const UNIT='prhm-readonly-http.service';
+const BACKUP_ROOT='/var/backups/prhm-readonly-bridge-repair-v1';
 const expectedEndpoints=Object.freeze({
   recovery:'http://10.71.0.118:8140/health',
   bridge:'http://127.0.0.1:8141/health',
@@ -101,7 +110,22 @@ async function checkCoreHealth(deps){
   return true;
 }
 
-async function preflight(deps){
+async function checkBridgeHealth(deps){
+  const responses=[
+    await deps.health(expectedEndpoints.bridge),
+    await deps.health(expectedEndpoints.bridgePrivate)
+  ];
+  let found=false;
+  for(const response of responses){
+    if(response===null||response===undefined)continue;
+    found=true;
+    if(!identityOk('bridge',response))fail('bridge_health_identity_mismatch');
+  }
+  if(!found)fail('bridge_health_failed');
+  return true;
+}
+
+async function preflight(deps=defaultDeps){
   if(!deps||typeof deps!=='object')fail('deps_required');
   const stat=await deps.lstatEnv();
   validateEnvMetadata(stat);
@@ -127,10 +151,11 @@ async function preflight(deps){
 async function verifyAfterApply(deps,before,restartBefore){
   const after=Buffer.from(await deps.readEnv()).toString('utf8');
   if(!diffAllowed(Buffer.from(before).toString('utf8'),after))fail('env_postwrite_diff_invalid');
-  const bridge=await deps.health(expectedEndpoints.bridge);
-  if(!identityOk('bridge',bridge))fail('bridge_health_failed');
+  if(await deps.bridgeActive()!==true)fail('bridge_service_not_active');
+  await checkBridgeHealth(deps);
   await checkCoreHealth(deps);
   await deps.sleep(5000);
+  if(await deps.bridgeActive()!==true)fail('bridge_service_not_active_after_stability_sample');
   const restartAfter=Number(await deps.getNRestarts());
   if(!Number.isFinite(restartAfter)||restartAfter>restartBefore)fail('restart_counter_increased');
   return restartAfter;
@@ -141,7 +166,7 @@ async function verifyRollbackSafety(deps){
   return true;
 }
 
-async function apply(deps){
+async function apply(deps=defaultDeps){
   const pf=await preflight(deps);
   const stat=await deps.lstatEnv();
   validateEnvMetadata(stat);
@@ -190,4 +215,108 @@ async function apply(deps){
   }
 }
 
-module.exports={ACTION,expectedEndpoints,shaBuffer,parseBridgeEnv,rewriteBridgeEnv,diffAllowed,validateEnvMetadata,buildPreflightReport,identityOk,preflight,apply};
+function execSystemctl(args,{allowFailure=false,timeout=30000}={}){
+  const r=cp.spawnSync('/usr/bin/systemctl',args,{encoding:'utf8',timeout,maxBuffer:512*1024,stdio:['ignore','pipe','pipe']});
+  if(r.error)fail('systemctl_exec_error');
+  if(!allowFailure&&r.status!==0)fail('systemctl_failed:'+String(args[0]||'unknown'));
+  return r;
+}
+
+function requestJson(url,timeoutMs=2500){
+  return new Promise(resolve=>{
+    let settled=false;
+    const done=value=>{if(settled)return;settled=true;resolve(value);};
+    const req=http.get(url,{timeout:timeoutMs},res=>{
+      let size=0;const chunks=[];
+      res.on('data',chunk=>{size+=chunk.length;if(size>65536){req.destroy();done(null);return;}chunks.push(chunk);});
+      res.on('end',()=>{
+        if(res.statusCode!==200)return done(null);
+        try{const body=JSON.parse(Buffer.concat(chunks).toString('utf8'));done(body&&typeof body==='object'?body:null);}catch{done(null);}
+      });
+    });
+    req.on('timeout',()=>{req.destroy();done(null);});
+    req.on('error',()=>done(null));
+  });
+}
+
+function tcpPortFree(host,port,timeoutMs=1200){
+  return new Promise(resolve=>{
+    let settled=false;
+    const socket=net.createConnection({host,port});
+    const done=value=>{if(settled)return;settled=true;socket.destroy();resolve(value);};
+    socket.setTimeout(timeoutMs);
+    socket.on('connect',()=>done(false));
+    socket.on('timeout',()=>done(false));
+    socket.on('error',error=>done(error&&error.code==='ECONNREFUSED'));
+  });
+}
+
+function atomicReplaceFile(bytes,stat){
+  const dir=path.dirname(ENV_PATH);
+  const tmp=path.join(dir,'.prhm-readonly-http.env.repair-'+process.pid+'-'+Date.now()+'.tmp');
+  let fd;
+  try{
+    fd=fs.openSync(tmp,'wx',0o600);
+    fs.writeFileSync(fd,Buffer.from(bytes));
+    fs.fsyncSync(fd);
+    fs.closeSync(fd);fd=undefined;
+    fs.chownSync(tmp,Number(stat.uid),Number(stat.gid));
+    fs.chmodSync(tmp,Number(stat.mode)&0o777);
+    fs.renameSync(tmp,ENV_PATH);
+    const dfd=fs.openSync(dir,'r');
+    try{fs.fsyncSync(dfd);}finally{fs.closeSync(dfd);}
+  }finally{
+    if(fd!==undefined){try{fs.closeSync(fd);}catch{}}
+    try{if(fs.existsSync(tmp))fs.unlinkSync(tmp);}catch{}
+  }
+}
+
+const defaultDeps=Object.freeze({
+  lstatEnv:()=>fs.lstatSync(ENV_PATH),
+  readEnv:()=>fs.readFileSync(ENV_PATH),
+  unitContractOk:()=>{
+    const r=execSystemctl(['cat',UNIT],{allowFailure:true,timeout:10000});
+    if(r.status!==0)return false;
+    const out=String(r.stdout||'');
+    return out.includes('EnvironmentFile=/etc/prhm-readonly-http.env')&&
+      out.includes('ExecStart=/usr/local/bin/prhm-node /opt/prhm-readonly-http/server.js')&&
+      out.includes('User=prhm-readonly-http')&&
+      out.includes('Group=prhm-readonly-cap');
+  },
+  portFree:(host,port)=>tcpPortFree(host,port),
+  health:url=>requestJson(url),
+  bridgeActive:()=>String(execSystemctl(['is-active',UNIT],{allowFailure:true,timeout:10000}).stdout||'').trim()==='active',
+  backup:(bytes,stat,envSha)=>{
+    const stamp=new Date().toISOString().replace(/[:.]/g,'-');
+    const dir=path.join(BACKUP_ROOT,stamp+'-'+envSha.slice(0,12));
+    fs.mkdirSync(dir,{recursive:true,mode:0o700});
+    fs.chmodSync(dir,0o700);
+    const file=path.join(dir,'prhm-readonly-http.env.bak');
+    fs.writeFileSync(file,Buffer.from(bytes),{mode:0o600,flag:'wx'});
+    fs.chownSync(file,0,0);fs.chmodSync(file,0o600);
+    return file;
+  },
+  atomicReplace:(bytes,stat)=>atomicReplaceFile(bytes,stat),
+  restartBridge:()=>{execSystemctl(['restart',UNIT],{timeout:30000});},
+  getNRestarts:()=>{
+    const r=execSystemctl(['show',UNIT,'-p','NRestarts','--value'],{timeout:10000});
+    const value=Number(String(r.stdout||'').trim());
+    if(!Number.isFinite(value))fail('restart_counter_invalid');
+    return value;
+  },
+  sleep:ms=>new Promise(resolve=>setTimeout(resolve,ms))
+});
+
+async function run(argv=process.argv.slice(2),deps=defaultDeps){
+  if(!Array.isArray(argv)||argv.length!==1||!['--preflight-only','--apply'].includes(argv[0]))fail('unexpected_arguments');
+  return argv[0]==='--preflight-only'?preflight(deps):apply(deps);
+}
+
+if(require.main===module){
+  run().then(result=>{process.stdout.write(JSON.stringify(result)+'\n');}).catch(error=>{
+    process.stderr.write(JSON.stringify({ok:false,action:ACTION,error:String(error&&error.message||error).slice(0,1000)})+'\n');
+    process.exitCode=1;
+  });
+}
+
+module.exports={ACTION,ENV_PATH,UNIT,BACKUP_ROOT,expectedEndpoints,shaBuffer,parseBridgeEnv,rewriteBridgeEnv,diffAllowed,validateEnvMetadata,buildPreflightReport,identityOk,checkBridgeHealth,preflight,apply,run};
