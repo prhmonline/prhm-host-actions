@@ -6,7 +6,9 @@ const {
   rewriteBridgeEnv,
   diffAllowed,
   validateEnvMetadata,
-  buildPreflightReport
+  buildPreflightReport,
+  expectedEndpoints,
+  identityOk
 }=require('./readonly-bridge-repair-v1');
 
 test('parseBridgeEnv accepts exactly one numeric listen port assignment',()=>{
@@ -82,4 +84,30 @@ test('buildPreflightReport emits only secret-safe allowlisted metadata',()=>{
     agent_api_healthy:true,
     mcp_healthy:true
   });
+});
+
+test('expectedEndpoints are fixed and contain no user-supplied surface',()=>{
+  assert.deepEqual(expectedEndpoints,{
+    recovery:'http://10.71.0.118:8140/health',
+    bridge:'http://127.0.0.1:8141/health',
+    bridgePrivate:'http://10.71.0.118:8141/health',
+    agentApi:'http://127.0.0.1:8099/health',
+    mcp:[
+      'http://127.0.0.1:8123/health',
+      'http://127.0.0.1:8124/health',
+      'http://127.0.0.1:8125/health'
+    ]
+  });
+});
+
+test('identityOk strictly binds each health endpoint to its expected service',()=>{
+  assert.equal(identityOk('recovery',{ok:true,service:'prhm-recovery-agent'}),true);
+  assert.equal(identityOk('recovery',{ok:true,service:'prhm-readonly-http'}),false);
+  assert.equal(identityOk('bridge',{ok:true,service:'prhm-readonly-http'}),true);
+  assert.equal(identityOk('bridge',{ok:true,service:'prhm-recovery-agent'}),false);
+  assert.equal(identityOk('agentApi',{ok:true,service:'ssh-agent-api'}),true);
+  assert.equal(identityOk('agentApi',{ok:false,service:'ssh-agent-api'}),false);
+  assert.equal(identityOk('mcp',{ok:true,service:'prhm-dev-agent-mcp'}),true);
+  assert.equal(identityOk('mcp',{ok:true,service:'ssh-agent-api'}),false);
+  assert.equal(identityOk('unknown',{ok:true,service:'anything'}),false);
 });
