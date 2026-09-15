@@ -12,12 +12,12 @@ function source() {
   return fs.readFileSync(FILE, 'utf8');
 }
 
-test('publisher is fixed to the reviewed action and SHA transition', () => {
+test('publisher is fixed to the reviewed action and current SHA transition', () => {
   const s = source();
   assert.match(s, /TARGET='\/opt\/prhm-agent-selfmaint-exec\/actions\/agent-zdt-existing-topology-rolling-refresh-v1\.js'/);
-  assert.match(s, /OLD_ACTION_SHA='d6e9b9d1478f680986773d9ac4fddf4c4c292a4b83421aabc9025ac33d7215c3'/);
-  assert.match(s, /OLD_API_SHA='7897c7e50d73bc9f00eb7efcc9bde7b25e2a0107175d592dad0d8b9180db78f9'/);
-  assert.match(s, /NEW_API_SHA='c59283afb1d03c523d22d649765ebdaf388857d49e3d86e5a2abab8543fcf69a'/);
+  assert.match(s, /OLD_ACTION_SHA='0fd63f7f8fe346ced5fbbfa3a7a4bc96253e498528934aaa3c7232e986b832bf'/);
+  assert.match(s, /OLD_API_SHA='5878fb592d8afcac571faa710e35811e462d4b98a2c120104b1eaf3ec1644001'/);
+  assert.match(s, /NEW_API_SHA='0cafe4ec6ad9471f3fdae65e3d2fa93bf349bfdeb5caf99ab03a18a5d3ece556'/);
 });
 
 test('publisher accepts no positional input and exposes no network or service-control surface', () => {

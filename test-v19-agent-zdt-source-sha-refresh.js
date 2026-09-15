@@ -15,9 +15,9 @@ test('exports fixed v19 Agent ZDT source-SHA refresh contract', () => {
   const m = load();
   assert.equal(m.ACTION, 'agent_zdt_existing_topology_rolling_refresh_source_sha_refresh_v19');
   assert.equal(m.TARGET_PATH, '/opt/prhm-agent-selfmaint-exec/actions/agent-zdt-existing-topology-rolling-refresh-v1.js');
-  assert.equal(m.OLD_ACTION_SHA, 'd6e9b9d1478f680986773d9ac4fddf4c4c292a4b83421aabc9025ac33d7215c3');
-  assert.equal(m.OLD_API_SHA, '7897c7e50d73bc9f00eb7efcc9bde7b25e2a0107175d592dad0d8b9180db78f9');
-  assert.equal(m.NEW_API_SHA, 'c59283afb1d03c523d22d649765ebdaf388857d49e3d86e5a2abab8543fcf69a');
+  assert.equal(m.OLD_ACTION_SHA, '0fd63f7f8fe346ced5fbbfa3a7a4bc96253e498528934aaa3c7232e986b832bf');
+  assert.equal(m.OLD_API_SHA, '5878fb592d8afcac571faa710e35811e462d4b98a2c120104b1eaf3ec1644001');
+  assert.equal(m.NEW_API_SHA, '0cafe4ec6ad9471f3fdae65e3d2fa93bf349bfdeb5caf99ab03a18a5d3ece556');
   assert.equal(typeof m.buildCandidate, 'function');
 });
 
@@ -27,8 +27,8 @@ test('candidate replaces exactly one API source SHA and preserves all other byte
     '#!/usr/local/bin/prhm-node',
     "const EXPECTED_SHA=Object.freeze({",
     "  ['/opt/prhm-agent-zdt/router.mjs']:'53b904296da0e9d1490bfc7e3ef0b9c1fbad602a1e693141108f016764ebbe78',",
-    "  ['/home/agent/ssh-agent-api/server.js']:'7897c7e50d73bc9f00eb7efcc9bde7b25e2a0107175d592dad0d8b9180db78f9',",
-    "  ['/home/agent/ssh-mcp-server/server.js']:'5d631a1c94208ba2d3daa515e45f3bd3717cf705a1d918f3e8bd9f9d85a97176'",
+    "  ['/home/agent/ssh-agent-api/server.js']:'5878fb592d8afcac571faa710e35811e462d4b98a2c120104b1eaf3ec1644001',",
+    "  ['/home/agent/ssh-mcp-server/server.js']:'5d631a1c94208ba2d3daa515e45f3bd3717cf705a1d918f3e8bd9f9d85a97177',",
     '});',
     'module.exports={EXPECTED_SHA};',
     ''
