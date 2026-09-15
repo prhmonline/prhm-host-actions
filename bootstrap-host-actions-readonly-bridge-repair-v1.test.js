@@ -51,7 +51,8 @@ test('installer constants are fixed to readonly bridge repair and current active
 test('buildCandidates adds exactly one bounded registration in all four owners',()=>{
   const next=mod.buildCandidates(FIXTURE);
   for(const key of ['base','exec','policy','mcp'])assert.equal(typeof next[key],'string');
-  assert.equal((next.base.match(/readonly_bridge_repair_v1/g)||[]).length,2);
+  assert.equal((next.base.match(/^\s*readonly_bridge_repair_v1:/gm)||[]).length,1);
+  assert.equal((next.base.match(/operation: 'host_action\.readonly_bridge_repair_v1'/g)||[]).length,1);
   assert.match(next.exec,/readonly_bridge_repair_v1/);
   assert.match(next.exec,new RegExp(mod.HELPER_SHA256));
   assert.match(next.exec,/--apply/);
