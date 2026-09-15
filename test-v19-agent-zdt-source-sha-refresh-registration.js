@@ -23,7 +23,8 @@ test('registration contract is fixed to current reviewed baselines and publisher
 test('base patch registers exactly one fixed Level-3 action', () => {
   const before = `const HOST_ACTION_V2_SPECS = Object.freeze({\n  existing: { operation: 'host_action.existing', rollback: 'x' }\n});\nconst HOST_ACTION_V2_LEVEL3 = new Set(["existing"]);\n`;
   const out = impl.patchBase(before);
-  assert.equal((out.match(new RegExp(ACTION, 'g')) || []).length, 2);
+  assert.equal((out.match(new RegExp(`\\b${ACTION}: \{`, 'g')) || []).length, 1);
+  assert.equal((out.match(new RegExp(`\"${ACTION}\"`, 'g')) || []).length, 1);
   assert.match(out, new RegExp(`operation: '${OPERATION}'`));
   assert.match(out, /rollback: 'host-action-v2:agent-zdt-source-sha-refresh-publisher-v1:action-backup-restore'/);
   assert.match(out, new RegExp(`new Set\\(\\["existing","${ACTION}"\\]\\)`));
