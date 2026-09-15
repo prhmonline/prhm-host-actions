@@ -1,4 +1,4 @@
-\'use strict\';
+'use strict';
 const test=require('node:test');
 const assert=require('node:assert/strict');
 const probe=require('./recovery-edge-topology-probe-v1.js');
