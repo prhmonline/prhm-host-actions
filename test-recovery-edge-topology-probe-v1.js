@@ -23,7 +23,7 @@ test('node1 targets and credentials are fixed',()=>{
 
 test('remote script is strictly read-only and service-scoped',()=>{
   const script=probe.remoteScript();
-  assert.match(script,/prhm-recovery-edge\\.service/);
+  assert.match(script,/prhm-recovery-edge\.service/);
   assert.match(script,/systemctl show/);
   assert.match(script,/FragmentPath/);
   assert.match(script,/ExecStart/);
@@ -31,14 +31,14 @@ test('remote script is strictly read-only and service-scoped',()=>{
   assert.match(script,/9080/);
   assert.match(script,/9444/);
   for(const forbidden of [
-    /systemctl\\s+(restart|start|stop|reload|enable|disable|mask|unmask)/i,
-    /\\b(rm|mv|cp|install|chmod|chown|truncate|dd)\\b/,
-    /sed\\s+-i/,
-    /\\btee\\b/,
+    /systemctl\s+(restart|start|stop|reload|enable|disable|mask|unmask)/i,
+    /\b(rm|mv|cp|install|chmod|chown|truncate|dd)\b/,
+    /sed\s+-i/,
+    /\btee\b/,
     /firewall-cmd/,
     /iptables/,
-    /nft\\s/,
-    /curl\\s+.*-X\\s*(POST|PUT|PATCH|DELETE)/i
+    /nft\s/,
+    /curl\s+.*-X\s*(POST|PUT|PATCH|DELETE)/i
   ]) assert.doesNotMatch(script,forbidden);
 });
 
@@ -70,7 +70,7 @@ test('parser returns only bounded topology evidence',()=>{
     'CANDIDATE_SHA256=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
     'LISTENER=LISTEN 0 511 127.0.0.1:9444 0.0.0.0:*',
     'LISTENER=LISTEN 0 511 127.0.0.1:9080 0.0.0.0:*'
-  ].join('\\n');
+  ].join('\n');
   const out=probe.parseEvidence(sample);
   assert.equal(out.service.id,'prhm-recovery-edge.service');
   assert.equal(out.service.fragment_path,'/etc/systemd/system/prhm-recovery-edge.service');
