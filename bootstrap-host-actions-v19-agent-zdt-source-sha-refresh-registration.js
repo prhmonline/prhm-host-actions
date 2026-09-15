@@ -43,7 +43,7 @@ function patchBase(source) {
   items.push(ACTION);
   out = out.replace(levelRe, `const HOST_ACTION_V2_LEVEL3 = new Set(${JSON.stringify(items)});`);
 
-  if (count(out, ACTION) !== 2 || count(out, OPERATION) !== 1) fail('base_postcondition_failed');
+  if (count(out, `  ${ACTION}: {`) !== 1 || !out.includes(`\"${ACTION}\"`) || count(out, OPERATION) !== 1) fail('base_postcondition_failed');
   return out;
 }
 
