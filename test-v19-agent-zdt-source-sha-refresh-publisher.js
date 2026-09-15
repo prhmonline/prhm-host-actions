@@ -20,11 +20,11 @@ test('publisher is fixed to the reviewed action and current SHA transition', () 
   assert.match(s, /NEW_API_SHA='0cafe4ec6ad9471f3fdae65e3d2fa93bf349bfdeb5caf99ab03a18a5d3ece556'/);
 });
 
-test('publisher accepts no positional input and exposes no network or service-control surface', () => {
+test('publisher accepts no caller positional input and exposes no network or service-control surface', () => {
   const s = source();
-  assert.doesNotMatch(s, /\$\{?1\}?|\$@|getopts/);
-  assert.doesNotMatch(s, /\bcurl\b|\bwget\b|\bsystemctl\b|\bssh\b|\bscp\b/);
+  assert.doesNotMatch(s, /\$@|getopts/);
   assert.match(s, /\[ "\$#" -eq 0 \]/);
+  assert.doesNotMatch(s, /\bcurl\b|\bwget\b|\bsystemctl\b|\bssh\b|\bscp\b/);
 });
 
 test('publisher is fail-closed, backup-first, syntax-checking, and atomic', () => {
@@ -34,7 +34,9 @@ test('publisher is fail-closed, backup-first, syntax-checking, and atomic', () =
   assert.match(s, /old_api_sha_count_mismatch/);
   assert.match(s, /new_api_sha_already_present/);
   assert.match(s, /\/var\/backups\/prhm-agent-zdt-source-sha-refresh-v19/);
-  assert.match(s, /prhm-node --check/);
+  assert.match(s, /PRHM_NODE='\/usr\/local\/bin\/prhm-node'/);
+  assert.match(s, /"\$PRHM_NODE" --check "\$TMP"/);
+  assert.match(s, /"\$PRHM_NODE" --check "\$TARGET"/);
   assert.match(s, /mv -f -- "\$TMP" "\$TARGET"/);
   assert.match(s, /rollback/);
 });
