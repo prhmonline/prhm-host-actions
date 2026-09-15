@@ -1,0 +1,17 @@
+'use strict';
+const assert=require('node:assert/strict');
+const cp=require('node:child_process');
+const mod=require('./bootstrap-host-actions-v28-node1-central-pull-backup.js');
+assert.equal(mod.ACTION,'node1_central_pull_backup_v1');
+assert.equal(mod.OPERATION,'host_action.node1_central_pull_backup_v1');
+const helper=mod.buildHelperSource();
+for(const x of ["const NODE1_HOST='185.191.76.138'","const NODE1_PORT='22'","SHA256:ItU1DoNmx/IHX8TLG2DXTSpxnrvyTs8KLQTN0LzVkyE","/var/backups/prhm-central","--all-databases","SHA256SUMS"]) assert.ok(helper.includes(x),x);
+for(const bad of ['process.argv.slice','shell:true','eval(','execSync(']) assert.equal(helper.includes(bad),false,'forbidden:'+bad);
+const syntax=cp.spawnSync('node',['--check','-'],{input:helper,encoding:'utf8'});
+assert.equal(syntax.status,0,syntax.stderr);
+const policy={schema_version:'prhm.approval-policy.v1',version:'2026-09-05.3-autonomous-operator-v1',operations:{},typed_scopes:[]};
+const p=JSON.parse(mod.buildPolicyCandidate(JSON.stringify(policy)));
+assert.equal(p.operations[mod.OPERATION].level,3);
+assert.equal(p.operations[mod.OPERATION].risk,'high');
+assert.equal(p.typed_scopes[0].action,mod.ACTION);
+console.log('CONTRACT_PASS');
