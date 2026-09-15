@@ -8,11 +8,15 @@ on:
     paths:
       - 'recovery-edge-topology-probe-v1.js'
       - 'test-recovery-edge-topology-probe-v1.js'
+      - 'bootstrap-host-actions-recovery-edge-topology-probe-v1.js'
+      - 'test-bootstrap-host-actions-recovery-edge-topology-probe-v1.js'
       - '.github/workflows/recovery-edge-topology-probe-v1-ci.yml'
   pull_request:
     paths:
       - 'recovery-edge-topology-probe-v1.js'
       - 'test-recovery-edge-topology-probe-v1.js'
+      - 'bootstrap-host-actions-recovery-edge-topology-probe-v1.js'
+      - 'test-bootstrap-host-actions-recovery-edge-topology-probe-v1.js'
       - '.github/workflows/recovery-edge-topology-probe-v1-ci.yml'
 
 permissions:
@@ -26,4 +30,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - run: node --check bootstrap-host-actions-recovery-edge-topology-probe-v1.js
       - run: node --test test-recovery-edge-topology-probe-v1.js
+      - run: node --test test-bootstrap-host-actions-recovery-edge-topology-probe-v1.js

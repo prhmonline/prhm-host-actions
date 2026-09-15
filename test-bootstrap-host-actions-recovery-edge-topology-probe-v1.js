@@ -1,0 +1,8 @@
+'use strict';
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const b=require('./bootstrap-host-actions-recovery-edge-topology-probe-v1.js');
+test('registration is intentionally non-deployable until live SHA baseline is locked',()=>{assert.equal(b.BASELINE_LOCKED,false);assert.deepEqual(b.BASELINE,{base:null,exec:null,policy:null,mcp:null});assert.throws(()=>b.assertBaselineLocked(),/baseline_not_locked/)});
+test('identity helper and target paths are fixed',()=>{assert.equal(b.ACTION,'recovery_edge_topology_probe_v1');assert.equal(b.OPERATION,'host_action.recovery_edge_topology_probe_v1');assert.match(b.HELPER_SHA,/^[a-f0-9]{64}$/);assert.equal(b.PATHS.helper,'/opt/prhm-agent-selfmaint-exec/actions/recovery-edge-topology-probe-v1.js')});
+test('policy candidate is Level3 high one-time typed scope',()=>{const src=JSON.stringify({schema_version:'prhm.approval-policy.v1',version:'x',operations:{},typed_scopes:[]});const p=JSON.parse(b.buildPolicyCandidate(src));assert.equal(p.operations[b.OPERATION].level,3);assert.equal(p.operations[b.OPERATION].risk,'high');assert.equal(p.operations[b.OPERATION].one_time_use,true);const s=p.typed_scopes.find(x=>x.action===b.ACTION);assert.equal(s.tool,'host_action_v2_apply');assert.equal(s.risk,'high')});
+test('registration plan cannot use caller-selected paths commands hosts or SQL',()=>{const src=require('node:fs').readFileSync('./bootstrap-host-actions-recovery-edge-topology-probe-v1.js','utf8');for(const bad of ['req.body.command','arbitrary_path','raw_sql','process.argv[2]','caller_host'])assert.equal(src.includes(bad),false)});
