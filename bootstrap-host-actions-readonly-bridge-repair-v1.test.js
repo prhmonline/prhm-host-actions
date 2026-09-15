@@ -27,17 +27,25 @@ const FIXTURE=Object.freeze({
   mcp:`const HostActionV2=z.enum(['host_action_v2_installer_v1','control_plane_root_scripts_stage_transport_v1']);\n`
 });
 
-test('installer constants are fixed to readonly bridge repair',()=>{
+test('installer constants are fixed to readonly bridge repair and current active MCP topology',()=>{
   assert.equal(mod.ACTION,'readonly_bridge_repair_registration_v1');
   assert.equal(mod.TARGET_ACTION,'readonly_bridge_repair_v1');
   assert.equal(mod.OPERATION,'host_action.readonly_bridge_repair_v1');
   assert.equal(mod.HELPER_SHA256,'068b519c3d0f23bd56eed84750e0cb74e44001250b81a08830e1baf61c928622');
-  assert.deepEqual(mod.SERVICES,[
+  assert.deepEqual(mod.CORE_SERVICES,[
     'prhm-company-approval.service',
     'prhm-agent-selfmaint.service',
-    'prhm-agent-selfmaint-exec.service',
-    'prhm-agent-mcp.service'
+    'prhm-agent-selfmaint-exec.service'
   ]);
+  assert.deepEqual(mod.MCP_LANES,[
+    'prhm-agent-mcp-blue.service',
+    'prhm-agent-mcp-green.service'
+  ]);
+  const all=[...mod.CORE_SERVICES,...mod.MCP_LANES];
+  assert.equal(all.includes('prhm-agent-mcp.service'),false);
+  assert.equal(all.includes('prhm-agent-mcp-router.service'),false);
+  assert.equal(all.some(x=>x.includes('legacy')),false);
+  assert.equal(all.some(x=>x.includes('recovery')),false);
 });
 
 test('buildCandidates adds exactly one bounded registration in all four owners',()=>{
