@@ -7,15 +7,15 @@ const IMPL=path.join(__dirname,'bootstrap-host-actions-v18-agent-zdt-current-bas
 function load(){delete require.cache[require.resolve(IMPL)];return require(IMPL)}
 const sha=s=>crypto.createHash('sha256').update(s,'utf8').digest('hex');
 const REG_BASE=Object.freeze({
- base:'981a430f5448a1b0dc3c25886756ecf7cd655352660bb49905ab2650a131d764',
- exec:'451c5a4762a4c7a04d64d526a79cf6e86b0cf7c978c559cf303d874e0f08fc48',
- policy:'494e95e3173695407c84b6d082f09e57d971cb193518be813a53131cdb389a70',
+ base:'6ae89522f439babd3b6a9679336aea0fb12bb74993d33234095f872d38ad8cc6',
+ exec:'409b63bd48b3363eaec2b3921f77ece2767dff93f6143923bdb754fe8f4cf69c',
+ policy:'9672e88b8c5033b7107e921d25bd4911216e86a8fe593ee67ac2330e0a75bab2',
  mcp:'703a8f8ee0726fac47d008a69c759e3f52254c980cf551ea3f2660cc46321283',
 });
 const REG_CAND=Object.freeze({
- base:'a7e8199e8197f35a306dd9be161541fcf4832605ef8e5db601c0ed6e42214bed',
- exec:'0e5698778545923500750240be0f38bee1b819a4e05e9fcef1e9ceb4808bb2a6',
- policy:'fcaee257f33cfaf5035eb97ada018af3f9115df9ac7afbd5ba55ce5961913574',
+ base:'de924f7319f3656d788ba5d3f89ef2910bf4b0e3f0b8b074e7cd3a534441d5ea',
+ exec:'6bba46890db31abc8eca7e7681753a4788c46170033a555a1106e05d0a7a66f9',
+ policy:'2fedd70a182aa351e269df95a1b9d829f5a0b18defe8871cb4045106948d711a',
  mcp:'b71b271cf3de3c314cf63491db3873a58336bf25f064271b218a5f602c5bc7eb',
 });
 test('01 exports fixed promotion action',()=>{const m=load();assert.equal(m.ACTION,'control_plane_typed_bootstrap_current_baseline_refresh_v1');assert.equal(m.PROMOTION_OPERATION,'host_action.control_plane_typed_bootstrap_current_baseline_refresh_v1')});

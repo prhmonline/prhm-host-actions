@@ -8,9 +8,17 @@ const legacyBytes=cp.execFileSync('/usr/bin/git',['-C',__dirname,'cat-file','blo
 const legacySha=crypto.createHash('sha256').update(legacyBytes).digest('hex');
 if(legacySha!==LEGACY_SHA256)throw new Error('legacy_blob_sha_mismatch:'+legacySha);
 const LEGACY_BASE_BASELINE_OLD='a23b4fec52123f8ad484f31576281c2f1933f24a3c811cd98c28e764a292e315';
-const LEGACY_BASE_BASELINE_NEW='981a430f5448a1b0dc3c25886756ecf7cd655352660bb49905ab2650a131d764';
+const LEGACY_BASE_BASELINE_NEW='6ae89522f439babd3b6a9679336aea0fb12bb74993d33234095f872d38ad8cc6';
 const LEGACY_BASE_CANDIDATE_OLD='aa6f3ed4f682dd4f50f56483edad435fc05454310449a21e9bc7a412b57efb60';
-const LEGACY_BASE_CANDIDATE_NEW='a7e8199e8197f35a306dd9be161541fcf4832605ef8e5db601c0ed6e42214bed';
+const LEGACY_BASE_CANDIDATE_NEW='de924f7319f3656d788ba5d3f89ef2910bf4b0e3f0b8b074e7cd3a534441d5ea';
+const LEGACY_EXEC_BASELINE_OLD='451c5a4762a4c7a04d64d526a79cf6e86b0cf7c978c559cf303d874e0f08fc48';
+const LEGACY_EXEC_BASELINE_NEW='409b63bd48b3363eaec2b3921f77ece2767dff93f6143923bdb754fe8f4cf69c';
+const LEGACY_EXEC_CANDIDATE_OLD='0e5698778545923500750240be0f38bee1b819a4e05e9fcef1e9ceb4808bb2a6';
+const LEGACY_EXEC_CANDIDATE_NEW='6bba46890db31abc8eca7e7681753a4788c46170033a555a1106e05d0a7a66f9';
+const LEGACY_POLICY_BASELINE_OLD='494e95e3173695407c84b6d082f09e57d971cb193518be813a53131cdb389a70';
+const LEGACY_POLICY_BASELINE_NEW='9672e88b8c5033b7107e921d25bd4911216e86a8fe593ee67ac2330e0a75bab2';
+const LEGACY_POLICY_CANDIDATE_OLD='fcaee257f33cfaf5035eb97ada018af3f9115df9ac7afbd5ba55ce5961913574';
+const LEGACY_POLICY_CANDIDATE_NEW='2fedd70a182aa351e269df95a1b9d829f5a0b18defe8871cb4045106948d711a';
 const LEGACY_MCP_BASELINE_OLD='7c566cdb1dbc1dcb4ac9d6a1b0670acc98cbc366a663771937e365d700671510';
 const LEGACY_MCP_BASELINE_NEW='703a8f8ee0726fac47d008a69c759e3f52254c980cf551ea3f2660cc46321283';
 const LEGACY_MCP_CANDIDATE_OLD='9fa041e09a02370ca803e32a7465b471d5a7ce86415a3ed49a457ffe4611a2f0';
@@ -19,6 +27,10 @@ let legacySource=legacyBytes.toString('utf8');
 for(const [oldValue,newValue,label] of [
  [LEGACY_BASE_BASELINE_OLD,LEGACY_BASE_BASELINE_NEW,'base_baseline'],
  [LEGACY_BASE_CANDIDATE_OLD,LEGACY_BASE_CANDIDATE_NEW,'base_candidate'],
+ [LEGACY_EXEC_BASELINE_OLD,LEGACY_EXEC_BASELINE_NEW,'exec_baseline'],
+ [LEGACY_EXEC_CANDIDATE_OLD,LEGACY_EXEC_CANDIDATE_NEW,'exec_candidate'],
+ [LEGACY_POLICY_BASELINE_OLD,LEGACY_POLICY_BASELINE_NEW,'policy_baseline'],
+ [LEGACY_POLICY_CANDIDATE_OLD,LEGACY_POLICY_CANDIDATE_NEW,'policy_candidate'],
  [LEGACY_MCP_BASELINE_OLD,LEGACY_MCP_BASELINE_NEW,'mcp_baseline'],
  [LEGACY_MCP_CANDIDATE_OLD,LEGACY_MCP_CANDIDATE_NEW,'mcp_candidate'],
 ]){
@@ -26,7 +38,7 @@ for(const [oldValue,newValue,label] of [
  if(count!==1)throw new Error('v19_mcp_forward_rebase_anchor_'+label+'_'+count);
  legacySource=legacySource.replace(oldValue,newValue);
 }
-if(legacySource.includes(LEGACY_BASE_BASELINE_OLD)||legacySource.includes(LEGACY_BASE_CANDIDATE_OLD)||legacySource.includes(LEGACY_MCP_BASELINE_OLD)||legacySource.includes(LEGACY_MCP_CANDIDATE_OLD))throw new Error('v19_forward_rebase_postcondition');
+if(legacySource.includes(LEGACY_BASE_BASELINE_OLD)||legacySource.includes(LEGACY_BASE_CANDIDATE_OLD)||legacySource.includes(LEGACY_EXEC_BASELINE_OLD)||legacySource.includes(LEGACY_EXEC_CANDIDATE_OLD)||legacySource.includes(LEGACY_POLICY_BASELINE_OLD)||legacySource.includes(LEGACY_POLICY_CANDIDATE_OLD)||legacySource.includes(LEGACY_MCP_BASELINE_OLD)||legacySource.includes(LEGACY_MCP_CANDIDATE_OLD))throw new Error('v19_forward_rebase_postcondition');
 const legacyModule=new Module(module.filename+'.legacy',module.parent);
 legacyModule.filename=module.filename+'.legacy';
 legacyModule.paths=module.paths;
