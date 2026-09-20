@@ -1,0 +1,29 @@
+name: PBCinema SMS OTP V28 CI
+
+on:
+  push:
+    branches:
+      - 'fix/pbcinema-sms-otp-host-action-v1'
+    paths:
+      - 'bootstrap-host-actions-v28-pbcinema-sms-otp.js'
+      - 'test-v28-pbcinema-sms-otp.js'
+      - '.github/workflows/pbcinema-sms-otp-v28-ci.yml'
+  pull_request:
+    paths:
+      - 'bootstrap-host-actions-v28-pbcinema-sms-otp.js'
+      - 'test-v28-pbcinema-sms-otp.js'
+      - '.github/workflows/pbcinema-sms-otp-v28-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node --check bootstrap-host-actions-v28-pbcinema-sms-otp.js
+      - run: node --test test-v28-pbcinema-sms-otp.js
