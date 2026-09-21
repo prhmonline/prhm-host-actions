@@ -1,0 +1,31 @@
+name: Host Actions v28 Honartik Staging CI
+
+on:
+  pull_request:
+    paths:
+      - 'bootstrap-host-actions-v28-honartik-staging-privilege-boundary.js'
+      - 'test-v28-honartik-staging-privilege-boundary.js'
+      - '.github/workflows/host-actions-v28-honartik-staging-ci.yml'
+  push:
+    branches:
+      - integration/v28-honartik-staging-privilege-boundary
+    paths:
+      - 'bootstrap-host-actions-v28-honartik-staging-privilege-boundary.js'
+      - 'test-v28-honartik-staging-privilege-boundary.js'
+      - '.github/workflows/host-actions-v28-honartik-staging-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax
+        run: node --check bootstrap-host-actions-v28-honartik-staging-privilege-boundary.js
+      - name: Selftest
+        run: node bootstrap-host-actions-v28-honartik-staging-privilege-boundary.js --selftest-only
+      - name: Contract
+        run: node --test test-v28-honartik-staging-privilege-boundary.js
