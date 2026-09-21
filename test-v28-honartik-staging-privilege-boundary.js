@@ -39,7 +39,7 @@ test('MCP and executor expose only fixed no-input action',()=>{
   assert.match(out,/ProtectSystem=strict/);
   assert.match(out,/ProtectHome=read-only/);
   assert.match(out,/RestrictAddressFamilies=AF_UNIX/);
-  assert.match(out,/ReadWritePaths=\\/usr\\/local\\/libexec\\/deploy-control \\/etc\\/sudoers\\.d \\/var\\/backups\\/deploy-control \\/var\\/lib\\/prhm-agent-selfmaint-exec \\/run/);
+  assert.equal(out.includes('--property=ReadWritePaths=/usr/local/libexec/deploy-control /etc/sudoers.d /var/backups/deploy-control /var/lib/prhm-agent-selfmaint-exec /run'),true);
   assert.doesNotMatch(out,/bash -lc|sh -c/);
 });
 
