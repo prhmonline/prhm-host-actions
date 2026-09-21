@@ -27,7 +27,10 @@ test('base action is not added to Level-3 set',()=>{
   const src="const HOST_ACTION_V2_SPECS = Object.freeze({\\n  imotion_credential_bind_v1: { operation: 'host_action.imotion_credential_bind_v1', rollback: 'host-action-v2:imotion-credential-bind-v1:remote-controller-backup-restore' },\\n});\\nconst HOST_ACTION_V2_LEVEL3 = new Set([\\\"control_plane_root_scripts_stage_transport_v1\\\"]);";
   const out=m.buildBaseCandidate(src);
   assert.match(out,/honartik_staging_privilege_boundary_install_v1/);
-  const level3=out.split('\n').find(line=>line.includes('HOST_ACTION_V2_LEVEL3'))||'';
+  const start=out.indexOf('const HOST_ACTION_V2_LEVEL3');
+  const end=out.indexOf(';',start);
+  const level3=out.slice(start,end+1);
+  assert.equal(start>=0&&end>start,true);
   assert.equal(level3.includes(m.ACTION),false);
 });
 
