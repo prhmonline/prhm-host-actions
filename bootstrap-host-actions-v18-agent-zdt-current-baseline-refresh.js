@@ -87,4 +87,59 @@ const INSTALLER_REFRESH_L4_BINDING_REPAIR_SOURCE=JSON.stringify(Object.freeze({
  mediator_baseline_sha256:'e8fc3f5185f01efeca5563490461566f64fc8bda1534bad5a3c39e73a7108abb'
 }),null,2)+'\n';
 const INSTALLER_REFRESH_L4_BINDING_REPAIR_SOURCE_SHA256=crypto.createHash('sha256').update(INSTALLER_REFRESH_L4_BINDING_REPAIR_SOURCE,'utf8').digest('hex');
-module.exports=Object.freeze({...base,OLD_INSTALLER_REFRESH_OPERATION,INSTALLER_REFRESH_L4_OPERATION,buildInstallerRefreshL4BindingRepairCandidates,INSTALLER_REFRESH_L4_BINDING_REPAIR_SOURCE,INSTALLER_REFRESH_L4_BINDING_REPAIR_SOURCE_SHA256});
+
+const GENERATED_INSTALLER_BAD_TAIL='\n}}\ntry{main()}';
+const GENERATED_INSTALLER_GOOD_TAIL='\n}\ntry{main()}';
+const GENERATED_INSTALLER_LEGACY_MCP="'prhm-agent-mcp.service'";
+const GENERATED_INSTALLER_ZDT_MCP="'prhm-agent-mcp-green.service'";
+function generatedReplaceOne(source,oldValue,newValue,label){
+ const count=source.split(oldValue).length-1;
+ if(count!==1)throw new Error('registration_installer_'+label+'_anchor_'+count);
+ return source.replace(oldValue,newValue);
+}
+function buildRegistrationInstallerSourceFixed(){
+ let fixed=base.buildRegistrationInstallerSource();
+ fixed=generatedReplaceOne(fixed,GENERATED_INSTALLER_BAD_TAIL,GENERATED_INSTALLER_GOOD_TAIL,'syntax_tail');
+ fixed=generatedReplaceOne(fixed,GENERATED_INSTALLER_LEGACY_MCP,GENERATED_INSTALLER_ZDT_MCP,'zdt_mcp_service');
+ fixed=generatedReplaceOne(fixed,"tmp[n]=FILES[n]+'.candidate-'+process.pid+'-'+n;","tmp[n]=FILES[n]+'.candidate-'+process.pid+'-'+n+'.js';",'candidate_tmp_suffix');
+ const syntax=cp.spawnSync('/usr/local/bin/prhm-node',['--check','-'],{input:fixed,encoding:'utf8',timeout:30000,maxBuffer:1000000});
+ if(syntax.error||syntax.status!==0)throw new Error('registration_installer_fixed_syntax_invalid:'+String(syntax.stderr||syntax.stdout||syntax.error||'').slice(-1200));
+ return fixed;
+}
+const FIXED_REGISTRATION_INSTALLER_SOURCE_SHA256='2031d0de149d9f090987fe710df44413cd5ac0a51a7394ff7874c2e9073f077c';
+function buildRegistrationStageTransportSourceFixed(){
+ const fixedInstaller=buildRegistrationInstallerSourceFixed();
+ const fixedSha=crypto.createHash('sha256').update(fixedInstaller,'utf8').digest('hex');
+ if(fixedSha!==FIXED_REGISTRATION_INSTALLER_SOURCE_SHA256)throw new Error('registration_installer_fixed_sha_mismatch:'+fixedSha);
+ const source=base.buildRegistrationStageTransportSource();
+ const oldInstaller=base.buildRegistrationInstallerSource();
+ const oldInstallerB64=Buffer.from(oldInstaller,'utf8').toString('base64');
+ const fixedInstallerB64=Buffer.from(fixedInstaller,'utf8').toString('base64');
+ const oldSha=String(base.REGISTRATION_INSTALLER_SOURCE_SHA256||'');
+ let out=source;
+ const b64Count=out.split(oldInstallerB64).length-1;
+ if(b64Count!==1)throw new Error('registration_stage_installer_b64_anchor_'+b64Count);
+ out=out.replace(oldInstallerB64,fixedInstallerB64);
+ const shaCount=out.split(oldSha).length-1;
+ if(shaCount!==1)throw new Error('registration_stage_installer_sha_anchor_'+shaCount);
+ out=out.replace(oldSha,FIXED_REGISTRATION_INSTALLER_SOURCE_SHA256);
+ if(out.includes(oldInstallerB64)||out.includes(oldSha))throw new Error('registration_stage_old_installer_binding_remaining');
+ return out;
+}
+const exported={};
+for(const key of Reflect.ownKeys(base)){
+ if(['buildRegistrationInstallerSource','REGISTRATION_INSTALLER_SOURCE_SHA256','buildRegistrationStageTransportSource'].includes(String(key)))continue;
+ const descriptor=Object.getOwnPropertyDescriptor(base,key);
+ if(descriptor)Object.defineProperty(exported,key,descriptor);
+}
+Object.defineProperties(exported,{
+ buildRegistrationInstallerSource:{value:buildRegistrationInstallerSourceFixed,enumerable:true},
+ REGISTRATION_INSTALLER_SOURCE_SHA256:{value:FIXED_REGISTRATION_INSTALLER_SOURCE_SHA256,enumerable:true},
+ buildRegistrationStageTransportSource:{value:buildRegistrationStageTransportSourceFixed,enumerable:true},
+ OLD_INSTALLER_REFRESH_OPERATION:{value:OLD_INSTALLER_REFRESH_OPERATION,enumerable:true},
+ INSTALLER_REFRESH_L4_OPERATION:{value:INSTALLER_REFRESH_L4_OPERATION,enumerable:true},
+ buildInstallerRefreshL4BindingRepairCandidates:{value:buildInstallerRefreshL4BindingRepairCandidates,enumerable:true},
+ INSTALLER_REFRESH_L4_BINDING_REPAIR_SOURCE:{value:INSTALLER_REFRESH_L4_BINDING_REPAIR_SOURCE,enumerable:true},
+ INSTALLER_REFRESH_L4_BINDING_REPAIR_SOURCE_SHA256:{value:INSTALLER_REFRESH_L4_BINDING_REPAIR_SOURCE_SHA256,enumerable:true},
+});
+module.exports=Object.freeze(exported);
