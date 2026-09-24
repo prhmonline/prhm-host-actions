@@ -88,6 +88,43 @@ const INSTALLER_REFRESH_L4_BINDING_REPAIR_SOURCE=JSON.stringify(Object.freeze({
 }),null,2)+'\n';
 const INSTALLER_REFRESH_L4_BINDING_REPAIR_SOURCE_SHA256=crypto.createHash('sha256').update(INSTALLER_REFRESH_L4_BINDING_REPAIR_SOURCE,'utf8').digest('hex');
 
+
+const RAHEKOMAK_ACTION='rahekomak_production_deploy_v1';
+const RAHEKOMAK_OPERATION='host_action.rahekomak_production_deploy_v1';
+const RAHEKOMAK_ROOT='/home/prhm/projects/generated/rahekomak';
+const RAHEKOMAK_HELPER='/home/prhm/projects/generated/rahekomak/infra/docker/production-deploy-v1.cjs';
+const RAHEKOMAK_HEAD='77c0d0f38f2c64be02e46eeec6f6e19eedc1f1b5';
+const RAHEKOMAK_HELPER_SHA='bba9636d705b41cf11086f1e962a8ac31b7a831bd3d1913e641633cfacd4dab4';
+const RAHEKOMAK_REGISTRATION_BASELINE_SHA256=Object.freeze({"base":"de924f7319f3656d788ba5d3f89ef2910bf4b0e3f0b8b074e7cd3a534441d5ea","exec":"6bba46890db31abc8eca7e7681753a4788c46170033a555a1106e05d0a7a66f9","policy":"2fedd70a182aa351e269df95a1b9d829f5a0b18defe8871cb4045106948d711a","mcp":"b71b271cf3de3c314cf63491db3873a58336bf25f064271b218a5f602c5bc7eb"});
+const RAHEKOMAK_REGISTRATION_CANDIDATE_SHA256=Object.freeze({"base":"680ea4e3e22483aee99ede5b92d7ca6670427e764b04ff752536677ee26c9a78","exec":"4dd331dd85ef7444dc8c2e118d546ffe039606660331dc27c7cc0ec5011971a3","policy":"8177c35d884aac4275ce95503924a347ca48f953a8ad9de58d549e6e7a61b64b","mcp":"89a0b5aea9487de6822c9a91a1fd32e2a26a55854719a396eb0718893159f571"});
+function rahkomakReplaceOne(source,oldValue,newValue,label){const count=source.split(oldValue).length-1;if(count!==1)throw new Error('rahekomak_registration_'+label+'_anchor_'+count);return source.replace(oldValue,newValue)}
+function buildRahKomakRegistrationCandidates(input){
+ if(!input||typeof input!=='object'||Array.isArray(input)||Object.keys(input).sort().join(',')!=='base,exec,mcp,policy')throw new Error('rahekomak_registration_input_invalid');
+ for(const name of ['base','exec','mcp','policy']){
+  if(typeof input[name]!=='string')throw new Error('rahekomak_registration_'+name+'_invalid');
+  const actual=crypto.createHash('sha256').update(input[name],'utf8').digest('hex');
+  if(actual!==RAHEKOMAK_REGISTRATION_BASELINE_SHA256[name])throw new Error('rahekomak_registration_baseline_drift:'+name);
+  if(input[name].includes(RAHEKOMAK_ACTION))throw new Error('rahekomak_registration_'+name+'_already_present');
+ }
+ const ba="  control_plane_typed_bootstrap_current_baseline_refresh_v1: { operation: 'host_action.control_plane_typed_bootstrap_current_baseline_refresh_v1', rollback: 'host-action-v2:control-plane-typed-bootstrap-current-baseline-refresh-v1:staged-bootstrap-source-restore' },";
+ const base=rahkomakReplaceOne(input.base,ba,ba+"\n  "+RAHEKOMAK_ACTION+": { operation: '"+RAHEKOMAK_OPERATION+"', rollback: 'host-action-v2:rahekomak-production-deploy-v1:helper-transaction-rollback' },",'base_spec');
+ const ea="  control_plane_typed_bootstrap_current_baseline_refresh_v1:{operation:'host_action.control_plane_typed_bootstrap_current_baseline_refresh_v1',kind:'control_plane_typed_bootstrap_current_baseline_refresh_v1'},";
+ let exec=rahkomakReplaceOne(input.exec,ea,ea+"\n  "+RAHEKOMAK_ACTION+":{operation:'"+RAHEKOMAK_OPERATION+"',kind:'"+RAHEKOMAK_ACTION+"'},",'exec_spec');
+ const fixedHandler="const RAHEKOMAK_DEPLOY_ROOT='/home/prhm/projects/generated/rahekomak';\nconst RAHEKOMAK_DEPLOY_HELPER='/home/prhm/projects/generated/rahekomak/infra/docker/production-deploy-v1.cjs';\nconst RAHEKOMAK_DEPLOY_HEAD='77c0d0f38f2c64be02e46eeec6f6e19eedc1f1b5';\nconst RAHEKOMAK_DEPLOY_HELPER_SHA='bba9636d705b41cf11086f1e962a8ac31b7a831bd3d1913e641633cfacd4dab4';\nfunction applyRahKomakProductionDeployV1(){\nconst crypto=require('node:crypto'),cp=require('node:child_process');\nconst st=fs.lstatSync(RAHEKOMAK_DEPLOY_HELPER);if(st.isSymbolicLink()||!st.isFile()||fs.realpathSync(RAHEKOMAK_DEPLOY_HELPER)!==RAHEKOMAK_DEPLOY_HELPER)throw new Error('rahekomak_deploy_helper_invalid');\nconst helperSha=crypto.createHash('sha256').update(fs.readFileSync(RAHEKOMAK_DEPLOY_HELPER)).digest('hex');if(helperSha!==RAHEKOMAK_DEPLOY_HELPER_SHA)throw new Error('rahekomak_deploy_helper_sha_mismatch');\nconst gitEnv={PATH:'/usr/bin:/bin',LC_ALL:'C',HOME:'/root'};\nconst head=cp.spawnSync('/usr/bin/git',['-C',RAHEKOMAK_DEPLOY_ROOT,'rev-parse','HEAD'],{encoding:'utf8',timeout:15000,maxBuffer:200000,env:gitEnv});if(head.error||head.status!==0||String(head.stdout||'').trim()!==RAHEKOMAK_DEPLOY_HEAD)throw new Error('rahekomak_deploy_head_mismatch');\nconst dirty=cp.spawnSync('/usr/bin/git',['-C',RAHEKOMAK_DEPLOY_ROOT,'status','--porcelain'],{encoding:'utf8',timeout:15000,maxBuffer:200000,env:gitEnv});if(dirty.error||dirty.status!==0||String(dirty.stdout||'').trim()!=='')throw new Error('rahekomak_deploy_worktree_dirty');\nconst token=crypto.randomUUID().replaceAll('-',''),result='/run/prhm-rahekomak-deploy-'+token+'.json',unit='prhm-rahekomak-deploy-'+Date.now();\nconst args=['--wait','--collect','--quiet','--unit='+unit,'--property=Type=oneshot','--property=UMask=0077','--property=PrivateTmp=true','--property=PrivateDevices=true','--property=ProtectSystem=strict','--property=ProtectHome=read-only','--property=ProtectKernelTunables=true','--property=ProtectKernelModules=true','--property=ProtectControlGroups=true','--property=RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6','--property=ReadWritePaths='+RAHEKOMAK_DEPLOY_ROOT,'--property=ReadWritePaths=/etc/httpd/conf.d','--property=ReadWritePaths=/etc/selinux','--property=ReadWritePaths=/var/lib/selinux','--property=ReadWritePaths=/run','--setenv=RAHEKOMAK_DEPLOY_RESULT='+result,'--setenv=RAHEKOMAK_EXPECTED_HEAD='+RAHEKOMAK_DEPLOY_HEAD,'--setenv=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin','/usr/local/bin/prhm-node',RAHEKOMAK_DEPLOY_HELPER,'--apply'];\ntry{const run=cp.spawnSync('/usr/bin/systemd-run',args,{encoding:'utf8',timeout:1800000,maxBuffer:8388608,stdio:['ignore','pipe','pipe']});if(!fs.existsSync(result)){const j=cp.spawnSync('/usr/bin/journalctl',['-u',unit,'-n','160','--no-pager'],{encoding:'utf8',timeout:15000,maxBuffer:2000000});throw new Error('rahekomak_deploy_result_missing:'+String(run.stderr||run.stdout||'').slice(-2000)+':journal='+String(j.stdout||j.stderr||'').slice(-8000))}let out;try{out=JSON.parse(fs.readFileSync(result,'utf8'))}catch{throw new Error('rahekomak_deploy_result_invalid_json')}if(run.error||run.status!==0||out?.ok!==true)throw new Error('rahekomak_deploy_failed:'+String(out?.error||run.stderr||run.stdout||'unknown').slice(-8000));if(out.action!=='rahekomak_production_deploy_v1'||out.deployed_head!==RAHEKOMAK_DEPLOY_HEAD||out.rollback_performed!==false||out.public_dns_mutation!==false||out.edge_tls_mutation!==false)throw new Error('rahekomak_deploy_result_contract_invalid');return out;}finally{try{if(fs.existsSync(result))fs.unlinkSync(result)}catch{}}\n}",ha='const applyHostActionV2Original=applyHostActionV2;';
+ exec=rahkomakReplaceOne(exec,ha,fixedHandler+'\n'+ha,'exec_handler');
+ const da="if(action==='control_plane_typed_bootstrap_current_baseline_refresh_v1')return applyControlPlaneTypedBootstrapCurrentBaselineRefreshV1();";
+ exec=rahkomakReplaceOne(exec,da,"if(action==='"+RAHEKOMAK_ACTION+"')return applyRahKomakProductionDeployV1();"+da,'exec_dispatch');
+ let policy;try{policy=JSON.parse(input.policy)}catch{throw new Error('rahekomak_registration_policy_json_invalid')}
+ if(!policy||typeof policy!=='object'||Array.isArray(policy)||!policy.operations||typeof policy.operations!=='object'||!Array.isArray(policy.typed_scopes))throw new Error('rahekomak_registration_policy_shape_invalid');
+ if(policy.operations[RAHEKOMAK_OPERATION]||policy.typed_scopes.some(x=>x&&x.action===RAHEKOMAK_ACTION))throw new Error('rahekomak_registration_policy_already_present');
+ policy.operations[RAHEKOMAK_OPERATION]={level:4,risk:'critical',requires_second_confirmation:true,one_time_use:true,requested_approver:'mohammad',expires_seconds:180,policy_version:'2026-09-24.1-rahekomak-production-deploy-v1',rollback_reference:'host-action-v2:rahekomak-production-deploy-v1:helper-transaction-rollback'};
+ policy.typed_scopes.push({tool:'host_action_v2_apply',project:'control_plane',environment:'production',action:RAHEKOMAK_ACTION,risk:'critical',operation:RAHEKOMAK_OPERATION,principals:[{principal_id:'mohammad',roles:['mcp-operator']}]});
+ const policyText=JSON.stringify(policy,null,2)+'\n',ma="'control_plane_typed_bootstrap_current_baseline_refresh_v1',",mcp=rahkomakReplaceOne(input.mcp,ma,ma+"'"+RAHEKOMAK_ACTION+"',",'mcp_enum'),files=Object.freeze({base,exec,policy:policyText,mcp});
+ const candidate_sha256=Object.freeze(Object.fromEntries(Object.entries(files).map(([name,value])=>[name,crypto.createHash('sha256').update(value,'utf8').digest('hex')])));
+ for(const name of Object.keys(candidate_sha256))if(candidate_sha256[name]!==RAHEKOMAK_REGISTRATION_CANDIDATE_SHA256[name])throw new Error('rahekomak_registration_candidate_sha_mismatch:'+name);
+ return Object.freeze({ok:true,action:RAHEKOMAK_ACTION,operation:RAHEKOMAK_OPERATION,files,candidate_sha256,production_mutation:false,arbitrary_command:false,arbitrary_path:false});
+}
+
 const GENERATED_INSTALLER_BAD_TAIL='\n}}\ntry{main()}';
 const GENERATED_INSTALLER_GOOD_TAIL='\n}\ntry{main()}';
 const GENERATED_INSTALLER_LEGACY_MCP="'prhm-agent-mcp.service'";
@@ -141,5 +178,14 @@ Object.defineProperties(exported,{
  buildInstallerRefreshL4BindingRepairCandidates:{value:buildInstallerRefreshL4BindingRepairCandidates,enumerable:true},
  INSTALLER_REFRESH_L4_BINDING_REPAIR_SOURCE:{value:INSTALLER_REFRESH_L4_BINDING_REPAIR_SOURCE,enumerable:true},
  INSTALLER_REFRESH_L4_BINDING_REPAIR_SOURCE_SHA256:{value:INSTALLER_REFRESH_L4_BINDING_REPAIR_SOURCE_SHA256,enumerable:true},
+ RAHEKOMAK_ACTION:{value:RAHEKOMAK_ACTION,enumerable:true},
+ RAHEKOMAK_OPERATION:{value:RAHEKOMAK_OPERATION,enumerable:true},
+ RAHEKOMAK_ROOT:{value:RAHEKOMAK_ROOT,enumerable:true},
+ RAHEKOMAK_HELPER:{value:RAHEKOMAK_HELPER,enumerable:true},
+ RAHEKOMAK_HEAD:{value:RAHEKOMAK_HEAD,enumerable:true},
+ RAHEKOMAK_HELPER_SHA:{value:RAHEKOMAK_HELPER_SHA,enumerable:true},
+ RAHEKOMAK_REGISTRATION_BASELINE_SHA256:{value:RAHEKOMAK_REGISTRATION_BASELINE_SHA256,enumerable:true},
+ RAHEKOMAK_REGISTRATION_CANDIDATE_SHA256:{value:RAHEKOMAK_REGISTRATION_CANDIDATE_SHA256,enumerable:true},
+ buildRahKomakRegistrationCandidates:{value:buildRahKomakRegistrationCandidates,enumerable:true},
 });
 module.exports=Object.freeze(exported);
