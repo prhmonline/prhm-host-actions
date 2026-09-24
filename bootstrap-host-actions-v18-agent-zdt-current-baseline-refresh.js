@@ -1,6 +1,7 @@
 'use strict';
 const cp=require('node:child_process');
 const crypto=require('node:crypto');
+const fs=require('node:fs');
 const Module=require('node:module');
 const LEGACY_BLOB='4c150982dec24537218df24cb32eeedcdc9495d5';
 const LEGACY_SHA256='344d9fa1a87f29dfac402229722d55dd8c6f1708f6277926e7f13f18a586d46d';
@@ -95,8 +96,8 @@ const RAHEKOMAK_ROOT='/home/prhm/projects/generated/rahekomak';
 const RAHEKOMAK_HELPER='/home/prhm/projects/generated/rahekomak/infra/docker/production-deploy-v1.cjs';
 const RAHEKOMAK_HEAD='77c0d0f38f2c64be02e46eeec6f6e19eedc1f1b5';
 const RAHEKOMAK_HELPER_SHA='bba9636d705b41cf11086f1e962a8ac31b7a831bd3d1913e641633cfacd4dab4';
-const RAHEKOMAK_REGISTRATION_BASELINE_SHA256=Object.freeze({"base":"de924f7319f3656d788ba5d3f89ef2910bf4b0e3f0b8b074e7cd3a534441d5ea","exec":"6bba46890db31abc8eca7e7681753a4788c46170033a555a1106e05d0a7a66f9","policy":"2fedd70a182aa351e269df95a1b9d829f5a0b18defe8871cb4045106948d711a","mcp":"b71b271cf3de3c314cf63491db3873a58336bf25f064271b218a5f602c5bc7eb"});
-const RAHEKOMAK_REGISTRATION_CANDIDATE_SHA256=Object.freeze({"base":"680ea4e3e22483aee99ede5b92d7ca6670427e764b04ff752536677ee26c9a78","exec":"4dd331dd85ef7444dc8c2e118d546ffe039606660331dc27c7cc0ec5011971a3","policy":"8177c35d884aac4275ce95503924a347ca48f953a8ad9de58d549e6e7a61b64b","mcp":"89a0b5aea9487de6822c9a91a1fd32e2a26a55854719a396eb0718893159f571"});
+const RAHEKOMAK_REGISTRATION_BASELINE_SHA256=Object.freeze({"base":"de924f7319f3656d788ba5d3f89ef2910bf4b0e3f0b8b074e7cd3a534441d5ea","exec":"6bba46890db31abc8eca7e7681753a4788c46170033a555a1106e05d0a7a66f9","policy":"2fedd70a182aa351e269df95a1b9d829f5a0b18defe8871cb4045106948d711a","mcp":"b2f95b97dfa7e26ca717dfbec7871bf2f64286952548fb4d6d8e99908aeaacc0"});
+const RAHEKOMAK_REGISTRATION_CANDIDATE_SHA256=Object.freeze({"base":"680ea4e3e22483aee99ede5b92d7ca6670427e764b04ff752536677ee26c9a78","exec":"4dd331dd85ef7444dc8c2e118d546ffe039606660331dc27c7cc0ec5011971a3","policy":"8177c35d884aac4275ce95503924a347ca48f953a8ad9de58d549e6e7a61b64b","mcp":"8655c2d3026c712e850a7d3841d2eeb39d2de7280dd293ef9668e3cdd5b98936"});
 function rahkomakReplaceOne(source,oldValue,newValue,label){const count=source.split(oldValue).length-1;if(count!==1)throw new Error('rahekomak_registration_'+label+'_anchor_'+count);return source.replace(oldValue,newValue)}
 function buildRahKomakRegistrationCandidates(input){
  if(!input||typeof input!=='object'||Array.isArray(input)||Object.keys(input).sort().join(',')!=='base,exec,mcp,policy')throw new Error('rahekomak_registration_input_invalid');
@@ -121,7 +122,7 @@ function buildRahKomakRegistrationCandidates(input){
  policy.typed_scopes.push({tool:'host_action_v2_apply',project:'control_plane',environment:'production',action:RAHEKOMAK_ACTION,risk:'critical',operation:RAHEKOMAK_OPERATION,principals:[{principal_id:'mohammad',roles:['mcp-operator']}]});
  const policyText=JSON.stringify(policy,null,2)+'\n',ma="'control_plane_typed_bootstrap_current_baseline_refresh_v1',",mcp=rahkomakReplaceOne(input.mcp,ma,ma+"'"+RAHEKOMAK_ACTION+"',",'mcp_enum'),files=Object.freeze({base,exec,policy:policyText,mcp});
  const candidate_sha256=Object.freeze(Object.fromEntries(Object.entries(files).map(([name,value])=>[name,crypto.createHash('sha256').update(value,'utf8').digest('hex')])));
- for(const name of Object.keys(candidate_sha256))if(candidate_sha256[name]!==RAHEKOMAK_REGISTRATION_CANDIDATE_SHA256[name])throw new Error('rahekomak_registration_candidate_sha_mismatch:'+name);
+ for(const name of Object.keys(candidate_sha256))if(candidate_sha256[name]!==RAHEKOMAK_REGISTRATION_CANDIDATE_SHA256[name])throw new Error('rahekomak_registration_candidate_sha_mismatch:'+name+':'+candidate_sha256[name]);
  return Object.freeze({ok:true,action:RAHEKOMAK_ACTION,operation:RAHEKOMAK_OPERATION,files,candidate_sha256,production_mutation:false,arbitrary_command:false,arbitrary_path:false});
 }
 
@@ -134,34 +135,54 @@ function generatedReplaceOne(source,oldValue,newValue,label){
  if(count!==1)throw new Error('registration_installer_'+label+'_anchor_'+count);
  return source.replace(oldValue,newValue);
 }
+const LEGACY_FIXED_REGISTRATION_INSTALLER_TEMPLATE_SHA='2031d0de149d9f090987fe710df44413cd5ac0a51a7394ff7874c2e9073f077c';
 function buildRegistrationInstallerSourceFixed(){
- let fixed=base.buildRegistrationInstallerSource();
- fixed=generatedReplaceOne(fixed,GENERATED_INSTALLER_BAD_TAIL,GENERATED_INSTALLER_GOOD_TAIL,'syntax_tail');
- fixed=generatedReplaceOne(fixed,GENERATED_INSTALLER_LEGACY_MCP,GENERATED_INSTALLER_ZDT_MCP,'zdt_mcp_service');
- fixed=generatedReplaceOne(fixed,"tmp[n]=FILES[n]+'.candidate-'+process.pid+'-'+n;","tmp[n]=FILES[n]+'.candidate-'+process.pid+'-'+n+'.js';",'candidate_tmp_suffix');
+ const ownerPaths=base.REGISTRATION_OWNER_PATHS;
+ if(!ownerPaths||Object.keys(ownerPaths).sort().join(',')!=='base,exec,mcp,policy')throw new Error('rahekomak_installer_owner_paths_invalid');
+ const input=Object.fromEntries(Object.entries(ownerPaths).map(([name,file])=>[name,fs.readFileSync(file,'utf8')]));
+ const rk=buildRahKomakRegistrationCandidates(input);
+ const templatePath=base.REGISTRATION_INSTALLER_DESTINATION;
+ const templateBytes=fs.readFileSync(templatePath);
+ const templateSha=crypto.createHash('sha256').update(templateBytes).digest('hex');
+ if(templateSha!==LEGACY_FIXED_REGISTRATION_INSTALLER_TEMPLATE_SHA)throw new Error('rahekomak_installer_template_sha_mismatch:'+templateSha);
+ let fixed=templateBytes.toString('utf8');
+ fixed=generatedReplaceOne(fixed,"const TARGET='control_plane_typed_bootstrap_current_baseline_refresh_v1';","const TARGET='"+RAHEKOMAK_ACTION+"';",'rahekomak_target');
+ fixed=generatedReplaceOne(fixed,'const BASELINE='+JSON.stringify(base.REGISTRATION_BASELINE_SHA256)+';','const BASELINE='+JSON.stringify(RAHEKOMAK_REGISTRATION_BASELINE_SHA256)+';','rahekomak_baseline');
+ fixed=generatedReplaceOne(fixed,'const CANDIDATE='+JSON.stringify(base.REGISTRATION_CANDIDATE_SHA256)+';','const CANDIDATE='+JSON.stringify(RAHEKOMAK_REGISTRATION_CANDIDATE_SHA256)+';','rahekomak_candidate');
+ const b64Marker='const CANDIDATE_B64=',servicesMarker='\nconst SERVICES=';
+ const b64Start=fixed.indexOf(b64Marker),b64End=fixed.indexOf(servicesMarker,b64Start);
+ if(b64Start<0||b64End<0||fixed.indexOf(b64Marker,b64Start+1)!==-1)throw new Error('rahekomak_installer_candidate_b64_anchor');
+ const b64=Object.fromEntries(Object.entries(rk.files).map(([name,value])=>[name,Buffer.from(value,'utf8').toString('base64')]));
+ fixed=fixed.slice(0,b64Start)+b64Marker+JSON.stringify(b64)+';'+fixed.slice(b64End);
  const syntax=cp.spawnSync('/usr/local/bin/prhm-node',['--check','-'],{input:fixed,encoding:'utf8',timeout:30000,maxBuffer:1000000});
  if(syntax.error||syntax.status!==0)throw new Error('registration_installer_fixed_syntax_invalid:'+String(syntax.stderr||syntax.stdout||syntax.error||'').slice(-1200));
  return fixed;
 }
-const FIXED_REGISTRATION_INSTALLER_SOURCE_SHA256='2031d0de149d9f090987fe710df44413cd5ac0a51a7394ff7874c2e9073f077c';
+const FIXED_REGISTRATION_INSTALLER_SOURCE_SHA256='538c55fefc6b1468c85dfd9a3d22390683e80c384c204219f96934d460fe2b72';
 function buildRegistrationStageTransportSourceFixed(){
- const fixedInstaller=buildRegistrationInstallerSourceFixed();
- const fixedSha=crypto.createHash('sha256').update(fixedInstaller,'utf8').digest('hex');
- if(fixedSha!==FIXED_REGISTRATION_INSTALLER_SOURCE_SHA256)throw new Error('registration_installer_fixed_sha_mismatch:'+fixedSha);
- const source=base.buildRegistrationStageTransportSource();
- const oldInstaller=base.buildRegistrationInstallerSource();
- const oldInstallerB64=Buffer.from(oldInstaller,'utf8').toString('base64');
- const fixedInstallerB64=Buffer.from(fixedInstaller,'utf8').toString('base64');
- const oldSha=String(base.REGISTRATION_INSTALLER_SOURCE_SHA256||'');
- let out=source;
- const b64Count=out.split(oldInstallerB64).length-1;
- if(b64Count!==1)throw new Error('registration_stage_installer_b64_anchor_'+b64Count);
- out=out.replace(oldInstallerB64,fixedInstallerB64);
- const shaCount=out.split(oldSha).length-1;
- if(shaCount!==1)throw new Error('registration_stage_installer_sha_anchor_'+shaCount);
- out=out.replace(oldSha,FIXED_REGISTRATION_INSTALLER_SOURCE_SHA256);
- if(out.includes(oldInstallerB64)||out.includes(oldSha))throw new Error('registration_stage_old_installer_binding_remaining');
- return out;
+ const installer=buildRegistrationInstallerSourceFixed();
+ const actual=crypto.createHash('sha256').update(installer,'utf8').digest('hex');
+ if(actual!==FIXED_REGISTRATION_INSTALLER_SOURCE_SHA256)throw new Error('registration_installer_fixed_sha_mismatch:'+actual);
+ const installerB64=Buffer.from(installer,'utf8').toString('base64');
+ return [
+ "'use strict';",
+ "const fs=require('fs'),path=require('path'),cp=require('child_process'),crypto=require('crypto');",
+ "const ACTION='control_plane_current_baseline_refresh_registration_installer_stage_v1';",
+ "const DEST='/opt/prhm-agent-selfmaint-exec/actions/current-baseline-refresh-registration-installer-v1.js';",
+ "const EXPECTED_OLD='2031d0de149d9f090987fe710df44413cd5ac0a51a7394ff7874c2e9073f077c';",
+ "const INSTALLER_SHA='"+FIXED_REGISTRATION_INSTALLER_SOURCE_SHA256+"';",
+ "const INSTALLER_B64='"+installerB64+"';",
+ "const BACKUP_ROOT='/var/backups/prhm-current-baseline-refresh-registration-installer-stage-v1';",
+ "const sha=b=>crypto.createHash('sha256').update(b).digest('hex');",
+ "function regular(file){const st=fs.lstatSync(file);if(st.isSymbolicLink()||!st.isFile()||fs.realpathSync(file)!==file)throw new Error('target_not_regular');return st}",
+ "function bytes(){const b=Buffer.from(INSTALLER_B64,'base64');if(sha(b)!==INSTALLER_SHA)throw new Error('installer_sha_mismatch');return b}",
+ "function syntax(b){const r=cp.spawnSync('/usr/local/bin/prhm-node',['--check','-'],{input:b,encoding:'utf8',timeout:30000,maxBuffer:1000000});if(r.error||r.status!==0)throw new Error('installer_syntax_invalid')}",
+ "function preflight(){const b=bytes();syntax(b);const st=regular(DEST),cur=sha(fs.readFileSync(DEST));if(cur!==EXPECTED_OLD&&cur!==INSTALLER_SHA)throw new Error('source_sha_mismatch:'+cur);return {ok:true,action:ACTION,preflight_only:true,production_mutation:false,production_owner_mutation:false,database_mutation:false,installer_sha256:INSTALLER_SHA,source_sha256:cur,already_applied:cur===INSTALLER_SHA}}",
+ "function apply(){if(process.getuid&&process.getuid()!==0)throw new Error('root_required');const pf=preflight();if(pf.already_applied)return {...pf,preflight_only:false,staged:true,production_mutation:true,production_owner_mutation:false,rollback_performed:false};const st=regular(DEST),old=fs.readFileSync(DEST),stamp=new Date().toISOString().replace(/[:.]/g,'-'),dir=path.join(BACKUP_ROOT,stamp);fs.mkdirSync(dir,{recursive:true,mode:0o700});fs.writeFileSync(path.join(dir,'installer.bak'),old,{mode:0o600,flag:'wx'});const tmp=DEST+'.candidate-'+process.pid+'.js';let renamed=false;try{const b=bytes();fs.writeFileSync(tmp,b,{mode:st.mode&0o777,flag:'wx'});fs.chownSync(tmp,st.uid,st.gid);fs.chmodSync(tmp,st.mode&0o777);syntax(fs.readFileSync(tmp));fs.renameSync(tmp,DEST);renamed=true;if(sha(fs.readFileSync(DEST))!==INSTALLER_SHA)throw new Error('candidate_sha_mismatch');return {ok:true,action:ACTION,preflight_only:false,staged:true,production_mutation:true,production_owner_mutation:false,database_mutation:false,rollback_performed:false,backup_dir:dir,installer_sha256:INSTALLER_SHA}}catch(e){try{if(fs.existsSync(tmp))fs.unlinkSync(tmp)}catch{};if(renamed){const rb=DEST+'.rollback-'+process.pid+'.js';fs.writeFileSync(rb,old,{mode:st.mode&0o777,flag:'wx'});fs.chownSync(rb,st.uid,st.gid);fs.chmodSync(rb,st.mode&0o777);fs.renameSync(rb,DEST);if(sha(fs.readFileSync(DEST))!==EXPECTED_OLD)throw new Error('rollback_sha_mismatch')}throw new Error('stage_failed_rolled_back:'+String(e&&e.message||e))}}",
+ "const mode=process.argv[2];if(process.argv.length!==3||!['--preflight-only','--apply'].includes(mode))throw new Error('unexpected_arguments');",
+ "try{console.log(JSON.stringify(mode==='--preflight-only'?preflight():apply()))}catch(e){console.error(String(e&&e.stack||e));process.exit(1)}",
+ ""
+ ].join('\n');
 }
 const exported={};
 for(const key of Reflect.ownKeys(base)){
