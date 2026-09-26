@@ -11,6 +11,11 @@ const SERVICE = 'prhm-agent-api-green.service';
 const SOURCE = '/home/agent/ssh-agent-api/opsExecutorRoutes.js';
 const SOURCE_SHA256 = '1ab03973db68cb54156a579db5a8b26f0e58f5e940805633a467a0a9f28ada15';
 const ROUTE_MARKER = 'CONTROL_PLANE_CURRENT_OWNER_BOOTSTRAP_WORKTREE_PREPARE_V1';
+const LOADER = '/home/agent/ssh-agent-api/server.js';
+const LOADER_SHA256 = '538be34836fa36027f568a10f04dd29c2a03b215d2ccda48480e2d05bc948f3b';
+const LOADER_MARKER = 'PRHM_AGENT_API_CANONICAL_LOADER_V1';
+const BOOT_SOURCE = '/var/backups/prhm-agent-selfmaint/agent_api-server.js-20260926170305-4acb1dc40c696bb546a327ba453f13c67fd09de1a41bdce89c89fd864f10035b.bak';
+const BOOT_SOURCE_SHA256 = '4acb1dc40c696bb546a327ba453f13c67fd09de1a41bdce89c89fd864f10035b';
 const HEALTH_URL = 'http://127.0.0.1:8102/health';
 const PORT = 8102;
 
@@ -58,10 +63,26 @@ function createRunner(overrides={}) {
     const actual = d.sha256(bytes);
     if (actual !== SOURCE_SHA256) fail('green_refresh_source_sha_mismatch');
     if (!bytes.toString('utf8').includes(ROUTE_MARKER)) fail('green_refresh_route_marker_missing');
+
+    const loaderSt = d.lstat(LOADER);
+    if (!loaderSt.isFile() || loaderSt.isSymbolicLink()) fail('green_refresh_loader_invalid');
+    if (d.realpath(LOADER) !== LOADER) fail('green_refresh_loader_realpath_mismatch');
+    const loaderBytes = d.readFile(LOADER);
+    const loaderActual = d.sha256(loaderBytes);
+    if (loaderActual !== LOADER_SHA256) fail('green_refresh_loader_sha_mismatch');
+    if (!loaderBytes.toString('utf8').includes(LOADER_MARKER)) fail('green_refresh_loader_marker_missing');
+
+    const bootSt = d.lstat(BOOT_SOURCE);
+    if (!bootSt.isFile() || bootSt.isSymbolicLink()) fail('green_refresh_boot_source_invalid');
+    if (d.realpath(BOOT_SOURCE) !== BOOT_SOURCE) fail('green_refresh_boot_source_realpath_mismatch');
+    const bootBytes = d.readFile(BOOT_SOURCE);
+    const bootActual = d.sha256(bootBytes);
+    if (bootActual !== BOOT_SOURCE_SHA256) fail('green_refresh_boot_source_sha_mismatch');
+
     const svc = d.systemctlShow(SERVICE);
     if (svc.active !== 'active' || svc.sub !== 'running') fail('green_refresh_service_not_active');
     if (!Number.isInteger(svc.pid) || svc.pid <= 0) fail('green_refresh_pre_pid_invalid');
-    return { source_sha256: actual, before_pid: svc.pid };
+    return { source_sha256: actual, loader_sha256: loaderActual, boot_source_sha256: bootActual, before_pid: svc.pid };
   }
 
   async function apply() {
@@ -89,6 +110,8 @@ function createRunner(overrides={}) {
       action: ACTION,
       service: SERVICE,
       source_sha256: pf.source_sha256,
+      loader_sha256: pf.loader_sha256,
+      boot_source_sha256: pf.boot_source_sha256,
       before_pid: pf.before_pid,
       after_pid: after.pid,
       service_active: true,
@@ -110,7 +133,7 @@ function createRunner(overrides={}) {
 
 const runner = createRunner();
 module.exports = {
-  ACTION, SCHEMA_VERSION, SERVICE, SOURCE, SOURCE_SHA256, ROUTE_MARKER, HEALTH_URL, PORT,
+  ACTION, SCHEMA_VERSION, SERVICE, SOURCE, SOURCE_SHA256, ROUTE_MARKER, LOADER, LOADER_SHA256, LOADER_MARKER, BOOT_SOURCE, BOOT_SOURCE_SHA256, HEALTH_URL, PORT,
   createRunner,
   runPreflight: runner.runPreflight,
   runApply: runner.runApply,
