@@ -2,7 +2,7 @@
 
 const ACTION = 'agent_api_green_route_refresh_v1';
 const OPERATION = 'host_action.agent_api_green_route_refresh_v1';
-const HELPER_SHA256 = '975b8d0064c7be4cdae7624354f2b80fe6233577d7433e35fc894b81f0b89dc2';
+const HELPER_SHA256 = '734559471602ff2ac5eecca82ac5d96a8b2fe61be14f4f0aef4977d0f05bfcce';
 const HELPER_SOURCE = '/home/agent/ssh-agent-api/agent-api-green-route-refresh-v1.js';
 const HELPER_TARGET = '/opt/prhm-agent-selfmaint-exec/actions/agent-api-green-route-refresh-v1.js';
 const RESULT_PATH = '/var/lib/prhm-agent-selfmaint-exec/agent-api-green-route-refresh-v1/latest.json';
