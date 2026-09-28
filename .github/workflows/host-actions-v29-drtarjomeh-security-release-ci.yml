@@ -45,12 +45,14 @@ jobs:
           node --check install-host-actions-v29-drtarjomeh-security-release.js
       - name: Build root-of-trust artifact
         if: success()
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           mkdir -p root-of-trust
           cp bootstrap-host-actions-v29-drtarjomeh-security-release-deploy.js root-of-trust/
           cp drtarjomeh-security-release-v29-helper-builder.js root-of-trust/
           cp install-host-actions-v29-drtarjomeh-security-release.js root-of-trust/
-          printf '%s\n' "$GITHUB_SHA" > root-of-trust/SOURCE_COMMIT
+          printf '%s\n' "$HEAD_SHA" > root-of-trust/SOURCE_COMMIT
           (cd root-of-trust && sha256sum *.js > SHA256SUMS)
       - name: Publish root-of-trust artifact
         if: success()
