@@ -7,11 +7,13 @@ on:
     paths:
       - 'bootstrap-host-actions-v29-drtarjomeh-security-release-deploy.js'
       - 'test-v29-drtarjomeh-security-release-deploy.js'
+      - 'test-v29-drtarjomeh-security-release-helper.js'
       - '.github/workflows/host-actions-v29-drtarjomeh-security-release-ci.yml'
   pull_request:
     paths:
       - 'bootstrap-host-actions-v29-drtarjomeh-security-release-deploy.js'
       - 'test-v29-drtarjomeh-security-release-deploy.js'
+      - 'test-v29-drtarjomeh-security-release-helper.js'
       - '.github/workflows/host-actions-v29-drtarjomeh-security-release-ci.yml'
 
 permissions:
@@ -24,7 +26,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Contract
-        run: node --test test-v29-drtarjomeh-security-release-deploy.js
+        run: node --test test-v29-drtarjomeh-security-release-deploy.js test-v29-drtarjomeh-security-release-helper.js
+      - name: Selftest
+        if: always()
+        run: |
+          if [ -f bootstrap-host-actions-v29-drtarjomeh-security-release-deploy.js ]; then
+            node bootstrap-host-actions-v29-drtarjomeh-security-release-deploy.js --selftest-only
+          fi
       - name: Syntax
         if: always()
         run: |
