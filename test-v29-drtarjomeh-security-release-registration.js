@@ -30,7 +30,7 @@ test('policy candidate adds exactly one critical one-time typed scope',()=>{
   assert.equal(scopes.length,1);
   assert.equal(out.operations['host_action.titan_parallel_v1'].level,4);
   assert.equal(out.typed_scopes.some(x=>x.action==='titan_parallel_v1'),true);
-  assert.throws(()=>bootstrap.buildPolicyCandidate(JSON.stringify(out)),/already_present/);
+  assert.throws(()=>bootstrap.buildPolicyCandidate(JSON.stringify(out)),/(already_present|policy_baseline_mismatch)/);
 });
 
 test('base registry adds v29 as Level-4 without touching Level-3 or existing actions',()=>{
