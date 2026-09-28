@@ -24,6 +24,13 @@ jobs:
           node --check current-owner-binding-systemd-v1.js
           node --check current-owner-binding-refresh-v1.js
           if [ -f bootstrap-host-actions-v29-current-owner-binding-refresh.js ]; then node --check bootstrap-host-actions-v29-current-owner-binding-refresh.js; fi
+      - name: Module fingerprints
+        run: |
+          sha256sum \
+            current-owner-binding-manifest-v1.js \
+            current-owner-binding-adapters-v1.js \
+            current-owner-binding-systemd-v1.js \
+            current-owner-binding-refresh-v1.js
       - name: Focused tests
         run: |
           node --test \
