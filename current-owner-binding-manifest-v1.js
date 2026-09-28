@@ -10,6 +10,7 @@ const OWNER_SPECS=Object.freeze([
   Object.freeze({id:'selfmaint_executor',path:'/opt/prhm-agent-selfmaint-exec/server.js',max_bytes:300000}),
   Object.freeze({id:'approval_policy',path:'/opt/prhm-company-control-plane/config/approval-policy.json',max_bytes:200000}),
   Object.freeze({id:'mcp_host_actions',path:'/home/agent/ssh-mcp-server/src/plugins/hostActionsV2.js',max_bytes:200000}),
+  Object.freeze({id:'registry_core',path:'/home/agent/ssh-mcp-server/src/core/registry.js',max_bytes:200000}),
   Object.freeze({id:'rolling_refresh',path:'/opt/prhm-agent-selfmaint-exec/actions/agent-zdt-existing-topology-rolling-refresh-v1.js',max_bytes:200000}),
   Object.freeze({id:'current_baseline_registration',path:'/opt/prhm-agent-selfmaint-exec/actions/current-baseline-refresh-registration-installer-v1.js',max_bytes:400000}),
   Object.freeze({id:'typed_bootstrap_transport',path:'/opt/prhm-agent-selfmaint-exec/actions/control-plane-typed-bootstrap-transport-v1.js',max_bytes:200000}),
@@ -18,7 +19,7 @@ const OWNER_SPECS=Object.freeze([
 ]);
 
 const INITIAL_CONSUMER_PREIMAGES=Object.freeze({
-  registry_bridge:Object.freeze({target_path:'/home/agent/ssh-mcp-server/src/plugins/hostActionsV2.js',sha256:'b2f95b97dfa7e26ca717dfbec7871bf2f64286952548fb4d6d8e99908aeaacc0'}),
+  registry_bridge:Object.freeze({target_path:'/home/agent/ssh-mcp-server/src/core/registry.js',sha256:'73d9560b8758a969f0317fd4438b9b36eb4a1b2e1ee18dcd50d1c2329c52ea6a'}),
   v19_binding:Object.freeze({target_path:'/opt/prhm-agent-selfmaint-exec/actions/agent-zdt-source-sha-refresh-v19.sh',sha256:'00621639a589770d8b21ace88e6b5af0dd21b18a7fe2604c97d1b3ecf206de63'}),
   current_baseline_refresh:Object.freeze({target_path:'/opt/prhm-agent-selfmaint-exec/actions/current-baseline-refresh-registration-installer-v1.js',sha256:'2031d0de149d9f090987fe710df44413cd5ac0a51a7394ff7874c2e9073f077c'}),
   rolling_refresh:Object.freeze({target_path:'/opt/prhm-agent-selfmaint-exec/actions/agent-zdt-existing-topology-rolling-refresh-v1.js',sha256:'8382624a36dacb57e784dc080783d6a765512e9c9e0c2ee8c8274aecfb710284'}),
