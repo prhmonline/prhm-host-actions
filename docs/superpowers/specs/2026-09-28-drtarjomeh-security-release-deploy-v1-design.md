@@ -76,7 +76,9 @@ The previous release remains intact and is the rollback target.
 
 ## Protected environment contract
 
-`/etc/drtarjomeh/production.env` must be a regular non-symlink file owned by the appropriate privileged owner and mode `0600`.
+`/etc/drtarjomeh/production.env` must be a regular non-symlink file with mode `0600`.
+
+Its owner UID/GID must be derived from fixed, trusted production deployment metadata rather than caller input. The implementation must verify that the effective DrTarjomeh application runtime identity can read the file and that no group/world access exists. If the runtime identity cannot be established or cannot read the protected file, preflight/candidate verification fails closed before cutover.
 
 Required production values include:
 
@@ -136,8 +138,9 @@ Before any production mutation, the action must verify:
 6. target release path does not already exist;
 7. no concurrent DrTarjomeh security deploy lock is active;
 8. PHP runtime required for lint/probe is available;
-9. no database mutation is planned;
-10. the action helper itself matches the SHA registered by the executor.
+9. application runtime identity and protected-env readability can be verified without broadening permissions;
+10. no database mutation is planned;
+11. the action helper itself matches the SHA registered by the executor.
 
 Preflight returns only non-secret evidence.
 
@@ -147,6 +150,7 @@ The new release must pass all of the following before symlink switch:
 
 - PHP syntax validation for every modified PHP file;
 - secure environment loader contract checks;
+- protected env mode/owner/readability verification under the application runtime identity;
 - runtime bootstrap probe for `api`;
 - runtime bootstrap probe for `backend`;
 - runtime bootstrap probe for `frontend`;
@@ -220,6 +224,7 @@ Success result must use `prhm.host-action-result.v1` and include non-secret evid
 - `preflight_passed: true`
 - `php_lint_passed: true`
 - `runtime_probe_passed: true`
+- `env_runtime_readability_passed: true`
 - `mail_fail_closed: true`
 - `sms_fail_closed: true`
 - `debug_disabled: true`
@@ -255,7 +260,7 @@ Implementation is acceptable only when all of the following are true:
 3. policy classifies the action as Level 4 critical;
 4. preflight fails against any unexpected current release/preimage;
 5. production payload is limited to the remediation runtime/security subset;
-6. protected env is mode `0600` and no credential value appears in evidence;
+6. protected env is mode `0600`, readable by the verified application runtime identity, not group/world accessible, and no credential value appears in evidence;
 7. all six runtime probes pass before cutover;
 8. smoke verification passes after cutover;
 9. rollback test demonstrates restoration of the old release pointer on simulated post-cutover failure;
