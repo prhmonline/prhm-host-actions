@@ -93,6 +93,21 @@ test('preflight is read-only and apply is rollback-capable',()=>{
   assert.match(h,/mediana_untouched/);
 });
 
+test('rollback deletes only the audit row for the published revision',()=>{
+  const m=load();
+  const h=m.helperSource();
+  assert.match(h,/after_json->revision/);
+  assert.match(h,/meta\['revision'\]/);
+});
+
+test('bootstrap file is installed with application ownership and restrictive readable mode',()=>{
+  const m=load();
+  const h=m.helperSource();
+  assert.match(h,/appOwner/);
+  assert.match(h,/0o640/);
+  assert.match(h,/chownSync/);
+});
+
 test('selftest passes',()=>{
   const m=load();
   const r=m.selftest();
