@@ -1,0 +1,17 @@
+name: Solo v25 repair CI
+on:
+  push:
+    branches:
+      - fix/solo-v25-current-baseline-20260928
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node --test test-v25-solo-company-runtime-installer.js
