@@ -46,16 +46,21 @@ jobs:
           node --check drtarjomeh-security-release-v29-helper-builder.js
           node --check install-host-actions-v29-drtarjomeh-security-release.js
           node --check drtarjomeh-v29-mcp-bootstrap-bridge.mjs
+      - name: Checkout reviewed v29 source
+        if: success()
+        uses: actions/checkout@v4
+        with:
+          ref: ed2282e245b5a6e8f72a683e5bdb09cab1972ff9
+          path: reviewed-v29
+          persist-credentials: false
       - name: Build root-of-trust artifact
         if: success()
-        env:
-          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           mkdir -p root-of-trust
-          cp bootstrap-host-actions-v29-drtarjomeh-security-release-deploy.js root-of-trust/
-          cp drtarjomeh-security-release-v29-helper-builder.js root-of-trust/
-          cp install-host-actions-v29-drtarjomeh-security-release.js root-of-trust/
-          printf '%s\n' "$HEAD_SHA" > root-of-trust/SOURCE_COMMIT
+          cp reviewed-v29/bootstrap-host-actions-v29-drtarjomeh-security-release-deploy.js root-of-trust/
+          cp reviewed-v29/drtarjomeh-security-release-v29-helper-builder.js root-of-trust/
+          cp reviewed-v29/install-host-actions-v29-drtarjomeh-security-release.js root-of-trust/
+          printf '%s\n' 'ed2282e245b5a6e8f72a683e5bdb09cab1972ff9' > root-of-trust/SOURCE_COMMIT
           (cd root-of-trust && sha256sum *.js > SHA256SUMS)
       - name: Publish root-of-trust artifact
         if: success()
