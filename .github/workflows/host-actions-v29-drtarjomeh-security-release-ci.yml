@@ -1,0 +1,33 @@
+name: Host Actions v29 DrTarjomeh Security Release CI
+
+on:
+  push:
+    branches:
+      - feature/drtarjomeh-security-release-deploy-v1
+    paths:
+      - 'bootstrap-host-actions-v29-drtarjomeh-security-release-deploy.js'
+      - 'test-v29-drtarjomeh-security-release-deploy.js'
+      - '.github/workflows/host-actions-v29-drtarjomeh-security-release-ci.yml'
+  pull_request:
+    paths:
+      - 'bootstrap-host-actions-v29-drtarjomeh-security-release-deploy.js'
+      - 'test-v29-drtarjomeh-security-release-deploy.js'
+      - '.github/workflows/host-actions-v29-drtarjomeh-security-release-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Contract
+        run: node --test test-v29-drtarjomeh-security-release-deploy.js
+      - name: Syntax
+        if: always()
+        run: |
+          if [ -f bootstrap-host-actions-v29-drtarjomeh-security-release-deploy.js ]; then
+            node --check bootstrap-host-actions-v29-drtarjomeh-security-release-deploy.js
+          fi
