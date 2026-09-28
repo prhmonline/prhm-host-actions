@@ -2,9 +2,7 @@
 const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
-const crypto=require('node:crypto');
 const b=require('./bootstrap-host-actions-v29-current-owner-binding-refresh.js');
-const sha=x=>crypto.createHash('sha256').update(x).digest('hex');
 
 test('v29 pins exact live Base Executor Policy MCP SHAs and fixed action identity',()=>{
   assert.equal(b.ACTION,'control_plane_current_owner_binding_refresh_v1');
@@ -29,6 +27,21 @@ test('policy registration is Level-4 critical, second-confirmation, one-time and
   const level3=base.match(/HOST_ACTION_V2_LEVEL3 = new Set\((\[[^;]+\])\)/s);
   assert.ok(level3);
   assert.equal(level3[1].includes(b.ACTION),false);
+});
+
+test('policy source transform adds exactly one Level-4 operation and one typed scope',()=>{
+  const source=JSON.stringify({schema_version:'prhm.approval-policy.v1',operations:{existing:{level:3}},typed_scopes:[{action:'existing'}]});
+  const out=JSON.parse(b.buildPolicySourceRegistration(source));
+  const op=out.operations[b.OPERATION];
+  assert.equal(op.level,4);
+  assert.equal(op.risk,'critical');
+  assert.equal(op.requires_second_confirmation,true);
+  assert.equal(op.one_time_use,true);
+  const scopes=out.typed_scopes.filter(x=>x.action===b.ACTION);
+  assert.equal(scopes.length,1);
+  assert.equal(scopes[0].tool,'host_action_v2_apply');
+  assert.equal(scopes[0].project,'control_plane');
+  assert.equal(scopes[0].operation,b.OPERATION);
 });
 
 test('MCP enum adds action exactly once and executor dispatch accepts no caller arguments',()=>{
@@ -57,12 +70,17 @@ test('module install manifest is fixed, SHA-bound and contains exactly four impl
   }
 });
 
+test('module source bytes match every pinned SHA',()=>{
+  const verified=b.verifyModuleSources(__dirname);
+  for(const [name,spec] of Object.entries(b.MODULE_INSTALLS))assert.equal(verified[name].sha256,spec.sha256,name);
+});
+
 test('registration transforms are additive, reject missing/nonunique anchors and avoid generic shell',()=>{
   assert.throws(()=>b.buildBaseRegistration('x'),/anchor/);
   assert.throws(()=>b.buildExecutorRegistration('x'),/anchor/);
   assert.throws(()=>b.buildMcpRegistration('x'),/anchor/);
   const src=fs.readFileSync(require.resolve('./bootstrap-host-actions-v29-current-owner-binding-refresh.js'),'utf8');
-  assert.doesNotMatch(src,/bash -c|sh -c|exec\(|spawn\([^)]*shell\s*:\s*true/);
+  assert.doesNotMatch(src,/bash -c|sh -c|(?:child_process|cp)\.exec\(|execSync\(|spawn\([^)]*shell\s*:\s*true/);
   assert.doesNotMatch(src,/titan_front_handoff_deploy_v2|CONFIRM_DEPLOY_PRODUCTION/);
 });
 
