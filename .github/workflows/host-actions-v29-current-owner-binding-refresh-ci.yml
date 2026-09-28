@@ -1,5 +1,6 @@
 name: host-actions-v29-current-owner-binding-refresh-ci
 on:
+  workflow_dispatch:
   push:
     branches:
       - impl/current-owner-binding-refresh-v1
@@ -23,7 +24,7 @@ jobs:
           node --check current-owner-binding-adapters-v1.js
           node --check current-owner-binding-systemd-v1.js
           node --check current-owner-binding-refresh-v1.js
-          if [ -f bootstrap-host-actions-v29-current-owner-binding-refresh.js ]; then node --check bootstrap-host-actions-v29-current-owner-binding-refresh.js; fi
+          node --check bootstrap-host-actions-v29-current-owner-binding-refresh.js
       - name: Module fingerprints
         run: |
           sha256sum \
