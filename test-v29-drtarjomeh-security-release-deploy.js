@@ -29,6 +29,7 @@ test('exports fixed DrTarjomeh security identity',()=>{
   assert.equal(x.EXPECTED_RELEASE,'20260805-011747-672d32f490bd');
   assert.equal(x.PRODUCTION_POINTER,'/home/drtarjomeh/domains/drtarjomeh.ir/public_html');
   assert.equal(x.RELEASES_ROOT,'/home/drtarjomeh/domains/drtarjomeh.ir/releases');
+  assert.equal(x.SOURCE_REPOSITORY,'/home/drtarjomeh/domains/drtarjomeh.ir/repository');
   assert.equal(x.ENV_PATH,'/etc/drtarjomeh/production.env');
 });
 
@@ -39,13 +40,34 @@ test('payload is exactly the approved 24-path runtime/security set',()=>{
   for(const rel of paths){
     assert.equal(path.isAbsolute(rel),false,`absolute payload path: ${rel}`);
     assert.equal(rel.split('/').includes('..'),false,`unsafe payload path: ${rel}`);
-    assert.match(x.PAYLOAD[rel].sha256,/^[a-f0-9]{64}$/);
     assert.ok(Number.isInteger(x.PAYLOAD[rel].mode));
   }
   for(const excluded of ['.env.production.example','.github/workflows/secret-scan.yml','scripts/scan-tracked-secrets.py']){
     assert.equal(paths.includes(excluded),false,`excluded file present: ${excluded}`);
   }
   assert.doesNotThrow(()=>x.assertFixedPayload(x.PAYLOAD));
+});
+
+test('installer freezes target and preimage sha256 values into immutable manifest',()=>{
+  const x=requireImpl();
+  const target={};
+  const pre={};
+  EXPECTED_PAYLOAD.forEach((rel,i)=>{
+    target[rel]=(i.toString(16).padStart(2,'0').repeat(32)).slice(0,64);
+    pre[rel]=i%3===0?'absent':{sha256:((i+1).toString(16).padStart(2,'0').repeat(32)).slice(0,64),isFile:true,isSymlink:false};
+  });
+  const frozen=x.freezeManifest(target,pre);
+  assert.equal(Object.isFrozen(frozen),true);
+  assert.deepEqual(Object.keys(frozen).sort(),[...EXPECTED_PAYLOAD].sort());
+  for(const rel of EXPECTED_PAYLOAD){
+    assert.match(frozen[rel].target_sha256,/^[a-f0-9]{64}$/);
+    assert.ok(frozen[rel].preimage==='absent'||/^[a-f0-9]{64}$/.test(frozen[rel].preimage));
+    assert.ok(Number.isInteger(frozen[rel].mode));
+    assert.equal(Object.isFrozen(frozen[rel]),true);
+  }
+  assert.throws(()=>x.freezeManifest({...target,[EXPECTED_PAYLOAD[0]]:'bad'},pre),/target_sha_invalid/);
+  const missing={...pre}; delete missing[EXPECTED_PAYLOAD[1]];
+  assert.throws(()=>x.freezeManifest(target,missing),/preimage_missing/);
 });
 
 test('fixed smoke contract is immutable and public-root only',()=>{
@@ -70,9 +92,9 @@ test('payload path validator rejects absolute and traversal paths',()=>{
 test('preimage validator rejects changed bytes and symlink targets',()=>{
   const x=requireImpl();
   const sha='a'.repeat(64);
-  assert.doesNotThrow(()=>x.assertPreimage('common/config/base.php',sha,{sha256:sha,isFile:true,isSymlink:false}));
-  assert.throws(()=>x.assertPreimage('common/config/base.php',sha,{sha256:'b'.repeat(64),isFile:true,isSymlink:false}),/preimage_sha_mismatch/);
-  assert.throws(()=>x.assertPreimage('common/config/base.php',sha,{sha256:sha,isFile:true,isSymlink:true}),/preimage_not_regular/);
+  assert.doesNotThrow(()=>x.assertPreimage('common/config/base.php',sha,{exists:true,sha256:sha,isFile:true,isSymlink:false}));
+  assert.throws(()=>x.assertPreimage('common/config/base.php',sha,{exists:true,sha256:'b'.repeat(64),isFile:true,isSymlink:false}),/preimage_sha_mismatch/);
+  assert.throws(()=>x.assertPreimage('common/config/base.php',sha,{exists:true,sha256:sha,isFile:true,isSymlink:true}),/preimage_not_regular/);
 });
 
 test('absent preimage requires destination to be absent',()=>{
