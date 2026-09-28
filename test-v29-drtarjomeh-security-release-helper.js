@@ -66,8 +66,8 @@ test('protected env is production-only and provider delivery stays fail-closed',
   assert.match(env.DRT_COOKIE_VALIDATION_KEY,/^[a-f0-9]{64}$/);
   assert.match(env.DRT_API_COOKIE_VALIDATION_KEY,/^[a-f0-9]{64}$/);
   const rendered=helper.renderProtectedEnv(env);
-  assert.match(rendered,/^DRT_YII_ENV=prod$/m);
-  assert.match(rendered,/^DRT_SMS_ENABLED=0$/m);
+  assert.match(rendered,/^DRT_YII_ENV='prod'$/m);
+  assert.match(rendered,/^DRT_SMS_ENABLED='0'$/m);
 });
 
 test('env state gate rejects symlink, broad mode, unknown preimage, and unreadable runtime',t=>{
