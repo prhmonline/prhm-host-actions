@@ -6,12 +6,18 @@ on:
       - feature/drtarjomeh-security-release-deploy-v1
     paths:
       - 'bootstrap-host-actions-v29-drtarjomeh-security-release-deploy.js'
+      - 'drtarjomeh-security-release-v29-helper-builder.js'
+      - 'install-host-actions-v29-drtarjomeh-security-release.js'
       - 'test-v29-drtarjomeh-security-release-*.js'
+      - 'test-v29-drtarjomeh-root-bootstrap.js'
       - '.github/workflows/host-actions-v29-drtarjomeh-security-release-ci.yml'
   pull_request:
     paths:
       - 'bootstrap-host-actions-v29-drtarjomeh-security-release-deploy.js'
+      - 'drtarjomeh-security-release-v29-helper-builder.js'
+      - 'install-host-actions-v29-drtarjomeh-security-release.js'
       - 'test-v29-drtarjomeh-security-release-*.js'
+      - 'test-v29-drtarjomeh-root-bootstrap.js'
       - '.github/workflows/host-actions-v29-drtarjomeh-security-release-ci.yml'
 
 permissions:
@@ -24,7 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Contract
-        run: node --test test-v29-drtarjomeh-security-release-*.js
+        run: node --test test-v29-drtarjomeh-security-release-*.js test-v29-drtarjomeh-root-bootstrap.js
       - name: Selftest
         if: always()
         run: |
@@ -34,6 +40,23 @@ jobs:
       - name: Syntax
         if: always()
         run: |
-          if [ -f bootstrap-host-actions-v29-drtarjomeh-security-release-deploy.js ]; then
-            node --check bootstrap-host-actions-v29-drtarjomeh-security-release-deploy.js
-          fi
+          node --check bootstrap-host-actions-v29-drtarjomeh-security-release-deploy.js
+          node --check drtarjomeh-security-release-v29-helper-builder.js
+          node --check install-host-actions-v29-drtarjomeh-security-release.js
+      - name: Build root-of-trust artifact
+        if: success()
+        run: |
+          mkdir -p root-of-trust
+          cp bootstrap-host-actions-v29-drtarjomeh-security-release-deploy.js root-of-trust/
+          cp drtarjomeh-security-release-v29-helper-builder.js root-of-trust/
+          cp install-host-actions-v29-drtarjomeh-security-release.js root-of-trust/
+          printf '%s\n' "$GITHUB_SHA" > root-of-trust/SOURCE_COMMIT
+          (cd root-of-trust && sha256sum *.js > SHA256SUMS)
+      - name: Publish root-of-trust artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: drtarjomeh-v29-root-of-trust
+          path: root-of-trust/
+          if-no-files-found: error
+          retention-days: 1
