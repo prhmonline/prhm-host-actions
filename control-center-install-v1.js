@@ -193,8 +193,6 @@ function patchApacheHttps(source){
   const block=[
     `  ProxyPass ${constants.BASE_PATH} http://127.0.0.1:${constants.PORT}${constants.BASE_PATH}`,
     `  ProxyPassReverse ${constants.BASE_PATH} http://127.0.0.1:${constants.PORT}${constants.BASE_PATH}`,
-    `  ProxyPass ${constants.BASE_PATH}/ http://127.0.0.1:${constants.PORT}${constants.BASE_PATH}/`,
-    `  ProxyPassReverse ${constants.BASE_PATH}/ http://127.0.0.1:${constants.PORT}${constants.BASE_PATH}/`,
   ].join('\n');
   const patchedVhost=target[0].replace('</VirtualHost>',`${block}\n</VirtualHost>`);
   return source.slice(0,target.index)+patchedVhost+source.slice(target.index+target[0].length);
