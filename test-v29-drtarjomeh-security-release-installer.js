@@ -11,11 +11,34 @@ const EXPECTED_PATHS={
   mcp:'/home/agent/ssh-mcp-server/src/plugins/hostActionsV2.js',
   helper:'/opt/prhm-agent-selfmaint-exec/actions/drtarjomeh-security-release-deploy-v1.js',
 };
+function fakeBinding(){
+  const target={};const pre={};let i=1;
+  for(const rel of Object.keys(bootstrap.PAYLOAD)){
+    target[rel]=(i.toString(16).padStart(2,'0').repeat(32)).slice(0,64);
+    pre[rel]=i%5===0?'absent':{sha256:((i+40).toString(16).padStart(2,'0').repeat(32)).slice(0,64),isFile:true,isSymlink:false};
+    i++;
+  }
+  return installer.buildBinding({targetHashes:target,preimages:pre,envPreimage:'absent',runtime:{uid:1001,gid:1001}});
+}
 
 test('installer exposes only the five fixed installation targets',()=>{
   assert.deepEqual(installer.PATHS,EXPECTED_PATHS);
   assert.equal(installer.INSTALL_RESULT,'/var/lib/prhm-agent-selfmaint-exec/drtarjomeh-security-release-installer-v1/latest.json');
   assert.equal(installer.INSTALL_BACKUP_ROOT,'/var/backups/prhm-drtarjomeh-security-release-installer-v1');
+});
+
+test('binding factory freezes exact payload, release, env preimage, and runtime identity',()=>{
+  const b=fakeBinding();
+  assert.equal(Object.isFrozen(b),true);
+  assert.equal(b.schema,'prhm.drtarjomeh-security-release-binding.v1');
+  assert.equal(b.target_commit,bootstrap.TARGET_COMMIT);
+  assert.equal(b.expected_release,bootstrap.EXPECTED_RELEASE);
+  assert.deepEqual(Object.keys(b.manifest).sort(),Object.keys(bootstrap.PAYLOAD).sort());
+  assert.equal(b.env_preimage,'absent');
+  assert.deepEqual(b.runtime,{uid:1001,gid:1001});
+  assert.throws(()=>installer.buildBinding({targetHashes:{},preimages:{},envPreimage:'absent',runtime:{uid:1001,gid:1001}}),/target_sha_invalid|preimage_missing/);
+  const good=fakeBinding();
+  assert.throws(()=>installer.buildBinding({targetHashes:Object.fromEntries(Object.entries(good.manifest).map(([k,v])=>[k,v.target_sha256])),preimages:Object.fromEntries(Object.entries(good.manifest).map(([k,v])=>[k,v.preimage==='absent'?'absent':{sha256:v.preimage,isFile:true,isSymlink:false}])),envPreimage:'absent',runtime:{uid:-1,gid:1001}}),/runtime_identity_invalid/);
 });
 
 test('install preflight rejects unstable blue-green topology',()=>{
@@ -60,7 +83,7 @@ test('buildInstallPlan changes exactly four control-plane files plus helper',()=
 
 test('installer source contract requires backups, atomic writes, validation, rollback, and no raw shell',()=>{
   const src=installer.install.toString();
-  for(const token of ['assertInstallPreflight','backup','atomic','rollback','nodeCheck','jsonCheck','verifyInstalledHashes']){
+  for(const token of ['assertInstallPreflight','backup','atomic','rollback','nodeCheck','jsonCheck','verifyInstalledHashes','binding']){
     assert.ok(src.includes(token),`missing ${token}`);
   }
   assert.equal(src.includes('execSync('),false);
@@ -71,16 +94,17 @@ test('installer source contract requires backups, atomic writes, validation, rol
 test('install transaction fixture restores all previous bytes on verification failure',()=>{
   const initial={base:'BASE_OLD',exec:'EXEC_OLD',policy:'POLICY_OLD',mcp:'MCP_OLD',helper:null};
   const fsState={...initial};
-  const adapter=installer.createFixtureInstallerAdapter(fsState,{failVerify:true});
+  const adapter=installer.createFixtureInstallerAdapter(fsState,{failVerify:true,binding:fakeBinding()});
   const result=installer.install(adapter,{fixture:true});
   assert.equal(result.ok,false);
   assert.equal(result.rollback_performed,true);
   assert.deepEqual(fsState,initial);
 });
 
-test('successful fixture install writes only five fixed targets and reports no app/db mutation',()=>{
+test('successful fixture install writes a SHA-bound helper and only five fixed targets',()=>{
   const fsState={base:'BASE_OLD',exec:'EXEC_OLD',policy:'POLICY_OLD',mcp:'MCP_OLD',helper:null};
-  const adapter=installer.createFixtureInstallerAdapter(fsState,{failVerify:false});
+  const binding=fakeBinding();
+  const adapter=installer.createFixtureInstallerAdapter(fsState,{failVerify:false,binding});
   const result=installer.install(adapter,{fixture:true});
   assert.equal(result.ok,true);
   assert.equal(result.installed,true);
@@ -88,4 +112,12 @@ test('successful fixture install writes only five fixed targets and reports no a
   assert.equal(result.production_application_mutation,false);
   assert.equal(result.database_mutation,false);
   assert.deepEqual(Object.keys(result.installed_targets).sort(),['base','exec','helper','mcp','policy']);
+  assert.ok(fsState.helper.includes('prhm.drtarjomeh-security-release-binding.v1'));
+  assert.ok(fsState.helper.includes(bootstrap.TARGET_COMMIT));
+  assert.ok(fsState.helper.includes('/home/drtarjomeh/domains/drtarjomeh.ir/public_html'));
+  assert.equal(fsState.helper.includes('SECRET'),false);
+  for(const [rel,item] of Object.entries(binding.manifest)){
+    assert.ok(fsState.helper.includes(item.target_sha256),`missing target pin ${rel}`);
+    if(item.preimage!=='absent')assert.ok(fsState.helper.includes(item.preimage),`missing preimage pin ${rel}`);
+  }
 });
