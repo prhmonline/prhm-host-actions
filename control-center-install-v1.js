@@ -7,10 +7,15 @@ const constants = Object.freeze({
   BASE_PATH: '/control-center',
   PUBLIC_URL: 'https://agent.prhm.ir/control-center/',
   SNAPSHOT: '/var/lib/prhm-company-os-dashboard/snapshot.json',
+  CONTROL_PLANE_SHA: 'ce40ec5a14e6a6b29e8e9fc555cc16a7621a4757',
+  RELEASE_ROOT: '/var/lib/prhm-control-center/releases',
+  CURRENT_LINK: '/var/lib/prhm-control-center/current',
+  ENV_FILE: '/etc/prhm-control-center/control-center.env',
   CONFIG_API_ROUTES: '/srv/prhm-config-center/current/apps/api/routes/api.php',
   CONFIG_AUTH_CONTROLLER: '/srv/prhm-config-center/current/apps/api/app/Http/Controllers/Api/Admin/AuthController.php',
   CONFIG_ADMIN_LOGIN_ROUTE: '/srv/prhm-config-center/current/apps/admin/src/app/api/session/login/route.ts',
   CONFIG_NEXT_CONFIG: '/srv/prhm-config-center/current/apps/admin/next.config.ts',
+  APACHE_HTTPS: '/etc/httpd/conf.d/prhm-vhosts-ssl.conf',
 });
 
 function fail(message) { throw new Error(message); }
@@ -18,6 +23,7 @@ function exactlyOnce(source, needle, label) {
   const count = String(source).split(needle).length - 1;
   if (count !== 1) fail(`${label}_anchor_${count}`);
 }
+function releaseDir(){ return `${constants.RELEASE_ROOT}/${constants.CONTROL_PLANE_SHA}`; }
 
 function patchApiRoutes(source) {
   source = String(source);
@@ -154,8 +160,65 @@ function patchNextConfig(source) {
   return source.replace(anchor, '"frame-ancestors https://agent.prhm.ir https://control.prhm.ir"');
 }
 
+function buildRuntimeEnv({username,password,passwordHash,sessionSecret,ssoSecret,ssoAdminLogin}) {
+  void password;
+  const values={username,passwordHash,sessionSecret,ssoSecret,ssoAdminLogin};
+  for(const [key,value] of Object.entries(values)) if(!String(value||'')) fail(`runtime_env_missing_${key}`);
+  return [
+    `CONTROL_CENTER_PORT=${constants.PORT}`,
+    `CONTROL_CENTER_BASE_PATH=${constants.BASE_PATH}`,
+    `CONTROL_CENTER_TEST_USER=${username}`,
+    `CONTROL_CENTER_TEST_PASSWORD_HASH=${passwordHash}`,
+    `CONTROL_CENTER_SESSION_SECRET=${sessionSecret}`,
+    'CONTROL_CENTER_SESSION_TTL_SECONDS=1800',
+    `CONTROL_CENTER_CONFIG_SSO_SECRET=${ssoSecret}`,
+    `CONTROL_CENTER_SSO_ADMIN_LOGIN=${ssoAdminLogin}`,
+    `CONTROL_CENTER_OPPORTUNITIES_SNAPSHOT=${constants.SNAPSHOT}`,
+    'COMPANY_OS_URL=http://127.0.0.1:18135',
+    'CONFIG_CENTER_URL=http://127.0.0.1:3005',
+    'CONFIG_CENTER_PUBLIC_URL=https://config.prhm.ir',
+    'CONFIG_CENTER_PUBLIC_ALLOWLIST=config.prhm.ir',
+    'DIVAR_DISCOVERY_ENABLED=1',
+    'DIVAR_CACHE_SECONDS=600',
+    '',
+  ].join('\n');
+}
+
+function patchApacheHttps(source){
+  source=String(source);
+  if(source.includes('ProxyPass /control-center ')) return source;
+  const matches=[...source.matchAll(/<VirtualHost\s+\*:443>[\s\S]*?<\/VirtualHost>/g)];
+  const target=matches.find(m=>/\bServerName\s+agent\.prhm\.ir\b/.test(m[0]));
+  if(!target) fail('apache_agent_vhost_not_found');
+  const block=[
+    `  ProxyPass ${constants.BASE_PATH} http://127.0.0.1:${constants.PORT}${constants.BASE_PATH}`,
+    `  ProxyPassReverse ${constants.BASE_PATH} http://127.0.0.1:${constants.PORT}${constants.BASE_PATH}`,
+    `  ProxyPass ${constants.BASE_PATH}/ http://127.0.0.1:${constants.PORT}${constants.BASE_PATH}/`,
+    `  ProxyPassReverse ${constants.BASE_PATH}/ http://127.0.0.1:${constants.PORT}${constants.BASE_PATH}/`,
+  ].join('\n');
+  const patchedVhost=target[0].replace('</VirtualHost>',`${block}\n</VirtualHost>`);
+  return source.slice(0,target.index)+patchedVhost+source.slice(target.index+target[0].length);
+}
+
+function rollbackTargets(){
+  return [
+    constants.CURRENT_LINK,
+    constants.ENV_FILE,
+    constants.CONFIG_API_ROUTES,
+    constants.CONFIG_AUTH_CONTROLLER,
+    constants.CONFIG_ADMIN_LOGIN_ROUTE,
+    constants.CONFIG_NEXT_CONFIG,
+    constants.APACHE_HTTPS,
+    '/etc/systemd/system/prhm-control-center.service',
+  ];
+}
+
 module.exports = {
   constants,
+  releaseDir,
+  buildRuntimeEnv,
+  patchApacheHttps,
+  rollbackTargets,
   patchApiRoutes,
   patchAuthController,
   patchAdminLoginRoute,
