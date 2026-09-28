@@ -19,7 +19,7 @@ const EXEC_SHA='6bba46890db31abc8eca7e7681753a4788c46170033a555a1106e05d0a7a66f9
 const POLICY_SHA='2fedd70a182aa351e269df95a1b9d829f5a0b18defe8871cb4045106948d711a';
 const MCP_SHA='b2f95b97dfa7e26ca717dfbec7871bf2f64286952548fb4d6d8e99908aeaacc0';
 
-const HELPER_SHA='4d1eca45ed39392413f99eb6171caab96d5fb8f82f089d6116089760f337ac7a';
+const HELPER_SHA='db336b854df5cc1c3eb3f1e14855f556a84653e0244e4680551d4e298db2b919';
 const HELPER_SOURCE_PATH=path.join(__dirname,'moeinshow-wallet-cutover-v1.helper.js');
 
 const PATHS=Object.freeze({
