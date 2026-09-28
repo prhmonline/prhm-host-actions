@@ -14,4 +14,5 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - run: node --check bootstrap-host-actions-v25-solo-company-runtime-installer.js
       - run: node --test test-v25-solo-company-runtime-installer.js
