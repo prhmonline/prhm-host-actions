@@ -2,116 +2,106 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build and register the fixed `control_plane_current_owner_binding_refresh_v1` Host Action so the live PRHM Agent 3 control-plane can rebind the currently stale registry/V19/baseline/rolling-refresh/Titan consumers to one canonical current-owner manifest, with exact-preimage rollback and no Titan application deployment.
+**Goal:** Build and register the fixed `control_plane_current_owner_binding_refresh_v1` Host Action so PRHM Agent 3 can rebind the stale registry/V19/baseline/rolling-refresh/Titan consumers to one canonical current-owner manifest, with exact-preimage rollback and no Titan application deployment.
 
-**Architecture:** Implement a small fixed subsystem consisting of a deterministic owner-manifest builder, fixed consumer adapters, narrow systemd-confinement logic, and one transactional refresh helper. Register it additively as Host Actions v29 using the repository's existing SHA-bound bootstrap pattern; installation and later execution stay behind fresh approval gates, and the repair stops after Titan contract/preflight turn GREEN.
+**Architecture:** Implement a small fixed subsystem with a deterministic owner-manifest builder, five fixed consumer adapters, narrow systemd-confinement logic, and one transactional refresh helper. Register it additively as Host Actions v29 using the existing SHA-bound bootstrap pattern; installation and execution stay behind fresh approval gates, and the workflow stops when Titan contract/preflight are GREEN.
 
-**Tech Stack:** Node.js 20 / `prhm-node`, `node:test`, systemd, PRHM Host Actions v2 approval/control-plane, SHA-256 exact-preimage binding, GitHub Actions.
+**Tech Stack:** Node.js 20 / `prhm-node`, `node:test`, systemd, PRHM Host Actions v2, SHA-256 exact-preimage binding, GitHub Actions.
 
 **Spec:** `docs/superpowers/specs/2026-09-28-current-owner-binding-refresh-design.md`
 
 ## Global Constraints
 
-- Public action name is exactly `control_plane_current_owner_binding_refresh_v1`.
-- Operation name is exactly `host_action.control_plane_current_owner_binding_refresh_v1`.
-- The caller supplies no path, command, SHA, hostname, service, arbitrary content, repository selector, environment selector, or approval token.
-- Titan application source, database, DirectAdmin, DNS, TLS, public routing, deploy, and cutover are out of scope.
-- The canonical manifest path is `/var/lib/prhm-agent-selfmaint-exec/current-owner-binding-v1/manifest.json`.
-- The self-maint executor remains under `ProtectSystem=strict`.
-- The only new persistent writable backup path granted to `prhm-agent-selfmaint-exec.service` is `/var/backups/prhm-current-baseline-refresh-v1`.
-- No broad `ReadWritePaths=/var/backups` grant is allowed.
-- Exact preimages are persisted before the first live-target replacement; any later failure triggers byte-exact rollback including mode/uid/gid and the systemd drop-in.
-- Request creation and execution remain separate, one-time, expiry-bound operations. Never reuse confirmation from another or expired request.
-- Installation and execution use the active policy's required confirmation. The initial critical migration must be registered as Level-4/critical unless the approved policy mechanism itself rejects that classification.
-- Development occurs on a separate isolated implementation branch/worktree; do not clean/reset unrelated state in `/home/prhm/worktrees/prhm-host-actions`.
-- No force push. Stage only task files. Verify remote/local HEAD equality after push.
-- Successful repair evidence must include `production_application_mutation:false`, `database_mutation:false`, and `titan_cutover:false`.
-- `titan_front_handoff_deploy_v2` must never be called by this plan. Deployment remains a later explicit gate requiring fresh `CONFIRM_DEPLOY_PRODUCTION`.
+- Public action: `control_plane_current_owner_binding_refresh_v1`.
+- Operation: `host_action.control_plane_current_owner_binding_refresh_v1`.
+- No caller-controlled path, command, SHA, hostname, service, arbitrary content, repository selector, environment selector, replacement source, or approval token.
+- Titan source/database/deploy/cutover, DirectAdmin, DNS, TLS, and public routing are out of scope.
+- Manifest path: `/var/lib/prhm-agent-selfmaint-exec/current-owner-binding-v1/manifest.json`.
+- Keep `ProtectSystem=strict`; preserve existing service hardening.
+- The only new persistent backup write grant for `prhm-agent-selfmaint-exec.service` is `/var/backups/prhm-current-baseline-refresh-v1`; never grant `/var/backups` broadly.
+- Persist exact preimage bytes + SHA + uid/gid/mode before the first live-target replacement.
+- Any post-mutation failure triggers exact rollback, including the systemd drop-in.
+- Request creation and execution remain separate, one-time and expiry-bound. Never reuse a confirmation from another/expired request.
+- Register the initial migration action as Level-4/critical, second-confirmation, one-time.
+- Development uses a separate isolated implementation branch/worktree; never clean/reset unrelated `/home/prhm/worktrees/prhm-host-actions` state.
+- No force push. Stage only task files. Verify local/remote HEAD equality after push.
+- Success evidence must include `production_application_mutation:false`, `database_mutation:false`, `titan_cutover:false`.
+- This plan never calls `titan_front_handoff_deploy_v2`. Deployment remains a later gate requiring fresh `CONFIRM_DEPLOY_PRODUCTION`.
 
 ## File Structure
 
-Create these focused implementation files on `impl/current-owner-binding-refresh-v1`:
+Create on `impl/current-owner-binding-refresh-v1`:
 
-- `current-owner-binding-manifest-v1.js` — fixed owner inventory validation, canonical serialization, deterministic manifest SHA.
-- `test-current-owner-binding-manifest-v1.js` — manifest and owner-confinement contract.
-- `current-owner-binding-adapters-v1.js` — five fixed migration/steady-state consumer adapters only.
-- `test-current-owner-binding-adapters-v1.js` — known-preimage, unknown-preimage, idempotency, Titan-sandbox and no-arbitrary-input contracts.
-- `current-owner-binding-systemd-v1.js` — exact self-maint executor drop-in candidate and effective-confinement verification.
-- `test-current-owner-binding-systemd-v1.js` — exact path/hardening/conflict/restart-scope contracts.
-- `current-owner-binding-refresh-v1.js` — preflight, candidate materialization, transaction, atomic apply, verification orchestration and rollback.
-- `test-current-owner-binding-refresh-v1.js` — transaction ordering, preimage persistence, injected-failure rollback and no-deploy contracts.
-- `bootstrap-host-actions-v29-current-owner-binding-refresh.js` — SHA-bound installation/registration bootstrap for helper modules and Host Actions v2 surfaces.
-- `test-v29-current-owner-binding-refresh.js` — registration/policy/MCP/executor/bootstrap transaction contract.
-- `.github/workflows/host-actions-v29-current-owner-binding-refresh-ci.yml` — syntax, contracts, selftest and focused regressions.
+- `current-owner-binding-manifest-v1.js` — fixed owner inventory validation, canonical JSON, deterministic manifest SHA.
+- `test-current-owner-binding-manifest-v1.js` — owner/manifest contract.
+- `current-owner-binding-adapters-v1.js` — five fixed migration/steady-state adapters.
+- `test-current-owner-binding-adapters-v1.js` — preimage/idempotency/no-arbitrary-input/Titan sandbox contract.
+- `current-owner-binding-systemd-v1.js` — exact self-maint drop-in candidate and effective-state validator.
+- `test-current-owner-binding-systemd-v1.js` — exact path/hardening/restart-scope contract.
+- `current-owner-binding-refresh-v1.js` — preflight, candidates, transaction, apply, verification, rollback.
+- `test-current-owner-binding-refresh-v1.js` — ordering, preimages, rollback, no-deploy contract.
+- `bootstrap-host-actions-v29-current-owner-binding-refresh.js` — SHA-bound installer/registration bootstrap.
+- `test-v29-current-owner-binding-refresh.js` — registration/policy/MCP/executor/bootstrap contract.
+- `.github/workflows/host-actions-v29-current-owner-binding-refresh-ci.yml` — syntax, tests, selftest, focused regressions.
 
-Do not modify `bootstrap-host-actions-v19-agent-zdt-source-sha-refresh.js` or its test as the new source of truth. V19 remains a regression fixture showing the old single-SHA approach; the new subsystem migrates installed consumers away from that chaining model.
+Do not turn `bootstrap-host-actions-v19-agent-zdt-source-sha-refresh.js` into the new source of truth. Keep V19 as a regression fixture demonstrating the old one-SHA-at-a-time model.
 
 ## Review Focus
 
-Reviewers should pay special attention to these failure modes even where a happy-path task test passes:
-
-1. A live owner path becoming a symlink, noncanonical path, or unexpectedly large file between inventory and apply.
-2. An allowlisted consumer having an unknown preimage: the transaction must stop before any live target changes.
-3. A partial systemd drop-in/service restart failure after file mutations: rollback must restore the drop-in and service state before reporting failure.
-4. Verification accidentally mutating Titan or consuming an unrelated approval while checking registry/baseline/rolling-refresh readiness.
-5. A new owner SHA after installation but before execution: the manifest may capture the current owner, but migration adapters must still require an enumerated or already-migrated consumer preimage and must never turn into generic source rewriting.
+1. Owner path changes/symlinks between inventory and apply.
+2. Unknown consumer preimage: must stop before any live write.
+3. Partial drop-in/service failure: rollback must restore drop-in and service state.
+4. Verification accidentally mutating Titan or consuming an unrelated approval.
+5. Owner SHA changing after installer deployment: current owner may update in the manifest, but consumer migration still requires enumerated/already-migrated preimages; no generic rewriting.
 
 ---
 
-### Task 1: Create the Isolated Implementation Worktree and Freeze Live Evidence
+### Task 1: Create the Isolated Worktree and Freeze Live Evidence
 
 **Files:**
-- Create later in this task: `test-current-owner-binding-manifest-v1.js`
-- Create later in this task: `current-owner-binding-manifest-v1.js`
+- Create: `test-current-owner-binding-manifest-v1.js`
+- Create: `current-owner-binding-manifest-v1.js`
 
 **Interfaces:**
 - Branch: `impl/current-owner-binding-refresh-v1`.
-- Base: the exact approved documentation head containing this spec and plan.
-- Consumes only read-only evidence from fixed PRHM Agent 3 surfaces before source constants are finalized.
-- Produces a literal `OWNER_SPECS` allowlist and an `INITIAL_CONSUMER_PREIMAGES` allowlist in source; no placeholder/TODO hash may remain at commit.
+- Base: exact approved documentation head containing spec + plan.
+- Output: literal `OWNER_SPECS` and `INITIAL_CONSUMER_PREIMAGES`; no placeholder/TODO hashes at commit.
 
-- [ ] **Step 1: Create an isolated worktree using the repository's standard worktree workflow**
+- [ ] **Step 1: Create the isolated worktree**
 
-Use the superpowers `using-git-worktrees` workflow. Create `impl/current-owner-binding-refresh-v1` from the exact approved docs/plan head. Refuse to clean/reset the shared `/home/prhm/worktrees/prhm-host-actions` checkout.
+Use `superpowers:using-git-worktrees`. Do not reset/clean the shared checkout.
 
-- [ ] **Step 2: Record read-only current-owner evidence**
+- [ ] **Step 2: Capture read-only live evidence**
 
-Use only fixed/read-only PRHM Agent 3 reads to capture canonical path, file type, byte size and SHA-256 for the live owners and current consumer targets required by the approved spec. At minimum cover:
+Using fixed PRHM Agent 3 read-only surfaces, capture canonical path, type, size and SHA-256 for at least:
 
-- live Agent API owner (`/home/agent/ssh-agent-api/server.js`);
-- the fixed MCP/self-maint registry bridge owner used by the action-specific registry path;
-- installed existing-topology rolling-refresh action (`/opt/prhm-agent-selfmaint-exec/actions/agent-zdt-existing-topology-rolling-refresh-v1.js`);
-- the installed/current-baseline refresh owner/target used by `control_plane_typed_bootstrap_current_baseline_refresh_v1`;
-- the fixed Titan handoff sandbox helper/owner used by `titan_host_actions_worktree_test_v1` and `titan_front_handoff_preflight_v2`;
-- the control-plane registration files required for v29 installation: Base, Executor, Approval Policy and MCP Host Actions v2 plugin.
+- `/home/agent/ssh-agent-api/server.js`;
+- the live MCP/self-maint registry bridge owner used by registry bootstrap;
+- `/opt/prhm-agent-selfmaint-exec/actions/agent-zdt-existing-topology-rolling-refresh-v1.js`;
+- the live owner/target used by `control_plane_typed_bootstrap_current_baseline_refresh_v1`;
+- the live Titan handoff sandbox owner used by Titan contract/preflight;
+- Base `/opt/prhm-agent-selfmaint/server.js`;
+- Executor `/opt/prhm-agent-selfmaint-exec/server.js`;
+- Approval Policy `/opt/prhm-company-control-plane/config/approval-policy.json`;
+- MCP Host Actions v2 plugin `/home/agent/ssh-mcp-server/src/plugins/hostActionsV2.js`.
 
-If a logical owner maps to a different live canonical path than historical notes suggest, use the verified live path and document it in the test fixture; do not guess or broaden the allowed root.
+If a live canonical path differs from historical notes, use the verified live path and pin it literally. Never guess or broaden an allowed root.
 
-- [ ] **Step 3: Write the first RED manifest test**
+- [ ] **Step 3: Write the RED manifest test**
 
-`test-current-owner-binding-manifest-v1.js` must initially require the absent module and specify these behaviors:
+Require the absent module and assert: frozen unique owner IDs; absolute literal paths; no wildcards; regular canonical fixture accepted; symlink/noncanonical/oversize rejected; canonical JSON stable across key insertion order; deterministic manifest SHA for fixed facts; no file contents/env/tokens/approvals/secrets in output.
 
-- `OWNER_SPECS` is a frozen fixed list with unique logical IDs and absolute literal paths;
-- no owner path contains wildcard/glob/user input;
-- a regular canonical fixture is accepted;
-- symlink, noncanonical realpath and oversize fixtures are rejected;
-- canonical serialization is stable independent of object insertion order;
-- manifest SHA is deterministic when `captured_at` and owner facts are fixed;
-- manifest output contains no file contents, env values, tokens, approval fields or credentials.
-
-- [ ] **Step 4: Run RED and verify the expected failure**
-
-Run:
+- [ ] **Step 4: Run RED**
 
 ```bash
 node --test test-current-owner-binding-manifest-v1.js
 ```
 
-Expected: FAIL because `current-owner-binding-manifest-v1.js` does not yet exist.
+Expected: FAIL because implementation is absent.
 
-- [ ] **Step 5: Implement the minimum manifest module**
+- [ ] **Step 5: Implement the minimal manifest module**
 
-Implement and export only the fixed primitives needed by the test:
+Export:
 
 ```js
 const SCHEMA='prhm.current-owner-binding-manifest.v1';
@@ -121,16 +111,14 @@ function canonicalJson(value) { ... }
 function buildManifest({capturedAt,owners,serviceFacts={}}) { ... }
 ```
 
-`buildManifest` must sort by logical owner ID before hashing and return `manifest_sha256` calculated from the canonical form excluding the hash field itself.
+Sort owners by logical ID before hashing. `manifest_sha256` is the SHA-256 of canonical manifest data excluding the hash field itself.
 
-- [ ] **Step 6: Run GREEN plus syntax**
+- [ ] **Step 6: Run GREEN**
 
 ```bash
 node --check current-owner-binding-manifest-v1.js
 node --test test-current-owner-binding-manifest-v1.js
 ```
-
-Expected: PASS.
 
 - [ ] **Step 7: Commit**
 
@@ -139,35 +127,21 @@ git add current-owner-binding-manifest-v1.js test-current-owner-binding-manifest
 git commit -m "feat: add fixed current-owner manifest"
 ```
 
-### Task 2: Implement Fixed Consumer Adapters Without Historical Anchor Chaining
+### Task 2: Implement the Five Fixed Consumer Adapters
 
 **Files:**
 - Create: `current-owner-binding-adapters-v1.js`
 - Create: `test-current-owner-binding-adapters-v1.js`
 
 **Interfaces:**
-- Consumes: validated manifest plus exact live bytes/metadata for a fixed consumer ID.
-- Produces: `{consumer_id,target_path,before_sha256,after_bytes,after_sha256,restart_units,state}`.
-- Fixed consumer IDs only:
-  - `registry_bridge`
-  - `v19_binding`
-  - `current_baseline_refresh`
-  - `rolling_refresh`
-  - `titan_handoff_sandbox`
-- State is only `migration`, `already_migrated`, or a fail-closed error.
+- Input: validated manifest + exact live bytes/metadata for one fixed consumer.
+- Output: `{consumer_id,target_path,before_sha256,after_bytes,after_sha256,restart_units,state}`.
+- Fixed IDs only: `registry_bridge`, `v19_binding`, `current_baseline_refresh`, `rolling_refresh`, `titan_handoff_sandbox`.
+- State only: `migration`, `already_migrated`, or fail-closed error.
 
 - [ ] **Step 1: Write RED adapter contracts**
 
-Test that each adapter:
-
-- accepts only its fixed target path;
-- accepts an enumerated exact initial preimage or a verified already-migrated manifest-based preimage;
-- rejects an unknown SHA before producing a candidate;
-- does not accept path/command/service/content arguments from a request object;
-- emits deterministic candidate bytes for a fixed manifest;
-- embeds/reads manifest logical IDs instead of a historical sequence of OLD_SHA -> NEW_SHA text anchors;
-- for `titan_handoff_sandbox`, removes the unsupported `RestrictSUIDSGID=true` assignment from the generated candidate while retaining the approved hardening properties;
-- never references or calls `titan_front_handoff_deploy_v2`.
+Require each adapter to: accept only its fixed target; accept enumerated exact initial preimage or structurally valid already-migrated preimage; reject unknown SHA; expose no request-controlled path/command/service/content; produce deterministic candidate bytes; bind by manifest logical IDs instead of OLD_SHA -> NEW_SHA chains; remove unsupported `RestrictSUIDSGID=true` from Titan sandbox candidate while preserving approved hardening; never reference/call Titan deploy.
 
 - [ ] **Step 2: Run RED**
 
@@ -175,11 +149,7 @@ Test that each adapter:
 node --test test-current-owner-binding-adapters-v1.js
 ```
 
-Expected: FAIL because adapter implementation is absent.
-
-- [ ] **Step 3: Implement a fixed adapter registry**
-
-Export a frozen mapping such as:
+- [ ] **Step 3: Implement the fixed registry**
 
 ```js
 const ADAPTERS=Object.freeze({
@@ -191,11 +161,11 @@ const ADAPTERS=Object.freeze({
 });
 ```
 
-Each implementation must generate a complete known consumer candidate from a fixed template/structured transform whose authority is the manifest. Do not expose a generic `replace(path,from,to)` API.
+Use complete fixed templates/structured transforms whose authority is the manifest. Do not expose a generic replace API.
 
-- [ ] **Step 4: Add already-migrated idempotency checks**
+- [ ] **Step 4: Add idempotency**
 
-An already-migrated target is accepted only when its embedded schema/manifest-binding contract is structurally valid and its fixed target identity matches. A malformed "looks migrated" target must fail closed.
+Accept already-migrated state only when schema, manifest-binding contract and target identity validate. Malformed migrated-looking input fails closed.
 
 - [ ] **Step 5: Run GREEN**
 
@@ -204,8 +174,6 @@ node --check current-owner-binding-adapters-v1.js
 node --test test-current-owner-binding-adapters-v1.js
 ```
 
-Expected: PASS.
-
 - [ ] **Step 6: Commit**
 
 ```bash
@@ -213,31 +181,21 @@ git add current-owner-binding-adapters-v1.js test-current-owner-binding-adapters
 git commit -m "feat: add fixed current-owner consumer adapters"
 ```
 
-### Task 3: Implement the Exact Self-Maint Executor Systemd Confinement Change
+### Task 3: Implement the Narrow Systemd Confinement Change
 
 **Files:**
 - Create: `current-owner-binding-systemd-v1.js`
 - Create: `test-current-owner-binding-systemd-v1.js`
 
 **Interfaces:**
-- Fixed service: `prhm-agent-selfmaint-exec.service`.
-- Fixed drop-in: `/etc/systemd/system/prhm-agent-selfmaint-exec.service.d/current-baseline-backup-rw.conf`.
-- Fixed backup root: `/var/backups/prhm-current-baseline-refresh-v1`.
-- Exact drop-in content: `[Service]\nReadWritePaths=/var/backups/prhm-current-baseline-refresh-v1\n`.
-- Produces candidate/verification metadata only; caller performs the transaction.
+- Service: `prhm-agent-selfmaint-exec.service`.
+- Drop-in: `/etc/systemd/system/prhm-agent-selfmaint-exec.service.d/current-baseline-backup-rw.conf`.
+- Backup root: `/var/backups/prhm-current-baseline-refresh-v1`.
+- Exact content: `[Service]\nReadWritePaths=/var/backups/prhm-current-baseline-refresh-v1\n`.
 
 - [ ] **Step 1: Write RED confinement tests**
 
-Cover:
-
-- exact service/drop-in/backup-root constants;
-- exact content adds only the one backup root;
-- source contains no `ReadWritePaths=/var/backups` parent-wide grant;
-- absent drop-in -> candidate `create`;
-- exact existing drop-in -> `unchanged`;
-- any differing existing drop-in -> fail `dropin_preimage_drift` rather than overwrite;
-- effective verification requires `ActiveState=active`, nonzero `MainPID`, and exact backup root in `ReadWritePaths`;
-- restart scope contains only `prhm-agent-selfmaint-exec.service`.
+Assert exact constants/content; no parent-wide `/var/backups` grant; absent -> `create`; exact existing -> `unchanged`; differing existing -> `dropin_preimage_drift`; effective state requires active service, nonzero PID and exact path in `ReadWritePaths`; restart scope contains only selfmaint-exec.
 
 - [ ] **Step 2: Run RED**
 
@@ -245,11 +203,9 @@ Cover:
 node --test test-current-owner-binding-systemd-v1.js
 ```
 
-Expected: FAIL because module is absent.
+- [ ] **Step 3: Implement pure candidate/state validation**
 
-- [ ] **Step 3: Implement the minimal confinement module**
-
-Export constants plus pure functions for candidate classification and effective-state validation. Keep `systemctl` execution in the transaction module so this module stays easily testable.
+Keep actual `systemctl` execution in the transaction module.
 
 - [ ] **Step 4: Run GREEN**
 
@@ -258,8 +214,6 @@ node --check current-owner-binding-systemd-v1.js
 node --test test-current-owner-binding-systemd-v1.js
 ```
 
-Expected: PASS.
-
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -267,41 +221,24 @@ git add current-owner-binding-systemd-v1.js test-current-owner-binding-systemd-v
 git commit -m "feat: define narrow selfmaint backup confinement"
 ```
 
-### Task 4: Build the All-or-Nothing Refresh Transaction and Rollback
+### Task 4: Build the All-or-Nothing Refresh Transaction
 
 **Files:**
 - Create: `current-owner-binding-refresh-v1.js`
 - Create: `test-current-owner-binding-refresh-v1.js`
-- Use: `current-owner-binding-manifest-v1.js`
-- Use: `current-owner-binding-adapters-v1.js`
-- Use: `current-owner-binding-systemd-v1.js`
+- Use the three modules from Tasks 1-3.
 
 **Interfaces:**
 - `ACTION='control_plane_current_owner_binding_refresh_v1'`.
 - State root: `/var/lib/prhm-agent-selfmaint-exec/current-owner-binding-v1`.
-- Manifest: `/var/lib/prhm-agent-selfmaint-exec/current-owner-binding-v1/manifest.json`.
 - Transaction root: `/var/lib/prhm-agent-selfmaint-exec/current-owner-binding-v1/transactions`.
 - Backup root: `/var/backups/prhm-current-owner-binding-refresh-v1`.
-- CLI accepts only `--preflight-only` or `--apply`.
-- Main functions: `preflight()`, `materializeCandidates()`, `apply()`, `rollback()`.
+- CLI only: `--preflight-only`, `--apply`.
+- Functions: `preflight()`, `materializeCandidates()`, `apply()`, `rollback()`.
 
-- [ ] **Step 1: Write RED transaction-order tests**
+- [ ] **Step 1: Write RED transaction tests**
 
-With injected filesystem/process dependencies, require:
-
-- action-local exclusive lock before inventory;
-- owner inventory and consumer preimages captured before candidate or live write;
-- exact preimage bytes + SHA + uid/gid/mode persisted before first live replacement;
-- backup-root writable probe during preflight creates/removes only inside the exact fixed directory;
-- all candidates syntax/static validated before first live replacement;
-- transaction record persisted before first live replacement;
-- same-filesystem temporary write + atomic rename for regular files;
-- systemd drop-in changed only when classification is `create`;
-- `daemon-reload` and restart only selfmaint-exec when drop-in changed;
-- verification failure after N mutations restores all N exact preimages in reverse order;
-- rollback restores uid/gid/mode and drop-in preimage;
-- successful result has `production_application_mutation:false`, `database_mutation:false`, `titan_cutover:false`;
-- helper source has no deploy call or arbitrary shell (`bash -c`, `sh -c`, `exec`).
+With dependency injection for tests, require: exclusive lock before inventory; exact owner/preimage snapshot before any candidate/live write; exact bytes/SHA/uid/gid/mode persisted before first replacement; fixed writable probe only inside exact state/backup dirs; all candidate syntax/static checks before first replacement; transaction record before first replacement; same-filesystem temp + atomic rename; drop-in only when `create`; daemon-reload/restart only selfmaint-exec when changed; failure after N mutations restores all N in reverse order; rollback restores metadata/drop-in; success flags are false for application/database/Titan cutover; no arbitrary shell/deploy call.
 
 - [ ] **Step 2: Run RED**
 
@@ -309,35 +246,31 @@ With injected filesystem/process dependencies, require:
 node --test test-current-owner-binding-refresh-v1.js
 ```
 
-Expected: FAIL because helper is absent.
+- [ ] **Step 3: Implement preflight/candidate materialization**
 
-- [ ] **Step 3: Implement preflight and candidate materialization only**
+Add lock, health hook, manifest generation, exact consumer snapshot, fixed writable probes and candidate generation. `--preflight-only` must report `production_mutation:false` and make no consumer mutation.
 
-Implement lock, health hook, owner manifest, exact consumer snapshot, writable probes and candidate building. Run `--preflight-only` tests first; it must produce `production_mutation:false` and not touch consumer targets.
+- [ ] **Step 4: Implement atomic apply/journal**
 
-- [ ] **Step 4: Implement atomic apply and journal**
+Persist transaction metadata before first live write; apply in a fixed documented order; verify post-write SHA after each write.
 
-Persist a transaction JSON before first write containing only bounded non-secret metadata and backup paths. Apply in a fixed order documented in source; use atomic rename and post-write SHA verification after every target.
-
-- [ ] **Step 5: Implement verification hooks in the approved order**
-
-The helper must invoke only fixed verification hooks/surfaces for:
+- [ ] **Step 5: Implement fixed verification hooks in order**
 
 1. self-maint health;
 2. V19 17/17 contract;
-3. registry action-specific bootstrap readiness;
-4. baseline-refresh real backup-before-write readiness;
+3. registry bootstrap readiness;
+4. current-baseline real backup-before-write readiness;
 5. rolling-refresh owner validation;
 6. Titan contract;
 7. Titan preflight.
 
-A verification hook may call a fixed local helper/tool contract, but must not create/consume an unrelated approval or call Titan deploy.
+Verification must not call Titan deploy or create/consume unrelated approval requests.
 
-- [ ] **Step 6: Implement exact rollback and injected-failure test points**
+- [ ] **Step 6: Implement rollback + injected failure points**
 
-Provide test-only dependency injection, not a production request field, to fail after each mutation/verification stage. Assert byte-for-byte restoration and distinct `rollback_failed` evidence when rollback itself is injected to fail.
+Test-only dependency injection may fail each stage. Production input must not expose fault injection. Assert byte-identical restore and distinct `rollback_failed` evidence when rollback itself is injected to fail.
 
-- [ ] **Step 7: Run GREEN and regression for all four new modules**
+- [ ] **Step 7: Run GREEN**
 
 ```bash
 node --check current-owner-binding-refresh-v1.js
@@ -348,8 +281,6 @@ node --test \
   test-current-owner-binding-refresh-v1.js
 ```
 
-Expected: PASS.
-
 - [ ] **Step 8: Commit**
 
 ```bash
@@ -357,42 +288,27 @@ git add current-owner-binding-refresh-v1.js test-current-owner-binding-refresh-v
 git commit -m "feat: add transactional current-owner binding refresh"
 ```
 
-### Task 5: Register and Install the Action as Host Actions v29
+### Task 5: Build the Host Actions v29 Registration Installer
 
 **Files:**
 - Create: `bootstrap-host-actions-v29-current-owner-binding-refresh.js`
 - Create: `test-v29-current-owner-binding-refresh.js`
-- Embed/install the four new implementation modules from Tasks 1-4.
+- Embed/install the four implementation modules from Tasks 1-4.
 
 **Interfaces:**
-- Fixed Base: `/opt/prhm-agent-selfmaint/server.js`.
-- Fixed Executor: `/opt/prhm-agent-selfmaint-exec/server.js`.
-- Fixed Approval Policy: `/opt/prhm-company-control-plane/config/approval-policy.json`.
-- Fixed MCP Host Actions v2 plugin: `/home/agent/ssh-mcp-server/src/plugins/hostActionsV2.js`.
-- Runtime action: `/opt/prhm-agent-selfmaint-exec/actions/control-plane-current-owner-binding-refresh-v1.js` plus a fixed private module directory under `/opt/prhm-agent-selfmaint-exec/actions/current-owner-binding-v1/`.
-- Registration action is additive and fail-closed on unknown live preimage.
+- Base: `/opt/prhm-agent-selfmaint/server.js`.
+- Executor: `/opt/prhm-agent-selfmaint-exec/server.js`.
+- Policy: `/opt/prhm-company-control-plane/config/approval-policy.json`.
+- MCP plugin: `/home/agent/ssh-mcp-server/src/plugins/hostActionsV2.js`.
+- Runtime action: `/opt/prhm-agent-selfmaint-exec/actions/control-plane-current-owner-binding-refresh-v1.js` plus fixed private module directory `/opt/prhm-agent-selfmaint-exec/actions/current-owner-binding-v1/`.
 
-- [ ] **Step 1: Immediately re-read live registration SHA evidence**
+- [ ] **Step 1: Re-read exact live registration SHA evidence immediately before coding pins**
 
-Before coding bootstrap constants, obtain current exact SHA-256 for Base/Executor/Policy/MCP with the fixed read-only evidence path. Do not reuse old hashes from v28, historical summaries, or earlier sessions. Put exact hashes in constants and add a test that rejects placeholders.
+Never reuse v28/historical/session hashes. Embed current Base/Executor/Policy/MCP SHA pins and make tests reject placeholders.
 
-- [ ] **Step 2: Write RED v29 registration/bootstrap tests**
+- [ ] **Step 2: Write RED v29 tests**
 
-Require:
-
-- exact `ACTION` and `OPERATION`;
-- exact current live Base/Executor/Policy/MCP SHA pins;
-- Level-4, `risk:'critical'`, `requires_second_confirmation:true`, `one_time_use:true` policy entry;
-- action is not added to a Level-3 action set;
-- MCP request enum includes action once;
-- executor dispatch takes no caller arguments and launches only the fixed action helper;
-- executor systemd sandbox preserves `ProtectSystem=strict` and `ProtectHome=read-only`;
-- writable paths are exact action/state/backup/consumer/drop-in paths, never `/var/backups` broadly;
-- no `bash -c`, `sh -c`, generic command/path input;
-- all embedded module SHA values match embedded bytes;
-- bootstrap preflight makes no production application mutation;
-- install transaction backs up all four registration files, validates JS/JSON and installed hashes, then restarts only required control-plane services;
-- installation rollback restores all registration files on post-write failure.
+Assert exact action/operation; exact live pins; policy Level-4 critical, second-confirmation, one-time; action absent from Level-3 set; MCP enum contains it once; executor takes no caller arguments; systemd sandbox preserves `ProtectSystem=strict` + `ProtectHome=read-only`; writable paths are exact and never broad `/var/backups`; no `bash -c`, `sh -c` or generic command/path input; embedded bytes match embedded SHAs; bootstrap preflight has no production application mutation; registration install backs up Base/Executor/Policy/MCP and rolls back exact bytes on failure.
 
 - [ ] **Step 3: Run RED**
 
@@ -400,19 +316,17 @@ Require:
 node --test test-v29-current-owner-binding-refresh.js
 ```
 
-Expected: FAIL before bootstrap exists.
+- [ ] **Step 4: Implement additive registration builders**
 
-- [ ] **Step 4: Implement additive registration candidates**
+Use unique structural anchors. Preserve every existing action. Missing/multiple anchors are blockers.
 
-Follow the established v28/selfmaint route patterns: patch action spec, executor fixed dispatch, MCP enum and approval policy with unique structural anchors. Preserve every existing action. Unknown/multiple anchors are blockers, never fallback string insertion.
+- [ ] **Step 5: Implement fixed executor runner**
 
-- [ ] **Step 5: Implement the fixed executor runner**
+Launch only the fixed helper in a constrained transient unit. Writable paths are limited to exact action/state/backup/consumer/drop-in targets and `/var/backups/prhm-current-baseline-refresh-v1`; none are caller controlled.
 
-Launch the action helper in a constrained transient unit. Give write access only to the exact fixed action state/backup targets, exact consumer targets/directories required by adapters, the exact selfmaint-exec drop-in directory, and `/var/backups/prhm-current-baseline-refresh-v1`. No caller-controlled `ReadWritePaths` are permitted.
+- [ ] **Step 6: Implement bootstrap preflight/install/rollback + `--selftest-only`**
 
-- [ ] **Step 6: Implement bootstrap preflight/install/rollback and `--selftest-only`**
-
-`--selftest-only` must validate embedded SHA integrity and pure registration builders without reading live production. Normal install first validates live preimage pins, makes backups, writes atomically, syntax/JSON-checks candidates, verifies post-hashes, restarts required control-plane services, and rolls back exact bytes on failure.
+`--selftest-only` validates embedded SHA integrity and pure builders without live writes. Normal install verifies live pins, backs up, atomically writes, syntax/JSON checks, verifies post-hashes, restarts only required control-plane services, and restores exact preimages on failure.
 
 - [ ] **Step 7: Run GREEN**
 
@@ -422,8 +336,6 @@ node --test test-v29-current-owner-binding-refresh.js
 node bootstrap-host-actions-v29-current-owner-binding-refresh.js --selftest-only
 ```
 
-Expected: PASS.
-
 - [ ] **Step 8: Commit**
 
 ```bash
@@ -431,23 +343,21 @@ git add bootstrap-host-actions-v29-current-owner-binding-refresh.js test-v29-cur
 git commit -m "feat: register current-owner binding refresh v29"
 ```
 
-### Task 6: Add Focused CI and Run Existing Control-Plane Regressions
+### Task 6: Add CI and Run Focused Regressions
 
 **Files:**
 - Create: `.github/workflows/host-actions-v29-current-owner-binding-refresh-ci.yml`
 
 **Interfaces:**
-- PR path filter covers all new v29/current-owner files and the workflow itself.
-- Push branch filter: `impl/current-owner-binding-refresh-v1`.
-- `permissions: contents: read` only.
+- PR path filters cover all new current-owner/v29 files and workflow.
+- Push branch: `impl/current-owner-binding-refresh-v1`.
+- `permissions: contents: read`.
 
-- [ ] **Step 1: Write CI workflow**
+- [ ] **Step 1: Add syntax/contracts/selftest/diff-check CI**
 
-Run syntax for all five implementation/bootstrap JS files, the five new Node test files, bootstrap `--selftest-only`, and `git diff --check`.
+Run `node --check` on all implementation/bootstrap JS; all five new tests; bootstrap `--selftest-only`; `git diff --check`.
 
 - [ ] **Step 2: Add focused existing regressions**
-
-At minimum run:
 
 ```bash
 node --test test-v19-agent-zdt-source-sha-refresh.js
@@ -455,11 +365,11 @@ node --test test-selfmaint-exec-route-refresh-v1.js
 node --test test-host-actions-control-plane-typed-bootstrap-transport-v1.js
 ```
 
-Also run any repository-wide Node tests that are feasible without production-only fixtures. If an unrelated existing test fails, record it by name and prove it also fails on the branch base; do not silently omit it.
+Run broader feasible repo Node tests too. If an unrelated existing test fails, identify it and prove it also fails on branch base; never hide it.
 
-- [ ] **Step 3: Run the same CI commands locally/in the isolated worktree**
+- [ ] **Step 3: Run CI-equivalent commands in the worktree**
 
-Expected: all task-owned tests GREEN; any unrelated pre-existing failure explicitly recorded.
+Task-owned tests must be GREEN.
 
 - [ ] **Step 4: Commit**
 
@@ -468,106 +378,94 @@ git add .github/workflows/host-actions-v29-current-owner-binding-refresh-ci.yml
 git commit -m "ci: validate current-owner binding refresh v29"
 ```
 
-### Task 7: Review, Push and Install the Reviewed v29 Registration Through the Governed Path
+### Task 7: Review, Push and Governed Registration Installation
 
 **Files:**
-- No new application files expected.
-- Only reviewed control-plane installation after code review.
+- No application files.
+- Live change is only control-plane registration after review/approval.
 
 **Interfaces:**
-- Consumes exact reviewed implementation branch HEAD.
-- Produces live registration of `control_plane_current_owner_binding_refresh_v1`; does not execute the refresh yet.
+- Input: exact reviewed implementation branch HEAD.
+- Output: live registration of the fixed action; refresh itself is not executed yet.
 
-- [ ] **Step 1: Run branch review before push**
+- [ ] **Step 1: Review exact branch diff**
 
-Review exact diff for arbitrary command/path surfaces, over-broad systemd writable paths, secrets, unknown-preimage fallbacks, action loss, rollback completeness and any Titan deploy invocation.
+Check arbitrary command/path surfaces, broad systemd writes, secrets, unknown-preimage fallback, action loss, rollback completeness and Titan deploy references.
 
-- [ ] **Step 2: Run verification-before-completion**
+- [ ] **Step 2: Run `verification-before-completion`**
 
-Use the superpowers verification skill. Re-run task-owned tests, focused regressions, syntax, selftest and `git diff --check` from the exact branch head.
+Re-run task tests, focused regressions, syntax, selftest and `git diff --check` from exact HEAD.
 
-- [ ] **Step 3: Push without force and verify remote equality**
+- [ ] **Step 3: Push without force and verify local/remote HEAD equality**
 
-Push only `impl/current-owner-binding-refresh-v1`; verify local HEAD == remote branch HEAD. Open a Draft PR that includes the approved spec/plan plus implementation commits.
+Open a Draft PR containing approved spec/plan + implementation commits.
 
-- [ ] **Step 4: Review CI and the exact final source SHA**
+- [ ] **Step 4: Require CI GREEN on the final source SHA**
 
-CI failure is a blocker. If any fix changes the branch head, repeat review and verification. The installation approval must bind to the final reviewed source, not an earlier commit.
+Any source fix invalidates earlier review evidence; repeat review/verification on the new head.
 
-- [ ] **Step 5: Install/register through an existing approved SHA-bound control-plane deployment path**
+- [ ] **Step 5: Install/register only through an existing governed SHA-bound control-plane deployment path**
 
-Do not manually SSH/copy-edit Base/Executor/Policy/MCP. If the installer path requires a Level-4 request, create a fresh request and stop for its exact required confirmation before applying it.
+No manual SSH/copy-edit of Base/Executor/Policy/MCP. If installation requires a fresh approval request, create it and stop for exactly the confirmation literal required by that request.
 
-- [ ] **Step 6: Verify registration without executing the repair**
+- [ ] **Step 6: Verify registration without executing refresh**
 
-After install, require:
+Require `selfmaint_health` GREEN; action appears exactly once; no arbitrary request fields; previous actions remain; no Titan application/cutover mutation.
 
-- `selfmaint_health` GREEN;
-- live Host Actions list includes `control_plane_current_owner_binding_refresh_v1` exactly once;
-- request schema exposes only the fixed action name, no arbitrary fields;
-- all previously registered actions remain present;
-- no Titan application/cutover mutation occurred.
-
-### Task 8: Execute the Fresh Repair Request and Prove the Titan Deploy Gate Is Ready
+### Task 8: Execute the Fresh Repair Request and Prove the Titan Deploy Gate
 
 **Files:**
-- No repository changes expected unless verification finds an implementation defect; defects go back through Tasks 4-7 with a new reviewed head.
+- No repo changes unless a defect sends work back through Tasks 4-7 and a new reviewed head.
 
 **Interfaces:**
-- Consumes a fresh one-time request for `control_plane_current_owner_binding_refresh_v1` and the exact runtime-required confirmation.
-- Produces one bounded evidence chain ending at Titan preflight GREEN or a rolled-back failure.
+- Input: fresh one-time request for `control_plane_current_owner_binding_refresh_v1` + exact active-policy confirmation.
+- Output: bounded GREEN evidence chain or rolled-back failure.
 
-- [ ] **Step 1: Create a fresh action request**
+- [ ] **Step 1: Create a fresh fixed-action request and read status immediately**
 
-Call the fixed Host Actions request surface for:
+Record only request ID, level/risk, expiry and non-secret binding metadata.
 
-`control_plane_current_owner_binding_refresh_v1`
+- [ ] **Step 2: Stop for the exact confirmation required by that fresh request**
 
-Read status immediately. Record only request ID, level/risk, expiry and non-secret binding metadata.
+Never reuse earlier `CONFIRM_LEVEL_3_PRODUCTION` / `CONFIRM_LEVEL_4_CRITICAL`.
 
-- [ ] **Step 2: Stop for the exact active confirmation literal**
+- [ ] **Step 3: Apply once and read persisted evidence**
 
-Do not reuse `CONFIRM_LEVEL_3_PRODUCTION` or `CONFIRM_LEVEL_4_CRITICAL` from any earlier request. Ask the user for exactly the literal required by this fresh request.
+On failure require `rollback_performed:true` or distinct fail-closed rollback failure; do not continue to Titan checks.
 
-- [ ] **Step 3: Apply only the fresh pending request**
-
-After confirmation, apply once and read persisted status/evidence. On failure, require either `rollback_performed:true` or a distinct fail-closed rollback-failed state; do not proceed to Titan checks on a failed transaction.
-
-- [ ] **Step 4: Verify post-repair health and contracts**
-
-Require in order:
+- [ ] **Step 4: Verify post-repair in order**
 
 1. `selfmaint_health` GREEN.
-2. Effective `prhm-agent-selfmaint-exec.service` `ReadWritePaths` contains `/var/backups/prhm-current-baseline-refresh-v1` while `ProtectSystem=strict` remains in force.
-3. V19 contract 17/17 GREEN using the fixed V19 contract tool after migration.
-4. Registry action-specific bootstrap no longer returns `registry_bridge_baseline_sha_mismatch`.
-5. Current-baseline refresh can create its real backup before target replacement without EROFS. If executing the baseline refresh itself requires a separate fresh approval, create that request and obtain its own exact confirmation; never reuse the repair approval.
-6. Existing-topology rolling refresh validates live owner SHA. If a rolling refresh is actually required to load the rebound owner, create a fresh rolling-refresh request and obtain its own required confirmation before applying.
-7. Verify blue/green API and MCP slots are healthy and fingerprints match the intended owner state.
+2. Effective selfmaint-exec `ReadWritePaths` includes `/var/backups/prhm-current-baseline-refresh-v1`; `ProtectSystem=strict` remains.
+3. V19 contract 17/17 GREEN.
+4. Registry bootstrap no longer returns `registry_bridge_baseline_sha_mismatch`.
+5. Current-baseline backup-before-write works without EROFS. If running the actual baseline refresh needs a separate request, create a fresh request and get its own exact confirmation.
+6. Rolling-refresh validates live owner SHA. If an actual rolling refresh is needed, create a separate fresh request and get its own confirmation.
+7. Blue/green API and MCP slots healthy with intended owner fingerprints.
 8. `titan_host_actions_worktree_test_v1({suite:'contract_v1'})` GREEN.
 9. `titan_front_handoff_preflight_v2()` GREEN.
 
-- [ ] **Step 5: Stop at the Titan deployment gate**
+- [ ] **Step 5: Stop at the deploy gate**
 
-When and only when both Titan contract and preflight are GREEN, report the exact evidence and stop. Request fresh:
+Only when Titan contract and preflight are GREEN, report evidence and request fresh:
 
 `CONFIRM_DEPLOY_PRODUCTION`
 
-Do **not** call `titan_front_handoff_deploy_v2` inside this implementation plan.
+Do not call Titan deploy inside this implementation plan.
 
 ## Final Acceptance Checklist
 
-- [ ] Manifest is deterministic and contains only bounded non-secret owner metadata.
-- [ ] All five consumer adapters are fixed, idempotent and reject unknown preimages.
-- [ ] No historical OLD_SHA -> NEW_SHA chain is the steady-state source of truth.
-- [ ] Self-maint executor has only the exact new backup-root write grant; `ProtectSystem=strict` remains enabled.
-- [ ] Transaction persists exact preimages before mutation and injected rollback restores byte-identical state including metadata/drop-in.
+- [ ] Deterministic non-secret current-owner manifest.
+- [ ] Five fixed idempotent adapters reject unknown preimages.
+- [ ] Historical OLD_SHA -> NEW_SHA chains are no longer steady-state authority.
+- [ ] Exact backup-root grant only; `ProtectSystem=strict` preserved.
+- [ ] Preimages persisted before mutation; injected rollback restores byte-identical files/metadata/drop-in.
 - [ ] Host Action v29 is fixed no-input and approval-bound.
-- [ ] New and focused regression tests pass; unrelated failures, if any, are explicitly documented.
-- [ ] Registry/V19 stale-binding errors are gone.
-- [ ] Baseline-refresh backup no longer fails EROFS.
-- [ ] Titan handoff no longer fails on `RestrictSUIDSGID=true`.
-- [ ] V19 contract is 17/17 GREEN.
+- [ ] New/focused regression tests GREEN; unrelated pre-existing failures explicitly documented.
+- [ ] Registry/V19 stale-binding errors gone.
+- [ ] Baseline backup no longer EROFS.
+- [ ] Titan sandbox no longer errors on `RestrictSUIDSGID=true`.
+- [ ] V19 17/17 GREEN.
 - [ ] Titan contract GREEN.
 - [ ] Titan preflight GREEN.
 - [ ] `selfmaint_health` GREEN.
@@ -575,4 +473,4 @@ Do **not** call `titan_front_handoff_deploy_v2` inside this implementation plan.
 - [ ] `database_mutation:false`.
 - [ ] `titan_cutover:false`.
 - [ ] No unrelated repository state modified.
-- [ ] Execution stops before Titan deployment and waits for fresh `CONFIRM_DEPLOY_PRODUCTION`.
+- [ ] Stop before Titan deployment and wait for fresh `CONFIRM_DEPLOY_PRODUCTION`.
