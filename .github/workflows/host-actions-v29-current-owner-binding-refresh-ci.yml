@@ -1,0 +1,34 @@
+name: host-actions-v29-current-owner-binding-refresh-ci
+on:
+  push:
+    branches:
+      - impl/current-owner-binding-refresh-v1
+  pull_request:
+    paths:
+      - 'current-owner-binding-*.js'
+      - 'bootstrap-host-actions-v29-current-owner-binding-refresh.js'
+      - 'test-v29-current-owner-binding-refresh.js'
+      - '.github/workflows/host-actions-v29-current-owner-binding-refresh-ci.yml'
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Syntax
+        run: |
+          node --check current-owner-binding-manifest-v1.js
+          node --check current-owner-binding-adapters-v1.js
+          node --check current-owner-binding-systemd-v1.js
+          node --check current-owner-binding-refresh-v1.js
+          if [ -f bootstrap-host-actions-v29-current-owner-binding-refresh.js ]; then node --check bootstrap-host-actions-v29-current-owner-binding-refresh.js; fi
+      - name: Focused tests
+        run: |
+          node --test \
+            test-current-owner-binding-manifest-v1.js \
+            test-current-owner-binding-adapters-v1.js \
+            test-current-owner-binding-systemd-v1.js \
+            test-current-owner-binding-refresh-v1.js \
+            test-v29-current-owner-binding-refresh.js
