@@ -1,7 +1,7 @@
 'use strict';
 const test=require('node:test');
 const assert=require('node:assert/strict');
-const action=require('./control-center-install-v1.js');
+const action=require('./control-center-install-runtime-v1.js');
 
 test('runtime installer source is fixed to the reviewed private Control Center commit',()=>{
   assert.equal(action.constants.SOURCE_REPO,'/opt/prhm-company-control-plane');
@@ -20,8 +20,8 @@ test('fixed source refresh may fetch only the reviewed branch ref',()=>{
 });
 
 test('installer invocation accepts no user-controlled arguments',()=>{
-  assert.doesNotThrow(()=>action.validateInvocation(['node','control-center-install-v1.js']));
-  assert.throws(()=>action.validateInvocation(['node','control-center-install-v1.js','--path=/tmp/x']),/unexpected_arguments/);
+  assert.doesNotThrow(()=>action.validateInvocation(['node','control-center-install-runtime-v1.js']));
+  assert.throws(()=>action.validateInvocation(['node','control-center-install-runtime-v1.js','--path=/tmp/x']),/unexpected_arguments/);
 });
 
 test('Laravel env patch is idempotent and updates only fixed Control Center keys',()=>{
