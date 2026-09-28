@@ -35,7 +35,7 @@ The subsystem must:
 6. Roll back all mutations to exact preimages if any validation fails.
 7. Never deploy or mutate Titan production as part of this repair.
 
-The proposed public action name is:
+The public action name is:
 
 `control_plane_current_owner_binding_refresh_v1`
 
@@ -62,7 +62,7 @@ This work does **not**:
 
 A generated manifest becomes the single binding authority for this repair chain. It is produced server-side from fixed, predeclared owner paths and service metadata.
 
-Suggested persisted location:
+Persist it at:
 
 `/var/lib/prhm-agent-selfmaint-exec/current-owner-binding-v1/manifest.json`
 
@@ -97,7 +97,7 @@ Every filesystem owner must satisfy all of the following before its SHA can ente
 
 Each stale consumer is handled by a dedicated fixed adapter. An adapter has exactly one responsibility: transform or install one known consumer so that it resolves its binding from the canonical current-owner manifest rather than from a historical embedded owner SHA.
 
-Initial adapters should cover only the currently blocking chain:
+Initial adapters cover only the currently blocking chain:
 
 1. Registry/bootstrap bridge binding.
 2. V19 reader/helper binding.
@@ -109,9 +109,9 @@ Adapters are fixed in code; there is no generic adapter API exposed to callers.
 
 ### 4.4 One-time migration, steady-state refresh
 
-The first release may require a one-time exact-preimage migration because current consumers still contain historical inline SHA/anchor logic.
+The first release includes a one-time exact-preimage migration because current consumers still contain historical inline SHA/anchor logic.
 
-That migration must be distinguished from steady-state refresh:
+That migration is distinct from steady-state refresh:
 
 - **Migration:** exact current SHA is captured, a complete candidate for each allowlisted consumer is generated, and the consumer is moved to manifest-based resolution. Migration is permitted only from enumerated preimages or from a verified already-migrated state.
 - **Steady state:** later owner changes update the manifest and regenerate only the fixed binding data/consumer outputs. No historical text anchor is needed.
@@ -124,7 +124,7 @@ The refresh is an all-or-nothing transaction.
 
 ### Phase A — preflight
 
-Before any mutation:
+Before any live-target mutation:
 
 1. Acquire an action-local lock so two refreshes cannot run concurrently.
 2. Verify `selfmaint_health` is GREEN.
@@ -132,10 +132,10 @@ Before any mutation:
 4. Inventory all target consumers and persist exact preimage bytes, SHA-256, uid/gid/mode, and canonical path.
 5. Verify every target is an allowed regular file/config target and not a symlink.
 6. Verify no unexpected consumer state is present.
-7. Verify required backup/state directories are writable by the execution sandbox before changing consumers.
+7. Verify required backup/state directories are writable by the execution sandbox using an action-owned create/remove probe inside the exact fixed directory; this probe is not a consumer mutation.
 8. Produce a preflight evidence object with `production_mutation:false`.
 
-Any failure in Phase A stops with zero mutation.
+Any failure in Phase A stops with zero live-target mutation.
 
 ### Phase B — candidate materialization
 
@@ -165,7 +165,7 @@ Required verification sequence:
 1. `selfmaint_health` GREEN.
 2. V19 contract: 17/17 GREEN.
 3. Registry action-specific bootstrap resolves without `registry_bridge_baseline_sha_mismatch`.
-4. Current-baseline refresh preflight is able to create its backup in the intended writable backup root without EROFS.
+4. Current-baseline refresh is able to create its real backup in the intended writable backup root without EROFS before any baseline target replacement.
 5. Existing-topology rolling refresh path validates against the live owner SHA.
 6. `titan_host_actions_worktree_test_v1({suite:"contract_v1"})` GREEN.
 7. `titan_front_handoff_preflight_v2()` GREEN.
@@ -187,22 +187,24 @@ If rollback itself fails, return a distinct fail-closed `rollback_failed` state 
 
 ## 6. Systemd confinement
 
-The repair must preserve strong sandboxing.
+The repair preserves strong sandboxing.
 
-`ProtectSystem=strict` remains enabled. Writable paths must be explicit and minimal.
+`ProtectSystem=strict` remains enabled. The selected design is a persistent fixed drop-in scoped only to `prhm-agent-selfmaint-exec.service` that adds exactly:
 
-For the known baseline-refresh EROFS case, the design permits only the fixed backup/state path required by the action, for example:
+`ReadWritePaths=/var/backups/prhm-current-baseline-refresh-v1`
 
-`/var/backups/prhm-current-baseline-refresh-v1`
+This choice preserves the existing baseline-refresh backup location and backup-before-write behavior while limiting the new privilege surface to one exact directory.
 
-The implementation may choose either:
+Implementation requirements:
 
-- a persistent fixed systemd drop-in scoped to `prhm-agent-selfmaint-exec.service`, or
-- moving the baseline-refresh backup into an existing fixed writable `StateDirectory`.
-
-The implementation plan must select one, not both. The preferred choice is the one that introduces the smaller long-term privilege surface while keeping backup-before-write semantics intact.
-
-No `ReadWritePaths=/var/backups` broad grant is allowed.
+- preserve the service's existing writable paths;
+- add only `/var/backups/prhm-current-baseline-refresh-v1`;
+- do not add `ReadWritePaths=/var/backups` or another parent-wide grant;
+- preserve `ProtectSystem=strict`, `ProtectHome`, and all unrelated hardening settings;
+- atomically install the fixed drop-in;
+- `daemon-reload` and restart only `prhm-agent-selfmaint-exec.service` when the drop-in actually changes;
+- verify `ActiveState=active`, nonzero `MainPID`, and effective `ReadWritePaths` contains the exact new path;
+- roll the drop-in back to its exact preimage if later transaction verification fails.
 
 ## 7. Approval and policy semantics
 
@@ -261,7 +263,7 @@ After implementation:
 - baseline refresh can back up before write;
 - Titan contract passes;
 - Titan preflight passes;
-- forced injected failure restores byte-identical preimages.
+- forced injected failure restores byte-identical preimages, including the systemd drop-in when changed by the transaction.
 
 ### Regression
 
@@ -325,5 +327,7 @@ This design is complete when implementation can demonstrate all of the following
 ## 13. Design decision summary
 
 The central decision is to stop repairing stale SHA/anchor chains one tool at a time. The current-owner manifest becomes the authoritative binding boundary, and fixed consumer adapters migrate the currently blocking chain to that authority in one rollback-safe transaction.
+
+A narrow systemd drop-in grants the self-maint executor write access only to the existing current-baseline backup directory, preserving `ProtectSystem=strict` and backup-before-write semantics.
 
 This preserves fail-closed behavior while removing the circular failure mode where the repair tool itself becomes stale before it can repair the next layer.
