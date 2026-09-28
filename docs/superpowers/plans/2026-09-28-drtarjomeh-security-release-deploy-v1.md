@@ -4,7 +4,7 @@
 
 **Goal:** Add a fixed Level-4 Host Action that creates a rollback-safe DrTarjomeh security hot-release from the current production artifact, installs the approved credential-remediation payload, binds protected runtime environment values, atomically cuts over, and rolls back on failure.
 
-**Architecture:** Build one SHA-bound Host Actions v2 bootstrap plus one fixed no-input deployment helper. The helper clones the currently approved release into a sibling release, overlays only the approved security payload from DrTarjomeh commit `f22b1d17801239f7539f84e5aa8b91250c87dc58`, creates a protected environment file without exposing values, runs all pre-cutover gates, switches the release pointer atomically, performs fixed smoke tests, and restores the previous release/environment on failure. Registration is additive against the live Agent 3 baseline and must never overwrite concurrent Titan or other control-plane changes.
+**Architecture:** Build one SHA-bound Host Actions v2 bootstrap plus one fixed no-input deployment helper. The helper clones the currently approved release into a sibling release, overlays only the approved security payload from DrTarjomeh commit `f22b1d17801239f7539f84e5aa8b91250c87dc58`, creates a protected environment file without exposing values, runs all pre-cutover gates, switches the release pointer atomically, performs one fixed public smoke check, and restores the previous release/environment on failure. Registration is additive against the live Agent 3 baseline and must never overwrite concurrent Titan or other control-plane changes.
 
 **Tech Stack:** Node.js (`prhm-node`), PHP 8.3 CLI, Yii2 legacy runtime, systemd transient units, existing PRHM Host Actions v2 approval/control-plane, GitHub Actions.
 
@@ -19,6 +19,7 @@
 - Production pointer: `/home/drtarjomeh/domains/drtarjomeh.ir/public_html`.
 - Releases root: `/home/drtarjomeh/domains/drtarjomeh.ir/releases`.
 - Protected env: `/etc/drtarjomeh/production.env`, regular non-symlink, mode `0600`.
+- Fixed post-cutover HTTP smoke: host `drtarjomeh.ir`, path `/`, accepted status `200..399`, body must not contain `Internal Server Error`.
 - Level 4 / critical, second confirmation required, one-time request required.
 - No arbitrary command, path, revision, URL, SQL, environment content, or credential input.
 - No database write, provider credential rotation, DNS/TLS/Apache/PHP-FPM/package mutation, or unrelated application feature deployment.
@@ -45,13 +46,43 @@
 - Create: `test-v29-drtarjomeh-security-release-deploy.js`
 
 **Interfaces:**
-- Produces constants `ACTION`, `OPERATION`, `TARGET_COMMIT`, `EXPECTED_RELEASE`, `PRODUCTION_POINTER`, `RELEASES_ROOT`, `ENV_PATH`, and immutable `PAYLOAD` / `PREIMAGES` manifests.
+- Produces constants `ACTION`, `OPERATION`, `TARGET_COMMIT`, `EXPECTED_RELEASE`, `PRODUCTION_POINTER`, `RELEASES_ROOT`, `ENV_PATH`, immutable `PAYLOAD` / `PREIMAGES`, and fixed `SMOKE`.
 - `PAYLOAD` maps each approved production payload path to exact post-overlay SHA-256 and file mode.
 - `PREIMAGES` maps each target path in the expected current release to exact source SHA-256 or explicit `absent` for new files.
+- `SMOKE` is exactly `{host:'drtarjomeh.ir', path:'/', status_min:200, status_max:399, forbidden_body:'Internal Server Error'}`.
+
+`PAYLOAD` must contain exactly these 24 paths:
+
+```text
+api/config/main-local.php
+api/config/web.php
+api/web/index.php
+backend/web/index.php
+common/components/DisabledSmsService.php
+common/config/base.php
+common/config/base_env.php
+common/config/env/dev.php
+common/config/env/dev_m.php
+common/config/env/devmp.php
+common/config/env/drtarjomeh-ir.php
+common/config/env/prod.php
+common/config/load-environment.php
+common/config/params.php
+console/config/main.php
+core/helpers/sms/webservice/mediana.php
+environments/prod/yii
+frontend/web/index.php
+panel/web/index.php
+scripts/probe-runtime-bootstrap.php
+scripts/test-environment-loader.php
+site_configs/drtarjomeh-ir.php
+translator/web/index.php
+yii
+```
 
 - [ ] **Step 1: Write the failing payload contract test**
 
-Assert `ACTION`, `OPERATION`, `TARGET_COMMIT`, and `EXPECTED_RELEASE` equal the fixed values above. Assert `PAYLOAD` contains exactly the PR #25 production/security set and explicitly excludes `.env.production.example`, `.github/workflows/secret-scan.yml`, and `scripts/scan-tracked-secrets.py`. Assert no payload path is absolute or contains `..`.
+Assert `ACTION`, `OPERATION`, `TARGET_COMMIT`, and `EXPECTED_RELEASE` equal the fixed values above. Assert `PAYLOAD` equals the 24-path list above in set membership and explicitly excludes `.env.production.example`, `.github/workflows/secret-scan.yml`, and `scripts/scan-tracked-secrets.py`. Assert no payload path is absolute or contains `..`. Assert `SMOKE` equals the fixed root contract above.
 
 - [ ] **Step 2: Run the contract test and verify it fails**
 
@@ -61,8 +92,6 @@ Expected: FAIL because the v29 bootstrap/manifest does not exist yet.
 - [ ] **Step 3: Read approved commit file bytes and current production preimages**
 
 Use GitHub at commit `f22b1d17801239f7539f84e5aa8b91250c87dc58` for target bytes and approved Agent read-only paths for current release bytes. Record exact SHA-256 values only; do not copy real secret values into the Host Actions repository or plan.
-
-The payload must include the security/runtime files from PR #25 except the three CI/example-only files named in Step 1, including the legacy dev config files that previously contained tracked credentials.
 
 - [ ] **Step 4: Implement immutable manifests and preflight identity checks**
 
@@ -143,12 +172,12 @@ git commit -m "feat: build isolated DrTarjomeh security candidate"
 **Interfaces:**
 - `verifyCandidate(candidateRoot, runtimeIdentity) -> sanitized evidence`.
 - `atomicCutover(candidateRoot) -> previousRealpath`.
-- `smokeProduction() -> fixed-route HTTP evidence`.
+- `smokeProduction() -> fixed-route HTTP evidence` using only `SMOKE` from Task 1.
 - `rollback(state) -> {performed, verified, error}`.
 
 - [ ] **Step 1: Write failing verification/cutover tests**
 
-Assert fixed PHP lint coverage for every modified PHP payload file, `scripts/test-environment-loader.php`, and six invocations of `scripts/probe-runtime-bootstrap.php` for `api`, `backend`, `frontend`, `panel`, `translator`, and `console`. Assert probes execute without email/SMS/Slack sends or database writes.
+Assert fixed PHP lint coverage for every PHP file in `PAYLOAD`, `scripts/test-environment-loader.php`, and six invocations of `scripts/probe-runtime-bootstrap.php` for `api`, `backend`, `frontend`, `panel`, `translator`, and `console`. Assert probes execute without email/SMS/Slack sends or database writes.
 
 - [ ] **Step 2: Run tests and verify failure**
 
@@ -157,15 +186,15 @@ Expected: verification/cutover tests FAIL.
 
 - [ ] **Step 3: Implement candidate verification**
 
-Run PHP lint on the fixed payload PHP paths. Run environment-loader contract and all six runtime probes from the candidate using the candidate protected env and trusted runtime identity. Require mail=file, SMS disabled adapter, debug/Gii off, and DB definitions environment-backed.
+Run PHP lint on every PHP payload path. Run environment-loader contract and all six runtime probes from the candidate using the candidate protected env and trusted runtime identity. Require mail=file, SMS disabled adapter, debug/Gii off, and DB definitions environment-backed.
 
-- [ ] **Step 4: Implement atomic pointer switch and fixed smoke routes**
+- [ ] **Step 4: Implement atomic pointer switch and the fixed public smoke**
 
-Switch `public_html` with an atomic symlink rename only after all candidate gates pass. Smoke routes are fixed in source and accept no caller input. Require bounded successful HTTP status and reject bootstrap fatal markers such as `Internal Server Error`.
+Switch `public_html` with an atomic symlink rename only after all candidate gates pass. Probe exactly `drtarjomeh.ir/`; require status `200..399` and reject a response body containing `Internal Server Error`. No alternate host/path is accepted from request input.
 
 - [ ] **Step 5: Implement complete rollback journal**
 
-Track old release realpath, previous env existence/hash/backup, candidate path, and cutover state without secret content. On any failure after env/candidate mutation, restore previous env if changed; after cutover restore the old production symlink atomically; then rerun rollback smoke verification. Distinguish `FAILED_ROLLED_BACK` from `FAILED_ROLLBACK_INCOMPLETE`.
+Track old release realpath, previous env existence/hash/backup, candidate path, and cutover state without secret content. On any failure after env/candidate mutation, restore previous env if changed; after cutover restore the old production symlink atomically; then rerun the same fixed public smoke. Distinguish `FAILED_ROLLED_BACK` from `FAILED_ROLLBACK_INCOMPLETE`.
 
 - [ ] **Step 6: Add Review Focus post-cutover rollback test**
 
@@ -217,7 +246,7 @@ Add only `drtarjomeh_security_release_deploy_v1` to the base registry, executor 
 
 - [ ] **Step 5: Implement fixed systemd sandbox**
 
-Executor launches only the fixed helper with no arguments. Grant only paths required for DrTarjomeh releases, `/etc/drtarjomeh`, action backup/result/lock paths, and required runtime sockets/temp state. Use `ProtectSystem=strict`, `ProtectHome=read-only`, `NoNewPrivileges=true`, restricted capabilities, and only the address families required by fixed smoke checks. No raw shell or arbitrary write surface.
+Executor launches only the fixed helper with no arguments. Grant only paths required for DrTarjomeh releases, `/etc/drtarjomeh`, action backup/result/lock paths, and required runtime sockets/temp state. Use `ProtectSystem=strict`, `ProtectHome=read-only`, `NoNewPrivileges=true`, restricted capabilities, and only the address families required by the fixed HTTP smoke. No raw shell or arbitrary write surface.
 
 - [ ] **Step 6: Add baseline-drift and action-preservation tests**
 
@@ -257,7 +286,7 @@ git commit -m "feat: register DrTarjomeh security deploy host action"
 
 - [ ] **Step 1: Write the path-scoped CI workflow**
 
-Trigger on PR changes to the v29 bootstrap/test/workflow and on the feature/integration branch. Steps: checkout, `node --check`, `--selftest-only`, then `node --test`.
+Trigger on PR changes to the v29 bootstrap/test/workflow and on branch `feature/drtarjomeh-security-release-deploy-v1`. Steps: checkout, `node --check`, `node bootstrap-host-actions-v29-drtarjomeh-security-release-deploy.js --selftest-only`, then `node --test test-v29-drtarjomeh-security-release-deploy.js`.
 
 - [ ] **Step 2: Validate workflow and run local test commands**
 
@@ -269,7 +298,7 @@ PR body must state: registration only until Level-4 installation; no DrTarjomeh 
 
 - [ ] **Step 4: Review exact diff**
 
-Review specifically for arbitrary command/path/revision input, embedded real secrets, missing rollback, overly broad sandbox paths, action loss, historic Agent 3 overwrite risk, and payload files outside PR #25 scope.
+Review specifically for arbitrary command/path/revision input, embedded real secrets, missing rollback, overly broad sandbox paths, action loss, historic Agent 3 overwrite risk, and payload files outside the exact 24-path set.
 
 - [ ] **Step 5: Verify GitHub CI is GREEN on the exact reviewed HEAD**
 
@@ -316,7 +345,7 @@ Require the new action to appear in `host_action_v2_request.action`, and confirm
 
 - [ ] **Step 1: Run fresh read-only production preflight**
 
-Verify `public_html` still resolves to `20260805-011747-672d32f490bd`, current public site is healthy, expected preimages still match, and protected env state matches the action's bound expectation. Any drift stops execution.
+Verify `public_html` still resolves to `20260805-011747-672d32f490bd`, fixed root smoke is healthy, expected preimages still match, and protected env state matches the action's bound expectation. Any drift stops execution.
 
 - [ ] **Step 2: Create a fresh fixed Host Actions v2 Level-4 request**
 
@@ -332,7 +361,7 @@ Require `ok:true`, target commit equality, all preflight/lint/runtime/env/smoke 
 
 - [ ] **Step 5: Perform independent post-deploy verification**
 
-Read-only verify: `public_html` now resolves to the new sibling release; old release still exists; `/etc/drtarjomeh/production.env` is regular, mode `0600`, and runtime-readable without revealing content; primary public site/application surfaces respond without bootstrap fatal errors; mail/SMS/Slack remain fail-closed.
+Read-only verify: `public_html` now resolves to the new sibling release; old release still exists; `/etc/drtarjomeh/production.env` is regular, mode `0600`, and runtime-readable without revealing content; the fixed `drtarjomeh.ir/` public smoke passes; mail/SMS/Slack remain fail-closed.
 
 - [ ] **Step 6: Record closure evidence for the deploy portion of Issues #9/#13**
 
