@@ -13,6 +13,7 @@ const constants = Object.freeze({
   ENV_FILE: '/etc/prhm-control-center/control-center.env',
   CONFIG_API_ROUTES: '/srv/prhm-config-center/current/apps/api/routes/api.php',
   CONFIG_AUTH_CONTROLLER: '/srv/prhm-config-center/current/apps/api/app/Http/Controllers/Api/Admin/AuthController.php',
+  CONFIG_SERVICES: '/srv/prhm-config-center/current/apps/api/config/services.php',
   CONFIG_ADMIN_LOGIN_ROUTE: '/srv/prhm-config-center/current/apps/admin/src/app/api/session/login/route.ts',
   CONFIG_NEXT_CONFIG: '/srv/prhm-config-center/current/apps/admin/next.config.ts',
   APACHE_HTTPS: '/etc/httpd/conf.d/prhm-vhosts-ssl.conf',
@@ -55,8 +56,8 @@ function patchAuthController(source) {
         }
 
         $assertion = (string) $request->input('assertion', '');
-        $secret = (string) env('CONTROL_CENTER_CONFIG_SSO_SECRET', '');
-        $adminLogin = Str::lower(trim((string) env('CONTROL_CENTER_SSO_ADMIN_LOGIN', '')));
+        $secret = (string) config('services.control_center.secret', '');
+        $adminLogin = Str::lower(trim((string) config('services.control_center.admin_login', '')));
         if (strlen($secret) < 32 || $adminLogin === '' || substr_count($assertion, '.') !== 1) {
             return response()->json(['message' => 'Invalid SSO configuration.'], 503);
         }
@@ -100,6 +101,15 @@ function patchAuthController(source) {
 
 `;
   return source.replace(anchor, method + anchor);
+}
+
+function patchServicesConfig(source) {
+  source=String(source);
+  if(source.includes("'control_center' => [")) return source;
+  const anchor='\n];\n';
+  exactlyOnce(source,anchor,'services_config');
+  const block=`\n    'control_center' => [\n        'secret' => env('CONTROL_CENTER_CONFIG_SSO_SECRET'),\n        'admin_login' => env('CONTROL_CENTER_SSO_ADMIN_LOGIN'),\n    ],\n`;
+  return source.replace(anchor,block+anchor);
 }
 
 function patchAdminLoginRoute(source) {
@@ -204,6 +214,7 @@ function rollbackTargets(){
     constants.ENV_FILE,
     constants.CONFIG_API_ROUTES,
     constants.CONFIG_AUTH_CONTROLLER,
+    constants.CONFIG_SERVICES,
     constants.CONFIG_ADMIN_LOGIN_ROUTE,
     constants.CONFIG_NEXT_CONFIG,
     constants.APACHE_HTTPS,
@@ -219,6 +230,7 @@ module.exports = {
   rollbackTargets,
   patchApiRoutes,
   patchAuthController,
+  patchServicesConfig,
   patchAdminLoginRoute,
   patchNextConfig,
 };
