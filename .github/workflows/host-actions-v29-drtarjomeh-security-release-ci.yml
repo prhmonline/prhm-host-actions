@@ -8,6 +8,7 @@ on:
       - 'bootstrap-host-actions-v29-drtarjomeh-security-release-deploy.js'
       - 'drtarjomeh-security-release-v29-helper-builder.js'
       - 'install-host-actions-v29-drtarjomeh-security-release.js'
+      - 'drtarjomeh-v29-mcp-bootstrap-bridge.mjs'
       - 'test-v29-drtarjomeh-security-release-*.js'
       - 'test-v29-drtarjomeh-root-bootstrap.js'
       - '.github/workflows/host-actions-v29-drtarjomeh-security-release-ci.yml'
@@ -16,6 +17,7 @@ on:
       - 'bootstrap-host-actions-v29-drtarjomeh-security-release-deploy.js'
       - 'drtarjomeh-security-release-v29-helper-builder.js'
       - 'install-host-actions-v29-drtarjomeh-security-release.js'
+      - 'drtarjomeh-v29-mcp-bootstrap-bridge.mjs'
       - 'test-v29-drtarjomeh-security-release-*.js'
       - 'test-v29-drtarjomeh-root-bootstrap.js'
       - '.github/workflows/host-actions-v29-drtarjomeh-security-release-ci.yml'
@@ -43,6 +45,7 @@ jobs:
           node --check bootstrap-host-actions-v29-drtarjomeh-security-release-deploy.js
           node --check drtarjomeh-security-release-v29-helper-builder.js
           node --check install-host-actions-v29-drtarjomeh-security-release.js
+          node --check drtarjomeh-v29-mcp-bootstrap-bridge.mjs
       - name: Build root-of-trust artifact
         if: success()
         env:
