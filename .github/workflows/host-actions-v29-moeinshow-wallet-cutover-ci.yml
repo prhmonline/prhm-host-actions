@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'bootstrap-host-actions-v29-moeinshow-wallet-cutover.js'
+      - 'moeinshow-wallet-cutover-v1.helper.js'
       - 'test-v29-moeinshow-wallet-cutover.js'
       - '.github/workflows/host-actions-v29-moeinshow-wallet-cutover-ci.yml'
   push:
@@ -11,6 +12,7 @@ on:
       - integration/v29-moeinshow-wallet-cutover
     paths:
       - 'bootstrap-host-actions-v29-moeinshow-wallet-cutover.js'
+      - 'moeinshow-wallet-cutover-v1.helper.js'
       - 'test-v29-moeinshow-wallet-cutover.js'
       - '.github/workflows/host-actions-v29-moeinshow-wallet-cutover-ci.yml'
 
@@ -28,9 +30,8 @@ jobs:
       - name: Syntax
         if: always()
         run: |
-          if [ -f bootstrap-host-actions-v29-moeinshow-wallet-cutover.js ]; then
-            node --check bootstrap-host-actions-v29-moeinshow-wallet-cutover.js
-          fi
+          node --check bootstrap-host-actions-v29-moeinshow-wallet-cutover.js
+          node --check moeinshow-wallet-cutover-v1.helper.js
       - name: Selftest
         if: success()
         run: node bootstrap-host-actions-v29-moeinshow-wallet-cutover.js --selftest-only
