@@ -20,3 +20,5 @@ jobs:
           node-version: '20'
       - name: Run installer contract
         run: node --test test-control-center-install-v1.js
+      - name: Print installer SHA-256
+        run: sha256sum control-center-install-v1.js
