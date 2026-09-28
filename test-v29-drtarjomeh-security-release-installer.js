@@ -2,6 +2,7 @@
 const test=require('node:test');
 const assert=require('node:assert/strict');
 const bootstrap=require('./bootstrap-host-actions-v29-drtarjomeh-security-release-deploy.js');
+const installer=require('./install-host-actions-v29-drtarjomeh-security-release.js');
 
 const EXPECTED_PATHS={
   base:'/opt/prhm-agent-selfmaint/server.js',
@@ -12,9 +13,9 @@ const EXPECTED_PATHS={
 };
 
 test('installer exposes only the five fixed installation targets',()=>{
-  assert.deepEqual(bootstrap.PATHS,EXPECTED_PATHS);
-  assert.equal(bootstrap.INSTALL_RESULT,'/var/lib/prhm-agent-selfmaint-exec/drtarjomeh-security-release-installer-v1/latest.json');
-  assert.equal(bootstrap.INSTALL_BACKUP_ROOT,'/var/backups/prhm-drtarjomeh-security-release-installer-v1');
+  assert.deepEqual(installer.PATHS,EXPECTED_PATHS);
+  assert.equal(installer.INSTALL_RESULT,'/var/lib/prhm-agent-selfmaint-exec/drtarjomeh-security-release-installer-v1/latest.json');
+  assert.equal(installer.INSTALL_BACKUP_ROOT,'/var/backups/prhm-drtarjomeh-security-release-installer-v1');
 });
 
 test('install preflight rejects unstable blue-green topology',()=>{
@@ -22,13 +23,12 @@ test('install preflight rejects unstable blue-green topology',()=>{
     hashes:{base:bootstrap.BASE_SHA,exec:bootstrap.EXEC_SHA,policy:bootstrap.POLICY_SHA,mcp:bootstrap.MCP_SHA},
     services:{api_blue:'active',api_green:'active',mcp_blue:'active',mcp_green:'active'},
   };
-  assert.doesNotThrow(()=>bootstrap.assertInstallPreflight(stable));
-  assert.throws(()=>bootstrap.assertInstallPreflight({...stable,services:{...stable.services,mcp_green:'activating'}}),/control_plane_not_stable:mcp_green/);
-  assert.throws(()=>bootstrap.assertInstallPreflight({...stable,hashes:{...stable.hashes,mcp:'0'.repeat(64)}}),/baseline_sha_mismatch:mcp/);
+  assert.doesNotThrow(()=>installer.assertInstallPreflight(stable));
+  assert.throws(()=>installer.assertInstallPreflight({...stable,services:{...stable.services,mcp_green:'activating'}}),/control_plane_not_stable:mcp_green/);
+  assert.throws(()=>installer.assertInstallPreflight({...stable,hashes:{...stable.hashes,mcp:'0'.repeat(64)}}),/baseline_sha_mismatch:mcp/);
 });
 
 test('buildInstallPlan changes exactly four control-plane files plus helper',()=>{
-  const helperSha='f'.repeat(64);
   const source={
     base:[
       'const HOST_ACTION_V2_SPECS = Object.freeze({',
@@ -44,7 +44,9 @@ test('buildInstallPlan changes exactly four control-plane files plus helper',()=
     policy:JSON.stringify({schema_version:'prhm.approval-policy.v1',version:'2026-09-05.3-autonomous-operator-v1',operations:{},typed_scopes:[]},null,2),
     mcp:"const HostActionV2=z.enum(['control_plane_root_scripts_stage_transport_v1']);",
   };
-  const plan=bootstrap.buildInstallPlan(source,"'use strict';\nmodule.exports={};\n",helperSha);
+  const helperSource="'use strict';\nmodule.exports={};\n";
+  const helperSha=installer.sha(Buffer.from(helperSource));
+  const plan=installer.buildInstallPlan(source,helperSource,helperSha);
   assert.deepEqual(Object.keys(plan.files).sort(),['base','exec','helper','mcp','policy']);
   assert.deepEqual(Object.keys(plan.paths).sort(),['base','exec','helper','mcp','policy']);
   assert.equal(plan.paths.helper,EXPECTED_PATHS.helper);
@@ -53,10 +55,11 @@ test('buildInstallPlan changes exactly four control-plane files plus helper',()=
   assert.equal(plan.sha256.helper,helperSha);
   assert.equal(plan.production_application_mutation,false);
   assert.equal(plan.database_mutation,false);
+  assert.throws(()=>installer.buildInstallPlan(source,helperSource,'f'.repeat(64)),/helper_sha_mismatch/);
 });
 
 test('installer source contract requires backups, atomic writes, validation, rollback, and no raw shell',()=>{
-  const src=bootstrap.install.toString();
+  const src=installer.install.toString();
   for(const token of ['assertInstallPreflight','backup','atomic','rollback','nodeCheck','jsonCheck','verifyInstalledHashes']){
     assert.ok(src.includes(token),`missing ${token}`);
   }
@@ -68,8 +71,8 @@ test('installer source contract requires backups, atomic writes, validation, rol
 test('install transaction fixture restores all previous bytes on verification failure',()=>{
   const initial={base:'BASE_OLD',exec:'EXEC_OLD',policy:'POLICY_OLD',mcp:'MCP_OLD',helper:null};
   const fsState={...initial};
-  const adapter=bootstrap.createFixtureInstallerAdapter(fsState,{failVerify:true});
-  const result=bootstrap.install(adapter,{fixture:true});
+  const adapter=installer.createFixtureInstallerAdapter(fsState,{failVerify:true});
+  const result=installer.install(adapter,{fixture:true});
   assert.equal(result.ok,false);
   assert.equal(result.rollback_performed,true);
   assert.deepEqual(fsState,initial);
@@ -77,8 +80,8 @@ test('install transaction fixture restores all previous bytes on verification fa
 
 test('successful fixture install writes only five fixed targets and reports no app/db mutation',()=>{
   const fsState={base:'BASE_OLD',exec:'EXEC_OLD',policy:'POLICY_OLD',mcp:'MCP_OLD',helper:null};
-  const adapter=bootstrap.createFixtureInstallerAdapter(fsState,{failVerify:false});
-  const result=bootstrap.install(adapter,{fixture:true});
+  const adapter=installer.createFixtureInstallerAdapter(fsState,{failVerify:false});
+  const result=installer.install(adapter,{fixture:true});
   assert.equal(result.ok,true);
   assert.equal(result.installed,true);
   assert.equal(result.rollback_performed,false);
