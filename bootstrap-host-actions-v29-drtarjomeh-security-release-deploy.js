@@ -39,18 +39,10 @@ const PAYLOAD=Object.freeze({
   'yii':Object.freeze({mode:0o755}),
 });
 
-const SMOKE=Object.freeze({
-  host:'drtarjomeh.ir',
-  path:'/',
-  status_min:200,
-  status_max:399,
-  forbidden_body:'Internal Server Error',
-});
-
+const SMOKE=Object.freeze({host:'drtarjomeh.ir',path:'/',status_min:200,status_max:399,forbidden_body:'Internal Server Error'});
 const SHA256=/^[a-f0-9]{64}$/;
 
 function fail(message){throw new Error(message)}
-
 function assertSafeRelativePath(rel){
   if(typeof rel!=='string'||!rel||path.isAbsolute(rel))fail('unsafe_payload_path');
   const pieces=rel.split('/');
@@ -59,7 +51,6 @@ function assertSafeRelativePath(rel){
   if(normalized!==rel||normalized.startsWith('../'))fail('unsafe_payload_path');
   return true;
 }
-
 function assertFixedPayload(payload){
   if(!payload||typeof payload!=='object'||Array.isArray(payload))fail('payload_invalid');
   const expected=Object.keys(PAYLOAD).sort();
@@ -72,24 +63,15 @@ function assertFixedPayload(payload){
   }
   return true;
 }
-
-function assertExpectedRelease(realpath){
-  if(realpath!==EXPECTED_RELEASE_REALPATH)fail('unexpected_release');
-  return true;
-}
-
+function assertExpectedRelease(realpath){if(realpath!==EXPECTED_RELEASE_REALPATH)fail('unexpected_release');return true}
 function assertPreimage(rel,expected,observed){
   assertSafeRelativePath(rel);
-  if(expected==='absent'){
-    if(observed?.exists!==false)fail('preimage_expected_absent:'+rel);
-    return true;
-  }
+  if(expected==='absent'){if(observed?.exists!==false)fail('preimage_expected_absent:'+rel);return true}
   if(!SHA256.test(expected))fail('preimage_expected_sha_invalid:'+rel);
   if(!observed||observed.exists===false||observed.isSymlink===true||observed.isFile!==true)fail('preimage_not_regular:'+rel);
   if(!SHA256.test(String(observed.sha256||''))||observed.sha256!==expected)fail('preimage_sha_mismatch:'+rel);
   return true;
 }
-
 function freezeManifest(targetHashes,preimages){
   assertFixedPayload(PAYLOAD);
   const out={};
@@ -99,9 +81,8 @@ function freezeManifest(targetHashes,preimages){
     if(!Object.prototype.hasOwnProperty.call(preimages||{},rel))fail('preimage_missing:'+rel);
     const observed=preimages[rel];
     let preimage;
-    if(observed==='absent'){
-      preimage='absent';
-    }else{
+    if(observed==='absent')preimage='absent';
+    else{
       if(!observed||observed.isSymlink===true||observed.isFile!==true||!SHA256.test(String(observed.sha256||'')))fail('preimage_invalid:'+rel);
       preimage=observed.sha256;
     }
@@ -119,6 +100,8 @@ function helperModuleFactory(){
   const TARGET_COMMIT='f22b1d17801239f7539f84e5aa8b91250c87dc58';
   const EXPECTED_RELEASE='20260805-011747-672d32f490bd';
   const BASE_HOST='drtarjomeh.ir';
+  const PROBE_APPS=Object.freeze(['api','backend','frontend','panel','translator','console']);
+  const SMOKE=Object.freeze({host:'drtarjomeh.ir',path:'/',status_min:200,status_max:399,forbidden_body:'Internal Server Error'});
 
   function fail(message){throw new Error(message)}
   function safeRel(rel){
@@ -129,10 +112,7 @@ function helperModuleFactory(){
   }
   function sanitizeText(input,secrets=[]){
     let out=String(input??'');
-    for(const secret of secrets){
-      const s=String(secret??'');
-      if(s)out=out.split(s).join('[REDACTED]');
-    }
+    for(const secret of secrets){const s=String(secret??'');if(s)out=out.split(s).join('[REDACTED]')}
     return out;
   }
   function materializeCandidate(source,candidate,overlays,manifest){
@@ -154,25 +134,20 @@ function helperModuleFactory(){
         fs.chmodSync(dst,manifest[rel].mode);
       }
       return candidate;
-    }catch(error){
-      try{fs.rmSync(candidate,{recursive:true,force:true})}catch{}
-      throw error;
-    }
+    }catch(error){try{fs.rmSync(candidate,{recursive:true,force:true})}catch{}throw error}
   }
   function hexKey(rng){return Buffer.from(rng(32)).toString('hex')}
   function buildProtectedEnv(values,rng=crypto.randomBytes){
     const required=['dbDsn','dbUser','dbPass','db2Dsn','db2User','db2Pass','operationalEmail','senderEmail','senderName'];
     for(const key of required){if(values?.[key]===undefined||values[key]===null)fail('env_source_missing:'+key)}
     return Object.freeze({
-      DRT_YII_ENV:'prod',DRT_YII_DEBUG:'0',DRT_DEBUG_IPS:'',DRT_LOG_TARGETS:'db,file',
-      DRT_BASE_SCHEME:'https',DRT_BASE_HOST:BASE_HOST,
+      DRT_YII_ENV:'prod',DRT_YII_DEBUG:'0',DRT_DEBUG_IPS:'',DRT_LOG_TARGETS:'db,file',DRT_BASE_SCHEME:'https',DRT_BASE_HOST:BASE_HOST,
       DRT_APP_TOKEN:hexKey(rng),DRT_COOKIE_VALIDATION_KEY:hexKey(rng),DRT_API_COOKIE_VALIDATION_KEY:hexKey(rng),
       DRT_DB_DSN:String(values.dbDsn),DRT_DB_USER:String(values.dbUser),DRT_DB_PASS:String(values.dbPass),DRT_DB_PREFIX:'',
       DRT_DB2_DSN:String(values.db2Dsn),DRT_DB2_USER:String(values.db2User),DRT_DB2_PASS:String(values.db2Pass),DRT_DB2_PREFIX:'',
       DRT_OPERATIONAL_EMAIL:String(values.operationalEmail),DRT_SENDER_EMAIL:String(values.senderEmail),DRT_SENDER_NAME:String(values.senderName),
       DRT_MAIL_DRIVER:'file',DRT_MAIL_HOST:'',DRT_MAIL_PORT:'',DRT_MAIL_USERNAME:'',DRT_MAIL_PASSWORD:'',DRT_MAIL_ENCRYPTION:'tls',
-      DRT_SMS_ENABLED:'0',DRT_SMS_FROM:'',DRT_SMS_KEY:'',
-      DRT_SLACK_TOKEN:'',DRT_SLACK_CHANNEL_ID:'',DRT_SLACK_CHANNEL_ID_400:'',
+      DRT_SMS_ENABLED:'0',DRT_SMS_FROM:'',DRT_SMS_KEY:'',DRT_SLACK_TOKEN:'',DRT_SLACK_CHANNEL_ID:'',DRT_SLACK_CHANNEL_ID_400:'',
       DRT_STORAGE_SCHEME:'https',DRT_STORAGE_HOST:'storage.drtarjomeh.ir',DRT_STORAGE_BASE_URL:'https://storage.drtarjomeh.ir',
     });
   }
@@ -195,25 +170,72 @@ function helperModuleFactory(){
     if(runtimeReadable!==true)fail('env_runtime_unreadable');
     return true;
   }
+  function buildVerificationPlan(candidateRoot,payload){
+    if(!path.isAbsolute(candidateRoot))fail('candidate_root_invalid');
+    const lintFiles=Object.keys(payload||{}).filter(rel=>rel.endsWith('.php')||rel==='yii'||rel==='environments/prod/yii').sort();
+    for(const rel of lintFiles)safeRel(rel);
+    return Object.freeze({
+      lintFiles:Object.freeze(lintFiles),
+      probeApps:PROBE_APPS,
+      probeCommands:Object.freeze(PROBE_APPS.map(app=>Object.freeze({file:'/usr/bin/php',cwd:candidateRoot,args:Object.freeze(['scripts/probe-runtime-bootstrap.php',app])}))),
+      networkAllowed:false,databaseWriteAllowed:false,notificationsAllowed:false,
+    });
+  }
+  function smokeContractOk(status,body){
+    return Number.isInteger(status)&&status>=SMOKE.status_min&&status<=SMOKE.status_max&&!String(body??'').includes(SMOKE.forbidden_body);
+  }
+  function atomicCutover(pointer,candidateRelease){
+    if(!path.isAbsolute(pointer)||!path.isAbsolute(candidateRelease))fail('cutover_path_invalid');
+    const pointerStat=fs.lstatSync(pointer);
+    if(!pointerStat.isSymbolicLink())fail('production_pointer_not_symlink');
+    const candidateStat=fs.lstatSync(candidateRelease);
+    if(candidateStat.isSymbolicLink()||!candidateStat.isDirectory())fail('candidate_release_invalid');
+    const previous=fs.realpathSync(pointer);
+    const temp=pointer+'.drt-cutover-'+process.pid+'-'+Date.now();
+    try{
+      fs.symlinkSync(candidateRelease,temp);
+      fs.renameSync(temp,pointer);
+    }catch(error){try{fs.unlinkSync(temp)}catch{}throw error}
+    if(fs.realpathSync(pointer)!==candidateRelease)fail('cutover_verify_failed');
+    return previous;
+  }
+  function rollback(state,smokeVerifier){
+    const result={performed:false,verified:false,status:'FAILED_ROLLBACK_INCOMPLETE'};
+    try{
+      if(state?.envPreviouslyExisted===true){
+        if(!state.envPath||!state.envBackupPath)fail('rollback_env_backup_missing');
+        fs.copyFileSync(state.envBackupPath,state.envPath);fs.chmodSync(state.envPath,0o600);
+      }else if(state?.envPath&&fs.existsSync(state.envPath)){
+        const st=fs.lstatSync(state.envPath);if(st.isSymbolicLink())fail('rollback_env_symlink');fs.rmSync(state.envPath,{force:true});
+      }
+      if(state?.cutoverPerformed===true){atomicCutover(state.pointer,state.previousRelease)}
+      result.performed=true;
+      const pointerOk=state?.cutoverPerformed!==true||fs.realpathSync(state.pointer)===state.previousRelease;
+      const smokeOk=typeof smokeVerifier==='function'?smokeVerifier()===true:false;
+      result.verified=pointerOk&&smokeOk;
+      result.status=result.verified?'FAILED_ROLLED_BACK':'FAILED_ROLLBACK_INCOMPLETE';
+      return result;
+    }catch(error){result.performed=true;result.error='rollback_failed';return result}
+  }
+  function buildSuccessResult(state){
+    return Object.freeze({
+      schema:'prhm.host-action-result.v1',ok:true,action:ACTION,target_commit:TARGET_COMMIT,
+      previous_release:String(state?.previousRelease||''),new_release:String(state?.newRelease||''),
+      preflight_passed:true,php_lint_passed:true,runtime_probe_passed:true,env_runtime_readability_passed:true,
+      mail_fail_closed:true,sms_fail_closed:true,debug_disabled:true,cutover_performed:true,smoke_passed:true,
+      database_mutation:false,provider_credential_rotation:false,credential_values_returned:false,rollback_performed:false,
+    });
+  }
 
-  module.exports={ACTION,TARGET_COMMIT,EXPECTED_RELEASE,sanitizeText,materializeCandidate,buildProtectedEnv,renderProtectedEnv,assertEnvState};
+  module.exports={ACTION,TARGET_COMMIT,EXPECTED_RELEASE,sanitizeText,materializeCandidate,buildProtectedEnv,renderProtectedEnv,assertEnvState,buildVerificationPlan,smokeContractOk,atomicCutover,rollback,buildSuccessResult};
 }
 
 function buildHelperSource(){return "'use strict';\n("+helperModuleFactory.toString()+")();\n"}
-
 function selftest(){
-  assertFixedPayload(PAYLOAD);
-  assertExpectedRelease(EXPECTED_RELEASE_REALPATH);
-  const helper=buildHelperSource();
-  if(!helper.includes(ACTION)||!helper.includes(TARGET_COMMIT))fail('helper_identity_missing');
+  assertFixedPayload(PAYLOAD);assertExpectedRelease(EXPECTED_RELEASE_REALPATH);
+  const helper=buildHelperSource();if(!helper.includes(ACTION)||!helper.includes(TARGET_COMMIT))fail('helper_identity_missing');
   return {ok:true,action:ACTION,target_commit:TARGET_COMMIT,payload_count:Object.keys(PAYLOAD).length};
 }
+if(require.main===module&&process.argv.includes('--selftest-only'))process.stdout.write(JSON.stringify(selftest())+'\n');
 
-if(require.main===module&&process.argv.includes('--selftest-only')){
-  process.stdout.write(JSON.stringify(selftest())+'\n');
-}
-
-module.exports={
-  ACTION,OPERATION,TARGET_COMMIT,EXPECTED_RELEASE,PRODUCTION_POINTER,RELEASES_ROOT,SOURCE_REPOSITORY,ENV_PATH,
-  PAYLOAD,SMOKE,assertSafeRelativePath,assertFixedPayload,assertExpectedRelease,assertPreimage,freezeManifest,buildHelperSource,selftest,
-};
+module.exports={ACTION,OPERATION,TARGET_COMMIT,EXPECTED_RELEASE,PRODUCTION_POINTER,RELEASES_ROOT,SOURCE_REPOSITORY,ENV_PATH,PAYLOAD,SMOKE,assertSafeRelativePath,assertFixedPayload,assertExpectedRelease,assertPreimage,freezeManifest,buildHelperSource,selftest};
