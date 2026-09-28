@@ -52,3 +52,23 @@ test('source extraction command is fixed to git show of the pinned commit only',
   ]);
   assert.throws(()=>mod.sourceGitShowArgs('../escape'),/source_path_not_allowlisted/);
 });
+
+test('a pre-existing canonical plugin is preserved while the missing core is completed',()=>{
+  assert.deepEqual(mod.planExistingSoloState({
+    pluginExists:true,
+    pluginSha:mod.SOLO_PLUGIN_SHA,
+    coreExists:false,
+    coreSha:null
+  }),{
+    pluginAlreadyValid:true,
+    coreAlreadyValid:false,
+    createPlugin:false,
+    createCore:true
+  });
+  assert.throws(()=>mod.planExistingSoloState({
+    pluginExists:true,
+    pluginSha:'0'.repeat(64),
+    coreExists:false,
+    coreSha:null
+  }),/installed_solo_plugin_sha_mismatch/);
+});
