@@ -1,6 +1,7 @@
 'use strict';
 
 const path=require('node:path');
+const boundHelperBuilder=require('./drtarjomeh-security-release-v29-helper-builder.js');
 
 const ACTION='drtarjomeh_security_release_deploy_v1';
 const OPERATION='host_action.drtarjomeh_security_release_deploy_v1';
@@ -157,7 +158,7 @@ function helperModuleFactory(){
   module.exports={ACTION,TARGET_COMMIT,EXPECTED_RELEASE,sanitizeText,materializeCandidate,buildProtectedEnv,renderProtectedEnv,assertEnvState,buildVerificationPlan,smokeContractOk,atomicCutover,rollback,buildSuccessResult};
 }
 
-function buildHelperSource(){return "'use strict';\n("+helperModuleFactory.toString()+")();\n"}
+function buildHelperSource(binding){if(binding!==undefined)return boundHelperBuilder.buildHelperSource(binding);return "'use strict';\n("+helperModuleFactory.toString()+")();\n"}
 function selftest(){assertFixedPayload(PAYLOAD);assertExpectedRelease(EXPECTED_RELEASE_REALPATH);const helper=buildHelperSource();if(!helper.includes(ACTION)||!helper.includes(TARGET_COMMIT))fail('helper_identity_missing');return {ok:true,action:ACTION,target_commit:TARGET_COMMIT,payload_count:Object.keys(PAYLOAD).length}}
 if(require.main===module&&process.argv.includes('--selftest-only'))process.stdout.write(JSON.stringify(selftest())+'\n');
 
