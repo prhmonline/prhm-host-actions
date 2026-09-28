@@ -20,8 +20,18 @@ test('AuthController SSO patch is loopback-only, HMAC validated, short-lived and
   assert.match(patched,/127\.0\.0\.1/);
   assert.match(patched,/::1/);
   assert.match(patched,/exp.*iat.*60/s);
-  assert.match(patched,/CONTROL_CENTER_SSO_ADMIN_LOGIN/);
+  assert.match(patched,/config\('services\.control_center\.admin_login'/);
+  assert.match(patched,/config\('services\.control_center\.secret'/);
+  assert.doesNotMatch(patched,/env\('CONTROL_CENTER_CONFIG_SSO_SECRET'/);
   assert.match(patched,/admin\.control_center_sso/);
+});
+
+test('Laravel services config exposes Control Center SSO through config cache safely',()=>{
+  const source=`    'slack' => [\n        'notifications' => [\n            'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),\n            'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),\n        ],\n    ],\n\n];\n`;
+  const patched=action.patchServicesConfig(source);
+  assert.match(patched,/'control_center'\s*=>\s*\[/);
+  assert.match(patched,/'secret'\s*=>\s*env\('CONTROL_CENTER_CONFIG_SSO_SECRET'/);
+  assert.match(patched,/'admin_login'\s*=>\s*env\('CONTROL_CENTER_SSO_ADMIN_LOGIN'/);
 });
 
 test('Next login patch accepts only trusted Control Center origin for assertion exchange and leaves normal login path intact',()=>{
@@ -89,6 +99,7 @@ test('rollback plan is scoped to Control Center artifacts and Config Center file
   assert.ok(plan.includes('/etc/prhm-control-center/control-center.env'));
   assert.ok(plan.includes(action.constants.CONFIG_API_ROUTES));
   assert.ok(plan.includes(action.constants.CONFIG_AUTH_CONTROLLER));
+  assert.ok(plan.includes(action.constants.CONFIG_SERVICES));
   assert.ok(plan.includes(action.constants.CONFIG_ADMIN_LOGIN_ROUTE));
   assert.ok(plan.includes(action.constants.CONFIG_NEXT_CONFIG));
   assert.ok(!plan.some(x=>x.includes('/var/lib/prhm-company-os-dashboard/app')));
