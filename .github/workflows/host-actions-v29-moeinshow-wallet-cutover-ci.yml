@@ -1,0 +1,36 @@
+name: Host Actions v29 MoeinShow Wallet Cutover CI
+
+on:
+  pull_request:
+    paths:
+      - 'bootstrap-host-actions-v29-moeinshow-wallet-cutover.js'
+      - 'test-v29-moeinshow-wallet-cutover.js'
+      - '.github/workflows/host-actions-v29-moeinshow-wallet-cutover-ci.yml'
+  push:
+    branches:
+      - integration/v29-moeinshow-wallet-cutover
+    paths:
+      - 'bootstrap-host-actions-v29-moeinshow-wallet-cutover.js'
+      - 'test-v29-moeinshow-wallet-cutover.js'
+      - '.github/workflows/host-actions-v29-moeinshow-wallet-cutover-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Contract
+        run: node --test test-v29-moeinshow-wallet-cutover.js
+      - name: Syntax
+        if: always()
+        run: |
+          if [ -f bootstrap-host-actions-v29-moeinshow-wallet-cutover.js ]; then
+            node --check bootstrap-host-actions-v29-moeinshow-wallet-cutover.js
+          fi
+      - name: Selftest
+        if: success()
+        run: node bootstrap-host-actions-v29-moeinshow-wallet-cutover.js --selftest-only
