@@ -1,6 +1,7 @@
 'use strict';
 const test=require('node:test');
 const assert=require('node:assert/strict');
+const crypto=require('node:crypto');
 const bootstrap=require('./bootstrap-host-actions-v29-drtarjomeh-security-release-deploy.js');
 const installer=require('./install-host-actions-v29-drtarjomeh-security-release.js');
 
@@ -39,6 +40,32 @@ test('binding factory freezes exact payload, release, env preimage, and runtime 
   assert.throws(()=>installer.buildBinding({targetHashes:{},preimages:{},envPreimage:'absent',runtime:{uid:1001,gid:1001}}),/target_sha_invalid|preimage_missing/);
   const good=fakeBinding();
   assert.throws(()=>installer.buildBinding({targetHashes:Object.fromEntries(Object.entries(good.manifest).map(([k,v])=>[k,v.target_sha256])),preimages:Object.fromEntries(Object.entries(good.manifest).map(([k,v])=>[k,v.preimage==='absent'?'absent':{sha256:v.preimage,isFile:true,isSymlink:false}])),envPreimage:'absent',runtime:{uid:-1,gid:1001}}),/runtime_identity_invalid/);
+});
+
+test('collectBinding binds live release metadata and all 24 target/preimage hashes without secret values',()=>{
+  const calls=[];
+  const expectedRoot='/home/drtarjomeh/domains/drtarjomeh.ir/releases/'+bootstrap.EXPECTED_RELEASE;
+  const adapter={
+    productionRealpath:()=>expectedRoot,
+    releaseMetadata:()=>({isDirectory:true,isSymlink:false,uid:1001,gid:1001}),
+    targetBytes:rel=>{calls.push('target:'+rel);return Buffer.from('target:'+rel)},
+    preimage:rel=>{calls.push('pre:'+rel);return{exists:true,isFile:true,isSymlink:false,sha256:crypto.createHash('sha256').update('pre:'+rel).digest('hex')}},
+    envState:()=>({exists:false}),
+  };
+  const binding=installer.collectBinding(adapter);
+  assert.equal(binding.expected_release,bootstrap.EXPECTED_RELEASE);
+  assert.deepEqual(binding.runtime,{uid:1001,gid:1001});
+  assert.equal(binding.env_preimage,'absent');
+  assert.equal(Object.keys(binding.manifest).length,24);
+  for(const rel of Object.keys(bootstrap.PAYLOAD)){
+    assert.equal(binding.manifest[rel].target_sha256,crypto.createHash('sha256').update('target:'+rel).digest('hex'));
+    assert.equal(binding.manifest[rel].preimage,crypto.createHash('sha256').update('pre:'+rel).digest('hex'));
+    assert.ok(calls.includes('target:'+rel));
+    assert.ok(calls.includes('pre:'+rel));
+  }
+  assert.equal(JSON.stringify(binding).includes('password'),false);
+  assert.throws(()=>installer.collectBinding({...adapter,productionRealpath:()=>expectedRoot+'-other'}),/unexpected_release/);
+  assert.throws(()=>installer.collectBinding({...adapter,releaseMetadata:()=>({isDirectory:true,isSymlink:false,uid:0,gid:0})}),/runtime_identity_invalid/);
 });
 
 test('install preflight rejects unstable blue-green topology',()=>{
@@ -86,6 +113,23 @@ test('installer source contract requires backups, atomic writes, validation, rol
   for(const token of ['assertInstallPreflight','backup','atomic','rollback','nodeCheck','jsonCheck','verifyInstalledHashes','binding']){
     assert.ok(src.includes(token),`missing ${token}`);
   }
+  assert.equal(src.includes('execSync('),false);
+  assert.equal(src.includes('bash -lc'),false);
+  assert.equal(src.includes('sh -c'),false);
+});
+
+test('production adapter is fixed to exact paths/services and has no shell interpolation',()=>{
+  assert.equal(typeof installer.productionDeps,'function');
+  const src=installer.productionDeps.toString();
+  for(const fixed of [
+    '/home/drtarjomeh/domains/drtarjomeh.ir/public_html',
+    '/home/drtarjomeh/domains/drtarjomeh.ir/releases',
+    '/home/drtarjomeh/domains/drtarjomeh.ir/repository',
+    '/etc/drtarjomeh/production.env',
+    'prhm-agent-api-blue.service','prhm-agent-api-green.service','prhm-agent-mcp-blue.service','prhm-agent-mcp-green.service',
+  ]) assert.ok(src.includes(fixed),`missing fixed live contract ${fixed}`);
+  assert.ok(src.includes("'/usr/bin/git'"));
+  assert.ok(src.includes("'/usr/bin/systemctl'"));
   assert.equal(src.includes('execSync('),false);
   assert.equal(src.includes('bash -lc'),false);
   assert.equal(src.includes('sh -c'),false);
