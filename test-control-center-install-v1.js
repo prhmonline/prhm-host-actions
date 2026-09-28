@@ -48,3 +48,48 @@ test('installer constants keep acceptance route isolated and preserve old dashbo
   assert.notEqual(action.constants.PORT,18135);
   assert.match(action.constants.SNAPSHOT,/prhm-company-os-dashboard\/snapshot\.json$/);
 });
+
+test('installer is bound to the reviewed Control Center commit and versioned release root',()=>{
+  assert.equal(action.constants.CONTROL_PLANE_SHA,'ce40ec5a14e6a6b29e8e9fc555cc16a7621a4757');
+  assert.equal(action.constants.RELEASE_ROOT,'/var/lib/prhm-control-center/releases');
+  assert.equal(action.releaseDir(),`/var/lib/prhm-control-center/releases/${action.constants.CONTROL_PLANE_SHA}`);
+});
+
+test('runtime env contains only derived hashes/secrets and never the plaintext test password',()=>{
+  const env=action.buildRuntimeEnv({
+    username:'cc-test',
+    password:'plain-password-must-not-leak',
+    passwordHash:'scrypt$aa$bb',
+    sessionSecret:'s'.repeat(48),
+    ssoSecret:'k'.repeat(48),
+    ssoAdminLogin:'Mohammad',
+  });
+  assert.match(env,/CONTROL_CENTER_TEST_USER=cc-test/);
+  assert.match(env,/CONTROL_CENTER_TEST_PASSWORD_HASH=scrypt\$aa\$bb/);
+  assert.match(env,/CONTROL_CENTER_SESSION_SECRET=s{48}/);
+  assert.match(env,/CONTROL_CENTER_CONFIG_SSO_SECRET=k{48}/);
+  assert.match(env,/CONTROL_CENTER_SSO_ADMIN_LOGIN=Mohammad/);
+  assert.doesNotMatch(env,/plain-password-must-not-leak/);
+  assert.match(env,/COMPANY_OS_URL=http:\/\/127\.0\.0\.1:18135/);
+  assert.match(env,/CONFIG_CENTER_URL=http:\/\/127\.0\.0\.1:3005/);
+});
+
+test('Apache acceptance route patch adds only control-center proxy and preserves company-os',()=>{
+  const source=`<VirtualHost *:443>\n  ServerName agent.prhm.ir\n  ProxyPass /company-os http://127.0.0.1:18135/company-os\n  ProxyPassReverse /company-os http://127.0.0.1:18135/company-os\n</VirtualHost>\n`;
+  const patched=action.patchApacheHttps(source);
+  assert.match(patched,/ProxyPass \/company-os http:\/\/127\.0\.0\.1:18135\/company-os/);
+  assert.match(patched,/ProxyPass \/control-center http:\/\/127\.0\.0\.1:18140\/control-center/);
+  assert.match(patched,/ProxyPassReverse \/control-center http:\/\/127\.0\.0\.1:18140\/control-center/);
+  assert.equal((patched.match(/ProxyPass \/control-center/g)||[]).length,1);
+});
+
+test('rollback plan is scoped to Control Center artifacts and Config Center files only',()=>{
+  const plan=action.rollbackTargets();
+  assert.ok(plan.includes('/var/lib/prhm-control-center/current'));
+  assert.ok(plan.includes('/etc/prhm-control-center/control-center.env'));
+  assert.ok(plan.includes(action.constants.CONFIG_API_ROUTES));
+  assert.ok(plan.includes(action.constants.CONFIG_AUTH_CONTROLLER));
+  assert.ok(plan.includes(action.constants.CONFIG_ADMIN_LOGIN_ROUTE));
+  assert.ok(plan.includes(action.constants.CONFIG_NEXT_CONFIG));
+  assert.ok(!plan.some(x=>x.includes('/var/lib/prhm-company-os-dashboard/app')));
+});
