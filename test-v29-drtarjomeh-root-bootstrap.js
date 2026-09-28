@@ -11,14 +11,15 @@ const EXPECTED=Object.freeze([
   'install-host-actions-v29-drtarjomeh-security-release.js',
 ]);
 
-test('CI publishes an immutable v29 root-of-trust artifact',()=>{
+test('CI publishes an immutable v29 root-of-trust artifact bound to branch HEAD',()=>{
   const source=fs.readFileSync(WORKFLOW,'utf8');
   assert.match(source,/name:\s*drtarjomeh-v29-root-of-trust/);
   assert.match(source,/actions\/upload-artifact@v4/);
   assert.match(source,/retention-days:\s*1/);
   assert.match(source,/if-no-files-found:\s*error/);
   assert.match(source,/SHA256SUMS/);
-  assert.match(source,/GITHUB_SHA/);
+  assert.match(source,/HEAD_SHA:\s*\$\{\{\s*github\.event\.pull_request\.head\.sha\s*\|\|\s*github\.sha\s*\}\}/);
+  assert.match(source,/printf[^\n]*HEAD_SHA/);
   for(const file of EXPECTED)assert.match(source,new RegExp(file.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
 });
 
