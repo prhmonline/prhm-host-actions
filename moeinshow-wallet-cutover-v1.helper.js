@@ -30,7 +30,9 @@ function execFile(file,args,opts={}){
 function git(args,opts={}){return execFile('/usr/bin/git',args,{cwd:MOEIN_ROOT,timeout:opts.timeout||60000})}
 function php(code,env={}){return execFile('/usr/bin/php',['-r',code],{cwd:CONFIG_API_ROOT,timeout:60000,env:{...process.env,...env}})}
 function regularOrMissing(file){if(!fs.existsSync(file))return null;const st=fs.lstatSync(file);if(st.isSymbolicLink()||!st.isFile()||fs.realpathSync(file)!==file)fail('unsafe_file:'+file);return st}
-function atomicWrite(file,bytes,mode=0o600){fs.mkdirSync(path.dirname(file),{recursive:true,mode:0o750});const tmp=file+'.tmp-'+process.pid+'-'+Date.now();let fd;try{fd=fs.openSync(tmp,'wx',mode);fs.writeFileSync(fd,bytes);fs.fsyncSync(fd);fs.closeSync(fd);fd=undefined;fs.chmodSync(tmp,mode);fs.renameSync(tmp,file)}catch(e){try{if(fd!==undefined)fs.closeSync(fd)}catch{}try{fs.unlinkSync(tmp)}catch{}throw e}}
+function safeDir(dir){const st=fs.lstatSync(dir);if(st.isSymbolicLink()||!st.isDirectory()||fs.realpathSync(dir)!==dir)fail('unsafe_directory:'+dir);return st}
+function ensureOwnedDir(dir,mode,uid,gid){if(fs.existsSync(dir)){safeDir(dir);return false}fs.mkdirSync(dir,{recursive:false,mode});fs.chmodSync(dir,mode);fs.chownSync(dir,uid,gid);return true}
+function atomicWrite(file,bytes,mode=0o640,uid,gid){const dir=path.dirname(file);if(!fs.existsSync(dir))fail('parent_directory_missing:'+dir);safeDir(dir);const tmp=file+'.tmp-'+process.pid+'-'+Date.now();let fd;try{fd=fs.openSync(tmp,'wx',mode);fs.writeFileSync(fd,bytes);fs.fsyncSync(fd);fs.closeSync(fd);fd=undefined;fs.chmodSync(tmp,mode);if(Number.isInteger(uid)&&Number.isInteger(gid))fs.chownSync(tmp,uid,gid);fs.renameSync(tmp,file)}catch(e){try{if(fd!==undefined)fs.closeSync(fd)}catch{}try{fs.unlinkSync(tmp)}catch{}throw e}}
 function stateHash(v){return shas(JSON.stringify(v??null))}
 function bootstrapState(){const st=regularOrMissing(APP_ENV_FILE);if(!st)return{exists:false,safe:true,marker:false,sha256:null};const b=fs.readFileSync(APP_ENV_FILE);const text=b.toString('utf8');return{exists:true,safe:text.includes(BOOTSTRAP_MARKER),marker:text.includes(BOOTSTRAP_MARKER),sha256:shas(b)}}
 
@@ -114,7 +116,7 @@ Illuminate\Support\Facades\DB::transaction(function()use($meta){
   }else{App\Models\SiteIntegration::query()->whereKey($meta['wallet_integration_id'])->delete();}
   App\Models\MachineCredential::query()->whereKey($meta['credential_id'])->delete();
   App\Models\ConfigRevision::query()->whereKey($meta['revision_id'])->delete();
-  App\Models\AuditLog::query()->where('site_id',$site->id)->where('action','config.published')->where('actor_id','host-action:moeinshow_wallet_cutover_apply_v1')->delete();
+  App\Models\AuditLog::query()->where('site_id',$site->id)->where('action','config.published')->where('actor_id','host-action:moeinshow_wallet_cutover_apply_v1')->where('after_json->revision',(int)$meta['revision'])->delete();
   $site->forceFill(['config_revision'=>(int)$meta['previous_revision']])->save();
 },3);
 echo json_encode(['ok'=>true]);
@@ -147,6 +149,9 @@ function apply(){
   const stamp=new Date().toISOString().replace(/[-:.TZ]/g,'').slice(0,14)+'-'+process.pid;
   const backupDir=path.join(BACKUP_ROOT,stamp);fs.mkdirSync(backupDir,{mode:0o700});
   const preHead=pf.current_head;const bs=bootstrapState();const oldBootstrap=bs.exists?fs.readFileSync(APP_ENV_FILE):null;
+  const appOwner=safeDir(path.join(MOEIN_ROOT,'app'));const bootstrapSt=regularOrMissing(APP_ENV_FILE);
+  const bootstrapMode=bootstrapSt?(bootstrapSt.mode&0o777):0o640;const bootstrapUid=bootstrapSt?.uid??appOwner.uid;const bootstrapGid=bootstrapSt?.gid??appOwner.gid;
+  const envDir=path.dirname(APP_ENV_FILE);const envDirCreated=ensureOwnedDir(envDir,0o750,appOwner.uid,appOwner.gid);
   if(oldBootstrap)fs.writeFileSync(path.join(backupDir,'app-env-prod.php.bak'),oldBootstrap,{mode:0o600,flag:'wx'});
   let dbMeta=null;let gitMutated=false;let bootstrapMutated=false;const rollbackErrors=[];
   const token='ccm_'+crypto.randomBytes(32).toString('hex');const tokenHash=shas(token);
@@ -155,11 +160,11 @@ function apply(){
     const remote=git(['rev-parse','origin/main']).trim();if(remote!==TARGET_SHA)fail('remote_target_changed');
     git(['merge','--ff-only',TARGET_SHA],{timeout:120000});gitMutated=git(['rev-parse','HEAD']).trim()!==preHead;
     dbMeta=dbApply(pf.site_revision,tokenHash);
-    atomicWrite(APP_ENV_FILE,createBootstrap(token),0o600);bootstrapMutated=true;
+    atomicWrite(APP_ENV_FILE,createBootstrap(token),bootstrapMode,bootstrapUid,bootstrapGid);bootstrapMutated=true;
     const sm=smoke(pf.saman_state_hash,pf.mediana_state_hash);if(!sm.runtime_ok)fail('wallet_runtime_smoke_failed');if(!sm.saman_untouched)fail('saman_changed');if(!sm.mediana_untouched)fail('mediana_changed');
     return{ok:true,schema_version:'prhm.host-action-result.v1',action:APPLY_ACTION,target_sha:TARGET_SHA,deployed_head:git(['rev-parse','HEAD']).trim(),wallet_enabled:true,machine_credential_created:true,machine_credential_scopes:['config:read'],published_revision:dbMeta.revision,bootstrap_installed:true,token_redacted:true,saman_untouched:true,mediana_untouched:true,rollback_performed:false,production_application_mutation:true,database_mutation:true};
   }catch(error){
-    if(bootstrapMutated){try{if(bs.exists)atomicWrite(APP_ENV_FILE,oldBootstrap,0o600);else fs.unlinkSync(APP_ENV_FILE)}catch(e){rollbackErrors.push('bootstrap:'+e.message)}}
+    if(bootstrapMutated){try{if(bs.exists)atomicWrite(APP_ENV_FILE,oldBootstrap,bootstrapMode,bootstrapUid,bootstrapGid);else fs.unlinkSync(APP_ENV_FILE);if(envDirCreated&&fs.existsSync(envDir)&&fs.readdirSync(envDir).length===0)fs.rmdirSync(envDir)}catch(e){rollbackErrors.push('bootstrap:'+e.message)}}
     if(dbMeta){try{dbRollback(dbMeta)}catch(e){rollbackErrors.push('db:'+e.message)}}
     if(gitMutated){try{git(['reset','--hard',preHead],{timeout:60000})}catch(e){rollbackErrors.push('git:'+e.message)}}
     if(rollbackErrors.length)fail('cutover_failed_rollback_failed:'+String(error&&error.message||error)+':'+rollbackErrors.join('|'));
