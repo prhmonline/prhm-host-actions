@@ -10,7 +10,7 @@ const OWNER_SPECS=Object.freeze([
   Object.freeze({id:'selfmaint_executor',path:'/opt/prhm-agent-selfmaint-exec/server.js',max_bytes:300000}),
   Object.freeze({id:'approval_policy',path:'/opt/prhm-company-control-plane/config/approval-policy.json',max_bytes:200000}),
   Object.freeze({id:'mcp_host_actions',path:'/home/agent/ssh-mcp-server/src/plugins/hostActionsV2.js',max_bytes:200000}),
-  Object.freeze({id:'registry_core',path:'/home/agent/ssh-mcp-server/src/core/registry.js',max_bytes:200000}),
+  Object.freeze({id:'registry_base',path:'/home/agent/ssh-mcp-server/src/core/.registry-imotion-vm-stable-base-e91c3062539353a7a9d097b0877f1e612051e4fe8a489c101edab3e56d268c9b.mjs',max_bytes:200000}),
   Object.freeze({id:'rolling_refresh',path:'/opt/prhm-agent-selfmaint-exec/actions/agent-zdt-existing-topology-rolling-refresh-v1.js',max_bytes:200000}),
   Object.freeze({id:'current_baseline_registration',path:'/opt/prhm-agent-selfmaint-exec/actions/current-baseline-refresh-registration-installer-v1.js',max_bytes:400000}),
   Object.freeze({id:'typed_bootstrap_transport',path:'/opt/prhm-agent-selfmaint-exec/actions/control-plane-typed-bootstrap-transport-v1.js',max_bytes:200000}),
