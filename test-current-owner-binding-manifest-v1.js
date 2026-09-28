@@ -19,6 +19,9 @@ test('owner specs are frozen, fixed, absolute, unique and have no wildcard input
     assert.equal(Number.isInteger(spec.max_bytes)&&spec.max_bytes>0,true);
   }
   assert.equal(Object.isFrozen(m.INITIAL_CONSUMER_PREIMAGES),true);
+  const registryOwner=m.OWNER_SPECS.find(x=>x.id==='registry_core');
+  assert.equal(registryOwner?.path,'/home/agent/ssh-mcp-server/src/core/registry.js');
+  assert.deepEqual(m.INITIAL_CONSUMER_PREIMAGES.registry_bridge,{target_path:'/home/agent/ssh-mcp-server/src/core/registry.js',sha256:'73d9560b8758a969f0317fd4438b9b36eb4a1b2e1ee18dcd50d1c2329c52ea6a'});
   assert.equal(JSON.stringify(m.INITIAL_CONSUMER_PREIMAGES).includes('TODO'),false);
 });
 
