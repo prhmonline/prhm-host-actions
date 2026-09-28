@@ -3,37 +3,30 @@
 const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
-const vm=require('node:vm');
 
-const builder=require('./build-v29-drtarjomeh-root-bootstrap.js');
-
+const WORKFLOW='.github/workflows/host-actions-v29-drtarjomeh-security-release-ci.yml';
 const EXPECTED=Object.freeze([
   'bootstrap-host-actions-v29-drtarjomeh-security-release-deploy.js',
   'drtarjomeh-security-release-v29-helper-builder.js',
   'install-host-actions-v29-drtarjomeh-security-release.js',
 ]);
 
-test('root bootstrap embeds only the three reviewed v29 modules',()=>{
-  assert.deepEqual([...builder.SOURCE_FILES],EXPECTED);
-  const sourceCommit='0123456789abcdef0123456789abcdef01234567';
-  const built=builder.buildLauncher({sourceCommit,readFile:file=>fs.readFileSync(file)});
-  assert.equal(built.sourceCommit,sourceCommit);
-  assert.deepEqual(Object.keys(built.moduleSha256).sort(),[...EXPECTED].sort());
-  assert.match(built.source,/PRHM_DRTARJOMEH_V29_ROOT_BOOTSTRAP_V1/);
-  assert.match(built.source,new RegExp(sourceCommit));
-  for(const file of EXPECTED)assert.match(built.source,new RegExp(file.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
-  assert.doesNotMatch(built.source,/https?:\/\//i);
-  assert.doesNotMatch(built.source,/child_process[^\n]*exec\s*\(/i);
+test('CI publishes an immutable v29 root-of-trust artifact',()=>{
+  const source=fs.readFileSync(WORKFLOW,'utf8');
+  assert.match(source,/name:\s*drtarjomeh-v29-root-of-trust/);
+  assert.match(source,/actions\/upload-artifact@v4/);
+  assert.match(source,/retention-days:\s*1/);
+  assert.match(source,/if-no-files-found:\s*error/);
+  assert.match(source,/SHA256SUMS/);
+  assert.match(source,/GITHUB_SHA/);
+  for(const file of EXPECTED)assert.match(source,new RegExp(file.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
 });
 
-test('launcher is syntax-valid and accepts only no args or --preflight-only',()=>{
-  const built=builder.buildLauncher({sourceCommit:'fedcba9876543210fedcba9876543210fedcba98',readFile:file=>fs.readFileSync(file)});
-  new vm.Script(built.source,{filename:'drtarjomeh-v29-root-bootstrap.js'});
-  assert.match(built.source,/unexpected_arguments/);
-  assert.match(built.source,/--preflight-only/);
-  assert.match(built.source,/spawnSync\(NODE_BIN,\[installer/);
-});
-
-test('builder rejects an invalid source commit',()=>{
-  assert.throws(()=>builder.buildLauncher({sourceCommit:'main',readFile:file=>fs.readFileSync(file)}),/source_commit_invalid/);
+test('artifact contract contains no Production secrets or env files',()=>{
+  const source=fs.readFileSync(WORKFLOW,'utf8');
+  assert.doesNotMatch(source,/\.env\.production/i);
+  assert.doesNotMatch(source,/production\.env/);
+  assert.doesNotMatch(source,/DRT_DB_PASS/);
+  assert.doesNotMatch(source,/DRT_SMS_KEY/);
+  assert.doesNotMatch(source,/DRT_SLACK_TOKEN/);
 });
