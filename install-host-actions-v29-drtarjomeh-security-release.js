@@ -57,6 +57,7 @@ function collectBinding(adapter){
 function assertInstallPreflight(state){
   bootstrap.assertLiveBaseline(state?.hashes||{});
   for(const name of ['api_blue','api_green','mcp_blue','mcp_green'])if(state?.services?.[name]!=='active')fail('control_plane_not_stable:'+name);
+  for(const name of ['api_instant_delivery','mcp_instant_delivery'])if(Object.prototype.hasOwnProperty.call(state?.services||{},name)&&state.services[name]!=='active')fail('control_plane_not_stable:'+name);
   return true;
 }
 function buildInstallPlan(source,helperSource,helperSha){
@@ -75,7 +76,7 @@ function createFixtureInstallerAdapter(fsState,options={}){
     mcp:"const HostActionV2=z.enum(['control_plane_root_scripts_stage_transport_v1']);",
   };
   const binding=options.binding||fixtureBinding();
-  return {preflight:()=>({hashes:{base:bootstrap.BASE_SHA,exec:bootstrap.EXEC_SHA,policy:bootstrap.POLICY_SHA,mcp:bootstrap.MCP_SHA},services:{api_blue:'active',api_green:'active',mcp_blue:'active',mcp_green:'active'}}),readSources:()=>source,binding:()=>binding,backup:()=>({...fsState}),atomic:(key,value)=>{fsState[key]=value},nodeCheck:()=>true,jsonCheck:value=>{JSON.parse(value);return true},reload:()=>true,verifyInstalledHashes:plan=>{if(options.failVerify)return false;for(const key of Object.keys(plan.files))if(sha(Buffer.from(fsState[key]??''))!==plan.sha256[key])return false;return true},rollback:backup=>{for(const key of Object.keys(fsState))delete fsState[key];Object.assign(fsState,backup);return true},persistResult:()=>true};
+  return {preflight:()=>({hashes:{base:bootstrap.BASE_SHA,exec:bootstrap.EXEC_SHA,policy:bootstrap.POLICY_SHA,mcp:bootstrap.MCP_SHA},services:{api_blue:'active',api_green:'active',mcp_blue:'active',mcp_green:'active',api_instant_delivery:'active',mcp_instant_delivery:'active'}}),readSources:()=>source,binding:()=>binding,backup:()=>({...fsState}),atomic:(key,value)=>{fsState[key]=value},nodeCheck:()=>true,jsonCheck:value=>{JSON.parse(value);return true},reload:()=>true,verifyInstalledHashes:plan=>{if(options.failVerify)return false;for(const key of Object.keys(plan.files))if(sha(Buffer.from(fsState[key]??''))!==plan.sha256[key])return false;return true},rollback:backup=>{for(const key of Object.keys(fsState))delete fsState[key];Object.assign(fsState,backup);return true},persistResult:()=>true};
 }
 
 function productionDeps(){
@@ -83,8 +84,8 @@ function productionDeps(){
   const releasesRoot='/home/drtarjomeh/domains/drtarjomeh.ir/releases';
   const sourceRepository='/home/drtarjomeh/domains/drtarjomeh.ir/repository';
   const envPath='/etc/drtarjomeh/production.env';
-  const services=Object.freeze({api_blue:'prhm-agent-api-blue.service',api_green:'prhm-agent-api-green.service',mcp_blue:'prhm-agent-mcp-blue.service',mcp_green:'prhm-agent-mcp-green.service'});
-  const restartServices=Object.freeze(['prhm-company-approval.service','prhm-agent-selfmaint.service','prhm-agent-selfmaint-exec.service','prhm-agent-mcp-blue.service','prhm-agent-mcp-green.service']);
+  const services=Object.freeze({api_blue:'prhm-agent-api-blue.service',api_green:'prhm-agent-api-green.service',mcp_blue:'prhm-agent-mcp-blue.service',mcp_green:'prhm-agent-mcp-green.service',api_instant_delivery:'prhm-agent-api-instant-delivery-candidate.service',mcp_instant_delivery:'prhm-agent-mcp-instant-delivery-candidate.service'});
+  const restartServices=Object.freeze(['prhm-company-approval.service','prhm-agent-selfmaint.service','prhm-agent-selfmaint-exec.service','prhm-agent-mcp-blue.service','prhm-agent-mcp-green.service','prhm-agent-mcp-instant-delivery-candidate.service']);
   const run=(file,args,opt={})=>cp.spawnSync(file,args,{encoding:opt.encoding===null?null:'utf8',timeout:opt.timeout||60000,maxBuffer:opt.maxBuffer||16*1024*1024,cwd:opt.cwd,env:{PATH:'/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',LC_ALL:'C'}});
   const must=(r,label)=>{if(r.error||r.status!==0)fail(label);return r};
   const read=file=>fs.readFileSync(file,'utf8');
