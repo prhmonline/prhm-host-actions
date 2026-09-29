@@ -50,7 +50,7 @@ jobs:
         if: success()
         uses: actions/checkout@v4
         with:
-          ref: ed2282e245b5a6e8f72a683e5bdb09cab1972ff9
+          ref: f8acddbb8c9677a954626baa296ad82947e6e5d9
           path: reviewed-v29
           persist-credentials: false
       - name: Build root-of-trust artifact
@@ -60,7 +60,7 @@ jobs:
           cp reviewed-v29/bootstrap-host-actions-v29-drtarjomeh-security-release-deploy.js root-of-trust/
           cp reviewed-v29/drtarjomeh-security-release-v29-helper-builder.js root-of-trust/
           cp reviewed-v29/install-host-actions-v29-drtarjomeh-security-release.js root-of-trust/
-          printf '%s\n' 'ed2282e245b5a6e8f72a683e5bdb09cab1972ff9' > root-of-trust/SOURCE_COMMIT
+          printf '%s\n' 'f8acddbb8c9677a954626baa296ad82947e6e5d9' > root-of-trust/SOURCE_COMMIT
           (cd root-of-trust && sha256sum *.js > SHA256SUMS)
       - name: Publish root-of-trust artifact
         if: success()
