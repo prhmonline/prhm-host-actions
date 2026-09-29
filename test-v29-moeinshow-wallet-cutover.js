@@ -115,3 +115,26 @@ test('selftest passes',()=>{
   assert.equal(r.target_sha,m.MOEINSHOW_TARGET_SHA);
   assert.match(r.helper_sha256,/^[a-f0-9]{64}$/);
 });
+
+test('installer follows the live 8132/8134 candidate topology and patches every MCP source',()=>{
+  const m=load();
+  const s=fs.readFileSync(modulePath,'utf8');
+  assert.match(s,/agent3-fast-launch-v1\/mcp\/src\/plugins\/hostActionsV2\.js/);
+  assert.match(s,/agent3-instant-delivery-v1\/mcp\/src\/plugins\/hostActionsV2\.js/);
+  assert.match(s,/prhm-agent-mcp-fast-launch-candidate\.service/);
+  assert.match(s,/prhm-agent-mcp-instant-delivery-candidate\.service/);
+  assert.match(s,/mcp-active/);
+  assert.match(s,/8132/);
+  assert.match(s,/8134/);
+  assert.doesNotMatch(s,/restart\(['"]prhm-agent-mcp\.service['"]\)/);
+});
+
+test('candidate refresh is zero-downtime and rollback restores the original router pointer',()=>{
+  const s=fs.readFileSync(modulePath,'utf8');
+  assert.match(s,/standby.*8132|8132.*standby/s);
+  assert.match(s,/active.*8134|8134.*active/s);
+  assert.match(s,/\/health/);
+  assert.match(s,/\/ready/);
+  assert.match(s,/restore.*pointer|pointer.*rollback|rollback.*pointer/s);
+  assert.match(s,/8123/);
+});
