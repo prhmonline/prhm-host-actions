@@ -5,7 +5,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 
 const WORKFLOW='.github/workflows/host-actions-v29-drtarjomeh-security-release-ci.yml';
-const REVIEWED='ed2282e245b5a6e8f72a683e5bdb09cab1972ff9';
+const REVIEWED='f8acddbb8c9677a954626baa296ad82947e6e5d9';
 const EXPECTED=Object.freeze([
   'bootstrap-host-actions-v29-drtarjomeh-security-release-deploy.js',
   'drtarjomeh-security-release-v29-helper-builder.js',
