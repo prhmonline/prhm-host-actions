@@ -5,13 +5,13 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 
 const BRIDGE='drtarjomeh-v29-mcp-bootstrap-bridge.mjs';
-const EXPECTED_SOURCE_COMMIT='ed2282e245b5a6e8f72a683e5bdb09cab1972ff9';
+const EXPECTED_SOURCE_COMMIT='f8acddbb8c9677a954626baa296ad82947e6e5d9';
 const EXPECTED=Object.freeze({
   'bootstrap-host-actions-v29-drtarjomeh-security-release-deploy.js':'9272f15c0a6fb14d93273756d9fa20ee9728f0a8acb7fc187d87382750388d4f',
   'drtarjomeh-security-release-v29-helper-builder.js':'208e0eea22d464f55ac0fc839130813ccd8506205f9da38a8825741f7c79c271',
-  'install-host-actions-v29-drtarjomeh-security-release.js':'8d64b4e55e4ed76b7bfa770f16dd66f2604beac45713aacd20e14dd8e8f7c1d2',
-  'SOURCE_COMMIT':'d1903f41cbea9942818feaf644983755517bf1764095db558aa6510ffcb64418',
-  'SHA256SUMS':'d3e44f8a8ffddbdeb7eac903294ebdf081d3b6f4133ec581d44701ec8af657c8',
+  'install-host-actions-v29-drtarjomeh-security-release.js':'41b129227441f59629a21caf443431bf74ac01634f9b6efbf18a869a37c0de9c',
+  'SOURCE_COMMIT':'016f5e48d55a41e5a4b6983058ee8e9a4ba02d8f6781222f53a1dca8ccbc6092',
+  'SHA256SUMS':'dcdc61c4cfe1038938459365bbc582050594a52be9b601a57f27e51cfb720992',
 });
 
 test('temporary bootstrap bridge is fixed to deterministic reviewed v29 artifact and has no arbitrary execution inputs',()=>{
