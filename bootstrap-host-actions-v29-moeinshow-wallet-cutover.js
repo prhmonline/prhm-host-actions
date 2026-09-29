@@ -27,10 +27,15 @@ const PATHS=Object.freeze({
   exec:'/opt/prhm-agent-selfmaint-exec/server.js',
   policy:'/opt/prhm-company-control-plane/config/approval-policy.json',
   mcp:'/home/agent/ssh-mcp-server/src/plugins/hostActionsV2.js',
+  mcpFast:'/home/agent/candidates/agent3-fast-launch-v1/mcp/src/plugins/hostActionsV2.js',
+  mcpInstant:'/home/agent/candidates/agent3-instant-delivery-v1/mcp/src/plugins/hostActionsV2.js',
+  mcpPointer:'/var/lib/prhm-agent-zdt/mcp-active',
   helper:'/opt/prhm-agent-selfmaint-exec/actions/moeinshow-wallet-cutover-v1.js'
 });
 const INSTALL_BACKUP_ROOT='/var/backups/prhm-moeinshow-wallet-cutover-v29-installer';
 const INSTALL_RESULT='/var/lib/prhm-agent-selfmaint-exec/moeinshow-wallet-cutover-v29-installer/latest.json';
+const MCP_HEALTH_PATH='/health';
+const MCP_READY_PATH='/ready';
 
 function fail(m){throw new Error(m)}
 function sha(v){return crypto.createHash('sha256').update(v).digest('hex')}
@@ -101,34 +106,53 @@ function buildExecCandidate(source){
 }
 
 function buildInstallPlan(current){
-  const expected={base:BASE_SHA,exec:EXEC_SHA,policy:POLICY_SHA,mcp:MCP_SHA};for(const k of Object.keys(expected)){if(typeof current[k]!=='string')fail('install_source_missing:'+k);const actual=sha(current[k]);if(actual!==expected[k])fail('install_preimage_sha_mismatch:'+k+':'+actual)}
-  const next={base:buildBaseCandidate(current.base),exec:buildExecCandidate(current.exec),policy:buildPolicyCandidate(current.policy),mcp:buildMcpCandidate(current.mcp),helper:helperSource()};
+  const expected={base:BASE_SHA,exec:EXEC_SHA,policy:POLICY_SHA,mcp:MCP_SHA,mcpFast:MCP_SHA,mcpInstant:MCP_SHA};
+  for(const k of Object.keys(expected)){if(typeof current[k]!=='string')fail('install_source_missing:'+k);const actual=sha(current[k]);if(actual!==expected[k])fail('install_preimage_sha_mismatch:'+k+':'+actual)}
+  const next={base:buildBaseCandidate(current.base),exec:buildExecCandidate(current.exec),policy:buildPolicyCandidate(current.policy),mcp:buildMcpCandidate(current.mcp),mcpFast:buildMcpCandidate(current.mcpFast),mcpInstant:buildMcpCandidate(current.mcpInstant),helper:helperSource()};
   return{ok:true,next,post_sha256:Object.fromEntries(Object.entries(next).map(([k,v])=>[k,sha(v)])),helper_sha256:HELPER_SHA};
 }
 function regularOrMissing(file){if(!fs.existsSync(file))return null;const st=fs.lstatSync(file);if(st.isSymbolicLink()||!st.isFile()||fs.realpathSync(file)!==file)fail('target_not_regular:'+file);return st}
 function nodeCheck(text,label){const f='/tmp/prhm-v29-'+process.pid+'-'+label+'.js';try{fs.writeFileSync(f,text,{mode:0o600,flag:'wx'});const r=cp.spawnSync(process.execPath,['--check',f],{encoding:'utf8',timeout:10000});if(r.error||r.status!==0)fail('node_syntax_invalid:'+label+':'+String(r.stderr||''))}finally{try{fs.unlinkSync(f)}catch{}}}
 function preflight(){
-  const current={base:fs.readFileSync(PATHS.base,'utf8'),exec:fs.readFileSync(PATHS.exec,'utf8'),policy:fs.readFileSync(PATHS.policy,'utf8'),mcp:fs.readFileSync(PATHS.mcp,'utf8')};const plan=buildInstallPlan(current);
-  nodeCheck(plan.next.base,'base');nodeCheck(plan.next.exec,'exec');nodeCheck(plan.next.mcp,'mcp');nodeCheck(plan.next.helper,'helper');JSON.parse(plan.next.policy);
-  return{ok:true,schema_version:'prhm.moeinshow-wallet-cutover-installer-preflight.v1',preflight_only:true,helper_sha256:HELPER_SHA,post_sha256:plan.post_sha256,production_application_mutation:false,database_mutation:false,control_plane_mutation:false};
+  const current={base:fs.readFileSync(PATHS.base,'utf8'),exec:fs.readFileSync(PATHS.exec,'utf8'),policy:fs.readFileSync(PATHS.policy,'utf8'),mcp:fs.readFileSync(PATHS.mcp,'utf8'),mcpFast:fs.readFileSync(PATHS.mcpFast,'utf8'),mcpInstant:fs.readFileSync(PATHS.mcpInstant,'utf8')};const plan=buildInstallPlan(current);
+  const pointer=String(fs.readFileSync(PATHS.mcpPointer,'utf8')).trim();if(pointer!=='8134')fail('unexpected_active_mcp_pointer:'+pointer);
+  nodeCheck(plan.next.base,'base');nodeCheck(plan.next.exec,'exec');nodeCheck(plan.next.mcp,'mcp');nodeCheck(plan.next.mcpFast,'mcp-fast');nodeCheck(plan.next.mcpInstant,'mcp-instant');nodeCheck(plan.next.helper,'helper');JSON.parse(plan.next.policy);
+  if(!endpointOk(8123,MCP_HEALTH_PATH,'ok')||!endpointOk(8123,MCP_READY_PATH,'ready')||!endpointOk(8132,MCP_HEALTH_PATH,'ok')||!endpointOk(8132,MCP_READY_PATH,'ready')||!endpointOk(8134,MCP_HEALTH_PATH,'ok')||!endpointOk(8134,MCP_READY_PATH,'ready'))fail('mcp_candidate_preflight_unhealthy');
+  return{ok:true,schema_version:'prhm.moeinshow-wallet-cutover-installer-preflight.v1',preflight_only:true,helper_sha256:HELPER_SHA,post_sha256:plan.post_sha256,mcp_topology:{public:8123,standby:8132,active:8134},production_application_mutation:false,database_mutation:false,control_plane_mutation:false};
 }
 function atomicWrite(file,text,mode,uid,gid){fs.mkdirSync(path.dirname(file),{recursive:true,mode:0o755});const tmp=file+'.v29-'+process.pid+'-'+Date.now()+'.tmp';let fd;try{fd=fs.openSync(tmp,'wx',mode);fs.writeFileSync(fd,text);fs.fsyncSync(fd);fs.closeSync(fd);fd=undefined;fs.chmodSync(tmp,mode);if(Number.isInteger(uid)&&Number.isInteger(gid))fs.chownSync(tmp,uid,gid);fs.renameSync(tmp,file)}catch(e){try{if(fd!==undefined)fs.closeSync(fd)}catch{}try{fs.unlinkSync(tmp)}catch{}throw e}}
 function active(service){return String(cp.spawnSync('/usr/bin/systemctl',['is-active',service],{encoding:'utf8',timeout:10000}).stdout||'').trim()==='active'}
 function restart(service){const r=cp.spawnSync('/usr/bin/systemctl',['restart',service],{encoding:'utf8',timeout:60000});if(r.error||r.status!==0)fail('service_restart_failed:'+service)}
+function endpointOk(port,route,key){const r=cp.spawnSync('/usr/bin/curl',['-fsS','--max-time','3','http://127.0.0.1:'+port+route],{encoding:'utf8',timeout:5000,maxBuffer:200000});if(r.error||r.status!==0)return false;try{return JSON.parse(r.stdout)?.[key]===true}catch{return false}}
+function waitEndpoint(port){for(let i=0;i<80;i++){if(endpointOk(port,MCP_HEALTH_PATH,'ok')&&endpointOk(port,MCP_READY_PATH,'ready'))return true;Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,250)}return false}
+function pointerState(){const st=regularOrMissing(PATHS.mcpPointer);if(!st)fail('mcp_pointer_missing');const value=String(fs.readFileSync(PATHS.mcpPointer,'utf8')).trim();return{value,mode:st.mode&0o777,uid:st.uid,gid:st.gid}}
+function switchPointer(port,meta){atomicWrite(PATHS.mcpPointer,String(port)+'\n',meta.mode,meta.uid,meta.gid);if(String(fs.readFileSync(PATHS.mcpPointer,'utf8')).trim()!==String(port))fail('mcp_pointer_write_failed:'+port)}
 function install(){
   if(process.getuid&&process.getuid()!==0)fail('root_required');const pf=preflight();
-  const current={base:fs.readFileSync(PATHS.base,'utf8'),exec:fs.readFileSync(PATHS.exec,'utf8'),policy:fs.readFileSync(PATHS.policy,'utf8'),mcp:fs.readFileSync(PATHS.mcp,'utf8')};const plan=buildInstallPlan(current);
+  const current={base:fs.readFileSync(PATHS.base,'utf8'),exec:fs.readFileSync(PATHS.exec,'utf8'),policy:fs.readFileSync(PATHS.policy,'utf8'),mcp:fs.readFileSync(PATHS.mcp,'utf8'),mcpFast:fs.readFileSync(PATHS.mcpFast,'utf8'),mcpInstant:fs.readFileSync(PATHS.mcpInstant,'utf8')};const plan=buildInstallPlan(current);
+  const pointer=pointerState();if(pointer.value!=='8134')fail('active_mcp_pointer_changed');
   const stamp=new Date().toISOString().replace(/[-:.TZ]/g,'').slice(0,14)+'-'+process.pid;const backup=path.join(INSTALL_BACKUP_ROOT,stamp);fs.mkdirSync(backup,{recursive:true,mode:0o700});
-  const targets=['base','exec','policy','mcp'];const meta={};for(const k of targets){const st=regularOrMissing(PATHS[k]);meta[k]={mode:st.mode&0o777,uid:st.uid,gid:st.gid};fs.writeFileSync(path.join(backup,k+'.bak'),current[k],{mode:0o600,flag:'wx'})}
+  const targets=['base','exec','policy','mcp','mcpFast','mcpInstant'];const meta={};for(const k of targets){const st=regularOrMissing(PATHS[k]);meta[k]={mode:st.mode&0o777,uid:st.uid,gid:st.gid};fs.writeFileSync(path.join(backup,k+'.bak'),current[k],{mode:0o600,flag:'wx'})}
+  fs.writeFileSync(path.join(backup,'mcp-pointer.bak'),String(pointer.value)+'\n',{mode:0o600,flag:'wx'});
   const helperSt=regularOrMissing(PATHS.helper);const helperOld=helperSt?fs.readFileSync(PATHS.helper):null;if(helperOld)fs.writeFileSync(path.join(backup,'helper.bak'),helperOld,{mode:0o600,flag:'wx'});
-  let mutated=false;const services=['prhm-company-approval.service','prhm-agent-selfmaint.service','prhm-agent-selfmaint-exec.service','prhm-agent-mcp.service'];
+  let mutated=false,pointerMoved=false,instantRestarted=false;const coreServices=['prhm-company-approval.service','prhm-agent-selfmaint.service','prhm-agent-selfmaint-exec.service'];
   try{
     atomicWrite(PATHS.helper,plan.next.helper,0o700,helperSt?.uid??0,helperSt?.gid??0);for(const k of targets)atomicWrite(PATHS[k],plan.next[k],meta[k].mode,meta[k].uid,meta[k].gid);mutated=true;
-    for(const s of services)restart(s);for(const s of services)if(!active(s))fail('service_not_active:'+s);
+    for(const s of coreServices)restart(s);for(const s of coreServices)if(!active(s))fail('service_not_active:'+s);
+    restart('prhm-agent-mcp-fast-launch-candidate.service');if(!waitEndpoint(8132))fail('standby_8132_refresh_failed');
+    switchPointer(8132,pointer);pointerMoved=true;if(!waitEndpoint(8123))fail('public_8123_failed_after_standby_cutover');
+    restart('prhm-agent-mcp-instant-delivery-candidate.service');instantRestarted=true;if(!waitEndpoint(8134))fail('active_8134_refresh_failed');
+    switchPointer(8134,pointer);pointerMoved=false;if(!waitEndpoint(8123))fail('public_8123_failed_after_active_restore');
+    if(!active('prhm-agent-mcp-fast-launch-candidate.service')||!active('prhm-agent-mcp-instant-delivery-candidate.service'))fail('candidate_service_not_active');
     for(const k of targets)if(sha(fs.readFileSync(PATHS[k]))!==plan.post_sha256[k])fail('post_sha_mismatch:'+k);if(sha(fs.readFileSync(PATHS.helper))!==HELPER_SHA)fail('post_sha_mismatch:helper');
-    return{ok:true,schema_version:'prhm.host-action-installer-result.v1',installed:true,target_actions:[PREFLIGHT_ACTION,APPLY_ACTION],backup_dir:backup,helper_sha256:HELPER_SHA,post_sha256:plan.post_sha256,production_application_mutation:false,database_mutation:false,rollback_performed:false,preflight:pf};
+    return{ok:true,schema_version:'prhm.host-action-installer-result.v1',installed:true,target_actions:[PREFLIGHT_ACTION,APPLY_ACTION],backup_dir:backup,helper_sha256:HELPER_SHA,post_sha256:plan.post_sha256,mcp_topology:{public:8123,standby:8132,active:8134,final_pointer:8134},production_application_mutation:false,database_mutation:false,rollback_performed:false,preflight:pf};
   }catch(error){
-    const rb=[];if(mutated){for(const k of targets)try{atomicWrite(PATHS[k],current[k],meta[k].mode,meta[k].uid,meta[k].gid)}catch(e){rb.push(k+':'+e.message)}try{if(helperOld)atomicWrite(PATHS.helper,helperOld,helperSt.mode&0o777,helperSt.uid,helperSt.gid);else fs.unlinkSync(PATHS.helper)}catch(e){if(e.code!=='ENOENT')rb.push('helper:'+e.message)}for(const s of services)try{restart(s)}catch(e){rb.push('restart:'+s+':'+e.message)}}
+    const rb=[];if(mutated){
+      for(const k of targets)try{atomicWrite(PATHS[k],current[k],meta[k].mode,meta[k].uid,meta[k].gid)}catch(e){rb.push(k+':'+e.message)}
+      try{if(helperOld)atomicWrite(PATHS.helper,helperOld,helperSt.mode&0o777,helperSt.uid,helperSt.gid);else fs.unlinkSync(PATHS.helper)}catch(e){if(e.code!=='ENOENT')rb.push('helper:'+e.message)}
+      try{if(instantRestarted){restart('prhm-agent-mcp-instant-delivery-candidate.service');if(!waitEndpoint(8134))throw new Error('rollback_8134_unhealthy')}if(pointerMoved||String(fs.readFileSync(PATHS.mcpPointer,'utf8')).trim()!=='8134'){switchPointer(8134,pointer);if(!waitEndpoint(8123))throw new Error('rollback_public_unhealthy')}restart('prhm-agent-mcp-fast-launch-candidate.service');if(!waitEndpoint(8132))throw new Error('rollback_8132_unhealthy')}catch(e){rb.push('mcp-topology:'+e.message)}
+      for(const s of coreServices)try{restart(s)}catch(e){rb.push('restart:'+s+':'+e.message)}
+    }
     if(rb.length)fail('install_failed_rollback_failed:'+String(error&&error.message||error)+':'+rb.join('|'));fail('install_failed_rolled_back:'+String(error&&error.message||error));
   }
 }
