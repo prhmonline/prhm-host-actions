@@ -7,14 +7,14 @@ import {z} from 'zod';
 import {textResult} from '../core/result.js';
 
 const BASE_SHA='__PRHM_SAFEFILES_BASE_SHA__';
-const SOURCE_COMMIT='ed2282e245b5a6e8f72a683e5bdb09cab1972ff9';
+const SOURCE_COMMIT='f8acddbb8c9677a954626baa296ad82947e6e5d9';
 const CONFIRM='CONFIRM_LEVEL_4_CRITICAL';
 const REQUEST_TOOL='drtarjomeh_v29_bootstrap_request_v1';
 const STATUS_TOOL='drtarjomeh_v29_bootstrap_status_v1';
 const APPLY_TOOL='drtarjomeh_v29_bootstrap_apply_v1';
 const HERE=path.dirname(fileURLToPath(import.meta.url));
 const BASE_FILE=path.join(HERE,`.drtarjomeh-v29-bootstrap-base-${BASE_SHA}.mjs`);
-const ARTIFACT_ROOT='/home/agent/ssh-mcp-server/.drtarjomeh-v29-root-of-trust-ed2282e2';
+const ARTIFACT_ROOT='/home/agent/ssh-mcp-server/.drtarjomeh-v29-root-of-trust-f8acddbb';
 const STATE_ROOT='/var/lib/prhm-agent-mcp-bootstrap/drtarjomeh-v29';
 const RESULT_PATH='/var/lib/prhm-agent-selfmaint-exec/drtarjomeh-security-release-installer-v1/latest.json';
 const INSTALLER=path.join(ARTIFACT_ROOT,'install-host-actions-v29-drtarjomeh-security-release.js');
@@ -22,11 +22,11 @@ const TTL_MS=180000;
 const EXPECTED=Object.freeze({
   'bootstrap-host-actions-v29-drtarjomeh-security-release-deploy.js':'9272f15c0a6fb14d93273756d9fa20ee9728f0a8acb7fc187d87382750388d4f',
   'drtarjomeh-security-release-v29-helper-builder.js':'208e0eea22d464f55ac0fc839130813ccd8506205f9da38a8825741f7c79c271',
-  'install-host-actions-v29-drtarjomeh-security-release.js':'8d64b4e55e4ed76b7bfa770f16dd66f2604beac45713aacd20e14dd8e8f7c1d2',
-  'SOURCE_COMMIT':'d1903f41cbea9942818feaf644983755517bf1764095db558aa6510ffcb64418',
-  'SHA256SUMS':'d3e44f8a8ffddbdeb7eac903294ebdf081d3b6f4133ec581d44701ec8af657c8',
+  'install-host-actions-v29-drtarjomeh-security-release.js':'41b129227441f59629a21caf443431bf74ac01634f9b6efbf18a869a37c0de9c',
+  'SOURCE_COMMIT':'016f5e48d55a41e5a4b6983058ee8e9a4ba02d8f6781222f53a1dca8ccbc6092',
+  'SHA256SUMS':'dcdc61c4cfe1038938459365bbc582050594a52be9b601a57f27e51cfb720992',
 });
-const EXPECTED_SUMS=`9272f15c0a6fb14d93273756d9fa20ee9728f0a8acb7fc187d87382750388d4f  bootstrap-host-actions-v29-drtarjomeh-security-release-deploy.js\n208e0eea22d464f55ac0fc839130813ccd8506205f9da38a8825741f7c79c271  drtarjomeh-security-release-v29-helper-builder.js\n8d64b4e55e4ed76b7bfa770f16dd66f2604beac45713aacd20e14dd8e8f7c1d2  install-host-actions-v29-drtarjomeh-security-release.js\n`;
+const EXPECTED_SUMS=`9272f15c0a6fb14d93273756d9fa20ee9728f0a8acb7fc187d87382750388d4f  bootstrap-host-actions-v29-drtarjomeh-security-release-deploy.js\n208e0eea22d464f55ac0fc839130813ccd8506205f9da38a8825741f7c79c271  drtarjomeh-security-release-v29-helper-builder.js\n41b129227441f59629a21caf443431bf74ac01634f9b6efbf18a869a37c0de9c  install-host-actions-v29-drtarjomeh-security-release.js\n`;
 const RO={readOnlyHint:true,destructiveHint:false,idempotentHint:true,openWorldHint:false};
 const MUT={readOnlyHint:false,destructiveHint:false,idempotentHint:false,openWorldHint:false};
 const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
