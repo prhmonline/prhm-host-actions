@@ -7,11 +7,15 @@ on:
     paths:
       - 'instant-delivery-mcp-candidate-refresh-v1.js'
       - 'test-instant-delivery-mcp-candidate-refresh-v1.js'
+      - 'instant-delivery-mcp-candidate-refresh-bridge-v1.js'
+      - 'test-instant-delivery-mcp-candidate-refresh-bridge-v1.js'
       - '.github/workflows/host-actions-instant-delivery-mcp-candidate-refresh-ci.yml'
   pull_request:
     paths:
       - 'instant-delivery-mcp-candidate-refresh-v1.js'
       - 'test-instant-delivery-mcp-candidate-refresh-v1.js'
+      - 'instant-delivery-mcp-candidate-refresh-bridge-v1.js'
+      - 'test-instant-delivery-mcp-candidate-refresh-bridge-v1.js'
       - '.github/workflows/host-actions-instant-delivery-mcp-candidate-refresh-ci.yml'
 
 permissions:
@@ -24,9 +28,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Contract
-        run: node --test test-instant-delivery-mcp-candidate-refresh-v1.js
+        run: node --test test-instant-delivery-mcp-candidate-refresh-v1.js test-instant-delivery-mcp-candidate-refresh-bridge-v1.js
       - name: Syntax
         if: always()
         run: |
-          if [ -f instant-delivery-mcp-candidate-refresh-v1.js ]; then node --check instant-delivery-mcp-candidate-refresh-v1.js; fi
-          node --check test-instant-delivery-mcp-candidate-refresh-v1.js
+          for f in instant-delivery-mcp-candidate-refresh-v1.js test-instant-delivery-mcp-candidate-refresh-v1.js instant-delivery-mcp-candidate-refresh-bridge-v1.js test-instant-delivery-mcp-candidate-refresh-bridge-v1.js; do
+            if [ -f "$f" ]; then node --check "$f"; fi
+          done
