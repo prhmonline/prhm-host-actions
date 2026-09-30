@@ -10,6 +10,7 @@ const NEW='048e2db190c5548f47967447b3b564eefd0b7203cf6df84beb73c520d481633d';
 const SERVICE='prhm-agent-mcp-instant-delivery-candidate.service';
 const SOURCE='/home/agent/ssh-mcp-server/src/plugins/hostActionsV2.js';
 const TARGET='/home/agent/candidates/agent3-instant-delivery-v1/mcp/src/plugins/hostActionsV2.js';
+const BACKUP_ROOT='/var/lib/prhm-agent-instant-delivery-v1/mcp-candidate-refresh-bridge/backups';
 
 function fake(options={}){
   const state={targetSha:options.targetSha||OLD,restarts:[],backup:null,restores:0,writeCount:0,healthy:options.healthy!==false};
@@ -35,6 +36,7 @@ test('exports an immutable fixed-scope MCP candidate refresh contract',()=>{
   assert.equal(impl.SERVICE,SERVICE);
   assert.equal(impl.SOURCE_SHA256,NEW);
   assert.equal(impl.TARGET_PREIMAGE_SHA256,OLD);
+  assert.equal(impl.BACKUP_ROOT,BACKUP_ROOT);
   assert.equal(typeof impl.createAction,'function');
   for(const forbidden of ['command','path','service','target','source','exec','spawn','run']){
     assert.equal(Object.prototype.hasOwnProperty.call(impl,forbidden),false);
