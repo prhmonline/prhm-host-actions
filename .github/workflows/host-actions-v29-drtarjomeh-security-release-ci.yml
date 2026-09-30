@@ -1,0 +1,72 @@
+name: Host Actions v29 DrTarjomeh Security Release CI
+
+on:
+  push:
+    branches:
+      - feature/drtarjomeh-security-release-deploy-v1
+    paths:
+      - 'bootstrap-host-actions-v29-drtarjomeh-security-release-deploy.js'
+      - 'drtarjomeh-security-release-v29-helper-builder.js'
+      - 'install-host-actions-v29-drtarjomeh-security-release.js'
+      - 'drtarjomeh-v29-mcp-bootstrap-bridge.mjs'
+      - 'test-v29-drtarjomeh-security-release-*.js'
+      - 'test-v29-drtarjomeh-root-bootstrap.js'
+      - '.github/workflows/host-actions-v29-drtarjomeh-security-release-ci.yml'
+  pull_request:
+    paths:
+      - 'bootstrap-host-actions-v29-drtarjomeh-security-release-deploy.js'
+      - 'drtarjomeh-security-release-v29-helper-builder.js'
+      - 'install-host-actions-v29-drtarjomeh-security-release.js'
+      - 'drtarjomeh-v29-mcp-bootstrap-bridge.mjs'
+      - 'test-v29-drtarjomeh-security-release-*.js'
+      - 'test-v29-drtarjomeh-root-bootstrap.js'
+      - '.github/workflows/host-actions-v29-drtarjomeh-security-release-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Contract
+        run: node --test test-v29-drtarjomeh-security-release-*.js test-v29-drtarjomeh-root-bootstrap.js
+      - name: Selftest
+        if: always()
+        run: |
+          if [ -f bootstrap-host-actions-v29-drtarjomeh-security-release-deploy.js ]; then
+            node bootstrap-host-actions-v29-drtarjomeh-security-release-deploy.js --selftest-only
+          fi
+      - name: Syntax
+        if: always()
+        run: |
+          node --check bootstrap-host-actions-v29-drtarjomeh-security-release-deploy.js
+          node --check drtarjomeh-security-release-v29-helper-builder.js
+          node --check install-host-actions-v29-drtarjomeh-security-release.js
+          node --check drtarjomeh-v29-mcp-bootstrap-bridge.mjs
+      - name: Checkout reviewed v29 source
+        if: success()
+        uses: actions/checkout@v4
+        with:
+          ref: f8acddbb8c9677a954626baa296ad82947e6e5d9
+          path: reviewed-v29
+          persist-credentials: false
+      - name: Build root-of-trust artifact
+        if: success()
+        run: |
+          mkdir -p root-of-trust
+          cp reviewed-v29/bootstrap-host-actions-v29-drtarjomeh-security-release-deploy.js root-of-trust/
+          cp reviewed-v29/drtarjomeh-security-release-v29-helper-builder.js root-of-trust/
+          cp reviewed-v29/install-host-actions-v29-drtarjomeh-security-release.js root-of-trust/
+          printf '%s\n' 'f8acddbb8c9677a954626baa296ad82947e6e5d9' > root-of-trust/SOURCE_COMMIT
+          (cd root-of-trust && sha256sum *.js > SHA256SUMS)
+      - name: Publish root-of-trust artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: drtarjomeh-v29-root-of-trust
+          path: root-of-trust/
+          if-no-files-found: error
+          retention-days: 1
