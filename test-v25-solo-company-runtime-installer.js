@@ -43,11 +43,13 @@ test('production materialization is SHA-bound to the current live Agent2 MCP bas
   });
 });
 
-test('source extraction command is fixed to git show of the pinned commit only',()=>{
+test('source extraction command is fixed to command-local safe.directory and pinned git show only',()=>{
   assert.deepEqual(mod.sourceGitShowArgs(mod.SOURCE_PATHS.plugin),[
+    '-c',`safe.directory=${mod.SOURCE_REPO}`,
     '-C',mod.SOURCE_REPO,'show',`${mod.SOURCE_COMMIT}:${mod.SOURCE_PATHS.plugin}`
   ]);
   assert.deepEqual(mod.sourceGitShowArgs(mod.SOURCE_PATHS.core),[
+    '-c',`safe.directory=${mod.SOURCE_REPO}`,
     '-C',mod.SOURCE_REPO,'show',`${mod.SOURCE_COMMIT}:${mod.SOURCE_PATHS.core}`
   ]);
   assert.throws(()=>mod.sourceGitShowArgs('../escape'),/source_path_not_allowlisted/);
