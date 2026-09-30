@@ -1,0 +1,32 @@
+name: Host Actions Instant Delivery MCP Candidate Refresh CI
+
+on:
+  push:
+    branches:
+      - feature/instant-delivery-mcp-candidate-refresh-v1
+    paths:
+      - 'instant-delivery-mcp-candidate-refresh-v1.js'
+      - 'test-instant-delivery-mcp-candidate-refresh-v1.js'
+      - '.github/workflows/host-actions-instant-delivery-mcp-candidate-refresh-ci.yml'
+  pull_request:
+    paths:
+      - 'instant-delivery-mcp-candidate-refresh-v1.js'
+      - 'test-instant-delivery-mcp-candidate-refresh-v1.js'
+      - '.github/workflows/host-actions-instant-delivery-mcp-candidate-refresh-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Contract
+        run: node --test test-instant-delivery-mcp-candidate-refresh-v1.js
+      - name: Syntax
+        if: always()
+        run: |
+          if [ -f instant-delivery-mcp-candidate-refresh-v1.js ]; then node --check instant-delivery-mcp-candidate-refresh-v1.js; fi
+          node --check test-instant-delivery-mcp-candidate-refresh-v1.js
