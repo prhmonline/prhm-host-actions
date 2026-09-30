@@ -2,12 +2,15 @@
 
 const test=require('node:test');
 const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const crypto=require('node:crypto');
 const bridge=require('./instant-delivery-mcp-candidate-refresh-bridge-v1.js');
 
 const PREFLIGHT='instant_delivery_mcp_candidate_refresh_preflight_v1';
 const APPLY='instant_delivery_mcp_candidate_refresh_apply_v1';
 const STATUS='instant_delivery_mcp_candidate_refresh_status_v1';
 const CONFIRM='CONFIRM_LEVEL_4_CRITICAL';
+const HELPER_FILE='./instant-delivery-mcp-candidate-refresh-v1.js';
 
 test('exports only fixed bridge operations and immutable production bindings',()=>{
   assert.equal(bridge.PREFLIGHT_OPERATION,PREFLIGHT);
@@ -18,6 +21,11 @@ test('exports only fixed bridge operations and immutable production bindings',()
   assert.equal(bridge.CANDIDATE_TARGET,'/home/agent/candidates/agent3-instant-delivery-v1/mcp/src/plugins/hostActionsV2.js');
   assert.equal(bridge.SOURCE_SHA256,'048e2db190c5548f47967447b3b564eefd0b7203cf6df84beb73c520d481633d');
   assert.equal(bridge.TARGET_PREIMAGE_SHA256,'b2f95b97dfa7e26ca717dfbec7871bf2f64286952548fb4d6d8e99908aeaacc0');
+});
+
+test('bridge helper SHA is the direct SHA-256 of the exact helper bytes',()=>{
+  const actual=crypto.createHash('sha256').update(fs.readFileSync(HELPER_FILE)).digest('hex');
+  assert.equal(bridge.HELPER_SHA256,actual);
 });
 
 test('preflight/status accept zero caller-controlled fields and apply requires exact Level-4 confirmation',async()=>{
