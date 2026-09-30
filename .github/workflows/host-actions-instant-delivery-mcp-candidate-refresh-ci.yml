@@ -35,10 +35,12 @@ jobs:
           for f in instant-delivery-mcp-candidate-refresh-v1.js test-instant-delivery-mcp-candidate-refresh-v1.js instant-delivery-mcp-candidate-refresh-bridge-v1.js test-instant-delivery-mcp-candidate-refresh-bridge-v1.js; do
             if [ -f "$f" ]; then node --check "$f"; fi
           done
-      - name: Publish helper hash evidence
+      - name: Publish exact candidate-refresh bundle
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: helper-${{ hashFiles('instant-delivery-mcp-candidate-refresh-v1.js') }}
-          path: instant-delivery-mcp-candidate-refresh-v1.js
+          name: candidate-refresh-${{ github.sha }}
+          path: |
+            instant-delivery-mcp-candidate-refresh-v1.js
+            instant-delivery-mcp-candidate-refresh-bridge-v1.js
           retention-days: 1
