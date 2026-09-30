@@ -1,0 +1,46 @@
+name: Host Actions Instant Delivery MCP Candidate Refresh CI
+
+on:
+  push:
+    branches:
+      - feature/instant-delivery-mcp-candidate-refresh-v1
+    paths:
+      - 'instant-delivery-mcp-candidate-refresh-v1.js'
+      - 'test-instant-delivery-mcp-candidate-refresh-v1.js'
+      - 'instant-delivery-mcp-candidate-refresh-bridge-v1.js'
+      - 'test-instant-delivery-mcp-candidate-refresh-bridge-v1.js'
+      - '.github/workflows/host-actions-instant-delivery-mcp-candidate-refresh-ci.yml'
+  pull_request:
+    paths:
+      - 'instant-delivery-mcp-candidate-refresh-v1.js'
+      - 'test-instant-delivery-mcp-candidate-refresh-v1.js'
+      - 'instant-delivery-mcp-candidate-refresh-bridge-v1.js'
+      - 'test-instant-delivery-mcp-candidate-refresh-bridge-v1.js'
+      - '.github/workflows/host-actions-instant-delivery-mcp-candidate-refresh-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Contract
+        run: node --test test-instant-delivery-mcp-candidate-refresh-v1.js test-instant-delivery-mcp-candidate-refresh-bridge-v1.js
+      - name: Syntax
+        if: always()
+        run: |
+          for f in instant-delivery-mcp-candidate-refresh-v1.js test-instant-delivery-mcp-candidate-refresh-v1.js instant-delivery-mcp-candidate-refresh-bridge-v1.js test-instant-delivery-mcp-candidate-refresh-bridge-v1.js; do
+            if [ -f "$f" ]; then node --check "$f"; fi
+          done
+      - name: Publish exact candidate-refresh bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: candidate-refresh-${{ github.sha }}
+          path: |
+            instant-delivery-mcp-candidate-refresh-v1.js
+            instant-delivery-mcp-candidate-refresh-bridge-v1.js
+          retention-days: 1
