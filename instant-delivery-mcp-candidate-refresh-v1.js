@@ -12,6 +12,8 @@ const SERVICE='prhm-agent-mcp-instant-delivery-candidate.service';
 const SOURCE_SHA256='048e2db190c5548f47967447b3b564eefd0b7203cf6df84beb73c520d481633d';
 const TARGET_PREIMAGE_SHA256='b2f95b97dfa7e26ca717dfbec7871bf2f64286952548fb4d6d8e99908aeaacc0';
 const BACKUP_ROOT='/var/backups/prhm-agent-instant-delivery-mcp-candidate-refresh-v1';
+const RESULT_DIR='/var/lib/prhm-agent-instant-delivery-v1/mcp-candidate-refresh-bridge';
+const RESULT_PATH=path.join(RESULT_DIR,'latest.json');
 const NODE='/usr/local/bin/prhm-node';
 const SYSTEMCTL='/usr/bin/systemctl';
 
@@ -119,9 +121,38 @@ function productionAdapter(){
   };
 }
 
-module.exports=Object.freeze({ACTION,SOURCE_PATH,TARGET_PATH,SERVICE,SOURCE_SHA256,TARGET_PREIMAGE_SHA256,createAction,productionAdapter});
+function executeMode(mode,adapter=productionAdapter()){
+  if(mode==='preflight'){
+    const out=createAction(adapter).preflight();
+    return{...out,action:ACTION,mode:'preflight',mutation:false,production_mutation:false,mcp_candidate_mutation:false,api_candidate_mutation:false,router_mutation:false,database_mutation:false,production_application_mutation:false};
+  }
+  if(mode==='apply')return createAction(adapter).apply();
+  fail('mode_not_allowlisted');
+}
+function persistResult(out){
+  if(process.env.PRHM_MCP_CANDIDATE_REFRESH_RESULT!=='1')return null;
+  fs.mkdirSync(RESULT_DIR,{recursive:true,mode:0o700});
+  const bytes=Buffer.from(JSON.stringify({...out,recorded_at:new Date().toISOString()},null,2)+'\n','utf8');
+  const tmp=RESULT_PATH+'.'+process.pid+'.'+Date.now()+'.tmp';
+  fs.writeFileSync(tmp,bytes,{mode:0o600,flag:'wx'});fs.renameSync(tmp,RESULT_PATH);fs.chmodSync(RESULT_PATH,0o600);
+  return RESULT_PATH;
+}
+
+module.exports=Object.freeze({ACTION,SOURCE_PATH,TARGET_PATH,SERVICE,SOURCE_SHA256,TARGET_PREIMAGE_SHA256,RESULT_PATH,createAction,productionAdapter,executeMode,persistResult});
 
 if(require.main===module){
-  try{process.stdout.write(JSON.stringify(createAction(productionAdapter()).apply())+'\n')}
-  catch(error){process.stdout.write(JSON.stringify({ok:false,action:ACTION,error:String(error&&error.message||error),production_application_mutation:false,database_mutation:false,api_candidate_mutation:false,router_mutation:false})+'\n');process.exitCode=1}
+  const args=process.argv.slice(2);
+  const flag=args.length===0?'--apply':args.length===1?args[0]:null;
+  const mode=flag==='--preflight'?'preflight':flag==='--apply'?'apply':null;
+  try{
+    if(!mode)fail('unexpected_arguments');
+    const out=executeMode(mode);
+    persistResult(out);
+    process.stdout.write(JSON.stringify(out)+'\n');
+    if(out&&out.ok===false)process.exitCode=1;
+  }catch(error){
+    const out={ok:false,action:ACTION,mode:mode||'invalid',error:String(error&&error.message||error),production_mutation:false,mcp_candidate_mutation:false,production_application_mutation:false,database_mutation:false,api_candidate_mutation:false,router_mutation:false};
+    try{persistResult(out)}catch{}
+    process.stdout.write(JSON.stringify(out)+'\n');process.exitCode=1;
+  }
 }
