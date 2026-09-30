@@ -11,7 +11,7 @@ const TARGET_PATH='/home/agent/candidates/agent3-instant-delivery-v1/mcp/src/plu
 const SERVICE='prhm-agent-mcp-instant-delivery-candidate.service';
 const SOURCE_SHA256='048e2db190c5548f47967447b3b564eefd0b7203cf6df84beb73c520d481633d';
 const TARGET_PREIMAGE_SHA256='b2f95b97dfa7e26ca717dfbec7871bf2f64286952548fb4d6d8e99908aeaacc0';
-const BACKUP_ROOT='/var/backups/prhm-agent-instant-delivery-mcp-candidate-refresh-v1';
+const BACKUP_ROOT='/var/lib/prhm-agent-instant-delivery-v1/mcp-candidate-refresh-bridge/backups';
 const RESULT_DIR='/var/lib/prhm-agent-instant-delivery-v1/mcp-candidate-refresh-bridge';
 const RESULT_PATH=path.join(RESULT_DIR,'latest.json');
 const NODE='/usr/local/bin/prhm-node';
@@ -138,7 +138,7 @@ function persistResult(out){
   return RESULT_PATH;
 }
 
-module.exports=Object.freeze({ACTION,SOURCE_PATH,TARGET_PATH,SERVICE,SOURCE_SHA256,TARGET_PREIMAGE_SHA256,RESULT_PATH,createAction,productionAdapter,executeMode,persistResult});
+module.exports=Object.freeze({ACTION,SOURCE_PATH,TARGET_PATH,SERVICE,SOURCE_SHA256,TARGET_PREIMAGE_SHA256,BACKUP_ROOT,RESULT_PATH,createAction,productionAdapter,executeMode,persistResult});
 
 if(require.main===module){
   const args=process.argv.slice(2);
