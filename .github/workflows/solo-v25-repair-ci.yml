@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - fix/solo-v25-safe-directory
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
