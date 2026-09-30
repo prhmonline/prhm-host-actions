@@ -15,13 +15,13 @@ const CANDIDATE_TARGET='/home/agent/candidates/agent3-instant-delivery-v1/mcp/sr
 const SOURCE_SHA256='048e2db190c5548f47967447b3b564eefd0b7203cf6df84beb73c520d481633d';
 const TARGET_PREIMAGE_SHA256='b2f95b97dfa7e26ca717dfbec7871bf2f64286952548fb4d6d8e99908aeaacc0';
 const BASE_SHA256='55158cb03f503bed6681abdb3b797d7271730bf1b803bc42cd57bb32e1c97d44';
-const HELPER_SHA256='43f2d7322496cbd9d60c9d98e6c39b44f6b99daef32743274ff944184edf74ef';
-const BASE_PATH='/home/agent/ssh-agent-api/.instant-delivery-mcp-candidate-refresh-bridge-base-'+BASE_SHA256+'.cjs';
+const HELPER_SHA256='136975c0bd5a1b59b033e0304972f1d2846b4f805b4692844669a2a52cb1d2ad';
+const BACKUP_PREFIX='opsSelfmaintBridge.js.agent-backup.';
 const HELPER_NS_PATH='/home/agent/ssh-agent-api/instant-delivery-mcp-candidate-refresh-v1.js';
 const HELPER_HOST_PATH='/home/agent/candidates/agent3-instant-delivery-v1/api/instant-delivery-mcp-candidate-refresh-v1.js';
 const RESULT_DIR='/var/lib/prhm-agent-instant-delivery-v1/mcp-candidate-refresh-bridge';
+const BACKUP_ROOT=path.join(RESULT_DIR,'backups');
 const RESULT_PATH=path.join(RESULT_DIR,'latest.json');
-const BACKUP_ROOT='/var/backups/prhm-agent-instant-delivery-mcp-candidate-refresh-v1';
 const SYSTEMD_RUN='/usr/bin/systemd-run';
 const NODE='/usr/local/bin/prhm-node';
 
@@ -55,7 +55,7 @@ function productionRunner(){
   function run(mode){
     if(mode!=='preflight'&&mode!=='apply')fail('mode_not_allowlisted');
     fixedFile(HELPER_NS_PATH,HELPER_SHA256,'helper');
-    fs.mkdirSync(RESULT_DIR,{recursive:true,mode:0o700});
+    fs.mkdirSync(BACKUP_ROOT,{recursive:true,mode:0o700});
     try{fs.unlinkSync(RESULT_PATH)}catch(error){if(error&&error.code!=='ENOENT')throw error}
     const unit='prhm-mcp-candidate-refresh-'+mode+'-'+Date.now()+'-'+crypto.randomBytes(4).toString('hex');
     const args=[
@@ -64,7 +64,7 @@ function productionRunner(){
       '--property=PrivateTmp=true','--property=ProtectSystem=strict','--property=ProtectHome=read-only',
       '--property=ReadOnlyPaths=/home/agent/ssh-mcp-server',
       '--property=ReadWritePaths=/home/agent/candidates/agent3-instant-delivery-v1/mcp',
-      '--property=ReadWritePaths='+BACKUP_ROOT,'--property=ReadWritePaths='+RESULT_DIR,
+      '--property=ReadWritePaths='+RESULT_DIR,
       '--setenv=PRHM_MCP_CANDIDATE_REFRESH_RESULT=1',
       NODE,HELPER_HOST_PATH,mode==='preflight'?'--preflight':'--apply'
     ];
@@ -101,8 +101,17 @@ function createFixedDispatcher(runner,fallbackExecute){
 let baseModule=null;
 function loadBase(){
   if(baseModule)return baseModule;
-  const bytes=fixedFile(BASE_PATH,BASE_SHA256,'base_bridge');
-  const m=new Module(BASE_PATH,module);m.filename=BASE_PATH;m.paths=Module._nodeModulePaths(path.dirname(BASE_PATH));m._compile(bytes.toString('utf8'),BASE_PATH);
+  const names=fs.readdirSync(__dirname).filter(name=>name.startsWith(BACKUP_PREFIX)).sort().reverse();
+  let selected=null;
+  for(const name of names){
+    const file=path.join(__dirname,name);
+    let st;try{st=fs.lstatSync(file)}catch{continue}
+    if(st.isSymbolicLink()||!st.isFile())continue;
+    const bytes=fs.readFileSync(file);
+    if(sha(bytes)===BASE_SHA256){selected={file,bytes};break}
+  }
+  if(!selected)fail('base_bridge_backup_missing');
+  const m=new Module(selected.file,module);m.filename=selected.file;m.paths=Module._nodeModulePaths(path.dirname(selected.file));m._compile(selected.bytes.toString('utf8'),selected.file);
   if(!m.exports||typeof m.exports.createOpsSelfmaintBridge!=='function')fail('base_bridge_contract_invalid');
   baseModule=m.exports;return baseModule;
 }
@@ -112,4 +121,4 @@ function createOpsSelfmaintBridge(){
   return{execute:(command,ctx={})=>fixed.execute(command,ctx)};
 }
 
-module.exports=Object.freeze({PREFLIGHT_OPERATION,APPLY_OPERATION,STATUS_OPERATION,CONFIRMATION,CANDIDATE_SERVICE,CANDIDATE_TARGET,SOURCE_SHA256,TARGET_PREIMAGE_SHA256,BASE_SHA256,HELPER_SHA256,BASE_PATH,HELPER_NS_PATH,HELPER_HOST_PATH,RESULT_PATH,productionSpec,productionRunner,createFixedDispatcher,createOpsSelfmaintBridge});
+module.exports=Object.freeze({PREFLIGHT_OPERATION,APPLY_OPERATION,STATUS_OPERATION,CONFIRMATION,CANDIDATE_SERVICE,CANDIDATE_TARGET,SOURCE_SHA256,TARGET_PREIMAGE_SHA256,BASE_SHA256,HELPER_SHA256,BACKUP_PREFIX,HELPER_NS_PATH,HELPER_HOST_PATH,RESULT_PATH,productionSpec,productionRunner,createFixedDispatcher,createOpsSelfmaintBridge});
