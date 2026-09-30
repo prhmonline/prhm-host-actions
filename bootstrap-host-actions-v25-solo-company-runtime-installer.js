@@ -49,7 +49,7 @@ function patchRegistry(source){
 }
 function sourceGitShowArgs(sourcePath){
   if(!Object.values(SOURCE_PATHS).includes(sourcePath))fail('source_path_not_allowlisted');
-  return ['-C',SOURCE_REPO,'show',SOURCE_COMMIT+':'+sourcePath];
+  return ['-c','safe.directory='+SOURCE_REPO,'-C',SOURCE_REPO,'show',SOURCE_COMMIT+':'+sourcePath];
 }
 function sourceBytes(sourcePath,wantSha,label){
   const r=cp.spawnSync('/usr/bin/git',sourceGitShowArgs(sourcePath),{
