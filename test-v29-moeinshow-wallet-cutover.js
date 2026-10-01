@@ -25,6 +25,7 @@ test('identity, target commit, and live preimage SHA pins are fixed',()=>{
   assert.equal(m.EXEC_SHA,'6bba46890db31abc8eca7e7681753a4788c46170033a555a1106e05d0a7a66f9');
   assert.equal(m.POLICY_SHA,'2fedd70a182aa351e269df95a1b9d829f5a0b18defe8871cb4045106948d711a');
   assert.equal(m.MCP_SHA,'b2f95b97dfa7e26ca717dfbec7871bf2f64286952548fb4d6d8e99908aeaacc0');
+  assert.equal(m.MCP_MAIN_SHA,'048e2db190c5548f47967447b3b564eefd0b7203cf6df84beb73c520d481633d');
 });
 
 test('policy makes preflight Level-3 and apply Level-4 critical one-time',()=>{
@@ -119,11 +120,13 @@ test('selftest passes',()=>{
 test('installer follows the live 8132/8134 candidate topology and patches every MCP source',()=>{
   const m=load();
   const s=fs.readFileSync(modulePath,'utf8');
-  assert.match(s,/agent3-fast-launch-v1\/mcp\/src\/plugins\/hostActionsV2\.js/);
+  assert.match(s,/agent3-safe-delivery-profile-expansion\/mcp\/src\/plugins\/hostActionsV2\.js/);
   assert.match(s,/agent3-instant-delivery-v1\/mcp\/src\/plugins\/hostActionsV2\.js/);
-  assert.match(s,/prhm-agent-mcp-fast-launch-candidate\.service/);
+  assert.match(s,/prhm-agent-mcp-safe-delivery-candidate\.service/);
   assert.match(s,/prhm-agent-mcp-instant-delivery-candidate\.service/);
   assert.match(s,/mcp-active/);
+  assert.match(s,/mcp:MCP_MAIN_SHA/);
+  assert.doesNotMatch(s,/agent3-fast-launch-v1/);
   assert.match(s,/8132/);
   assert.match(s,/8134/);
   assert.doesNotMatch(s,/restart\(['"]prhm-agent-mcp\.service['"]\)/);
@@ -131,10 +134,21 @@ test('installer follows the live 8132/8134 candidate topology and patches every 
 
 test('candidate refresh is zero-downtime and rollback restores the original router pointer',()=>{
   const s=fs.readFileSync(modulePath,'utf8');
-  assert.match(s,/standby.*8132|8132.*standby/s);
-  assert.match(s,/active.*8134|8134.*active/s);
+  assert.match(s,/active.*8132|8132.*active/s);
+  assert.match(s,/standby.*8134|8134.*standby/s);
+  assert.match(s,/final_pointer:8132/);
   assert.match(s,/\/health/);
   assert.match(s,/\/ready/);
   assert.match(s,/restore.*pointer|pointer.*rollback|rollback.*pointer/s);
   assert.match(s,/8123/);
+});
+
+
+test('installer refreshes standby 8134 before active 8132 and restores pointer to 8132',()=>{
+  const s=fs.readFileSync(modulePath,'utf8');
+  const instant=s.indexOf("restart('prhm-agent-mcp-instant-delivery-candidate.service')");
+  const toInstant=s.indexOf('switchPointer(8134',instant);
+  const safe=s.indexOf("restart('prhm-agent-mcp-safe-delivery-candidate.service')",toInstant);
+  const back=s.indexOf('switchPointer(8132',safe);
+  assert.ok(instant>=0 && instant<toInstant && toInstant<safe && safe<back);
 });
