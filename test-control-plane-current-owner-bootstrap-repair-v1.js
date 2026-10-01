@@ -12,7 +12,7 @@ const OWNERS=Object.freeze({
   base:['/opt/prhm-agent-selfmaint/server.js','de924f7319f3656d788ba5d3f89ef2910bf4b0e3f0b8b074e7cd3a534441d5ea'],
   exec:['/opt/prhm-agent-selfmaint-exec/server.js','6bba46890db31abc8eca7e7681753a4788c46170033a555a1106e05d0a7a66f9'],
   policy:['/opt/prhm-company-control-plane/config/approval-policy.json','2fedd70a182aa351e269df95a1b9d829f5a0b18defe8871cb4045106948d711a'],
-  mcp:['/home/agent/ssh-mcp-server/src/plugins/hostActionsV2.js','b2f95b97dfa7e26ca717dfbec7871bf2f64286952548fb4d6d8e99908aeaacc0']
+  mcp:['/home/agent/ssh-mcp-server/src/plugins/hostActionsV2.js','048e2db190c5548f47967447b3b564eefd0b7203cf6df84beb73c520d481633d']
 });
 const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
 const sources=()=>Object.fromEntries(Object.entries(OWNERS).map(([k,[p]])=>[k,fs.readFileSync(p,'utf8')]));
