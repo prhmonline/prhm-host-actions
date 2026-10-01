@@ -1,7 +1,7 @@
 # Control Plane Root-of-Trust Current-Owner Repair V1 — Design
 
 Date: 2026-10-02
-Status: Approved design, documentation only
+Status: Design approved; written spec awaiting review
 Repository: `prhmonline/prhm-host-actions`
 
 ## Purpose
