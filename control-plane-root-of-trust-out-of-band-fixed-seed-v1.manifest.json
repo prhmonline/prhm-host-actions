@@ -1,0 +1,28 @@
+{
+  "schema_version": "prhm.control-plane-root-of-trust-out-of-band-fixed-seed-manifest.v1",
+  "seed_action": "control_plane_root_of_trust_out_of_band_fixed_seed_v1",
+  "target_action": "control_plane_typed_bootstrap_fixed_verifier_native_install_v1",
+  "expected_baselines": {
+    "base": "e186036e8efd9c9663b977a20f62fb90cedb70b48bfa0f1fb48cbc53a64020cd",
+    "executor": "1e683d0962bc1e0503b9deb1f0d266ad44d6fc5d3c1566dc87f2f7733d4802bd",
+    "mcp": "44520b67bb352ab243698c5cf50b39d09a65c833fee9cfd3ebc5a50379ecaa71",
+    "policy": "76cca4574708709c921d67e91068e9f25508c6769f4d150718c8b068f870233d"
+  },
+  "bound_artifacts": {
+    "installer_implementation": "eeeccf448d9792ea69df4313864374945684e7cbb1ae6b0eedfa37b84d51f369",
+    "installer_test": "7fb9e74d823dafc967928b65ef16bff74489d108aa2642399c027da660708a8c",
+    "installer_manifest": "a75182d3a5160b38e27e396765e0a7fd9d1aed5e556e2f6b566c5dcdcca29d99",
+    "verifier": "f5e3cb6a9ce6c88229ffbd2fafd1e48742562f8c3edbc7aac113e2cb4f292b5a"
+  },
+  "fixed_services": [
+    "prhm-agent-selfmaint.service",
+    "prhm-agent-selfmaint-exec.service",
+    "prhm-agent-mcp.service"
+  ],
+  "implementation_sha256": "9cfc0bf52fc4e5e3ec0b864979abe97b4c8d6532877b74f05e8ecf3dd630f088",
+  "test_sha256": "6e5677a3e1ef157efdc013fbb14a49368f782492e68bce89b4999740970c8adc",
+  "zero_input": true,
+  "one_shot": true,
+  "park_production_mutation": false,
+  "database_mutation": false
+}
