@@ -15,10 +15,10 @@ const OWNER_PATHS=Object.freeze({
   mcp:'/home/agent/ssh-mcp-server/src/plugins/hostActionsV2.js'
 });
 const OWNER_SHA=Object.freeze({
-  base:'de924f7319f3656d788ba5d3f89ef2910bf4b0e3f0b8b074e7cd3a534441d5ea',
-  exec:'6bba46890db31abc8eca7e7681753a4788c46170033a555a1106e05d0a7a66f9',
-  policy:'2fedd70a182aa351e269df95a1b9d829f5a0b18defe8871cb4045106948d711a',
-  mcp:'048e2db190c5548f47967447b3b564eefd0b7203cf6df84beb73c520d481633d'
+  base:'ad2f0fc6924238e7bb7bff6d69a517c366ce82fbafb116bb0a2d31d78c5ed32f',
+  exec:'a988dfcd706d3a032bd4d0d60a85c78b7fd6cdbea4e81b5e6c21212a6cd754a4',
+  policy:'aad8b3262a86c31f6d746f0bcfbd3eada6187c4e671b51ca79957b6ca6c3340c',
+  mcp:'8f24b6ed70644c1eda7b255a47ccf0d4fabfe03ac7c73dd8799ff9aeb5294075'
 });
 const shaBytes=b=>crypto.createHash('sha256').update(b).digest('hex');
 const shaFile=p=>shaBytes(fs.readFileSync(p));
@@ -78,10 +78,14 @@ function buildFromTemplate(template,ownerSources){
   const oldCheck="const st=JSON.parse(fs.readFileSync(STATE,'utf8'));for(const k of ['base','exec','policy','mcp'])if(sha(F[k])!==st.post_bootstrap_sha256[k])throw Error('baseline_drift:'+k);";
   const newCheck="const st=JSON.parse(fs.readFileSync(STATE,'utf8'));for(const k of ['base','exec','policy','mcp'])if(sha(F[k])!==BASELINE[k])throw Error('baseline_drift:'+k);";
   const bc=countExact(source,baseline),oc=countExact(source,oldCheck),nc=countExact(source,newCheck);
+  const baselineRe=/const BASELINE=Object\.freeze\(\{"base":"[a-f0-9]{64}","exec":"[a-f0-9]{64}","policy":"[a-f0-9]{64}","mcp":"[a-f0-9]{64}"\}\);/g;
+  const priorBaselines=source.match(baselineRe)||[];
   if(bc===0&&oc===1&&nc===0){
     source=replaceOne(source,fAnchor,fAnchor+'\n'+baseline,'baseline_insert');
     source=replaceOne(source,oldCheck,newCheck,'baseline_check');
-  }else if(!(bc===1&&oc===0&&nc===1))fail('candidate_binding_state_invalid:'+bc+':'+oc+':'+nc);
+  }else if(bc===0&&oc===0&&nc===1&&priorBaselines.length===1){
+    source=replaceOne(source,priorBaselines[0],baseline,'baseline_refresh');
+  }else if(!(bc===1&&oc===0&&nc===1))fail('candidate_binding_state_invalid:'+bc+':'+oc+':'+nc+':'+priorBaselines.length);
   for(const bad of ['rahekomak_production_deploy_v1','prhm_config_center_edge_helper_binding_repair_v1'])if(source.includes(bad))fail('forbidden_historical_action:'+bad);
   const bytes=Buffer.from(source,'utf8');
   const ck=cp.spawnSync('/usr/local/bin/prhm-node',['--check','-'],{input:bytes,encoding:'utf8',timeout:30000,maxBuffer:300000});

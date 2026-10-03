@@ -9,10 +9,10 @@ const BOOTSTRAP='./bootstrap-host-actions-control-plane-current-owner-bootstrap-
 const ACTION='control_plane_current_owner_bootstrap_repair_v1';
 const INSTALLER='/opt/prhm-agent-selfmaint-exec/actions/host-action-v2-installer-v1.js';
 const OWNERS=Object.freeze({
-  base:['/opt/prhm-agent-selfmaint/server.js','de924f7319f3656d788ba5d3f89ef2910bf4b0e3f0b8b074e7cd3a534441d5ea'],
-  exec:['/opt/prhm-agent-selfmaint-exec/server.js','6bba46890db31abc8eca7e7681753a4788c46170033a555a1106e05d0a7a66f9'],
-  policy:['/opt/prhm-company-control-plane/config/approval-policy.json','2fedd70a182aa351e269df95a1b9d829f5a0b18defe8871cb4045106948d711a'],
-  mcp:['/home/agent/ssh-mcp-server/src/plugins/hostActionsV2.js','048e2db190c5548f47967447b3b564eefd0b7203cf6df84beb73c520d481633d']
+  base:['/opt/prhm-agent-selfmaint/server.js','ad2f0fc6924238e7bb7bff6d69a517c366ce82fbafb116bb0a2d31d78c5ed32f'],
+  exec:['/opt/prhm-agent-selfmaint-exec/server.js','a988dfcd706d3a032bd4d0d60a85c78b7fd6cdbea4e81b5e6c21212a6cd754a4'],
+  policy:['/opt/prhm-company-control-plane/config/approval-policy.json','aad8b3262a86c31f6d746f0bcfbd3eada6187c4e671b51ca79957b6ca6c3340c'],
+  mcp:['/home/agent/ssh-mcp-server/src/plugins/hostActionsV2.js','8f24b6ed70644c1eda7b255a47ccf0d4fabfe03ac7c73dd8799ff9aeb5294075']
 });
 const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
 const sources=()=>Object.fromEntries(Object.entries(OWNERS).map(([k,[p]])=>[k,fs.readFileSync(p,'utf8')]));
