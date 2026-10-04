@@ -24,6 +24,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Syntax
-        run: node --check test-waha-student-bridge-registration-loader-v1.js
+        run: |
+          node --check waha-student-bridge-registration-loader-v1.mjs
+          node --check test-waha-student-bridge-registration-loader-v1.js
       - name: Contract tests
         run: node --test test-waha-student-bridge-registration-loader-v1.js
