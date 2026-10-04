@@ -1,0 +1,31 @@
+name: WAHA Registration Loader Transport CI
+
+on:
+  push:
+    branches:
+      - feat/waha-registration-loader-transport-v1
+    paths:
+      - 'waha-registration-loader-transport-v1.mjs'
+      - 'test-waha-registration-loader-transport-v1.js'
+      - '.github/workflows/waha-registration-loader-transport-ci.yml'
+  pull_request:
+    paths:
+      - 'waha-registration-loader-transport-v1.mjs'
+      - 'test-waha-registration-loader-transport-v1.js'
+      - '.github/workflows/waha-registration-loader-transport-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax
+        run: |
+          if [ -f waha-registration-loader-transport-v1.mjs ]; then node --check waha-registration-loader-transport-v1.mjs; fi
+          node --check test-waha-registration-loader-transport-v1.js
+      - name: Contract tests
+        run: node --test test-waha-registration-loader-transport-v1.js
