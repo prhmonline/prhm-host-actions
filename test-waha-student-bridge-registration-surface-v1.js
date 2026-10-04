@@ -32,6 +32,15 @@ test('surface exposes exactly fixed registration preflight/apply tools',()=>{
   assert.doesNotMatch(src,/req\.body|args\.(command|path|host|url|mode|session)|process\.env\.WAHA_/);
 });
 
+test('preflight artifact cache is temporary and sandbox sees it read-only',()=>{
+  assert.equal(literal('STATE'),'/tmp/prhm-waha-student-bridge-registration-surface-v1');
+  assert.doesNotMatch(src,/\/var\/lib\/prhm-agent-selfmaint-exec\/waha-student-bridge-registration-surface-v1/);
+  assert.match(src,/PrivateTmp=true/);
+  assert.match(src,/BindReadOnlyPaths='\+STATE|BindReadOnlyPaths='\s*\+\s*STATE|BindReadOnlyPaths='\+STATE/);
+  assert.match(src,/function cleanupArtifacts\(\)/);
+  assert.match(src,/finally\{cleanupArtifacts\(\)\}/);
+});
+
 test('apply sandbox has bounded writable paths and no network family',()=>{
   const paths=[
     '/opt/prhm-agent-selfmaint',
