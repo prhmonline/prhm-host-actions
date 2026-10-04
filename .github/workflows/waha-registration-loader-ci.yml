@@ -1,0 +1,29 @@
+name: WAHA Registration Loader CI
+
+on:
+  push:
+    branches:
+      - feat/waha-registration-loader-v1
+    paths:
+      - 'waha-student-bridge-registration-loader-v1.mjs'
+      - 'test-waha-student-bridge-registration-loader-v1.js'
+      - '.github/workflows/waha-registration-loader-ci.yml'
+  pull_request:
+    paths:
+      - 'waha-student-bridge-registration-loader-v1.mjs'
+      - 'test-waha-student-bridge-registration-loader-v1.js'
+      - '.github/workflows/waha-registration-loader-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax
+        run: node --check test-waha-student-bridge-registration-loader-v1.js
+      - name: Contract tests
+        run: node --test test-waha-student-bridge-registration-loader-v1.js
