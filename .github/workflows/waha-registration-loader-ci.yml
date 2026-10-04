@@ -1,0 +1,33 @@
+name: WAHA Registration Loader CI
+
+on:
+  push:
+    branches:
+      - feat/waha-registration-safe-files-loader
+    paths:
+      - 'waha-registration-safe-files-loader-v1.mjs'
+      - 'test-waha-registration-safe-files-loader-v1.js'
+      - 'waha-student-bridge-registration-surface-v1.mjs'
+      - '.github/workflows/waha-registration-loader-ci.yml'
+  pull_request:
+    paths:
+      - 'waha-registration-safe-files-loader-v1.mjs'
+      - 'test-waha-registration-safe-files-loader-v1.js'
+      - 'waha-student-bridge-registration-surface-v1.mjs'
+      - '.github/workflows/waha-registration-loader-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax
+        run: |
+          node --check waha-registration-safe-files-loader-v1.mjs
+          node --check test-waha-registration-safe-files-loader-v1.js
+      - name: Loader contract
+        run: node --test test-waha-registration-safe-files-loader-v1.js
