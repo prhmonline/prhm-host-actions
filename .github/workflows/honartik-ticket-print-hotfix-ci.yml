@@ -1,0 +1,30 @@
+name: Honartik Ticket Print Hotfix CI
+
+on:
+  push:
+    branches:
+      - design/honartik-ticket-print-hotfix-adapter-20261004
+    paths:
+      - 'honartik-ticket-print-hotfix-v1.js'
+      - 'test-honartik-ticket-print-hotfix-v1.js'
+      - 'bootstrap-host-actions-honartik-ticket-print-hotfix-v1.js'
+      - '.github/workflows/honartik-ticket-print-hotfix-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax
+        run: |
+          node --check honartik-ticket-print-hotfix-v1.js
+          node --check bootstrap-host-actions-honartik-ticket-print-hotfix-v1.js
+          node --check test-honartik-ticket-print-hotfix-v1.js
+      - name: Contract
+        run: node --test test-honartik-ticket-print-hotfix-v1.js
+      - name: Bootstrap selftest
+        run: node bootstrap-host-actions-honartik-ticket-print-hotfix-v1.js --selftest-only
