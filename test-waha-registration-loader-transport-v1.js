@@ -45,7 +45,7 @@ test('apply is fixed sandboxed atomic replacement with rollback and no service c
   assert.match(src,/preflightSyntax/);
   assert.match(src,/rollback_performed/);
   assert.match(src,/reload_required:'agent_zdt_existing_topology_rolling_refresh_v1'/);
-  assert.doesNotMatch(src,/systemctl|restart|reload|docker|compose/);
+  assert.doesNotMatch(src,/systemctl|restart|docker|compose/);
 });
 
 test('overlay preserves exact current SafeFiles implementation via backup materialization',()=>{
