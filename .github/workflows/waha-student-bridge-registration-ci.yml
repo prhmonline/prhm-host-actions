@@ -1,0 +1,31 @@
+name: WAHA Student Bridge Registration CI
+
+on:
+  push:
+    branches:
+      - feat/waha-student-bridge-registration
+    paths:
+      - 'waha-student-bridge-registration-v1.js'
+      - 'test-waha-student-bridge-registration-v1.js'
+      - '.github/workflows/waha-student-bridge-registration-ci.yml'
+  pull_request:
+    paths:
+      - 'waha-student-bridge-registration-v1.js'
+      - 'test-waha-student-bridge-registration-v1.js'
+      - '.github/workflows/waha-student-bridge-registration-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax
+        run: |
+          if [ -f waha-student-bridge-registration-v1.js ]; then node --check waha-student-bridge-registration-v1.js; fi
+          node --check test-waha-student-bridge-registration-v1.js
+      - name: Contract tests
+        run: node --test test-waha-student-bridge-registration-v1.js
