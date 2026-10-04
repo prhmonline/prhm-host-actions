@@ -27,4 +27,4 @@ jobs:
       - name: Contract
         run: node --test test-honartik-ticket-print-hotfix-v1.js
       - name: Bootstrap selftest
-        run: node bootstrap-host-actions-honartik-ticket-print-hotfix-v1.js --selftest-only
+        run: node -e "const m=require('./bootstrap-host-actions-honartik-ticket-print-hotfix-v1.js'); const r=m.selftest(); if(!r||r.ok!==true) process.exit(1); console.log(JSON.stringify(r));"
