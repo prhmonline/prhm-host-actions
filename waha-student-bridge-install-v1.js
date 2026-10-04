@@ -53,7 +53,7 @@ function sessionStartPath() {
 }
 
 function qrPath() {
-  return `/api/${SPEC.session}/auth/qr?format=json`;
+  return `/api/${SPEC.session}/auth/qr`;
 }
 
 function sanitizeQrPayload(payload) {
