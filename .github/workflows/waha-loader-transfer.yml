@@ -1,0 +1,21 @@
+name: WAHA Loader Transfer
+
+on:
+  push:
+    branches:
+      - chore/waha-loader-transfer
+
+permissions:
+  contents: read
+
+jobs:
+  artifact:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: waha-loader-transfer
+          path: waha-student-bridge-registration-loader-v1.mjs
+          if-no-files-found: error
+          retention-days: 1
