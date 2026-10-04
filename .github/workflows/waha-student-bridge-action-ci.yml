@@ -1,0 +1,29 @@
+name: WAHA Student Bridge Action CI
+
+on:
+  push:
+    branches:
+      - feat/waha-student-bridge-action
+    paths:
+      - 'waha-student-bridge-install-v1.js'
+      - 'test-waha-student-bridge-install-v1.js'
+      - '.github/workflows/waha-student-bridge-action-ci.yml'
+  pull_request:
+    paths:
+      - 'waha-student-bridge-install-v1.js'
+      - 'test-waha-student-bridge-install-v1.js'
+      - '.github/workflows/waha-student-bridge-action-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax
+        run: node --check waha-student-bridge-install-v1.js
+      - name: Contract tests
+        run: node --test test-waha-student-bridge-install-v1.js
