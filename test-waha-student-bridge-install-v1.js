@@ -47,7 +47,7 @@ test('CLI only accepts fixed lifecycle, session and QR modes', () => {
 test('session and QR endpoints are fixed to student-outreach', () => {
   assert.equal(mod.sessionPath(), '/api/sessions/student-outreach');
   assert.equal(mod.sessionStartPath(), '/api/sessions/student-outreach/start');
-  assert.equal(mod.qrPath(), '/api/student-outreach/auth/qr?format=json');
+  assert.equal(mod.qrPath(), '/api/student-outreach/auth/qr');
   assert.equal(mod.sessionPath.length, 0);
   assert.equal(mod.sessionStartPath.length, 0);
   assert.equal(mod.qrPath.length, 0);
