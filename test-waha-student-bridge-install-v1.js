@@ -23,13 +23,14 @@ test('compose is one-service, localhost-only and persistent', () => {
   assert.equal((yml.match(/^  waha:/gm) || []).length, 1);
 });
 
-test('runtime env stores only API key hash and disables admin surfaces', () => {
+test('runtime env stores only API key hash and exposes only health and ping without auth', () => {
   const env = mod.buildEnv('a'.repeat(128));
   assert.match(env, /^WAHA_API_KEY=sha512:a{128}$/m);
   assert.match(env, /^WAHA_DASHBOARD_ENABLED=false$/m);
   assert.match(env, /^WHATSAPP_SWAGGER_ENABLED=false$/m);
   assert.match(env, /^WHATSAPP_DEFAULT_ENGINE=GOWS$/m);
-  assert.match(env, /^WAHA_API_KEY_EXCLUDE_PATH=health,ping,api\/sessions\/student-outreach$/m);
+  assert.match(env, /^WAHA_API_KEY_EXCLUDE_PATH=health,ping$/m);
+  assert.doesNotMatch(env, /WAHA_API_KEY_EXCLUDE_PATH=.*api\/sessions/);
   assert.doesNotMatch(env, /989351344400|\+989351344400/);
 });
 
@@ -39,6 +40,22 @@ test('installer source contains no target phone number and no bulk behavior', ()
   assert.doesNotMatch(src, /bulk|campaign|broadcast/i);
 });
 
-test('CLI only accepts fixed modes', () => {
-  assert.deepEqual(mod.ALLOWED_MODES, ['--preflight-only', '--apply', '--status', '--rollback']);
+test('CLI only accepts fixed lifecycle, session and QR modes', () => {
+  assert.deepEqual(mod.ALLOWED_MODES, ['--preflight-only', '--apply', '--status', '--session-ensure', '--qr', '--rollback']);
+});
+
+test('session and QR endpoints are fixed to student-outreach', () => {
+  assert.equal(mod.sessionPath(), '/api/sessions/student-outreach');
+  assert.equal(mod.sessionStartPath(), '/api/sessions/student-outreach/start');
+  assert.equal(mod.qrPath(), '/api/student-outreach/auth/qr?format=json');
+  assert.equal(mod.sessionPath.length, 0);
+  assert.equal(mod.sessionStartPath.length, 0);
+  assert.equal(mod.qrPath.length, 0);
+});
+
+test('QR payload sanitizer accepts bounded image data only', () => {
+  assert.deepEqual(mod.sanitizeQrPayload({ mimetype: 'image/png', data: 'abc123' }), { mimetype: 'image/png', data: 'abc123' });
+  assert.throws(() => mod.sanitizeQrPayload({ mimetype: 'text/html', data: 'x' }), /qr_mimetype_invalid/);
+  assert.throws(() => mod.sanitizeQrPayload({ mimetype: 'image/png', data: '' }), /qr_payload_invalid/);
+  assert.throws(() => mod.sanitizeQrPayload({ mimetype: 'image/png', data: 'x'.repeat(300001) }), /qr_payload_invalid/);
 });
