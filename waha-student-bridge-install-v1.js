@@ -6,7 +6,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const cp = require('node:child_process');
 
-const ALLOWED_MODES = ['--preflight-only', '--apply', '--status', '--rollback'];
+const ALLOWED_MODES = ['--preflight-only', '--apply', '--status', '--session-ensure', '--qr', '--rollback'];
 const SPEC = Object.freeze({
   action: 'waha_student_bridge_install_v1',
   root: '/opt/prhm-whatsapp-student-bridge',
@@ -37,11 +37,32 @@ function buildEnv(apiKeyHash) {
     'WAHA_DASHBOARD_ENABLED=false',
     'WHATSAPP_SWAGGER_ENABLED=false',
     'WHATSAPP_DEFAULT_ENGINE=GOWS',
-    `WAHA_API_KEY_EXCLUDE_PATH=health,ping,api/sessions/${SPEC.session}`,
+    'WAHA_API_KEY_EXCLUDE_PATH=health,ping',
     'WAHA_CLIENT_DEVICE_NAME=DrTarjomeh Student Outreach',
     'WAHA_CLIENT_BROWSER_NAME=Desktop',
     '',
   ].join('\n');
+}
+
+function sessionPath() {
+  return `/api/sessions/${SPEC.session}`;
+}
+
+function sessionStartPath() {
+  return `${sessionPath()}/start`;
+}
+
+function qrPath() {
+  return `/api/${SPEC.session}/auth/qr?format=json`;
+}
+
+function sanitizeQrPayload(payload) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new Error('qr_payload_invalid');
+  const mimetype = String(payload.mimetype || payload.mimeType || '');
+  const data = String(payload.data || payload.value || payload.qr || '');
+  if (!/^image\/(png|jpeg)$/.test(mimetype)) throw new Error('qr_mimetype_invalid');
+  if (!data || data.length > 300000) throw new Error('qr_payload_invalid');
+  return { mimetype, data };
 }
 
 function digest(bytes) {
@@ -91,6 +112,22 @@ function apiStatus(pathname, apiKey) {
   return { exit: r.status, code: String(r.stdout || '').trim() };
 }
 
+function apiRequest(method, pathname, apiKey, body) {
+  const curl = commandPath('curl');
+  const args = ['--silent', '--show-error', '--write-out', '\n%{http_code}', '--max-time', '10', '-X', method, '-H', 'Accept: application/json'];
+  if (apiKey) args.push('-H', `X-Api-Key: ${apiKey}`);
+  if (body !== undefined) args.push('-H', 'Content-Type: application/json', '--data', JSON.stringify(body));
+  args.push(`http://${SPEC.host}:${SPEC.port}${pathname}`);
+  const r = exec(curl, args, { allowFailure: true, timeout: 15000 });
+  const raw = String(r.stdout || '');
+  const split = raw.lastIndexOf('\n');
+  return {
+    exit: r.status,
+    body: split >= 0 ? raw.slice(0, split) : '',
+    code: split >= 0 ? raw.slice(split + 1).trim() : '',
+  };
+}
+
 function compose(args, opts = {}) {
   const docker = commandPath('docker');
   return exec(docker, ['compose', '-f', SPEC.compose, ...args], opts);
@@ -103,6 +140,13 @@ function secureWrite(file, content, mode) {
   fs.chmodSync(tmp, mode);
   fs.chownSync(tmp, 0, 0);
   fs.renameSync(tmp, file);
+}
+
+function requireApiKey() {
+  if (!fs.existsSync(SPEC.key)) throw new Error('waha_api_key_missing');
+  const apiKey = fs.readFileSync(SPEC.key, 'utf8').trim();
+  if (!/^[a-f0-9]{64}$/.test(apiKey)) throw new Error('waha_api_key_invalid');
+  return apiKey;
 }
 
 function baseEvidence() {
@@ -149,7 +193,7 @@ function waitHealthy(apiKey) {
 }
 
 function apply() {
-  const pf = preflight();
+  preflight();
   const docker = commandPath('docker');
   let rootCreated = false;
   let composeStarted = false;
@@ -191,12 +235,50 @@ function apply() {
 
 function status() {
   if (!fs.existsSync(SPEC.marker) || !fs.existsSync(SPEC.key)) return { ok: true, ...baseEvidence(), installed: false };
-  const apiKey = fs.readFileSync(SPEC.key, 'utf8').trim();
+  const apiKey = requireApiKey();
   const health = apiStatus('/health');
   const auth = apiStatus('/api/sessions', apiKey);
   const docker = commandPath('docker');
   const inspect = exec(docker, ['container', 'inspect', '-f', '{{.State.Status}}', SPEC.container], { allowFailure: true, timeout: 15000 });
   return { ok: true, ...baseEvidence(), installed: true, container_status: String(inspect.stdout || '').trim() || 'unknown', health: health.code === '200', api_auth_verified: auth.code === '200' };
+}
+
+function ensureSession() {
+  const current = status();
+  if (current.installed !== true || current.health !== true || current.api_auth_verified !== true) throw new Error('waha_not_ready');
+  const apiKey = requireApiKey();
+  const existing = apiRequest('GET', sessionPath(), apiKey);
+  let created = false;
+  if (existing.code === '404') {
+    const create = apiRequest('POST', '/api/sessions', apiKey, { name: SPEC.session, start: true });
+    if (!['200', '201', '202'].includes(create.code)) throw new Error(`session_create_failed_http_${create.code}`);
+    created = true;
+  } else if (existing.code === '200') {
+    const start = apiRequest('POST', sessionStartPath(), apiKey);
+    if (!['200', '201', '202', '409'].includes(start.code)) throw new Error(`session_start_failed_http_${start.code}`);
+  } else {
+    throw new Error(`session_lookup_failed_http_${existing.code}`);
+  }
+  const finalState = apiRequest('GET', sessionPath(), apiKey);
+  if (finalState.code !== '200') throw new Error(`session_verify_failed_http_${finalState.code}`);
+  let sessionStatus = 'unknown';
+  try {
+    const parsed = JSON.parse(finalState.body || '{}');
+    sessionStatus = String(parsed.status || parsed.state || 'unknown').slice(0, 80);
+  } catch {}
+  return { ok: true, ...baseEvidence(), installed: true, session_ensured: true, session_created: created, session_status: sessionStatus };
+}
+
+function qr() {
+  const current = status();
+  if (current.installed !== true || current.health !== true || current.api_auth_verified !== true) throw new Error('waha_not_ready');
+  const apiKey = requireApiKey();
+  const response = apiRequest('GET', qrPath(), apiKey);
+  if (response.code !== '200') throw new Error(`qr_failed_http_${response.code}`);
+  let payload;
+  try { payload = JSON.parse(response.body); }
+  catch { throw new Error('qr_invalid_json'); }
+  return { ok: true, ...baseEvidence(), qr_available: true, ...sanitizeQrPayload(payload) };
 }
 
 function rollback() {
@@ -213,11 +295,13 @@ function main() {
   if (args[0] === '--preflight-only') out = preflight();
   else if (args[0] === '--apply') out = apply();
   else if (args[0] === '--status') out = status();
+  else if (args[0] === '--session-ensure') out = ensureSession();
+  else if (args[0] === '--qr') out = qr();
   else out = rollback();
   process.stdout.write(JSON.stringify(out) + '\n');
 }
 
-module.exports = { SPEC, ALLOWED_MODES, buildCompose, buildEnv, preflight, apply, status, rollback };
+module.exports = { SPEC, ALLOWED_MODES, buildCompose, buildEnv, sessionPath, sessionStartPath, qrPath, sanitizeQrPayload, preflight, apply, status, ensureSession, qr, rollback };
 if (require.main === module) {
   try { main(); }
   catch (error) {
