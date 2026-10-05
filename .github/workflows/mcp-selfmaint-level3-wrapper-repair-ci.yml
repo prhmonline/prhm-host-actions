@@ -1,0 +1,26 @@
+name: MCP Selfmaint Level3 Wrapper Repair CI
+
+on:
+  push:
+    branches:
+      - fix/mcp-selfmaint-level3-wrapper-v1
+  pull_request:
+    paths:
+      - 'mcp-selfmaint-level3-wrapper-repair-v1.js'
+      - 'test-mcp-selfmaint-level3-wrapper-repair-v1.js'
+      - 'fixtures/mcp-server-wrapper-831c872f.mjs'
+      - '.github/workflows/mcp-selfmaint-level3-wrapper-repair-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node --check mcp-selfmaint-level3-wrapper-repair-v1.js
+      - run: node --test test-mcp-selfmaint-level3-wrapper-repair-v1.js
