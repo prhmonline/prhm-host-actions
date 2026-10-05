@@ -1,0 +1,22 @@
+name: Installer Refresh L4 WAHA Root Bootstrap CI
+
+on:
+  push:
+    branches:
+      - fix/installer-refresh-l4-parent-bind-waha-v3
+  pull_request:
+    paths:
+      - safeFiles-installer-refresh-root-bootstrap-wrapper-v1.mjs
+      - test-safeFiles-installer-refresh-root-bootstrap-wrapper-v1.js
+      - .github/workflows/installer-refresh-l4-waha-root-bootstrap-ci.yml
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node --check safeFiles-installer-refresh-root-bootstrap-wrapper-v1.mjs
+      - run: node --test test-safeFiles-installer-refresh-root-bootstrap-wrapper-v1.js
