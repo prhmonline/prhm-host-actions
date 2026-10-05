@@ -4,7 +4,7 @@ import {createHash} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
 import {pathToFileURL} from 'node:url';
 
-const BASE_SHA='3db499a8bc020403626a6c8a133237a5f086e7c936d6cd7ccdbadd74dd894155';
+const BASE_SHA='41416010bd28f7eb38c57d5e0482a56d782c0f8fca42a961a8480e6f0c88a6d5';
 const SELFMAINT_BACKUP_ROOT='/var/backups/prhm-agent-selfmaint';
 const HERE=path.dirname(new URL(import.meta.url).pathname);
 const BASE_FILE=path.join(HERE,'.safeFiles-installer-refresh-root-bootstrap-base-'+BASE_SHA+'.mjs');
