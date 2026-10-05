@@ -1,0 +1,22 @@
+name: WAHA Root Bootstrap Current Main CI
+
+on:
+  push:
+    branches:
+      - feat/waha-root-bootstrap-current-main
+  pull_request:
+    paths:
+      - safeFiles-installer-refresh-root-bootstrap-wrapper-v1.mjs
+      - test-safeFiles-installer-refresh-root-bootstrap-wrapper-v1.js
+      - .github/workflows/waha-root-bootstrap-current-main-ci.yml
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node --check safeFiles-installer-refresh-root-bootstrap-wrapper-v1.mjs
+      - run: node --test test-safeFiles-installer-refresh-root-bootstrap-wrapper-v1.js
