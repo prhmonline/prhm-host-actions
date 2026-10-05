@@ -1,6 +1,7 @@
 name: WAHA Installer Refresh Current Rebind CI
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - fix/waha-installer-refresh-current-rebind-v1
