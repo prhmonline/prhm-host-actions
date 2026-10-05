@@ -1,0 +1,17 @@
+'use strict';
+const test=require('node:test'); const assert=require('node:assert/strict'); const zlib=require('node:zlib'); const crypto=require('node:crypto');
+const m=require('./control-plane-root-trust-anchor-typed-bootstrap-successor-adoption-v1.js');
+
+test('fixed contract',()=>{assert.equal(m.ACTION,'control_plane_root_scripts_stage_transport_v1');assert.equal(m.OPERATION,'host_action.control_plane_root_scripts_stage_transport_v1');assert.deepEqual(m.ARTIFACTS.transport,{bytes:72854,sha256:'049250921dda0aa98ade7cf3707634668590bd66163606de5906841f5ca34335e'});assert.deepEqual(m.ARTIFACTS.bootstrap,{bytes:109634,sha256:'d3be569a4fd63b8e0c78e370ad689a27aa2751ea772891cb6b7ffe7fbd49b35e'});assert.deepEqual(m.EXECUTION_CONTRACT,{level4Required:true,legacyFallback:false,parkProductionMutation:false});});
+test('artifact verifier rejects malformed base64',()=>assert.throws(()=>m.verifyEmbeddedArtifacts({transportCompressedBase64:'!',bootstrapCompressedBase64:'!'}),/artifact_base64_invalid/));
+test('artifact verifier rejects valid base64 that is not brotli',()=>assert.throws(()=>m.verifyEmbeddedArtifacts({transportCompressedBase64:Buffer.from('x').toString('base64'),bootstrapCompressedBase64:Buffer.from('x').toString('base64')}),/artifact_brotli_invalid/));
+test('artifact verifier rejects wrong decompressed byte count',()=>{const b=zlib.brotliCompressSync(Buffer.from('x')).toString('base64');assert.throws(()=>m.verifyEmbeddedArtifacts({transportCompressedBase64:b,bootstrapCompressedBase64:b}),/artifact_bytes_mismatch/)});
+test('execution contract accepts only fixed safe contract',()=>assert.deepEqual(m.validateExecutionContract(m.EXECUTION_CONTRACT),{ok:true}));
+for(const k of ['command','path','repo','sql','service','host','url','artifact']) test(`execution contract rejects ${k}`,()=>assert.throws(()=>m.validateExecutionContract({...m.EXECUTION_CONTRACT,[k]:'x'}),/unknown_key/));
+test('execution contract rejects legacy fallback',()=>assert.throws(()=>m.validateExecutionContract({...m.EXECUTION_CONTRACT,legacyFallback:true}),/legacy_fallback_forbidden/));
+const policy=`operation: host_action.control_plane_root_scripts_stage_transport_v1\nrisk: critical\nlevel4: true`;
+test('adoption inserts one fixed registry entry',()=>{const r=m.planSuccessorAdoption({baseSource:'const HOST_ACTIONS = {\n};',approvalPolicy:policy});assert.equal(r.changed,true);assert.match(r.baseSource,/control_plane_root_scripts_stage_transport_v1/)});
+test('adoption rejects missing policy binding',()=>assert.throws(()=>m.planSuccessorAdoption({baseSource:'const HOST_ACTIONS = {\n};',approvalPolicy:'risk: critical'}),/approval_policy_binding_invalid/));
+test('adoption rejects ambiguous anchor',()=>assert.throws(()=>m.planSuccessorAdoption({baseSource:'const HOST_ACTIONS = {\nconst HOST_ACTIONS = {',approvalPolicy:policy}),/registry_anchor_invalid/));
+test('transaction rolls back exact state after each partial point',()=>{for(const p of ['after_registry','after_policy','after_first_artifact']){const s={registryPatched:false,policyPatched:false,firstArtifactStaged:false,x:1};const r=m.simulateTransactionalAdoption(s,p);assert.equal(r.ok,false);assert.equal(r.rollbackPerformed,true);assert.deepEqual(r.state,s)}});
+test('transaction success is idempotent',()=>{const s={registryPatched:true,policyPatched:true,firstArtifactStaged:true};const r=m.simulateTransactionalAdoption(s);assert.equal(r.ok,true);assert.equal(r.changed,false);assert.equal(r.rollbackPerformed,false)});
