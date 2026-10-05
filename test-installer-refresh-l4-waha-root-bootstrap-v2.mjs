@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const file=new URL('./installer-refresh-l4-waha-root-bootstrap-v2.mjs',import.meta.url);
+const src=fs.readFileSync(file,'utf8');
+assert.match(src,/const BASE_SHA='41416010bd28f7eb38c57d5e0482a56d782c0f8fca42a961a8480e6f0c88a6d'/);
+assert.match(src,/control_plane_installer_refresh_l4_binding_repair_request_v1/);
+assert.match(src,/control_plane_installer_refresh_l4_binding_repair_apply_v1/);
+assert.match(src,/CONFIRM_LEVEL_4_CRITICAL/);
+assert.match(src,/const STATE_PARENT='\/var\/lib\/prhm-agent-selfmaint-exec'/);
+assert.match(src,/const BACKUP_PARENT='\/var\/backups'/);
+assert.match(src,/const parents=apply\?\[STATE_PARENT,BACKUP_PARENT\]:\[STATE_PARENT\]/);
+assert.doesNotMatch(src,/ReadWritePaths='?\+?STATE_ROOT/);
+assert.match(src,/return target\.registerTool\.call\(target,name,config,handler\)/);
+assert.match(src,/ensureFixedRoots\(false\)/);
+assert.match(src,/ensureFixedRoots\(true\)/);
+console.log('installer-refresh WAHA root-bootstrap v2 contract PASS');
