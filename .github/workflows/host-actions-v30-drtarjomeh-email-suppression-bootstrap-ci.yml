@@ -7,6 +7,8 @@ on:
     paths:
       - 'bootstrap-host-actions-v30-drtarjomeh-email-suppression-release.js'
       - 'install-host-actions-v30-drtarjomeh-email-suppression-release.js'
+      - 'drtarjomeh-email-suppression-v30-bootstrap-builder.js'
+      - 'drtarjomeh-email-suppression-v30-helper-builder.js'
       - 'drtarjomeh-email-suppression-v30-mcp-bootstrap-bridge.mjs'
       - 'test-v30-drtarjomeh-email-suppression-*.js'
       - '.github/workflows/host-actions-v30-drtarjomeh-email-suppression-bootstrap-ci.yml'
@@ -14,6 +16,8 @@ on:
     paths:
       - 'bootstrap-host-actions-v30-drtarjomeh-email-suppression-release.js'
       - 'install-host-actions-v30-drtarjomeh-email-suppression-release.js'
+      - 'drtarjomeh-email-suppression-v30-bootstrap-builder.js'
+      - 'drtarjomeh-email-suppression-v30-helper-builder.js'
       - 'drtarjomeh-email-suppression-v30-mcp-bootstrap-bridge.mjs'
       - 'test-v30-drtarjomeh-email-suppression-*.js'
       - '.github/workflows/host-actions-v30-drtarjomeh-email-suppression-bootstrap-ci.yml'
@@ -32,6 +36,6 @@ jobs:
       - name: Syntax
         if: always()
         run: |
-          for f in bootstrap-host-actions-v30-drtarjomeh-email-suppression-release.js install-host-actions-v30-drtarjomeh-email-suppression-release.js drtarjomeh-email-suppression-v30-mcp-bootstrap-bridge.mjs; do
+          for f in bootstrap-host-actions-v30-drtarjomeh-email-suppression-release.js install-host-actions-v30-drtarjomeh-email-suppression-release.js drtarjomeh-email-suppression-v30-bootstrap-builder.js drtarjomeh-email-suppression-v30-helper-builder.js drtarjomeh-email-suppression-v30-mcp-bootstrap-bridge.mjs; do
             if [ -f "$f" ]; then node --check "$f"; fi
           done
