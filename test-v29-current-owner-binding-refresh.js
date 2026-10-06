@@ -5,11 +5,11 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const b=require('./bootstrap-host-actions-v29-current-owner-binding-refresh.js');
 
-test('v32 pins exact live registration owner SHAs and fixed action identity',()=>{
+test('v33 pins exact live registration owner SHAs and deferred MCP refresh identity',()=>{
   assert.equal(b.ACTION,'control_plane_current_owner_binding_refresh_v1');
   assert.equal(b.OPERATION,'host_action.control_plane_current_owner_binding_refresh_v1');
-  assert.equal(b.INSTALLER_ACTION,'control_plane_current_owner_binding_registration_installer_v32');
-  assert.equal(b.VERSION,'v32-mcp-source-owner');
+  assert.equal(b.INSTALLER_ACTION,'control_plane_current_owner_binding_registration_installer_v33');
+  assert.equal(b.VERSION,'v33-deferred-mcp-refresh');
   assert.deepEqual(b.LIVE_PINS,{
     base:'e972d8955dca6b07f8d0a716482ddfa16d3c8efeafbda170bb75c14af3627e3b',
     executor:'206dce4e9df48c540d9a261ffa2c6aec4dceb302614eaf495f299ef41a8260e6',
