@@ -1,0 +1,35 @@
+name: Installer Refresh State Helper Rebase v37 Action CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - fix/installer-refresh-state-helper-rebase-v37-action
+    paths:
+      - 'installer-refresh-state-helper-rebase-v37-action.js'
+      - 'test-installer-refresh-state-helper-rebase-v37-action.js'
+      - 'bootstrap-host-actions-installer-refresh-state-helper-rebase-v37.js'
+      - '.github/workflows/installer-refresh-state-helper-rebase-v37-action-ci.yml'
+  pull_request:
+    paths:
+      - 'installer-refresh-state-helper-rebase-v37-action.js'
+      - 'test-installer-refresh-state-helper-rebase-v37-action.js'
+      - 'bootstrap-host-actions-installer-refresh-state-helper-rebase-v37.js'
+      - '.github/workflows/installer-refresh-state-helper-rebase-v37-action-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax
+        run: |
+          node --check installer-refresh-state-helper-rebase-v37-action.js
+          node --check test-installer-refresh-state-helper-rebase-v37-action.js
+          node --check bootstrap-host-actions-installer-refresh-state-helper-rebase-v37.js
+      - name: Contract
+        run: node --test test-installer-refresh-state-helper-rebase-v37-action.js
