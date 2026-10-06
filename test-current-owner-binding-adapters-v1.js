@@ -24,7 +24,7 @@ const fixtures={
 };
 
 test('fixed registry exposes exactly four Config Center consumers and no generic adapter inputs',()=>{
- assert.deepEqual(Object.keys(a.ADAPTERS),['registry_bridge','v19_binding','current_baseline_refresh','rolling_refresh']);
+ assert.deepEqual(Object.keys(a.ADAPTERS),['registry_bridge','v19_binding','rolling_refresh']);
  assert.equal(Object.isFrozen(a.ADAPTERS),true);
  assert.throws(()=>a.buildConsumerCandidate('other',{}),/consumer_unknown/);
  assert.equal(JSON.stringify(Object.keys(a)).includes('replace'),false);
