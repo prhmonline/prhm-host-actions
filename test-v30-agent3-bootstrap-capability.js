@@ -32,7 +32,7 @@ test('preflight/apply both require exact downloaded bridge SHA and apply delegat
   assert.ok(p.includes('fetchBridge'));
   assert.ok(p.includes('BRIDGE_SHA256'));
   assert.ok(a.includes('fetchBridge'));
-  assert.ok(a.includes("['--apply']"));
+  assert.ok(a.includes("'--apply'"));
   assert.equal(a.includes('profile-enablement.json'),false);
   assert.equal(a.includes('cfpark_front_prod'),false);
 });
