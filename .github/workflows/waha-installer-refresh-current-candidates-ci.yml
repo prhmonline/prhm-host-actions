@@ -1,0 +1,31 @@
+name: WAHA Installer Refresh Current Candidates CI
+
+on:
+  push:
+    branches:
+      - fix/waha-installer-refresh-current-candidates-v1
+    paths:
+      - 'safeFiles-installer-refresh-l4-binding-repair-surface-current-v1.js'
+      - 'zdt-v19-compact-candidate-builder-current-v1.js'
+      - 'test-installer-refresh-current-candidates-v1.js'
+      - '.github/workflows/waha-installer-refresh-current-candidates-ci.yml'
+  pull_request:
+    paths:
+      - 'safeFiles-installer-refresh-l4-binding-repair-surface-current-v1.js'
+      - 'zdt-v19-compact-candidate-builder-current-v1.js'
+      - 'test-installer-refresh-current-candidates-v1.js'
+      - '.github/workflows/waha-installer-refresh-current-candidates-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax
+        run: node --check test-installer-refresh-current-candidates-v1.js
+      - name: Contract
+        run: node --test test-installer-refresh-current-candidates-v1.js
