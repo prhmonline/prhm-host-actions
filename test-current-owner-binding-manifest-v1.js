@@ -20,7 +20,9 @@ test('owner specs are frozen, fixed, absolute, unique and have no wildcard input
   }
   assert.equal(Object.isFrozen(m.INITIAL_CONSUMER_PREIMAGES),true);
   const registryOwner=m.OWNER_SPECS.find(x=>x.id==='registry_base');
+  const mcpSourceOwner=m.OWNER_SPECS.find(x=>x.id==='mcp_source');
   assert.equal(registryOwner?.path,'/home/agent/ssh-mcp-server/src/core/.registry-imotion-vm-stable-base-e91c3062539353a7a9d097b0877f1e612051e4fe8a489c101edab3e56d268c9b.mjs');
+  assert.equal(mcpSourceOwner?.path,'/home/agent/ssh-mcp-server/server.js');
   assert.deepEqual(m.INITIAL_CONSUMER_PREIMAGES.registry_bridge,{target_path:'/home/agent/ssh-mcp-server/src/core/registry.js',sha256:'19a0bea3d0c7c5ac33121463d26d892dac207022dbb07f76bf6c71acb64b5f35'});
   assert.deepEqual(m.INITIAL_CONSUMER_PREIMAGES.rolling_refresh,{target_path:'/opt/prhm-agent-selfmaint-exec/actions/agent-zdt-existing-topology-rolling-refresh-v1.js',sha256:'d80fca8d7c74c6f6ab7f03c72a866a16c1de3fc547e421eb507e309321048a2a'});
   assert.equal(Object.prototype.hasOwnProperty.call(m.INITIAL_CONSUMER_PREIMAGES,'current_baseline_refresh'),false);
