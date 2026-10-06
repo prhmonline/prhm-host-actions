@@ -10,7 +10,7 @@ test('exports current SHA-bound Level-4 installer contract',()=>{
   assert.equal(m.BASE_SHA,'ad2f0fc6924238e7bb7bff6d69a517c366ce82fbafb116bb0a2d31d78c5ed32f');
   assert.equal(m.EXEC_SHA,'a988dfcd706d3a032bd4d0d60a85c78b7fd6cdbea4e81b5e6c21212a6cd754a4');
   assert.equal(m.MCP_SHA,'8f24b6ed70644c1eda7b255a47ccf0d4fabfe03ac7c73dd8799ff9aeb5294075');
-  assert.equal(m.CANDIDATE_MCP_SHA,m.MCP_SHA);
+  assert.equal(m.CANDIDATE_MCP_SHA,'103dfdf49f95794e84dfa40d97d1622aabb2efb7a373809010262def63fd00d8');
   assert.equal(m.PATHS.candidateMcp,'/home/agent/candidates/agent3-safe-delivery-profile-expansion/mcp/src/plugins/hostActionsV2.js');
 });
 
@@ -63,7 +63,7 @@ test('helper strictly binds existing profile primitive, health contracts and exa
   assert.equal(h.includes('process.env.TARGET'),false);
 });
 
-test('installer requires canonical/candidate MCP parity and restart owners with rollback',()=>{
+test('installer accepts independent canonical/candidate MCP baselines and restarts owners with rollback',()=>{
   assert.deepEqual(m.SERVICES,['prhm-agent-selfmaint.service','prhm-agent-selfmaint-exec.service','prhm-agent-mcp-safe-delivery-candidate.service']);
   const src=m.install.toString();
   assert.ok(src.includes('preflight'));
@@ -71,6 +71,6 @@ test('installer requires canonical/candidate MCP parity and restart owners with 
   assert.ok(src.includes("runSystemctl(['restart',service])"));
   assert.ok(src.includes('installer_rollback_sha_mismatch'));
   const planSrc=m.buildInstallPlan.toString();
-  assert.ok(planSrc.includes('mcp_source_parity_mismatch'));
+  assert.equal(planSrc.includes('mcp_source_parity_mismatch'),false);
   assert.equal(src.includes('process.argv'),false);
 });
