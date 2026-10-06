@@ -11,7 +11,6 @@ const HEX64=/^[a-f0-9]{64}$/;
 const FIXED=Object.freeze({
   registry_bridge:Object.freeze({owner_ids:Object.freeze(['registry_base']),restart_units:Object.freeze([])}),
   v19_binding:Object.freeze({owner_ids:Object.freeze(['rolling_refresh','agent_api']),restart_units:Object.freeze([])}),
-  current_baseline_refresh:Object.freeze({owner_ids:Object.freeze(['selfmaint_base','selfmaint_executor','approval_policy','mcp_host_actions']),restart_units:Object.freeze([])}),
   rolling_refresh:Object.freeze({owner_ids:Object.freeze(['agent_api']),restart_units:Object.freeze([])}),
 });
 
@@ -99,22 +98,6 @@ function buildV19BindingCandidate(input){
   const text=`#!/usr/bin/env bash\nset -euo pipefail\n${marker}\nTARGET='/opt/prhm-agent-selfmaint-exec/actions/agent-zdt-existing-topology-rolling-refresh-v1.js'\nEXPECTED_ACTION_SHA='${o.rolling_refresh}'\nEXPECTED_API_SHA='${o.agent_api}'\nfail(){ printf '%s\\n' \"$1\" >&2; exit 1; }\n[ -f \"$TARGET\" ] && [ ! -L \"$TARGET\" ] || fail 'target_not_regular'\nCURRENT_SHA=\"$(sha256sum \"$TARGET\" | awk '{print $1}')\"\n[ \"$CURRENT_SHA\" = \"$EXPECTED_ACTION_SHA\" ] || fail 'rolling_refresh_owner_sha_mismatch'\nCOUNT=\"$(grep -F -o -- \"$EXPECTED_API_SHA\" \"$TARGET\" | wc -l | tr -d ' ')\"\n[ \"$COUNT\" = '1' ] || fail 'agent_api_owner_binding_count_mismatch'\nprintf '{\"ok\":true,\"action\":\"agent_zdt_existing_topology_rolling_refresh_source_binding_v1\",\"manifest_sha256\":\"%s\",\"production_application_mutation\":false,\"database_mutation\":false}\\n' '${input.manifest.manifest_sha256}'\n`;
   return result(id,input,p.state,text);
 }
-function buildCurrentBaselineRefreshCandidate(input){
-  const id='current_baseline_refresh', p=prep(id,input), o=p.owners;
-  let text=p.text;
-  const owners={base:o.selfmaint_base,exec:o.selfmaint_executor,policy:o.approval_policy,mcp:o.mcp_host_actions};
-  const record={...p.record,owners};
-  const block=jsBindingBlock(id,'CURRENT_OWNER_BINDING_CURRENT_BASELINE',record,'const BASELINE=CURRENT_OWNER_BINDING_CURRENT_BASELINE.owners;');
-  const replaced=replaceBlock(text,id,block);
-  if(replaced!==null)text=replaced;
-  else {
-    const re=/const BASELINE=\{[^\n]*\};/;
-    if(!re.test(text))fail('current_baseline_anchor_missing');
-    text=text.replace(re,block);
-  }
-  text=markerLine('//',record)+'\n'+text;
-  return result(id,input,p.state,text);
-}
 function buildRollingRefreshCandidate(input){
   const id='rolling_refresh', p=prep(id,input);
   let text=p.text;
@@ -133,6 +116,6 @@ function buildRollingRefreshCandidate(input){
   text=markerLine('//',p.record)+'\n'+text;
   return result(id,input,p.state,text);
 }
-const ADAPTERS=Object.freeze({registry_bridge:buildRegistryBridgeCandidate,v19_binding:buildV19BindingCandidate,current_baseline_refresh:buildCurrentBaselineRefreshCandidate,rolling_refresh:buildRollingRefreshCandidate});
+const ADAPTERS=Object.freeze({registry_bridge:buildRegistryBridgeCandidate,v19_binding:buildV19BindingCandidate,rolling_refresh:buildRollingRefreshCandidate});
 function buildConsumerCandidate(consumerId,input){const fn=ADAPTERS[consumerId];if(!fn)fail('consumer_unknown');return fn(input);}
-module.exports=Object.freeze({BINDING_SCHEMA,ADAPTERS,buildConsumerCandidate,buildRegistryBridgeCandidate,buildV19BindingCandidate,buildCurrentBaselineRefreshCandidate,buildRollingRefreshCandidate});
+module.exports=Object.freeze({BINDING_SCHEMA,ADAPTERS,buildConsumerCandidate,buildRegistryBridgeCandidate,buildV19BindingCandidate,buildRollingRefreshCandidate});
