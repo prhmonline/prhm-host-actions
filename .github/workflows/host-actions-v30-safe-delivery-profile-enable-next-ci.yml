@@ -1,0 +1,47 @@
+name: Host Actions V30 Safe Delivery Enable Next CI
+
+on:
+  push:
+    branches:
+      - feature/safe-delivery-profile-enable-next-v1
+  pull_request:
+    paths:
+      - safe-delivery-profile-enable-next-v1.js
+      - safe-delivery-profile-enable-next-helper-v1.js
+      - bootstrap-host-actions-v30-safe-delivery-profile-enable-next.js
+      - test-v30-safe-delivery-profile-enable-next.js
+      - test-v30-host-action-installer.js
+      - bootstrap-host-actions-v30-safe-delivery-candidate-install-bridge.js
+      - test-v30-safe-delivery-candidate-install-bridge.js
+      - safe-delivery-v30-agent3-bootstrap-capability-v1.js
+      - test-v30-agent3-bootstrap-capability.js
+      - .github/workflows/host-actions-v30-safe-delivery-profile-enable-next-ci.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Use Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax checks
+        run: |
+          node --check safe-delivery-profile-enable-next-v1.js
+          node --check safe-delivery-profile-enable-next-helper-v1.js
+          node --check bootstrap-host-actions-v30-safe-delivery-profile-enable-next.js
+          node --check test-v30-safe-delivery-profile-enable-next.js
+          node --check test-v30-host-action-installer.js
+          node --check bootstrap-host-actions-v30-safe-delivery-candidate-install-bridge.js
+          node --check test-v30-safe-delivery-candidate-install-bridge.js
+          node --check safe-delivery-v30-agent3-bootstrap-capability-v1.js
+          node --check test-v30-agent3-bootstrap-capability.js
+      - name: Contract tests
+        run: node --test test-v30-safe-delivery-profile-enable-next.js test-v30-host-action-installer.js test-v30-safe-delivery-candidate-install-bridge.js test-v30-agent3-bootstrap-capability.js
