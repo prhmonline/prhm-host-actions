@@ -91,7 +91,7 @@ function preflight(){
 function writeExclusive(file,bytes,mode,uid,gid){
   const fd=fs.openSync(file,'wx',mode);
   try{fs.writeFileSync(fd,bytes);fs.fsyncSync(fd)}finally{fs.closeSync(fd)}
-  fs.chownSync(file,uid,gid);
+  if(process.getuid&&process.getuid()===0)fs.chownSync(file,uid,gid);
   fs.chmodSync(file,mode);
 }
 
@@ -108,6 +108,7 @@ function applyToPath({target,backup_root,production=false,inject_after_rename=fa
   let preimage=null;
   let st=null;
   let runDir=null;
+  let tmp=null;
   try{
     const pf=preflightPath(target);
     if(!pf.would_change){
@@ -124,12 +125,15 @@ function applyToPath({target,backup_root,production=false,inject_after_rename=fa
     fs.mkdirSync(backup_root,{recursive:true,mode:0o700});
     runDir=path.join(backup_root,'run-'+Date.now()+'-'+process.pid);
     fs.mkdirSync(runDir,{mode:0o700});
-    writeExclusive(path.join(runDir,'preimage.bak'),preimage,0o600,process.getuid?process.getuid():st.uid,process.getgid?process.getgid():st.gid);
+    const uid=process.getuid?process.getuid():st.uid;
+    const gid=process.getgid?process.getgid():st.gid;
+    writeExclusive(path.join(runDir,'preimage.bak'),preimage,0o600,uid,gid);
 
-    const tmp=target+'.v37-'+process.pid+'-'+Date.now()+'.tmp';
+    tmp=target+'.v37-'+process.pid+'-'+Date.now()+'.tmp';
     writeExclusive(tmp,candidate.bytes,st.mode&0o777,st.uid,st.gid);
     if(shaFile(tmp)!==TARGET_STATE_SHA)fail('candidate_tmp_sha_mismatch');
     fs.renameSync(tmp,target);
+    tmp=null;
     renamed=true;
 
     if(inject_after_rename)fail('injected_after_rename');
@@ -142,9 +146,10 @@ function applyToPath({target,backup_root,production=false,inject_after_rename=fa
       production_mutation:production===true,database_mutation:false,
       arbitrary_command:false,arbitrary_path:false
     };
-    writeExclusive(path.join(runDir,'result.json'),Buffer.from(JSON.stringify(out,null,2)+'\n'),0o600,process.getuid?process.getuid():st.uid,process.getgid?process.getgid():st.gid);
+    writeExclusive(path.join(runDir,'result.json'),Buffer.from(JSON.stringify(out,null,2)+'\n'),0o600,uid,gid);
     return out;
   }catch(error){
+    try{if(tmp&&fs.existsSync(tmp))fs.unlinkSync(tmp)}catch{}
     if(renamed&&preimage&&st){
       try{restore(target,preimage,st);rolledBack=true}
       catch(rb){throw new Error('rebase_failed_rollback_failed:'+String(error&&error.message||error)+':'+String(rb&&rb.message||rb))}
