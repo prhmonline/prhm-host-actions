@@ -5,7 +5,7 @@ import {spawnSync} from 'node:child_process';
 import {pathToFileURL} from 'node:url';
 import {z} from 'zod';
 import {textResult} from '../core/result.js';
-const BASE_SHA='41416010bd28f7eb38c57d5e0482a56d782c0f8fca42a961a8480e6f0c88a6d5',ROOT='/var/backups/prhm-agent-selfmaint',HERE=path.dirname(new URL(import.meta.url).pathname),BASE_FILE=path.join(HERE,'.safeFiles-installer-refresh-l4-surface-base-'+BASE_SHA+'.mjs');
+const BASE_SHA='d5e938f63ef89c7427edad92cd047f1c150f898db5cbb6d1a84cbb6c1bac6161',ROOT='/var/backups/prhm-agent-selfmaint',HERE=path.dirname(new URL(import.meta.url).pathname),BASE_FILE=path.join(HERE,'.safeFiles-installer-refresh-l4-surface-base-'+BASE_SHA+'.mjs');
 const REQUEST_TOOL='control_plane_installer_refresh_l4_binding_repair_request_v1',STATUS_TOOL='control_plane_installer_refresh_l4_binding_repair_status_v1',APPLY_TOOL='control_plane_installer_refresh_l4_binding_repair_apply_v1',STATE_ROOT='/var/lib/prhm-agent-selfmaint-exec/installer-refresh-l4-binding-repair-v1',CONFIRM='CONFIRM_LEVEL_4_CRITICAL';
 const sha=b=>createHash('sha256').update(b).digest('hex');
 function ensureBase(){try{if(sha(fs.readFileSync(BASE_FILE))===BASE_SHA)return}catch{}const n=fs.readdirSync(ROOT).filter(x=>x.startsWith('agent_mcp-src_plugins_safeFiles.js-')&&x.endsWith('-'+BASE_SHA+'.bak')).sort().reverse();if(!n.length)throw new Error('installer_refresh_l4_surface_base_backup_missing');const b=fs.readFileSync(path.join(ROOT,n[0]));if(sha(b)!==BASE_SHA)throw new Error('installer_refresh_l4_surface_base_sha_mismatch');const t=BASE_FILE+'.'+process.pid+'.'+Date.now()+'.tmp';fs.writeFileSync(t,b,{mode:0o600,flag:'wx'});fs.renameSync(t,BASE_FILE);fs.chmodSync(BASE_FILE,0o600)}
