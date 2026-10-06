@@ -53,8 +53,8 @@ function assertRegular(file,label){
   return st;
 }
 
-function syntaxBytes(bytes,label){
-  const r=cp.spawnSync('/usr/local/bin/prhm-node',['--check','-'],{
+function syntaxBytes(bytes,label,nodeBin='/usr/local/bin/prhm-node'){
+  const r=cp.spawnSync(nodeBin,['--check','-'],{
     input:bytes,encoding:null,timeout:30000,maxBuffer:1000000
   });
   if(r.error||r.status!==0)fail(label+'_syntax_invalid:'+String(r.stderr||r.stdout||r.error||'').slice(-1000));
@@ -107,12 +107,12 @@ function preflight(){
   };
 }
 
-function applyToPath({target,backupRoot,failAfterRename=false,production=false}){
+function applyToPath({target,backupRoot,failAfterRename=false,production=false,nodeBin='/usr/local/bin/prhm-node'}){
   let before=null,renamed=false,rollback=false,candidate=null,backupDir=null;
   try{
     before=inspect(target);
     candidate=buildCandidate(before.bytes.toString('utf8'));
-    syntaxBytes(Buffer.from(candidate.content,'utf8'),'candidate');
+    syntaxBytes(Buffer.from(candidate.content,'utf8'),'candidate',nodeBin);
     if(!candidate.changed){
       return {
         ok:true,action:ACTION,changed:false,old_sha256:before.sha256,new_sha256:before.sha256,
@@ -129,7 +129,7 @@ function applyToPath({target,backupRoot,failAfterRename=false,production=false})
     if(failAfterRename)fail('v37_injected_after_rename');
     const final=inspect(target);
     if(final.sha256!==TARGET_SHA)fail('v37_installer_postwrite_sha_mismatch:'+final.sha256);
-    syntaxBytes(final.bytes,'postwrite');
+    syntaxBytes(final.bytes,'postwrite',nodeBin);
     return {
       ok:true,action:ACTION,changed:true,old_sha256:before.sha256,new_sha256:final.sha256,
       backup_dir:backupDir,rollback_performed:false,production_mutation:production===true,database_mutation:false
@@ -189,7 +189,7 @@ function rollbackFixture(){
   const f=makeFixture();
   try{
     const before=sha(fs.readFileSync(f.target));
-    const r=applyToPath({target:f.target,backupRoot:f.backupRoot,failAfterRename:true});
+    const r=applyToPath({target:f.target,backupRoot:f.backupRoot,failAfterRename:true,nodeBin:process.execPath});
     return {...r,target_restored:sha(fs.readFileSync(f.target))===before};
   }finally{fs.rmSync(f.root,{recursive:true,force:true})}
 }
@@ -197,9 +197,9 @@ function rollbackFixture(){
 function successFixture(){
   const f=makeFixture();
   try{
-    const first=applyToPath({target:f.target,backupRoot:f.backupRoot});
+    const first=applyToPath({target:f.target,backupRoot:f.backupRoot,nodeBin:process.execPath});
     const firstSha=sha(fs.readFileSync(f.target));
-    const second=applyToPath({target:f.target,backupRoot:f.backupRoot});
+    const second=applyToPath({target:f.target,backupRoot:f.backupRoot,nodeBin:process.execPath});
     const secondSha=sha(fs.readFileSync(f.target));
     return {first,second,first_sha:firstSha,second_sha:secondSha,target_sha256:TARGET_SHA};
   }finally{fs.rmSync(f.root,{recursive:true,force:true})}
