@@ -9,7 +9,7 @@ const STATE_ROOT='/var/lib/prhm-agent-selfmaint-exec/current-owner-binding-v1';
 const TRANSACTION_ROOT=STATE_ROOT+'/transactions';
 const MANIFEST_PATH=STATE_ROOT+'/manifest.json';
 const BACKUP_ROOT='/var/backups/prhm-current-owner-binding-refresh-v1';
-const CONSUMER_ORDER=Object.freeze(['registry_bridge','v19_binding','current_baseline_refresh','rolling_refresh']);
+const CONSUMER_ORDER=Object.freeze(['registry_bridge','v19_binding','rolling_refresh']);
 const VERIFICATION_ORDER=Object.freeze(['selfmaint_health','v19_contract','registry_bootstrap_readiness','current_baseline_backup_readiness','rolling_refresh_owner_validation']);
 const HEX64=/^[a-f0-9]{64}$/;
 
