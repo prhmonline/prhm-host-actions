@@ -1,0 +1,31 @@
+name: Installer Refresh State Helper Rebase v37 CI
+
+on:
+  push:
+    branches:
+      - fix/installer-refresh-state-helper-rebase-v37
+    paths:
+      - 'installer-refresh-state-helper-rebase-v37.js'
+      - 'test-installer-refresh-state-helper-rebase-v37.js'
+      - '.github/workflows/installer-refresh-state-helper-rebase-v37-ci.yml'
+  pull_request:
+    paths:
+      - 'installer-refresh-state-helper-rebase-v37.js'
+      - 'test-installer-refresh-state-helper-rebase-v37.js'
+      - '.github/workflows/installer-refresh-state-helper-rebase-v37-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax
+        run: |
+          if [ -f installer-refresh-state-helper-rebase-v37.js ]; then node --check installer-refresh-state-helper-rebase-v37.js; fi
+          node --check test-installer-refresh-state-helper-rebase-v37.js
+      - name: Contract
+        run: node --test test-installer-refresh-state-helper-rebase-v37.js
