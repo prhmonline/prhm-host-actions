@@ -133,10 +133,11 @@
       "ci": "SUCCESS"
     },
     "host_actions": {
-      "branch": "feature/drtarjomeh-email-suppression-bootstrap-v2",
-      "commit": "ccccf1f45a6d1d7ca550586b0a131dcb8559dfd5",
-      "ci_run_id": 37399830088,
-      "ci": "SUCCESS"
+      "branch": "feature/drtarjomeh-email-suppression-bootstrap-v2-current-main",
+      "commit": "d6568225fb385349f887991d4f5b7da3ac23ee2a",
+      "ci_run_id": 37400279651,
+      "ci": "SUCCESS",
+      "base_main": "039e89a8646a45b07e6c471087a8a76a4707cac2"
     }
   },
   "drift_resolutions": [
