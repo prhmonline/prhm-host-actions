@@ -5,15 +5,15 @@ const EXACT_DESTINATIONS=Object.freeze([
   '/home/agent/ssh-agent-api/leadopsCampaignEmailRoutes.js',
   '/home/agent/ssh-agent-api/leadopsCampaignEmailService.js',
   '/home/agent/ssh-agent-api/leadopsCampaignEmailStore.js',
-  '/home/agent/ssh-agent-api/leadopsRoutes.js',
-  '/home/agent/ssh-agent-api/leadopsRoutesLegacy.js',
-  '/home/agent/ssh-mcp-server/src/core/registry.js',
-  '/home/agent/ssh-mcp-server/src/plugins/leadops.js',
+  '/home/agent/ssh-mcp-server/src/plugins/leadopsCampaignEmail.js',
   '/opt/prhm-company-control-plane/ops/leadops-email-suppression/leadops-email-suppression-foundation-v1.js',
   '/opt/prhm-company-control-plane/ops/company-os-email-suppression/company-os-email-suppression-reporting-v1.js'
 ]);
 
 const SEMANTIC_DESTINATIONS=Object.freeze([
+  '/home/agent/ssh-agent-api/leadopsRoutes.js',
+  '/home/agent/ssh-agent-api/leadopsRoutesLegacy.js',
+  '/home/agent/ssh-mcp-server/src/core/registry.js',
   '/opt/prhm-agent-selfmaint/server.js',
   '/opt/prhm-agent-selfmaint-exec/server.js',
   '/opt/prhm-company-control-plane/config/approval-policy.json',
@@ -28,6 +28,66 @@ const PRINCIPALS=Object.freeze([{principal_id:'mohammad',roles:['mcp-operator']}
 
 function fail(code){throw new Error(code)}
 function scope(action,operation){return{tool:'host_action_v2_apply',project:'control_plane',environment:'production',action,risk:'high',operation,principals:PRINCIPALS}}
+
+const CAMPAIGN_TOOLS=Object.freeze([
+  'leadops_campaign_email_check_eligibility',
+  'leadops_campaign_email_suppress',
+  'leadops_campaign_email_summary',
+  'leadops_campaign_email_enqueue',
+  'leadops_campaign_email_prepare_send',
+  'leadops_campaign_email_record_delivery'
+]);
+
+function buildLeadOpsRoutePair(source){
+  const legacy=String(source||'');
+  if(!legacy.includes('registerLeadOpsRoutes'))fail('leadops_routes_anchor_invalid');
+  const wrapper=`'use strict';
+
+const { registerLeadOpsRoutes: registerLegacyLeadOpsRoutes } = require('./leadopsRoutesLegacy.js');
+const {
+  registerLeadOpsCampaignEmailRoutes,
+  createDefaultCampaignEmailService
+} = require('./leadopsCampaignEmailRoutes.js');
+
+let campaignEmailService = null;
+
+function registerLeadOpsRoutes(app, deps) {
+  registerLegacyLeadOpsRoutes(app, deps);
+  if (!campaignEmailService) campaignEmailService = createDefaultCampaignEmailService();
+  registerLeadOpsCampaignEmailRoutes(app, {
+    auth: deps.auth,
+    service: campaignEmailService
+  });
+}
+
+module.exports = { registerLeadOpsRoutes };
+`;
+  return {legacy,wrapper};
+}
+
+function mergeRegistry(source){
+  let out=String(source||'');
+  const leadImport="import { registerLeadOpsPlugin } from '../plugins/leadops.js';";
+  const campaignImport="import { registerLeadOpsCampaignEmailPlugin } from '../plugins/leadopsCampaignEmail.js';";
+  if(!out.includes(leadImport))fail('registry_leadops_import_anchor_invalid');
+  if(!out.includes(campaignImport))out=out.replace(leadImport,leadImport+'\n'+campaignImport);
+
+  const denyRe=/const PUBLIC_DENY = new Set\(\[([\s\S]*?)\]\);/;
+  const denyMatch=out.match(denyRe);
+  if(!denyMatch)fail('registry_public_deny_anchor_invalid');
+  let denyInner=denyMatch[1].trim();
+  for(const name of CAMPAIGN_TOOLS){
+    if(!new RegExp("['\\\"]"+name+"['\\\"]").test(denyInner))denyInner+=(denyInner?',':'')+"'"+name+"'";
+  }
+  out=out.replace(denyRe,'const PUBLIC_DENY = new Set(['+denyInner+']);');
+
+  const registerAnchor='  registerLeadOpsPlugin(mcp, context);';
+  if(!out.includes(registerAnchor))fail('registry_leadops_register_anchor_invalid');
+  if(!out.includes('registerLeadOpsCampaignEmailPlugin(mcp, context);')){
+    out=out.replace(registerAnchor,registerAnchor+'\n  registerLeadOpsCampaignEmailPlugin(mcp, context);');
+  }
+  return out;
+}
 
 function mergePolicy(source){
   const p=JSON.parse(String(source));
@@ -126,6 +186,9 @@ module.exports={
   REPORTING,
   FOUNDATION_OP,
   REPORTING_OP,
+  CAMPAIGN_TOOLS,
+  buildLeadOpsRoutePair,
+  mergeRegistry,
   mergePolicy,
   mergeMcp,
   mergeBase,
