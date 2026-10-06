@@ -10,6 +10,7 @@ const PRIVATE_DIR='/opt/prhm-agent-selfmaint-exec/actions/current-owner-binding-
 const STATE_ROOT='/var/lib/prhm-agent-selfmaint-exec/current-owner-binding-v1';
 const BACKUP_ROOT='/var/backups/prhm-current-owner-binding-refresh-v1';
 const LOCK_PATH=STATE_ROOT+'/refresh.lock';
+const RESULT_PATH=STATE_ROOT+'/result.json';
 const V19_WORKTREE='/home/prhm/worktrees/prhm-host-actions-zdt-installer-v2';
 const V19_TEST=V19_WORKTREE+'/test-v18-agent-zdt-current-baseline-refresh.js';
 const V19_HELPER='/opt/prhm-agent-selfmaint-exec/actions/agent-zdt-source-sha-refresh-v19.sh';
@@ -264,7 +265,7 @@ async function main(args=process.argv.slice(2)){
   return out;
 }
 module.exports=Object.freeze({
-  ACTION,PRIVATE_DIR,STATE_ROOT,BACKUP_ROOT,LOCK_PATH,V19_WORKTREE,V19_TEST,V19_HELPER,SERVICES,EXEC_SOCKET,
+  ACTION,PRIVATE_DIR,STATE_ROOT,BACKUP_ROOT,LOCK_PATH,RESULT_PATH,V19_WORKTREE,V19_TEST,V19_HELPER,SERVICES,EXEC_SOCKET,
   sha256,loadModules,createDeps,regularSnapshot,acquireLock,selfmaintHealth,inventoryOwners,snapshotConsumer,
   inspectDropin,probeWritable,validateCandidate,persistCandidate,persistPreimage,persistTransaction,installDropin,
   removeDropin,daemonReload,restartService,effectiveState,atomicReplace,verifyFileSha,verifyHook,persistRollback,main
