@@ -6,7 +6,7 @@ const a=require('./current-owner-binding-adapters-v1.js');
 
 const owners={
   registry_base:'e91c3062539353a7a9d097b0877f1e612051e4fe8a489c101edab3e56d268c9b',
-  rolling_refresh:'8382624a36dacb57e784dc080783d6a765512e9c9e0c2ee8c8274aecfb710284',
+  rolling_refresh:'d80fca8d7c74c6f6ab7f03c72a866a16c1de3fc547e421eb507e309321048a2a',
   agent_api:'1111111111111111111111111111111111111111111111111111111111111111',
   selfmaint_base:'2222222222222222222222222222222222222222222222222222222222222222',
   selfmaint_executor:'3333333333333333333333333333333333333333333333333333333333333333',
@@ -20,11 +20,11 @@ const fixtures={
  v19_binding:"#!/usr/bin/env bash\nset -euo pipefail\nOLD_API_SHA='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'\nNEW_API_SHA='bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'\n",
  current_baseline_refresh:"'use strict';\nconst BASELINE={\"base\":\"a\",\"exec\":\"b\",\"policy\":\"c\",\"mcp\":\"d\"};\nfunction x(){return BASELINE;}\n",
  rolling_refresh:"'use strict';\nconst PATHS={apiSource:'/home/agent/ssh-agent-api/server.js'};\nconst EXPECTED_SHA=Object.freeze({\n  [PATHS.apiSource]:'84774a93942e2d0df03c1acbd18fefc9556ea74d15ff5564f11ada27771b0d9f',\n});\nmodule.exports={EXPECTED_SHA};\n",
- titan_handoff_sandbox:"'use strict';\nfunction systemdProperties(){return ['Type=oneshot','NoNewPrivileges=true','ProtectSystem=strict','ProtectHome=read-only','RestrictNamespaces=true','RestrictSUIDSGID=true','LockPersonality=true'];}\nmodule.exports={systemdProperties};\n",
+
 };
 
-test('fixed registry exposes exactly five consumers and no generic adapter inputs',()=>{
- assert.deepEqual(Object.keys(a.ADAPTERS),['registry_bridge','v19_binding','current_baseline_refresh','rolling_refresh','titan_handoff_sandbox']);
+test('fixed registry exposes exactly four Config Center consumers and no generic adapter inputs',()=>{
+ assert.deepEqual(Object.keys(a.ADAPTERS),['registry_bridge','v19_binding','current_baseline_refresh','rolling_refresh']);
  assert.equal(Object.isFrozen(a.ADAPTERS),true);
  assert.throws(()=>a.buildConsumerCandidate('other',{}),/consumer_unknown/);
  assert.equal(JSON.stringify(Object.keys(a)).includes('replace'),false);
@@ -61,13 +61,6 @@ test('V19 becomes a manifest-derived verifier, not an OLD_SHA to NEW_SHA updater
  assert.match(s,new RegExp(`EXPECTED_API_SHA='${owners.agent_api}'`));
  assert.doesNotMatch(s,/OLD_ACTION_SHA|OLD_API_SHA|NEW_API_SHA|gsub\(/);
  assert.match(s,/production_application_mutation/);
-});
-
-test('Titan candidate removes only unsupported RestrictSUIDSGID while preserving approved hardening',()=>{
- const s=a.buildTitanHandoffSandboxCandidate(input('titan_handoff_sandbox',fixtures.titan_handoff_sandbox)).after_bytes.toString();
- assert.doesNotMatch(s,/RestrictSUIDSGID=true/);
- for(const k of ['ProtectSystem=strict','ProtectHome=read-only','NoNewPrivileges=true','LockPersonality=true'])assert.match(s,new RegExp(k));
- assert.doesNotMatch(require('node:fs').readFileSync(require.resolve('./current-owner-binding-adapters-v1.js'),'utf8'),/titan_front_handoff_deploy_v2/);
 });
 
 test('unknown SHA and wrong target fail closed before candidate generation',()=>{
