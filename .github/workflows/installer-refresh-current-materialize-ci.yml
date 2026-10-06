@@ -33,4 +33,4 @@ jobs:
       - name: Surface contract
         run: node --test test-safeFiles-installer-refresh-l4-binding-repair-surface-v1.js
       - name: Builder contract
-        run: node --test test-zdt-v19-compact-candidate-builder.js zdt-v19-compact-candidate-builder.js
+        run: node --test test-zdt-v19-compact-candidate-builder.js
