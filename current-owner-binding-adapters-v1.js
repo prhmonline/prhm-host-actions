@@ -10,8 +10,8 @@ const HEX64=/^[a-f0-9]{64}$/;
 
 const FIXED=Object.freeze({
   registry_bridge:Object.freeze({owner_ids:Object.freeze(['registry_base']),restart_units:Object.freeze([])}),
-  v19_binding:Object.freeze({owner_ids:Object.freeze(['rolling_refresh','agent_api']),restart_units:Object.freeze([])}),
-  rolling_refresh:Object.freeze({owner_ids:Object.freeze(['agent_api']),restart_units:Object.freeze([])}),
+  v19_binding:Object.freeze({owner_ids:Object.freeze(['rolling_refresh','agent_api','mcp_source']),restart_units:Object.freeze([])}),
+  rolling_refresh:Object.freeze({owner_ids:Object.freeze(['agent_api','mcp_source']),restart_units:Object.freeze([])}),
 });
 
 function fail(code){throw new Error(code);}
@@ -95,7 +95,7 @@ function buildRegistryBridgeCandidate(input){
 function buildV19BindingCandidate(input){
   const id='v19_binding', p=prep(id,input), o=p.owners;
   const marker=markerLine('#',p.record);
-  const text=`#!/usr/bin/env bash\nset -euo pipefail\n${marker}\nTARGET='/opt/prhm-agent-selfmaint-exec/actions/agent-zdt-existing-topology-rolling-refresh-v1.js'\nEXPECTED_ACTION_SHA='${o.rolling_refresh}'\nEXPECTED_API_SHA='${o.agent_api}'\nfail(){ printf '%s\\n' \"$1\" >&2; exit 1; }\n[ -f \"$TARGET\" ] && [ ! -L \"$TARGET\" ] || fail 'target_not_regular'\nCURRENT_SHA=\"$(sha256sum \"$TARGET\" | awk '{print $1}')\"\n[ \"$CURRENT_SHA\" = \"$EXPECTED_ACTION_SHA\" ] || fail 'rolling_refresh_owner_sha_mismatch'\nCOUNT=\"$(grep -F -o -- \"$EXPECTED_API_SHA\" \"$TARGET\" | wc -l | tr -d ' ')\"\n[ \"$COUNT\" = '1' ] || fail 'agent_api_owner_binding_count_mismatch'\nprintf '{\"ok\":true,\"action\":\"agent_zdt_existing_topology_rolling_refresh_source_binding_v1\",\"manifest_sha256\":\"%s\",\"production_application_mutation\":false,\"database_mutation\":false}\\n' '${input.manifest.manifest_sha256}'\n`;
+  const text=`#!/usr/bin/env bash\nset -euo pipefail\n${marker}\nTARGET='/opt/prhm-agent-selfmaint-exec/actions/agent-zdt-existing-topology-rolling-refresh-v1.js'\nEXPECTED_ACTION_SHA='${o.rolling_refresh}'\nEXPECTED_API_SHA='${o.agent_api}'\nEXPECTED_MCP_SHA='${o.mcp_source}'\nfail(){ printf '%s\\n' \"$1\" >&2; exit 1; }\n[ -f \"$TARGET\" ] && [ ! -L \"$TARGET\" ] || fail 'target_not_regular'\nCURRENT_SHA=\"$(sha256sum \"$TARGET\" | awk '{print $1}')\"\n[ \"$CURRENT_SHA\" = \"$EXPECTED_ACTION_SHA\" ] || fail 'rolling_refresh_owner_sha_mismatch'\nAPI_COUNT=\"$(grep -F -o -- \"$EXPECTED_API_SHA\" \"$TARGET\" | wc -l | tr -d ' ')\"\n[ \"$API_COUNT\" = '1' ] || fail 'agent_api_owner_binding_count_mismatch'\nMCP_COUNT=\"$(grep -F -o -- \"$EXPECTED_MCP_SHA\" \"$TARGET\" | wc -l | tr -d ' ')\"\n[ \"$MCP_COUNT\" = '1' ] || fail 'mcp_source_owner_binding_count_mismatch'\nprintf '{\"ok\":true,\"action\":\"agent_zdt_existing_topology_rolling_refresh_source_binding_v1\",\"manifest_sha256\":\"%s\",\"production_application_mutation\":false,\"database_mutation\":false}\\n' '${input.manifest.manifest_sha256}'\n`;
   return result(id,input,p.state,text);
 }
 function buildRollingRefreshCandidate(input){
@@ -109,10 +109,14 @@ function buildRollingRefreshCandidate(input){
     if(!text.includes(anchor))fail('rolling_refresh_expected_sha_anchor_missing');
     text=text.replace(anchor,block+'\n'+anchor);
   }
-  const literal=/\[PATHS\.apiSource\]:'[a-f0-9]{64}',/;
-  const dynamic='[PATHS.apiSource]:CURRENT_OWNER_BINDING_ROLLING_REFRESH.owners.agent_api,';
-  if(literal.test(text))text=text.replace(literal,dynamic);
-  else if(!text.includes(dynamic))fail('rolling_refresh_api_anchor_missing');
+  const apiLiteral=/\[PATHS\.apiSource\]:'[a-f0-9]{64}',/;
+  const apiDynamic='[PATHS.apiSource]:CURRENT_OWNER_BINDING_ROLLING_REFRESH.owners.agent_api,';
+  if(apiLiteral.test(text))text=text.replace(apiLiteral,apiDynamic);
+  else if(!text.includes(apiDynamic))fail('rolling_refresh_api_anchor_missing');
+  const mcpLiteral=/\[PATHS\.mcpSource\]:'[a-f0-9]{64}'/;
+  const mcpDynamic='[PATHS.mcpSource]:CURRENT_OWNER_BINDING_ROLLING_REFRESH.owners.mcp_source';
+  if(mcpLiteral.test(text))text=text.replace(mcpLiteral,mcpDynamic);
+  else if(!text.includes(mcpDynamic))fail('rolling_refresh_mcp_anchor_missing');
   text=markerLine('//',p.record)+'\n'+text;
   return result(id,input,p.state,text);
 }

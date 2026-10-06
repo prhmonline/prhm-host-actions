@@ -12,13 +12,14 @@ const owners={
   selfmaint_executor:'3333333333333333333333333333333333333333333333333333333333333333',
   approval_policy:'4444444444444444444444444444444444444444444444444444444444444444',
   mcp_host_actions:'5555555555555555555555555555555555555555555555555555555555555555',
+  mcp_source:'6666666666666666666666666666666666666666666666666666666666666666',
 };
 function manifest(suffix='a'){return {schema_version:'prhm.current-owner-binding-manifest.v1',manifest_sha256:suffix.repeat(64).slice(0,64),owners:Object.entries(owners).map(([id,sha256])=>({id,sha256,path:'/fixed/'+id}))};}
 function input(id,bytes,m=manifest()){return {manifest:m,target_path:INITIAL_CONSUMER_PREIMAGES[id].target_path,before_sha256:INITIAL_CONSUMER_PREIMAGES[id].sha256,before_bytes:Buffer.from(bytes)};}
 const fixtures={
  registry_bridge:"import path from 'node:path';\nconst HERE='/fixed';\nconst BASE_SHA='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';\nconst BASE=path.join(HERE,'.registry-imotion-vm-stable-base-'+BASE_SHA+'.mjs');\nexport default BASE;\n",
  v19_binding:"#!/usr/bin/env bash\nset -euo pipefail\nOLD_API_SHA='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'\nNEW_API_SHA='bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'\n",
- rolling_refresh:"'use strict';\nconst PATHS={apiSource:'/home/agent/ssh-agent-api/server.js'};\nconst EXPECTED_SHA=Object.freeze({\n  [PATHS.apiSource]:'84774a93942e2d0df03c1acbd18fefc9556ea74d15ff5564f11ada27771b0d9f',\n});\nmodule.exports={EXPECTED_SHA};\n",
+ rolling_refresh:"'use strict';\nconst PATHS={apiSource:'/home/agent/ssh-agent-api/server.js',mcpSource:'/home/agent/ssh-mcp-server/server.js'};\nconst EXPECTED_SHA=Object.freeze({\n  [PATHS.apiSource]:'84774a93942e2d0df03c1acbd18fefc9556ea74d15ff5564f11ada27771b0d9f',\n  [PATHS.mcpSource]:'831c872f80917eb976bbdb9fa320f74528542656720e02df12c82508b149d185'\n});\nmodule.exports={EXPECTED_SHA};\n",
 
 };
 
@@ -48,13 +49,17 @@ test('registry and rolling candidates derive bindings from manifest owner ids',(
  assert.match(r,new RegExp(owners.registry_base));
  const z=a.buildRollingRefreshCandidate(input('rolling_refresh',fixtures.rolling_refresh)).after_bytes.toString();
  assert.match(z,/\[PATHS\.apiSource\]:CURRENT_OWNER_BINDING_ROLLING_REFRESH\.owners\.agent_api,/);
+ assert.match(z,/\[PATHS\.mcpSource\]:CURRENT_OWNER_BINDING_ROLLING_REFRESH\.owners\.mcp_source/);
  assert.match(z,new RegExp(owners.agent_api));
+ assert.match(z,new RegExp(owners.mcp_source));
 });
 
 test('V19 becomes a manifest-derived verifier, not an OLD_SHA to NEW_SHA updater',()=>{
  const s=a.buildV19BindingCandidate(input('v19_binding',fixtures.v19_binding)).after_bytes.toString();
  assert.match(s,new RegExp(`EXPECTED_ACTION_SHA='${owners.rolling_refresh}'`));
  assert.match(s,new RegExp(`EXPECTED_API_SHA='${owners.agent_api}'`));
+ assert.match(s,new RegExp(`EXPECTED_MCP_SHA='${owners.mcp_source}'`));
+ assert.match(s,/mcp_source_owner_binding_count_mismatch/);
  assert.doesNotMatch(s,/OLD_ACTION_SHA|OLD_API_SHA|NEW_API_SHA|gsub\(/);
  assert.match(s,/production_application_mutation/);
 });
