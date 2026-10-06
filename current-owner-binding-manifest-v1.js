@@ -15,15 +15,13 @@ const OWNER_SPECS=Object.freeze([
   Object.freeze({id:'current_baseline_registration',path:'/opt/prhm-agent-selfmaint-exec/actions/current-baseline-refresh-registration-installer-v1.js',max_bytes:400000}),
   Object.freeze({id:'typed_bootstrap_transport',path:'/opt/prhm-agent-selfmaint-exec/actions/control-plane-typed-bootstrap-transport-v1.js',max_bytes:200000}),
   Object.freeze({id:'v19_refresh_helper',path:'/opt/prhm-agent-selfmaint-exec/actions/agent-zdt-source-sha-refresh-v19.sh',max_bytes:100000}),
-  Object.freeze({id:'titan_handoff_sandbox',path:'/home/prhm/worktrees/prhm-host-actions/titan-front-handoff-sandbox-v1.js',max_bytes:100000}),
 ]);
 
 const INITIAL_CONSUMER_PREIMAGES=Object.freeze({
-  registry_bridge:Object.freeze({target_path:'/home/agent/ssh-mcp-server/src/core/registry.js',sha256:'73d9560b8758a969f0317fd4438b9b36eb4a1b2e1ee18dcd50d1c2329c52ea6a'}),
+  registry_bridge:Object.freeze({target_path:'/home/agent/ssh-mcp-server/src/core/registry.js',sha256:'19a0bea3d0c7c5ac33121463d26d892dac207022dbb07f76bf6c71acb64b5f35'}),
   v19_binding:Object.freeze({target_path:'/opt/prhm-agent-selfmaint-exec/actions/agent-zdt-source-sha-refresh-v19.sh',sha256:'00621639a589770d8b21ace88e6b5af0dd21b18a7fe2604c97d1b3ecf206de63'}),
   current_baseline_refresh:Object.freeze({target_path:'/opt/prhm-agent-selfmaint-exec/actions/current-baseline-refresh-registration-installer-v1.js',sha256:'2031d0de149d9f090987fe710df44413cd5ac0a51a7394ff7874c2e9073f077c'}),
-  rolling_refresh:Object.freeze({target_path:'/opt/prhm-agent-selfmaint-exec/actions/agent-zdt-existing-topology-rolling-refresh-v1.js',sha256:'8382624a36dacb57e784dc080783d6a765512e9c9e0c2ee8c8274aecfb710284'}),
-  titan_handoff_sandbox:Object.freeze({target_path:'/home/prhm/worktrees/prhm-host-actions/titan-front-handoff-sandbox-v1.js',sha256:'825480f683e9a1d86ac663dab00ea98cb6e9967cf88bc4aef1f129fd75fa27a0'}),
+  rolling_refresh:Object.freeze({target_path:'/opt/prhm-agent-selfmaint-exec/actions/agent-zdt-existing-topology-rolling-refresh-v1.js',sha256:'d80fca8d7c74c6f6ab7f03c72a866a16c1de3fc547e421eb507e309321048a2a'}),
 });
 
 function sha256(bytes){return crypto.createHash('sha256').update(bytes).digest('hex');}
