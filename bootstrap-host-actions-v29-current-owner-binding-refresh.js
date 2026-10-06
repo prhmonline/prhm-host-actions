@@ -27,8 +27,7 @@ const RESULT='/var/lib/prhm-agent-selfmaint-exec/current-owner-binding-registrat
 const SERVICES=Object.freeze([
   'prhm-company-approval.service',
   'prhm-agent-selfmaint.service',
-  'prhm-agent-selfmaint-exec.service',
-  'prhm-agent-mcp-green.service'
+  'prhm-agent-selfmaint-exec.service'
 ]);
 const MODULE_INSTALLS=Object.freeze({
   'current-owner-binding-manifest-v1.js':Object.freeze({destination_path:PRIVATE_DIR+'/current-owner-binding-manifest-v1.js',sha256:'69b939394cfb9d67bb67c04c49893741c9405ae77e731c61e503d6e4eef4288f',mode:0o640}),
@@ -169,7 +168,7 @@ function selftest(){
 }
 function preflight(){
   const p=prepare();
-  return {ok:true,action:INSTALLER_ACTION,version:VERSION,target_action:ACTION,preflight_only:true,live_pins:{...LIVE_PINS},candidate_sha256:p.candidateSha,module_sha256:p.moduleSha,services:[...SERVICES],production_mutation:false,production_application_mutation:false,database_mutation:false,titan_cutover:false};
+  return {ok:true,action:INSTALLER_ACTION,version:VERSION,target_action:ACTION,preflight_only:true,live_pins:{...LIVE_PINS},candidate_sha256:p.candidateSha,module_sha256:p.moduleSha,services:[...SERVICES],production_mutation:false,production_application_mutation:false,database_mutation:false,titan_cutover:false,mcp_refresh_required:true};
 }
 function atomicWrite(file,bytes,meta){
   fs.mkdirSync(path.dirname(file),{recursive:true,mode:0o755});
@@ -228,7 +227,7 @@ function apply(){
       if(sha256(fs.readFileSync(file))!==p.candidateSha[k])fail('registration_postwrite_sha_mismatch:'+k);
     }
     restartServices();
-    const result={ok:true,schema_version:'prhm.current-owner-binding-registration.v32',action:INSTALLER_ACTION,target_action:ACTION,installed:true,backup_dir:backupDir,post_install_sha256:p.candidateSha,module_sha256:p.moduleSha,services:[...SERVICES],production_mutation:true,control_plane_mutation:true,production_application_mutation:false,database_mutation:false,titan_cutover:false,rollback_performed:false};
+    const result={ok:true,schema_version:'prhm.current-owner-binding-registration.v32',action:INSTALLER_ACTION,target_action:ACTION,installed:true,backup_dir:backupDir,post_install_sha256:p.candidateSha,module_sha256:p.moduleSha,services:[...SERVICES],production_mutation:true,control_plane_mutation:true,production_application_mutation:false,database_mutation:false,titan_cutover:false,mcp_refresh_required:true,rollback_performed:false};
     fs.mkdirSync(path.dirname(RESULT),{recursive:true,mode:0o700});fs.writeFileSync(RESULT,JSON.stringify(result,null,2)+'\n',{mode:0o600});
     return result;
   }catch(error){
@@ -245,7 +244,7 @@ function apply(){
     fail('install_failed_rolled_back:'+String(error&&error.message||error));
   }
 }
-function contract(){return Object.freeze({schema_version:'prhm.current-owner-binding-registration.v32.contract',installer_action:INSTALLER_ACTION,target_action:ACTION,operation:OPERATION,registration_targets:['base','executor','policy','mcp'],module_count:5,services:[...SERVICES],production_application_mutation:false,database_mutation:false,titan_cutover:false,rollback:'exact-preimage'});}
+function contract(){return Object.freeze({schema_version:'prhm.current-owner-binding-registration.v32.contract',installer_action:INSTALLER_ACTION,target_action:ACTION,operation:OPERATION,registration_targets:['base','executor','policy','mcp'],module_count:5,services:[...SERVICES],production_application_mutation:false,database_mutation:false,titan_cutover:false,mcp_refresh_required:true,rollback:'exact-preimage'});}
 function main(argv=process.argv.slice(2)){
   if(argv.length!==1||!['--selftest-only','--preflight-only','--apply'].includes(argv[0]))fail('unexpected_arguments');
   const out=argv[0]==='--selftest-only'?selftest():argv[0]==='--preflight-only'?preflight():apply();
