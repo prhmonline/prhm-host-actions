@@ -20,7 +20,6 @@ const OWNER_SPECS=Object.freeze([
 const INITIAL_CONSUMER_PREIMAGES=Object.freeze({
   registry_bridge:Object.freeze({target_path:'/home/agent/ssh-mcp-server/src/core/registry.js',sha256:'19a0bea3d0c7c5ac33121463d26d892dac207022dbb07f76bf6c71acb64b5f35'}),
   v19_binding:Object.freeze({target_path:'/opt/prhm-agent-selfmaint-exec/actions/agent-zdt-source-sha-refresh-v19.sh',sha256:'00621639a589770d8b21ace88e6b5af0dd21b18a7fe2604c97d1b3ecf206de63'}),
-  current_baseline_refresh:Object.freeze({target_path:'/opt/prhm-agent-selfmaint-exec/actions/current-baseline-refresh-registration-installer-v1.js',sha256:'2031d0de149d9f090987fe710df44413cd5ac0a51a7394ff7874c2e9073f077c'}),
   rolling_refresh:Object.freeze({target_path:'/opt/prhm-agent-selfmaint-exec/actions/agent-zdt-existing-topology-rolling-refresh-v1.js',sha256:'d80fca8d7c74c6f6ab7f03c72a866a16c1de3fc547e421eb507e309321048a2a'}),
 });
 
