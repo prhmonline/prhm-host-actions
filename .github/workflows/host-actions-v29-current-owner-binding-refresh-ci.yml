@@ -1,9 +1,9 @@
-name: host-actions-v30-current-owner-binding-refresh-ci
+name: host-actions-v31-current-owner-binding-runtime-installer-ci
 on:
   workflow_dispatch:
   push:
     branches:
-      - fix/current-owner-binding-refresh-v30-20261006
+      - fix/current-owner-binding-v31-runtime-installer
   pull_request:
     paths:
       - 'current-owner-binding-*.js'
@@ -24,6 +24,7 @@ jobs:
           node --check current-owner-binding-adapters-v1.js
           node --check current-owner-binding-systemd-v1.js
           node --check current-owner-binding-refresh-v1.js
+          node --check current-owner-binding-runtime-v1.js
           node --check bootstrap-host-actions-v29-current-owner-binding-refresh.js
       - name: Module fingerprints
         run: |
@@ -31,7 +32,8 @@ jobs:
             current-owner-binding-manifest-v1.js \
             current-owner-binding-adapters-v1.js \
             current-owner-binding-systemd-v1.js \
-            current-owner-binding-refresh-v1.js
+            current-owner-binding-refresh-v1.js \
+            current-owner-binding-runtime-v1.js
       - name: Focused tests
         run: |
           node --test \
@@ -39,4 +41,7 @@ jobs:
             test-current-owner-binding-adapters-v1.js \
             test-current-owner-binding-systemd-v1.js \
             test-current-owner-binding-refresh-v1.js \
+            test-current-owner-binding-runtime-v1.js \
             test-v29-current-owner-binding-refresh.js
+      - name: Installer selftest
+        run: node bootstrap-host-actions-v29-current-owner-binding-refresh.js --selftest-only
