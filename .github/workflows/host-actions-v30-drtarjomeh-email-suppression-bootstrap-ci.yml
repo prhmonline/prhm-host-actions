@@ -1,0 +1,37 @@
+name: Host Actions v30 DrTarjomeh Email Suppression Bootstrap CI
+
+on:
+  push:
+    branches:
+      - feature/drtarjomeh-email-suppression-bootstrap-v2
+    paths:
+      - 'bootstrap-host-actions-v30-drtarjomeh-email-suppression-release.js'
+      - 'install-host-actions-v30-drtarjomeh-email-suppression-release.js'
+      - 'drtarjomeh-email-suppression-v30-mcp-bootstrap-bridge.mjs'
+      - 'test-v30-drtarjomeh-email-suppression-*.js'
+      - '.github/workflows/host-actions-v30-drtarjomeh-email-suppression-bootstrap-ci.yml'
+  pull_request:
+    paths:
+      - 'bootstrap-host-actions-v30-drtarjomeh-email-suppression-release.js'
+      - 'install-host-actions-v30-drtarjomeh-email-suppression-release.js'
+      - 'drtarjomeh-email-suppression-v30-mcp-bootstrap-bridge.mjs'
+      - 'test-v30-drtarjomeh-email-suppression-*.js'
+      - '.github/workflows/host-actions-v30-drtarjomeh-email-suppression-bootstrap-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Contract
+        run: node --test test-v30-drtarjomeh-email-suppression-*.js
+      - name: Syntax
+        if: always()
+        run: |
+          for f in bootstrap-host-actions-v30-drtarjomeh-email-suppression-release.js install-host-actions-v30-drtarjomeh-email-suppression-release.js drtarjomeh-email-suppression-v30-mcp-bootstrap-bridge.mjs; do
+            if [ -f "$f" ]; then node --check "$f"; fi
+          done
