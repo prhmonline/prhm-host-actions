@@ -1,0 +1,32 @@
+name: WAHA Installer Refresh Current Rebind CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - fix/waha-installer-refresh-current-rebind-v1
+    paths:
+      - 'installer-refresh-current-binding-rebind-v1.js'
+      - 'test-installer-refresh-current-binding-rebind-v1.js'
+      - '.github/workflows/waha-installer-refresh-current-rebind-ci.yml'
+  pull_request:
+    paths:
+      - 'installer-refresh-current-binding-rebind-v1.js'
+      - 'test-installer-refresh-current-binding-rebind-v1.js'
+      - '.github/workflows/waha-installer-refresh-current-rebind-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax
+        run: |
+          if [ -f installer-refresh-current-binding-rebind-v1.js ]; then node --check installer-refresh-current-binding-rebind-v1.js; fi
+          node --check test-installer-refresh-current-binding-rebind-v1.js
+      - name: Contract
+        run: node --test test-installer-refresh-current-binding-rebind-v1.js
