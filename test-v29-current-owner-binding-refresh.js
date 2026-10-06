@@ -4,14 +4,14 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const b=require('./bootstrap-host-actions-v29-current-owner-binding-refresh.js');
 
-test('v29 pins exact live Base Executor Policy MCP SHAs and fixed action identity',()=>{
+test('v30 pins exact 2026-10-06 live Base Executor Policy MCP SHAs and fixed action identity',()=>{
   assert.equal(b.ACTION,'control_plane_current_owner_binding_refresh_v1');
   assert.equal(b.OPERATION,'host_action.control_plane_current_owner_binding_refresh_v1');
   assert.deepEqual(b.LIVE_PINS,{
-    base:'de924f7319f3656d788ba5d3f89ef2910bf4b0e3f0b8b074e7cd3a534441d5ea',
-    executor:'6bba46890db31abc8eca7e7681753a4788c46170033a555a1106e05d0a7a66f9',
-    policy:'2fedd70a182aa351e269df95a1b9d829f5a0b18defe8871cb4045106948d711a',
-    mcp:'b2f95b97dfa7e26ca717dfbec7871bf2f64286952548fb4d6d8e99908aeaacc0'
+    base:'e972d8955dca6b07f8d0a716482ddfa16d3c8efeafbda170bb75c14af3627e3b',
+    executor:'206dce4e9df48c540d9a261ffa2c6aec4dceb302614eaf495f299ef41a8260e6',
+    policy:'452a2768c2a43021072b07918273dbaa9ff3618957525daddbe54c83c7ab8c3e',
+    mcp:'a673e0633da79dc75b7171c01e67f194b751755116dfcc1f723acbf1202208b4'
   });
   assert.equal(JSON.stringify(b.LIVE_PINS).includes('TODO'),false);
 });
@@ -84,7 +84,7 @@ test('registration transforms are additive, reject missing/nonunique anchors and
   assert.doesNotMatch(src,/titan_front_handoff_deploy_v2|CONFIRM_DEPLOY_PRODUCTION/);
 });
 
-test('bootstrap contract reports registration-only application and rollback-safe four-file mutation',()=>{
+test('bootstrap contract reports registration-only application, four-file rollback, and no Titan deploy surface',()=>{
   const c=b.contract();
   assert.equal(c.production_application_mutation,false);
   assert.equal(c.database_mutation,false);
