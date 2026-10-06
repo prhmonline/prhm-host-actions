@@ -8,7 +8,7 @@ const IMPL=path.join(__dirname,'installer-refresh-current-binding-rebind-v1.js')
 test('rebinds only the exact stale SafeFiles base while preserving Level-4 surface',()=>{
   const m=require(IMPL);
   const source=[
-    "const BASE_SHA='c2a5fe6c67190d5b22464803ca8dfa98cb54d701611b80515d9ec5fa16b90c90';",
+    "const BASE_SHA='41416010bd28f7eb38c57d5e0482a56d782c0f8fca42a961a8480e6f0c88a6d5';",
     "const CONFIRM='CONFIRM_LEVEL_4_CRITICAL';",
     "const REQUEST_TOOL='control_plane_installer_refresh_l4_binding_repair_request_v1';",
     "const STATUS_TOOL='control_plane_installer_refresh_l4_binding_repair_status_v1';",
@@ -33,8 +33,8 @@ test('rebinds only the exact stale SafeFiles base while preserving Level-4 surfa
 test('rebinds the exact V19 builder preimages to the current GREEN 17/17 artifacts',()=>{
   const m=require(IMPL);
   const source=[
-    "const EXPECTED_IMPL='33b14dff259393cbc1b989ca4721204845a742ce4912a139586e3af71faf85e6';",
-    "const EXPECTED_TEST='cd70da0dbf9e9b58d8bf2e66d1284eb4460863e95cc0156e9922f472562a64d1';",
+    "const EXPECTED_IMPL='3eefb2281cd850208b0dff6d69f0211d54efa566b89b440d99da79a560c812dd';",
+    "const EXPECTED_TEST='fbbd56bd5decfc9a714f03cfff4b571e2fd36a9e130ac12c4a63f586156987e8';",
     "const CONFIRM='CONFIRM_LEVEL_4_CRITICAL';"
   ].join('\n');
   const out=m.patchBuilder(source);
