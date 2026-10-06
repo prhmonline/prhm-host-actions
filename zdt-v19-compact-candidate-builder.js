@@ -8,8 +8,8 @@ const path=require('node:path');
 const WT='/home/prhm/worktrees/prhm-host-actions-zdt-installer-v2';
 const IMPL=path.join(WT,'bootstrap-host-actions-v18-agent-zdt-current-baseline-refresh.js');
 const TEST=path.join(WT,'test-v18-agent-zdt-current-baseline-refresh.js');
-const EXPECTED_IMPL='3eefb2281cd850208b0dff6d69f0211d54efa566b89b440d99da79a560c812dd';
-const EXPECTED_TEST='fbbd56bd5decfc9a714f03cfff4b571e2fd36a9e130ac12c4a63f586156987e8';
+const EXPECTED_IMPL='875a20d869d4098308e39809d6cd3150b5974a9a070caa8f790e1845b2356c5e';
+const EXPECTED_TEST='f29d2d0596e5c432cb1024851cec74a2788d970a21457ebf554a3ee93ef47a0a';
 const EXPECTED_INSTALLER='d391e32332f0707a5a8829ceb436c613da9afec073b4642e2b2edd29f5c5d57d';
 const MAX_PATCH_BYTES=120000;
 function sha(v){return crypto.createHash('sha256').update(v).digest('hex');}
