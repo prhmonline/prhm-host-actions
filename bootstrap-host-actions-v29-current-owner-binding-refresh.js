@@ -138,7 +138,7 @@ function readLive(){
 }
 function nodeBin(){return fs.existsSync('/usr/local/bin/prhm-node')?'/usr/local/bin/prhm-node':process.execPath;}
 function syntaxBytes(bytes,kind,label){
-  const ext=kind==='json'?'.json':'.js';
+  const ext=kind==='json'?'.json':kind==='mjs'?'.mjs':'.js';
   const p='/tmp/prhm-current-owner-v31-'+label+'-'+process.pid+'-'+Date.now()+ext;
   try{
     fs.writeFileSync(p,bytes,{flag:'wx',mode:0o600});
@@ -152,7 +152,7 @@ function prepare(){
   for(const [name,bytes] of Object.entries(modules))syntaxBytes(bytes,'js','module-'+name);
   syntaxBytes(Buffer.from(candidates.base),'js','base');
   syntaxBytes(Buffer.from(candidates.executor),'js','executor');
-  syntaxBytes(Buffer.from(candidates.mcp),'js','mcp');
+  syntaxBytes(Buffer.from(candidates.mcp),'mjs','mcp');
   syntaxBytes(Buffer.from(candidates.policy),'json','policy');
   const candidateSha=Object.fromEntries(Object.entries(candidates).map(([k,v])=>[k,sha256(Buffer.from(v))]));
   const moduleSha=Object.fromEntries(Object.entries(modules).map(([k,v])=>[k,sha256(v)]));
