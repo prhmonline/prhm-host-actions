@@ -77,10 +77,10 @@ test('executor sandbox is narrow and excludes Agent API plus inactive MCP servic
   assert.deepEqual(b.SERVICES,[
     'prhm-company-approval.service',
     'prhm-agent-selfmaint.service',
-    'prhm-agent-selfmaint-exec.service',
-    'prhm-agent-mcp-green.service'
+    'prhm-agent-selfmaint-exec.service'
   ]);
   assert.equal(b.SERVICES.includes('prhm-agent-mcp.service'),false);
+  assert.equal(b.SERVICES.includes('prhm-agent-mcp-green.service'),false);
 });
 
 test('selftest is no-mutation and validates embedded builders/modules',()=>{
@@ -105,6 +105,7 @@ test('contract is registration-only and exact-preimage rollback',()=>{
   assert.equal(c.production_application_mutation,false);
   assert.equal(c.database_mutation,false);
   assert.equal(c.titan_cutover,false);
+  assert.equal(c.mcp_refresh_required,true);
   assert.equal(c.rollback,'exact-preimage');
 });
 
@@ -114,7 +115,7 @@ test('installer exposes no generic shell, arbitrary path/command or app/database
   assert.doesNotMatch(src,/callerPath|destinationPath|arbitrary_command|arbitrary_path|CONFIRM_DEPLOY_PRODUCTION/);
   assert.match(src,/production_application_mutation:false/);
   assert.match(src,/database_mutation:false/);
-  assert.match(src,/prhm-agent-mcp-green\.service/);
+  assert.doesNotMatch(src,/['\"]prhm-agent-mcp-green\.service['\"]/);
   assert.doesNotMatch(src,/['"]prhm-agent-mcp\.service['"]/);
 });
 
