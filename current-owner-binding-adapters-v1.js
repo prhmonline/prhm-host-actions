@@ -13,7 +13,6 @@ const FIXED=Object.freeze({
   v19_binding:Object.freeze({owner_ids:Object.freeze(['rolling_refresh','agent_api']),restart_units:Object.freeze([])}),
   current_baseline_refresh:Object.freeze({owner_ids:Object.freeze(['selfmaint_base','selfmaint_executor','approval_policy','mcp_host_actions']),restart_units:Object.freeze([])}),
   rolling_refresh:Object.freeze({owner_ids:Object.freeze(['agent_api']),restart_units:Object.freeze([])}),
-  titan_handoff_sandbox:Object.freeze({owner_ids:Object.freeze([]),restart_units:Object.freeze([])}),
 });
 
 function fail(code){throw new Error(code);}
@@ -134,20 +133,6 @@ function buildRollingRefreshCandidate(input){
   text=markerLine('//',p.record)+'\n'+text;
   return result(id,input,p.state,text);
 }
-function buildTitanHandoffSandboxCandidate(input){
-  const id='titan_handoff_sandbox', p=prep(id,input);
-  let text=p.text;
-  for(const required of ['ProtectSystem=strict','ProtectHome=read-only','NoNewPrivileges=true','LockPersonality=true'])if(!text.includes(required))fail('titan_hardening_anchor_missing:'+required);
-  const unsupported=/\s*'RestrictSUIDSGID=true',/g;
-  const matches=text.match(unsupported)||[];
-  if(matches.length>1)fail('titan_restrict_suidsgid_count_invalid');
-  if(matches.length===1)text=text.replace(unsupported,'');
-  else if(p.state==='migration')fail('titan_restrict_suidsgid_anchor_missing');
-  if(text.includes('RestrictSUIDSGID=true'))fail('titan_restrict_suidsgid_remains');
-  text=markerLine('//',p.record)+'\n'+text;
-  return result(id,input,p.state,text);
-}
-
-const ADAPTERS=Object.freeze({registry_bridge:buildRegistryBridgeCandidate,v19_binding:buildV19BindingCandidate,current_baseline_refresh:buildCurrentBaselineRefreshCandidate,rolling_refresh:buildRollingRefreshCandidate,titan_handoff_sandbox:buildTitanHandoffSandboxCandidate});
+const ADAPTERS=Object.freeze({registry_bridge:buildRegistryBridgeCandidate,v19_binding:buildV19BindingCandidate,current_baseline_refresh:buildCurrentBaselineRefreshCandidate,rolling_refresh:buildRollingRefreshCandidate});
 function buildConsumerCandidate(consumerId,input){const fn=ADAPTERS[consumerId];if(!fn)fail('consumer_unknown');return fn(input);}
-module.exports=Object.freeze({BINDING_SCHEMA,ADAPTERS,buildConsumerCandidate,buildRegistryBridgeCandidate,buildV19BindingCandidate,buildCurrentBaselineRefreshCandidate,buildRollingRefreshCandidate,buildTitanHandoffSandboxCandidate});
+module.exports=Object.freeze({BINDING_SCHEMA,ADAPTERS,buildConsumerCandidate,buildRegistryBridgeCandidate,buildV19BindingCandidate,buildCurrentBaselineRefreshCandidate,buildRollingRefreshCandidate});
