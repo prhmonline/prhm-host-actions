@@ -1,7 +1,7 @@
 {
   "schema_version": "prhm.drtarjomeh-email-suppression-live-binding.v2",
   "captured_date": "2026-10-06",
-  "state": "REBASE_REQUIRED",
+  "state": "PORT_GREEN_PENDING_FINAL_ARTIFACT_BINDING",
   "production_cutover_allowed": false,
   "external_send_allowed": false,
   "branch": "feature/drtarjomeh-email-suppression-bootstrap-v2",
@@ -111,33 +111,54 @@
   },
   "blockers": [
     {
+      "id": "final_root_of_trust_artifact_binding",
+      "decision": "REQUIRED_BEFORE_PRODUCTION",
+      "reason": "Generate final helper/installer/SafeFiles bridge artifacts bound to the current live preimages and rebased source SHAs, then rerun full acceptance."
+    }
+  ],
+  "next_required_step": "Generate and test final SHA-bound root-of-trust bundle from the rebased sources and current live preimages; production remains blocked until that bundle and cleanup contract are GREEN.",
+  "production_mutation": false,
+  "database_mutation": false,
+  "rebased_sources": {
+    "sshagent": {
+      "branch": "feature/drtarjomeh-email-suppression-current-main-v2",
+      "commit": "a7291c16023c4a9de57a31432c52696b6a178f5a",
+      "ci_run_id": 37399701553,
+      "ci": "SUCCESS"
+    },
+    "company_control_plane": {
+      "branch": "feature/drtarjomeh-email-suppression-current-main-v2",
+      "commit": "5a3d9fb2b775cbb88b704494691e58e631138051",
+      "ci_run_id": 37399341021,
+      "ci": "SUCCESS"
+    },
+    "host_actions": {
+      "branch": "feature/drtarjomeh-email-suppression-bootstrap-v2",
+      "commit": "ccccf1f45a6d1d7ca550586b0a131dcb8559dfd5",
+      "ci_run_id": 37399830088,
+      "ci": "SUCCESS"
+    }
+  },
+  "drift_resolutions": [
+    {
       "id": "agent_mcp_registry_material_drift",
-      "live_size": 37781,
-      "reviewed_size": 3526,
-      "decision": "SEMANTIC_PORT_REQUIRED",
-      "reason": "Exact reviewed replacement would overwrite later Agent 3 registry behavior."
+      "resolution": "SEMANTIC_MERGE",
+      "detail": "Preserve current registry bytes/behavior; add isolated campaign plugin import/registration and six PUBLIC_DENY entries only."
     },
     {
       "id": "agent_api_leadops_routes_material_drift",
-      "live_size": 72474,
-      "reviewed_wrapper_size": 607,
-      "decision": "CURRENT_MAIN_PORT_REQUIRED",
-      "reason": "Reviewed branch refactors the route file into a legacy wrapper; exact replacement would risk dropping later LeadOps behavior."
+      "resolution": "LIVE_PREIMAGE_TO_LEGACY_WRAPPER",
+      "detail": "Copy exact live leadopsRoutes.js bytes to leadopsRoutesLegacy.js, then install a small fixed wrapper composing legacy and campaign routes."
     },
     {
       "id": "agent_mcp_leadops_drift",
-      "live_size": 5430,
-      "reviewed_size": 9087,
-      "decision": "SEMANTIC_PORT_REQUIRED",
-      "reason": "Suppression MCP tools must be ported onto current live/main source rather than replacing the current plugin."
+      "resolution": "NO_TOUCH",
+      "detail": "Existing leadops.js remains unchanged; campaign MCP tools live in isolated leadopsCampaignEmail.js."
     },
     {
       "id": "shared_control_plane_drift",
-      "decision": "ADDITIVE_MERGE_REQUIRED",
-      "reason": "Base, exec, policy and Host Actions v2 must preserve all current actions and scopes."
+      "resolution": "ADDITIVE_SEMANTIC_MERGE",
+      "detail": "Base, exec, approval policy and Host Actions v2 preserve existing actions/scopes and add only the fixed suppression entries."
     }
-  ],
-  "next_required_step": "Port suppression changes onto current main/live-compatible sources, rerun branch acceptance, then regenerate the bound helper and SafeFiles root-of-trust artifact.",
-  "production_mutation": false,
-  "database_mutation": false
+  ]
 }
