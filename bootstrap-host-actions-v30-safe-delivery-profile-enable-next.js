@@ -13,7 +13,7 @@ const POLICY_SHA = 'aad8b3262a86c31f6d746f0bcfbd3eada6187c4e671b51ca79957b6ca6c3
 const BASE_SHA = 'ad2f0fc6924238e7bb7bff6d69a517c366ce82fbafb116bb0a2d31d78c5ed32f';
 const EXEC_SHA = 'a988dfcd706d3a032bd4d0d60a85c78b7fd6cdbea4e81b5e6c21212a6cd754a4';
 const MCP_SHA = '8f24b6ed70644c1eda7b255a47ccf0d4fabfe03ac7c73dd8799ff9aeb5294075';
-const CANDIDATE_MCP_SHA = MCP_SHA;
+const CANDIDATE_MCP_SHA = '103dfdf49f95794e84dfa40d97d1622aabb2efb7a373809010262def63fd00d8';
 const PATHS = Object.freeze({
   base:'/opt/prhm-agent-selfmaint/server.js',
   exec:'/opt/prhm-agent-selfmaint-exec/server.js',
@@ -75,7 +75,6 @@ function buildInstallPlan(sources){
   assertSource('base',Buffer.from(sources.base),BASE_SHA); assertSource('exec',Buffer.from(sources.exec),EXEC_SHA);
   assertSource('policy',Buffer.from(sources.policy),POLICY_SHA); assertSource('canonical_mcp',Buffer.from(sources.canonicalMcp),MCP_SHA);
   assertSource('candidate_mcp',Buffer.from(sources.candidateMcp),CANDIDATE_MCP_SHA);
-  if (sources.canonicalMcp !== sources.candidateMcp) fail('mcp_source_parity_mismatch');
   const helper = buildHelperSource(); const helperSha = sha256(Buffer.from(helper));
   const candidates = {
     base:buildBaseCandidate(sources.base), exec:buildExecCandidate(sources.exec,helperSha), policy:buildPolicyCandidate(sources.policy),
