@@ -1,0 +1,33 @@
+name: Installer Refresh State Helper Rebase V37 SafeFiles CI
+
+on:
+  push:
+    branches:
+      - fix/installer-refresh-state-helper-rebase-v37-safefiles
+    paths:
+      - 'safeFiles-installer-refresh-state-helper-rebase-v37-surface-v1.mjs'
+      - 'test-safeFiles-installer-refresh-state-helper-rebase-v37-surface-v1.js'
+      - '.github/workflows/installer-refresh-state-helper-rebase-v37-safefiles-ci.yml'
+      - 'safeFiles-installer-refresh-l4-binding-repair-surface-v1.js'
+  pull_request:
+    paths:
+      - 'safeFiles-installer-refresh-state-helper-rebase-v37-surface-v1.mjs'
+      - 'test-safeFiles-installer-refresh-state-helper-rebase-v37-surface-v1.js'
+      - '.github/workflows/installer-refresh-state-helper-rebase-v37-safefiles-ci.yml'
+      - 'safeFiles-installer-refresh-l4-binding-repair-surface-v1.js'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax
+        run: |
+          node --check safeFiles-installer-refresh-state-helper-rebase-v37-surface-v1.mjs
+          node --check test-safeFiles-installer-refresh-state-helper-rebase-v37-surface-v1.js
+      - name: Contract
+        run: node --test test-safeFiles-installer-refresh-state-helper-rebase-v37-surface-v1.js
