@@ -1,0 +1,44 @@
+name: Installer Refresh State Helper Rebase v37 Host Action CI
+
+on:
+  push:
+    branches:
+      - fix/installer-refresh-state-helper-rebase-v37-host-action
+    paths:
+      - 'installer-refresh-state-helper-rebase-v37.js'
+      - 'installer-refresh-state-helper-rebase-v37-host-action.js'
+      - 'bootstrap-host-actions-installer-refresh-state-helper-rebase-v37.js'
+      - 'test-installer-refresh-state-helper-rebase-v37.js'
+      - 'test-installer-refresh-state-helper-rebase-v37-host-action.js'
+      - 'safeFiles-installer-refresh-l4-binding-repair-surface-v1.js'
+      - '.github/workflows/installer-refresh-state-helper-rebase-v37-host-action-ci.yml'
+  pull_request:
+    paths:
+      - 'installer-refresh-state-helper-rebase-v37.js'
+      - 'installer-refresh-state-helper-rebase-v37-host-action.js'
+      - 'bootstrap-host-actions-installer-refresh-state-helper-rebase-v37.js'
+      - 'test-installer-refresh-state-helper-rebase-v37.js'
+      - 'test-installer-refresh-state-helper-rebase-v37-host-action.js'
+      - 'safeFiles-installer-refresh-l4-binding-repair-surface-v1.js'
+      - '.github/workflows/installer-refresh-state-helper-rebase-v37-host-action-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax
+        run: |
+          node --check installer-refresh-state-helper-rebase-v37.js
+          node --check installer-refresh-state-helper-rebase-v37-host-action.js
+          node --check bootstrap-host-actions-installer-refresh-state-helper-rebase-v37.js
+          node --check test-installer-refresh-state-helper-rebase-v37.js
+          node --check test-installer-refresh-state-helper-rebase-v37-host-action.js
+      - name: Contract
+        run: |
+          node --test test-installer-refresh-state-helper-rebase-v37.js
+          node --test test-installer-refresh-state-helper-rebase-v37-host-action.js
