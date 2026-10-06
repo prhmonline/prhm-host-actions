@@ -12,7 +12,7 @@ on:
       - test-v30-safe-delivery-profile-enable-next.js
       - test-v30-host-action-installer.js
       - bootstrap-host-actions-v30-safe-delivery-candidate-install-bridge.js
-      - test-v30-safe-delivery-candidate-install-bridge.js test-v30-agent3-bootstrap-capability.js
+      - test-v30-safe-delivery-candidate-install-bridge.js
       - safe-delivery-v30-agent3-bootstrap-capability-v1.js
       - test-v30-agent3-bootstrap-capability.js
       - .github/workflows/host-actions-v30-safe-delivery-profile-enable-next-ci.yml
@@ -44,4 +44,4 @@ jobs:
           node --check safe-delivery-v30-agent3-bootstrap-capability-v1.js
           node --check test-v30-agent3-bootstrap-capability.js
       - name: Contract tests
-        run: node --test test-v30-safe-delivery-profile-enable-next.js test-v30-host-action-installer.js test-v30-safe-delivery-candidate-install-bridge.js
+        run: node --test test-v30-safe-delivery-profile-enable-next.js test-v30-host-action-installer.js test-v30-safe-delivery-candidate-install-bridge.js test-v30-agent3-bootstrap-capability.js
