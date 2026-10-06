@@ -13,7 +13,7 @@ test('current recovery surface candidate is present and pinned to reviewed SafeF
   assert.equal(m.schema_version,'prhm.installer-refresh-current-surface-binding.v1');
   assert.equal(m.source_ref,'fix/installer-refresh-l4-parent-bind-waha-v3');
   assert.equal(m.source_blob_sha,'712100af1473b76a229417888867b5b3275b67ec');
-  assert.equal(m.BASE_SHA,'41416010bd28f7eb38c57d5e0482a56d782c0f8fca42a961a8480e6f0c88a6d5');
+  assert.equal(m.BASE_SHA,'d5e938f63ef89c7427edad92cd047f1c150f898db5cbb6d1a84cbb6c1bac6161');
   assert.equal(m.CONFIRM,'CONFIRM_LEVEL_4_CRITICAL');
   assert.deepEqual(m.tools,[
     'control_plane_installer_refresh_l4_binding_repair_request_v1',
@@ -32,8 +32,8 @@ test('current V19 builder candidate is present and pinned to GREEN 17/17 artifac
   assert.equal(m.schema_version,'prhm.zdt-v19-current-builder-binding.v1');
   assert.equal(m.source_ref,'fix/agent-zdt-v19-compact-immutable-v1');
   assert.equal(m.source_blob_sha,'2baa256df515cc73c0126de32e9b862655be55d6');
-  assert.equal(m.EXPECTED_IMPL,'3eefb2281cd850208b0dff6d69f0211d54efa566b89b440d99da79a560c812dd');
-  assert.equal(m.EXPECTED_TEST,'fbbd56bd5decfc9a714f03cfff4b571e2fd36a9e130ac12c4a63f586156987e8');
+  assert.equal(m.EXPECTED_IMPL,'875a20d869d4098308e39809d6cd3150b5974a9a070caa8f790e1845b2356c5e');
+  assert.equal(m.EXPECTED_TEST,'f29d2d0596e5c432cb1024851cec74a2788d970a21457ebf554a3ee93ef47a0a');
   assert.equal(m.CONFIRM,'CONFIRM_LEVEL_4_CRITICAL');
   assert.equal(m.contract_tests,17);
   assert.equal(m.level,4);
