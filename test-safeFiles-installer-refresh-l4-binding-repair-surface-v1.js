@@ -7,7 +7,7 @@ test('surface is fixed request/status/apply with independent L4 gate',()=>{
  assert.doesNotMatch(s,/req\.body|destinationPath|callerContent|arbitrary_command/);
 });
 test('surface is exact-base wrapper',()=>{
- assert.ok(s.includes('41416010bd28f7eb38c57d5e0482a56d782c0f8fca42a961a8480e6f0c88a6d5'));
+ assert.ok(s.includes('d5e938f63ef89c7427edad92cd047f1c150f898db5cbb6d1a84cbb6c1bac6161'));
  assert.ok(s.includes("agent_mcp-src_plugins_safeFiles.js-"));
 });
 
