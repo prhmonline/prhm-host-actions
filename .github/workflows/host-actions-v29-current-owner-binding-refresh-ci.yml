@@ -1,9 +1,9 @@
-name: host-actions-v31-current-owner-binding-runtime-installer-ci
+name: host-actions-v32-current-owner-binding-mcp-source-ci
 on:
   workflow_dispatch:
   push:
     branches:
-      - fix/current-owner-binding-v31-runtime-installer
+      - fix/current-owner-binding-v32-mcp-source-owner
   pull_request:
     paths:
       - 'current-owner-binding-*.js'
