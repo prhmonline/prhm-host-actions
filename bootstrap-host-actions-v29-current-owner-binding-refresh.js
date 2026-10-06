@@ -6,10 +6,10 @@ const crypto=require('node:crypto');
 const ACTION='control_plane_current_owner_binding_refresh_v1';
 const OPERATION='host_action.control_plane_current_owner_binding_refresh_v1';
 const LIVE_PINS=Object.freeze({
-  base:'de924f7319f3656d788ba5d3f89ef2910bf4b0e3f0b8b074e7cd3a534441d5ea',
-  executor:'6bba46890db31abc8eca7e7681753a4788c46170033a555a1106e05d0a7a66f9',
-  policy:'2fedd70a182aa351e269df95a1b9d829f5a0b18defe8871cb4045106948d711a',
-  mcp:'b2f95b97dfa7e26ca717dfbec7871bf2f64286952548fb4d6d8e99908aeaacc0'
+  base:'e972d8955dca6b07f8d0a716482ddfa16d3c8efeafbda170bb75c14af3627e3b',
+  executor:'206dce4e9df48c540d9a261ffa2c6aec4dceb302614eaf495f299ef41a8260e6',
+  policy:'452a2768c2a43021072b07918273dbaa9ff3618957525daddbe54c83c7ab8c3e',
+  mcp:'a673e0633da79dc75b7171c01e67f194b751755116dfcc1f723acbf1202208b4'
 });
 const TARGETS=Object.freeze({
   base:'/opt/prhm-agent-selfmaint/server.js',
@@ -20,10 +20,10 @@ const TARGETS=Object.freeze({
 const PRIVATE_DIR='/opt/prhm-agent-selfmaint-exec/actions/current-owner-binding-v1';
 const ACTION_PATH='/opt/prhm-agent-selfmaint-exec/actions/control-plane-current-owner-binding-refresh-v1.js';
 const MODULE_INSTALLS=Object.freeze({
-  'current-owner-binding-manifest-v1.js':Object.freeze({source_path:'current-owner-binding-manifest-v1.js',destination_path:PRIVATE_DIR+'/current-owner-binding-manifest-v1.js',sha256:'f2b039fcf2f143bc378c9d8d6e54d3ad34b9cdcf0735edf0aaaffcd3393b67a8'}),
-  'current-owner-binding-adapters-v1.js':Object.freeze({source_path:'current-owner-binding-adapters-v1.js',destination_path:PRIVATE_DIR+'/current-owner-binding-adapters-v1.js',sha256:'b52ce1e600dcf46095ce85f211a518eb1dc08688a9373188d021afc34ab6562b'}),
+  'current-owner-binding-manifest-v1.js':Object.freeze({source_path:'current-owner-binding-manifest-v1.js',destination_path:PRIVATE_DIR+'/current-owner-binding-manifest-v1.js',sha256:'4536fc79981e47b3b60b039f565da8bec8849e727dedf64b2712b328c2207ab6'}),
+  'current-owner-binding-adapters-v1.js':Object.freeze({source_path:'current-owner-binding-adapters-v1.js',destination_path:PRIVATE_DIR+'/current-owner-binding-adapters-v1.js',sha256:'4e91671d59727003afa4b0915fa0db659a6f5830edc193566eb9d78b0f4f3ae0'}),
   'current-owner-binding-systemd-v1.js':Object.freeze({source_path:'current-owner-binding-systemd-v1.js',destination_path:PRIVATE_DIR+'/current-owner-binding-systemd-v1.js',sha256:'c7a2a729aad741a9169ac455eb35e4a90ba78ff1a6e094ca5eaaecf9ed077070'}),
-  'current-owner-binding-refresh-v1.js':Object.freeze({source_path:'current-owner-binding-refresh-v1.js',destination_path:PRIVATE_DIR+'/current-owner-binding-refresh-v1.js',sha256:'93ecebbd830bfac246aa3fee800181cd02f97ced215bee8ccf734eac7044e4a4'})
+  'current-owner-binding-refresh-v1.js':Object.freeze({source_path:'current-owner-binding-refresh-v1.js',destination_path:PRIVATE_DIR+'/current-owner-binding-refresh-v1.js',sha256:'270e0789e84acb20bd2478501ebff1c7e8b400b691aade79ece669aafa75242c'})
 });
 const EXECUTOR_SYSTEMD_PROPERTIES=Object.freeze([
   'Type=oneshot','UMask=0077','NoNewPrivileges=true','PrivateTmp=true','PrivateDevices=true',
@@ -37,7 +37,7 @@ function count(haystack,needle){return String(haystack).split(needle).length-1;}
 function oneAnchor(source,re,code){const m=source.match(re);if(!m||m.length<1)fail(code+'_anchor_missing');const all=[...source.matchAll(new RegExp(re.source,re.flags.includes('g')?re.flags:re.flags+'g'))];if(all.length!==1)fail(code+'_anchor_nonunique');return m;}
 function ensureAbsentOrOnce(source,needle){const n=count(source,needle);if(n>1)fail('action_duplicate');return n===1;}
 
-function buildPolicyRegistration(){return Object.freeze({level:4,risk:'critical',requires_second_confirmation:true,one_time_use:true,requested_approver:'mohammad',expires_seconds:180,policy_version:'2026-09-28.1-current-owner-binding-refresh-v1',rollback_reference:'host-action-v2:control-plane-current-owner-binding-refresh-v1:exact-preimage',operation:OPERATION});}
+function buildPolicyRegistration(){return Object.freeze({level:4,risk:'critical',requires_second_confirmation:true,one_time_use:true,requested_approver:'mohammad',expires_seconds:180,policy_version:'2026-10-06.1-current-owner-binding-refresh-v1',rollback_reference:'host-action-v2:control-plane-current-owner-binding-refresh-v1:exact-preimage',operation:OPERATION});}
 function buildTypedScope(){return Object.freeze({tool:'host_action_v2_apply',project:'control_plane',environment:'production',action:ACTION,risk:'critical',operation:OPERATION,principals:[{principal_id:'mohammad',roles:['mcp-operator']}]});}
 
 function buildBaseRegistration(source){
