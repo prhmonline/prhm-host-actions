@@ -18,12 +18,11 @@ function input(id,bytes,m=manifest()){return {manifest:m,target_path:INITIAL_CON
 const fixtures={
  registry_bridge:"import path from 'node:path';\nconst HERE='/fixed';\nconst BASE_SHA='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';\nconst BASE=path.join(HERE,'.registry-imotion-vm-stable-base-'+BASE_SHA+'.mjs');\nexport default BASE;\n",
  v19_binding:"#!/usr/bin/env bash\nset -euo pipefail\nOLD_API_SHA='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'\nNEW_API_SHA='bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'\n",
- current_baseline_refresh:"'use strict';\nconst BASELINE={\"base\":\"a\",\"exec\":\"b\",\"policy\":\"c\",\"mcp\":\"d\"};\nfunction x(){return BASELINE;}\n",
  rolling_refresh:"'use strict';\nconst PATHS={apiSource:'/home/agent/ssh-agent-api/server.js'};\nconst EXPECTED_SHA=Object.freeze({\n  [PATHS.apiSource]:'84774a93942e2d0df03c1acbd18fefc9556ea74d15ff5564f11ada27771b0d9f',\n});\nmodule.exports={EXPECTED_SHA};\n",
 
 };
 
-test('fixed registry exposes exactly four Config Center consumers and no generic adapter inputs',()=>{
+test('fixed registry exposes exactly three Config Center consumers and no generic adapter inputs',()=>{
  assert.deepEqual(Object.keys(a.ADAPTERS),['registry_bridge','v19_binding','rolling_refresh']);
  assert.equal(Object.isFrozen(a.ADAPTERS),true);
  assert.throws(()=>a.buildConsumerCandidate('other',{}),/consumer_unknown/);
@@ -43,13 +42,10 @@ test('migration candidates use manifest logical owners and are deterministic',()
  }
 });
 
-test('registry, baseline and rolling candidates derive bindings from manifest owner ids',()=>{
+test('registry and rolling candidates derive bindings from manifest owner ids',()=>{
  const r=a.buildRegistryBridgeCandidate(input('registry_bridge',fixtures.registry_bridge)).after_bytes.toString();
  assert.match(r,/CURRENT_OWNER_BINDING_REGISTRY_BRIDGE\.owners\.registry_base/);
  assert.match(r,new RegExp(owners.registry_base));
- const b=a.buildCurrentBaselineRefreshCandidate(input('current_baseline_refresh',fixtures.current_baseline_refresh)).after_bytes.toString();
- for(const sha of [owners.selfmaint_base,owners.selfmaint_executor,owners.approval_policy,owners.mcp_host_actions])assert.match(b,new RegExp(sha));
- assert.match(b,/const BASELINE=CURRENT_OWNER_BINDING_CURRENT_BASELINE\.owners;/);
  const z=a.buildRollingRefreshCandidate(input('rolling_refresh',fixtures.rolling_refresh)).after_bytes.toString();
  assert.match(z,/\[PATHS\.apiSource\]:CURRENT_OWNER_BINDING_ROLLING_REFRESH\.owners\.agent_api,/);
  assert.match(z,new RegExp(owners.agent_api));
