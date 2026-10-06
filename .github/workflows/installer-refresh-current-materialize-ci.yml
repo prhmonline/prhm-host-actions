@@ -1,0 +1,36 @@
+name: Installer Refresh Current Materialize CI
+
+on:
+  pull_request:
+    paths:
+      - 'safeFiles-installer-refresh-l4-binding-repair-surface-v1.js'
+      - 'zdt-v19-compact-candidate-builder.js'
+      - 'test-safeFiles-installer-refresh-l4-binding-repair-surface-v1.js'
+      - 'test-zdt-v19-compact-candidate-builder.js'
+      - '.github/workflows/installer-refresh-current-materialize-ci.yml'
+  push:
+    branches:
+      - fix/installer-refresh-current-materialize-v1
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Syntax
+        run: |
+          node --check safeFiles-installer-refresh-l4-binding-repair-surface-v1.js
+          node --check zdt-v19-compact-candidate-builder.js
+          node --check test-safeFiles-installer-refresh-l4-binding-repair-surface-v1.js
+          node --check test-zdt-v19-compact-candidate-builder.js
+      - name: Surface contract
+        run: node --test test-safeFiles-installer-refresh-l4-binding-repair-surface-v1.js
+      - name: Builder contract
+        run: node --test test-zdt-v19-compact-candidate-builder.js
