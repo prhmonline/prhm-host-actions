@@ -60,7 +60,7 @@ function buildBaseRegistration(source){
   source=String(source);if(ensureAbsentOrOnce(source,ACTION))return source;
   const re=/const HOST_ACTION_V2_SPECS\s*=\s*Object\.freeze\(\{/;
   const m=oneAnchor(source,re,'base_specs');
-  const entry=\`\n  ${ACTION}: { operation: '${OPERATION}', rollback: 'host-action-v2:control-plane-current-owner-binding-refresh-v1:exact-preimage' },\`;
+  const entry=`\n  ${ACTION}: { operation: '${OPERATION}', rollback: 'host-action-v2:control-plane-current-owner-binding-refresh-v1:exact-preimage' },`;
   const out=source.slice(0,m.index+m[0].length)+entry+source.slice(m.index+m[0].length);
   const l3=/const HOST_ACTION_V2_LEVEL3\s*=\s*new Set\((\[[\s\S]*?\])\);/.exec(out);
   if(!l3)fail('base_level3_anchor_missing');if(l3[1].includes(ACTION))fail('base_level3_contains_current_owner_refresh');
@@ -70,20 +70,20 @@ function buildExecutorRegistration(source){
   source=String(source);if(ensureAbsentOrOnce(source,ACTION))return source;
   const specRe=/const HOST_ACTION_V2_SPECS\s*=\s*(?:Object\.freeze\()?\{/;
   const sm=oneAnchor(source,specRe,'executor_specs');
-  const specEntry=\`\n  ${ACTION}:{operation:'${OPERATION}',kind:'${ACTION}'},\`;
+  const specEntry=`\n  ${ACTION}:{operation:'${OPERATION}',kind:'${ACTION}'},`;
   let out=source.slice(0,sm.index+sm[0].length)+specEntry+source.slice(sm.index+sm[0].length);
   const dispatch='applyHostActionV2=async function(action){';
   if(count(out,dispatch)!==1)fail('executor_dispatch_anchor_nonunique');
-  const helper=\`const CURRENT_OWNER_BINDING_REFRESH_HELPER='${ACTION_PATH}';\nconst CURRENT_OWNER_BINDING_REFRESH_RESULT='/var/lib/prhm-agent-selfmaint-exec/current-owner-binding-v1/result.json';\nfunction applyControlPlaneCurrentOwnerBindingRefreshV1(){\n  if(!fs.existsSync(CURRENT_OWNER_BINDING_REFRESH_HELPER))throw new Error('current_owner_binding_refresh_helper_missing');\n  try{if(fs.existsSync(CURRENT_OWNER_BINDING_REFRESH_RESULT))fs.unlinkSync(CURRENT_OWNER_BINDING_REFRESH_RESULT)}catch{}\n  const unit='prhm-current-owner-binding-refresh-v1-'+Date.now();\n  const args=['--wait','--collect','--unit='+unit,${EXECUTOR_SYSTEMD_PROPERTIES.map(x=>\`'--property=${x}'\`).join(',')},'--setenv=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin','/usr/local/bin/prhm-node',CURRENT_OWNER_BINDING_REFRESH_HELPER,'--apply'];\n  cp.execFileSync('/usr/bin/systemd-run',args,{encoding:'utf8',stdio:['ignore','pipe','pipe'],timeout:900000});\n  const result=readJson(CURRENT_OWNER_BINDING_REFRESH_RESULT);\n  if(result.ok!==true||result.action!=='${ACTION}'||result.production_application_mutation!==false||result.database_mutation!==false||result.titan_cutover!==false||result.rollback_performed!==false)throw new Error('current_owner_binding_refresh_result_invalid');\n  return result;\n}\n\`;
-  out=out.replace(dispatch,helper+dispatch+\`if(action==='${ACTION}')return applyControlPlaneCurrentOwnerBindingRefreshV1();\`);
+  const helper=`const CURRENT_OWNER_BINDING_REFRESH_HELPER='${ACTION_PATH}';\nconst CURRENT_OWNER_BINDING_REFRESH_RESULT='/var/lib/prhm-agent-selfmaint-exec/current-owner-binding-v1/result.json';\nfunction applyControlPlaneCurrentOwnerBindingRefreshV1(){\n  if(!fs.existsSync(CURRENT_OWNER_BINDING_REFRESH_HELPER))throw new Error('current_owner_binding_refresh_helper_missing');\n  try{if(fs.existsSync(CURRENT_OWNER_BINDING_REFRESH_RESULT))fs.unlinkSync(CURRENT_OWNER_BINDING_REFRESH_RESULT)}catch{}\n  const unit='prhm-current-owner-binding-refresh-v1-'+Date.now();\n  const args=['--wait','--collect','--unit='+unit,${EXECUTOR_SYSTEMD_PROPERTIES.map(x=>`'--property=${x}'`).join(',')},'--setenv=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin','/usr/local/bin/prhm-node',CURRENT_OWNER_BINDING_REFRESH_HELPER,'--apply'];\n  cp.execFileSync('/usr/bin/systemd-run',args,{encoding:'utf8',stdio:['ignore','pipe','pipe'],timeout:900000});\n  const result=readJson(CURRENT_OWNER_BINDING_REFRESH_RESULT);\n  if(result.ok!==true||result.action!=='${ACTION}'||result.production_application_mutation!==false||result.database_mutation!==false||result.titan_cutover!==false||result.rollback_performed!==false)throw new Error('current_owner_binding_refresh_result_invalid');\n  return result;\n}\n`;
+  out=out.replace(dispatch,helper+dispatch+`if(action==='${ACTION}')return applyControlPlaneCurrentOwnerBindingRefreshV1();`);
   return out;
 }
 function buildMcpRegistration(source){
   source=String(source);if(ensureAbsentOrOnce(source,ACTION))return source;
   const re=/const HostActionV2\s*=\s*z\.enum\(\[([\s\S]*?)\]\);/;
   const m=oneAnchor(source,re,'mcp_enum');
-  const body=m[1].trimEnd(),joined=body+(body.trim().endsWith(',')?'':',')+\`'${ACTION}'\`;
-  return source.slice(0,m.index)+\`const HostActionV2=z.enum([${joined}]);\`+source.slice(m.index+m[0].length);
+  const body=m[1].trimEnd(),joined=body+(body.trim().endsWith(',')?'':',')+`'${ACTION}'`;
+  return source.slice(0,m.index)+`const HostActionV2=z.enum([${joined}]);`+source.slice(m.index+m[0].length);
 }
 function buildPolicySourceRegistration(source){
   source=String(source);if(ensureAbsentOrOnce(source,ACTION))return source;
