@@ -1,9 +1,9 @@
-name: host-actions-v29-current-owner-binding-refresh-ci
+name: host-actions-v30-current-owner-binding-refresh-ci
 on:
   workflow_dispatch:
   push:
     branches:
-      - impl/current-owner-binding-refresh-v1
+      - fix/current-owner-binding-refresh-v30-20261006
   pull_request:
     paths:
       - 'current-owner-binding-*.js'
