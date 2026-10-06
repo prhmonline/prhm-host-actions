@@ -1,0 +1,164 @@
+{
+  "schema_version": "prhm.drtarjomeh-email-suppression-live-binding.v2",
+  "captured_date": "2026-10-06",
+  "state": "PORT_GREEN_PENDING_FINAL_ARTIFACT_BINDING",
+  "production_cutover_allowed": false,
+  "external_send_allowed": false,
+  "branch": "feature/drtarjomeh-email-suppression-bootstrap-v2",
+  "registration_preimages": {
+    "safeFiles": {
+      "path": "/home/agent/ssh-mcp-server/src/plugins/safeFiles.js",
+      "state": "PRESENT",
+      "sha256": "41416010bd28f7eb38c57d5e0482a56d782c0f8fca42a961a8480e6f0c88a6d5",
+      "size": 16001,
+      "mode": "0600"
+    },
+    "base": {
+      "path": "/opt/prhm-agent-selfmaint/server.js",
+      "state": "PRESENT",
+      "sha256": "ad2f0fc6924238e7bb7bff6d69a517c366ce82fbafb116bb0a2d31d78c5ed32f",
+      "size": 34274,
+      "mode": "0644"
+    },
+    "exec": {
+      "path": "/opt/prhm-agent-selfmaint-exec/server.js",
+      "state": "PRESENT",
+      "sha256": "a988dfcd706d3a032bd4d0d60a85c78b7fd6cdbea4e81b5e6c21212a6cd754a4",
+      "size": 109037,
+      "mode": "0755"
+    },
+    "policy": {
+      "path": "/opt/prhm-company-control-plane/config/approval-policy.json",
+      "state": "PRESENT",
+      "sha256": "aad8b3262a86c31f6d746f0bcfbd3eada6187c4e671b51ca79957b6ca6c3340c",
+      "size": 29139,
+      "mode": "0644"
+    },
+    "hostActionsV2": {
+      "path": "/home/agent/ssh-mcp-server/src/plugins/hostActionsV2.js",
+      "state": "PRESENT",
+      "sha256": "8f24b6ed70644c1eda7b255a47ccf0d4fabfe03ac7c73dd8799ff9aeb5294075",
+      "size": 12250,
+      "mode": "0600"
+    }
+  },
+  "release_preimages": {
+    "agent_api_campaign_core": {
+      "path": "/home/agent/ssh-agent-api/leadopsCampaignEmailCore.js",
+      "state": "ABSENT"
+    },
+    "agent_api_campaign_routes": {
+      "path": "/home/agent/ssh-agent-api/leadopsCampaignEmailRoutes.js",
+      "state": "ABSENT"
+    },
+    "agent_api_campaign_service": {
+      "path": "/home/agent/ssh-agent-api/leadopsCampaignEmailService.js",
+      "state": "ABSENT"
+    },
+    "agent_api_campaign_store": {
+      "path": "/home/agent/ssh-agent-api/leadopsCampaignEmailStore.js",
+      "state": "ABSENT"
+    },
+    "agent_api_leadops_routes": {
+      "path": "/home/agent/ssh-agent-api/leadopsRoutes.js",
+      "state": "PRESENT",
+      "sha256": "cbcde9546ca84c4320a32ad2541c79ed88452a49f6ea992882d6e0e4580d47f2",
+      "size": 72474,
+      "mode": "0640"
+    },
+    "agent_api_leadops_legacy": {
+      "path": "/home/agent/ssh-agent-api/leadopsRoutesLegacy.js",
+      "state": "ABSENT"
+    },
+    "agent_mcp_registry": {
+      "path": "/home/agent/ssh-mcp-server/src/core/registry.js",
+      "state": "PRESENT",
+      "sha256": "19a0bea3d0c7c5ac33121463d26d892dac207022dbb07f76bf6c71acb64b5f35",
+      "size": 37781,
+      "mode": "0600"
+    },
+    "agent_mcp_leadops": {
+      "path": "/home/agent/ssh-mcp-server/src/plugins/leadops.js",
+      "state": "PRESENT",
+      "sha256": "6d5ee216dc4309c77bc5793d0fca0c641eff0798bbc9742d24960425a0e08c66",
+      "size": 5430,
+      "mode": "0640"
+    },
+    "control_plane_foundation_action": {
+      "path": "/opt/prhm-company-control-plane/ops/leadops-email-suppression/leadops-email-suppression-foundation-v1.js",
+      "state": "ABSENT"
+    },
+    "control_plane_reporting_action": {
+      "path": "/opt/prhm-company-control-plane/ops/company-os-email-suppression/company-os-email-suppression-reporting-v1.js",
+      "state": "ABSENT"
+    }
+  },
+  "reviewed_source": {
+    "sshagent_commit": "d1b7093417229ace733b98d6b0864b17c071d1ce",
+    "company_control_plane_commit": "6754429c92e45787ff3d01f41579642c7b7e4261",
+    "source_blob_sha": {
+      "agent_api_campaign_core": "59a8250557489941121fe2b5101a5f9eb60e4fae",
+      "agent_api_campaign_routes": "c80fc819931f5cc1547da575d1f823f8173f5e91",
+      "agent_api_campaign_service": "c096c625a7b921c125cc62306c0bc96230f8b175",
+      "agent_api_campaign_store": "5ec4f97da52e290d29b4161bef3687846cb15f71",
+      "agent_api_leadops_routes": "6e5bcadcf4254fbaa4405f9f58d1243ca918a3fa",
+      "agent_api_leadops_legacy": "fe2b3144adb7d885efbbbeb7529e09230a49c8f2",
+      "agent_mcp_registry": "bb95f12f59a970705283e8ba0b140681ad39c0f2",
+      "agent_mcp_leadops": "78e05e5e5ff1938064e25734660f83777647d8ab",
+      "control_plane_foundation_action": "a7b3e4aa8ad9b5e1516ba7840e1fbd6c2eaa4b48",
+      "control_plane_reporting_action": "4930f0a0ec725f203ea51d47d9e55d35baf15f6b"
+    }
+  },
+  "blockers": [
+    {
+      "id": "final_root_of_trust_artifact_binding",
+      "decision": "REQUIRED_BEFORE_PRODUCTION",
+      "reason": "Generate final helper/installer/SafeFiles bridge artifacts bound to the current live preimages and rebased source SHAs, then rerun full acceptance."
+    }
+  ],
+  "next_required_step": "Generate and test final SHA-bound root-of-trust bundle from the rebased sources and current live preimages; production remains blocked until that bundle and cleanup contract are GREEN.",
+  "production_mutation": false,
+  "database_mutation": false,
+  "rebased_sources": {
+    "sshagent": {
+      "branch": "feature/drtarjomeh-email-suppression-current-main-v2",
+      "commit": "a7291c16023c4a9de57a31432c52696b6a178f5a",
+      "ci_run_id": 37399701553,
+      "ci": "SUCCESS"
+    },
+    "company_control_plane": {
+      "branch": "feature/drtarjomeh-email-suppression-current-main-v2",
+      "commit": "5a3d9fb2b775cbb88b704494691e58e631138051",
+      "ci_run_id": 37399341021,
+      "ci": "SUCCESS"
+    },
+    "host_actions": {
+      "branch": "feature/drtarjomeh-email-suppression-bootstrap-v2",
+      "commit": "ccccf1f45a6d1d7ca550586b0a131dcb8559dfd5",
+      "ci_run_id": 37399830088,
+      "ci": "SUCCESS"
+    }
+  },
+  "drift_resolutions": [
+    {
+      "id": "agent_mcp_registry_material_drift",
+      "resolution": "SEMANTIC_MERGE",
+      "detail": "Preserve current registry bytes/behavior; add isolated campaign plugin import/registration and six PUBLIC_DENY entries only."
+    },
+    {
+      "id": "agent_api_leadops_routes_material_drift",
+      "resolution": "LIVE_PREIMAGE_TO_LEGACY_WRAPPER",
+      "detail": "Copy exact live leadopsRoutes.js bytes to leadopsRoutesLegacy.js, then install a small fixed wrapper composing legacy and campaign routes."
+    },
+    {
+      "id": "agent_mcp_leadops_drift",
+      "resolution": "NO_TOUCH",
+      "detail": "Existing leadops.js remains unchanged; campaign MCP tools live in isolated leadopsCampaignEmail.js."
+    },
+    {
+      "id": "shared_control_plane_drift",
+      "resolution": "ADDITIVE_SEMANTIC_MERGE",
+      "detail": "Base, exec, approval policy and Host Actions v2 preserve existing actions/scopes and add only the fixed suppression entries."
+    }
+  ]
+}
