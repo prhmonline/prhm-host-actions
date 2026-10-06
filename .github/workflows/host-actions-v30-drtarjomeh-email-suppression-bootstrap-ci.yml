@@ -33,6 +33,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Contract
         run: node --test test-v30-drtarjomeh-email-suppression-*.js
+      - name: Existing Host Actions regression
+        run: |
+          node --test test-host-actions-*.js
+          node --test test-v29-drtarjomeh-security-release-*.js test-v29-drtarjomeh-root-bootstrap.js
+          node --test test-safeFiles-installer-refresh-l4-binding-repair-surface-v1.js
       - name: Syntax
         if: always()
         run: |
