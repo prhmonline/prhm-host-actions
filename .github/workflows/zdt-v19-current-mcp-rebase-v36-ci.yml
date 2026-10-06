@@ -1,0 +1,31 @@
+name: V19 Current MCP Rebase v36 CI
+
+on:
+  push:
+    branches:
+      - fix/zdt-v19-current-mcp-rebase-v36
+    paths:
+      - 'zdt-v19-current-mcp-rebase-v36.js'
+      - 'test-zdt-v19-current-mcp-rebase-v36.js'
+      - '.github/workflows/zdt-v19-current-mcp-rebase-v36-ci.yml'
+  pull_request:
+    paths:
+      - 'zdt-v19-current-mcp-rebase-v36.js'
+      - 'test-zdt-v19-current-mcp-rebase-v36.js'
+      - '.github/workflows/zdt-v19-current-mcp-rebase-v36-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax
+        run: |
+          if [ -f zdt-v19-current-mcp-rebase-v36.js ]; then node --check zdt-v19-current-mcp-rebase-v36.js; fi
+          node --check test-zdt-v19-current-mcp-rebase-v36.js
+      - name: Contract
+        run: node --test test-zdt-v19-current-mcp-rebase-v36.js
