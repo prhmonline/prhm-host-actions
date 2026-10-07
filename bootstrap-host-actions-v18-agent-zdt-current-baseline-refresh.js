@@ -96,8 +96,8 @@ const RAHEKOMAK_ROOT='/home/prhm/projects/generated/rahekomak';
 const RAHEKOMAK_HELPER='/home/prhm/projects/generated/rahekomak/infra/docker/production-deploy-v1.cjs';
 const RAHEKOMAK_HEAD='77c0d0f38f2c64be02e46eeec6f6e19eedc1f1b5';
 const RAHEKOMAK_HELPER_SHA='bba9636d705b41cf11086f1e962a8ac31b7a831bd3d1913e641633cfacd4dab4';
-const RAHEKOMAK_REGISTRATION_BASELINE_SHA256=Object.freeze({"base":"ad2f0fc6924238e7bb7bff6d69a517c366ce82fbafb116bb0a2d31d78c5ed32f","exec":"a988dfcd706d3a032bd4d0d60a85c78b7fd6cdbea4e81b5e6c21212a6cd754a4","policy":"aad8b3262a86c31f6d746f0bcfbd3eada6187c4e671b51ca79957b6ca6c3340c","mcp":"8f24b6ed70644c1eda7b255a47ccf0d4fabfe03ac7c73dd8799ff9aeb5294075"});
-const RAHEKOMAK_REGISTRATION_CANDIDATE_SHA256=Object.freeze({"base":"5239d19aedfc56f01717655dd5e3aebd294696b4024498f8cdbc43ea30110bf5","exec":"e7587d0a35ccbf78df0a214c6aad6e6415c6430ffa24b77576c12bf32c0f43e6","policy":"59b4164ab87bf09b5c8f7192729bb9216be47db231ed09c8cb1a4b5ffe5e232e","mcp":"0dc6889891749e8b81271819a9afed8ccbeacddc4526a893d363e8d6819ac4a0"});
+const RAHEKOMAK_REGISTRATION_BASELINE_SHA256=Object.freeze({"base":"93a858f17ae5e66ac525bf7b44f26d0e9031dacb2e8a0c9b853f03d8fe6c7c9f","exec":"47b24cc7690496b9e71b7c1c9610ddc05a1c118170cd8cc6b4cc95580acc4ab0","policy":"ce353000dae7673e93d2e5ecb3e1a48f346c3bde89ab5634e6ff69a11e1d062a","mcp":"2f9a735bb49c550df782851d58979a2b95fcfd95327a57503b236c9786ec4f75"});
+const RAHEKOMAK_REGISTRATION_CANDIDATE_SHA256=Object.freeze({"base":"4c29d01a248d59ee85754dfa5a59e8132fe22e6b34ef04324228c16c88727406","exec":"410406ba0965ef3a5cad6da6306a85335e38acc3637fb6ed60fa42200a10c2e0","policy":"148fe2a724befc15cd8c731b0195d83e254d39215792a5084b70dd5b5c178174","mcp":"bd768f992dab75710558e3f47187c311c2ee5b5ec6f5751a74e0bbfa64729166"});
 function rahkomakReplaceOne(source,oldValue,newValue,label){const count=source.split(oldValue).length-1;if(count!==1)throw new Error('rahekomak_registration_'+label+'_anchor_'+count);return source.replace(oldValue,newValue)}
 function buildRahKomakRegistrationCandidates(input){
  if(!input||typeof input!=='object'||Array.isArray(input)||Object.keys(input).sort().join(',')!=='base,exec,mcp,policy')throw new Error('rahekomak_registration_input_invalid');
@@ -158,7 +158,7 @@ function buildRegistrationInstallerSourceFixed(){
  if(syntax.error||syntax.status!==0)throw new Error('registration_installer_fixed_syntax_invalid:'+String(syntax.stderr||syntax.stdout||syntax.error||'').slice(-1200));
  return fixed;
 }
-const FIXED_REGISTRATION_INSTALLER_SOURCE_SHA256='4534acb2f4e2b747c0a89995c30d9413203c2d27939307b20b846145e033e927';
+const FIXED_REGISTRATION_INSTALLER_SOURCE_SHA256='d864c754d4798a8900e49c6094308f731a035bde57e2154c4af6c3e8f7875d44';
 function buildRegistrationStageTransportSourceFixed(){
  const installer=buildRegistrationInstallerSourceFixed();
  const actual=crypto.createHash('sha256').update(installer,'utf8').digest('hex');
