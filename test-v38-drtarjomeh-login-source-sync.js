@@ -63,6 +63,10 @@ test('helper exposes no caller-controlled path, command, branch or revision inpu
   assert.match(source,/GIT_TERMINAL_PROMPT:'0'/);
   assert.doesNotMatch(source,/chownSync\(WORKTREE_ROOT/);
   assert.match(source,/worktree','add','--detach'/);
+  assert.match(source,/assertSafeWorktreeDestination/);
+  assert.match(source,/isSymbolicLink\(\)\|\|!st\.isDirectory\(\)/);
+  assert.match(source,/pushAttempted=true/);
+  assert.match(source,/pushAttempted\?rollbackRemote\(commit\)/);
   assert.match(source,/push','--porcelain','origin','HEAD:'\+TARGET_REF/);
 });
 
