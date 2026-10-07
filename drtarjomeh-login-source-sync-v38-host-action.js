@@ -171,15 +171,35 @@ function ensureWorktreeRoot(sourceStat){
   if(st.uid!==sourceStat.uid)fail('worktree_root_owner_mismatch');
   return st;
 }
+function assertSafeWorktreeDestination(worktree,rel){
+  safeRel(rel);
+  const root=path.resolve(worktree);
+  const parts=rel.split('/');
+  let current=root;
+  for(let i=0;i<parts.length-1;i++){
+    current=path.join(current,parts[i]);
+    const resolved=path.resolve(current);
+    if(resolved!==root&&!resolved.startsWith(root+path.sep))fail('worktree_escape:'+rel);
+    if(fs.existsSync(current)){
+      const st=fs.lstatSync(current);
+      if(st.isSymbolicLink()||!st.isDirectory())fail('worktree_parent_invalid:'+rel);
+    }else{
+      fs.mkdirSync(current,{mode:0o755});
+    }
+  }
+  const dst=path.join(root,rel);
+  const resolvedDst=path.resolve(dst);
+  if(!resolvedDst.startsWith(root+path.sep))fail('worktree_escape:'+rel);
+  if(fs.existsSync(dst)){
+    const st=fs.lstatSync(dst);
+    if(st.isSymbolicLink()||!st.isFile())fail('worktree_target_invalid:'+rel);
+  }
+  return dst;
+}
 function copyPayload(worktree){
   for(const [rel,expected] of Object.entries(PAYLOAD)){
     const src=path.join(EXPECTED_RELEASE,rel);
-    const dst=path.join(worktree,rel);
-    const parent=path.dirname(dst);
-    const resolvedRoot=path.resolve(worktree);
-    const resolvedParent=path.resolve(parent);
-    if(resolvedParent!==resolvedRoot&&!resolvedParent.startsWith(resolvedRoot+path.sep))fail('worktree_escape:'+rel);
-    fs.mkdirSync(parent,{recursive:true});
+    const dst=assertSafeWorktreeDestination(worktree,rel);
     fs.copyFileSync(src,dst);
     fs.chmodSync(dst,0o644);
     if(sha(fs.readFileSync(dst))!==expected)fail('copied_payload_sha_mismatch:'+rel);
@@ -232,6 +252,7 @@ function apply(){
   const worktree=path.join(WORKTREE_ROOT,'drt-login-source-sync-v38-'+process.pid+'-'+Date.now());
   let commit=null;
   let pushed=false;
+  let pushAttempted=false;
   try{
     must(git(SOURCE_REPOSITORY,['worktree','add','--detach',worktree,EXPECTED_REVISION],{timeout:120000}),'worktree_add_failed');
     if(gitText(worktree,['rev-parse','HEAD'],'worktree_head_probe')!==EXPECTED_REVISION)fail('worktree_head_mismatch');
@@ -253,6 +274,7 @@ function apply(){
     must(git(worktree,['commit','--no-gpg-sign','-m',COMMIT_MESSAGE],{timeout:120000,env}),'git_commit_failed');
     commit=gitText(worktree,['rev-parse','HEAD'],'new_commit_probe');
     verifyCommit(worktree,commit);
+    pushAttempted=true;
     must(git(worktree,['push','--porcelain','origin','HEAD:'+TARGET_REF],{timeout:180000}),'git_push_failed');
     pushed=true;
     const remote=remoteBranchState();
@@ -285,7 +307,7 @@ function apply(){
       arbitrary_path:false
     });
   }catch(error){
-    const remoteRollback=pushed?rollbackRemote(commit):{attempted:false,verified:true};
+    const remoteRollback=pushAttempted?rollbackRemote(commit):{attempted:false,verified:true};
     cleanupWorktree(worktree);
     let sourceOk=false;
     let pointerOk=false;
@@ -321,7 +343,7 @@ function manifest(){
 
 module.exports=Object.freeze({
   ACTION,OPERATION,SOURCE_REPOSITORY,PRODUCTION_POINTER,EXPECTED_RELEASE,EXPECTED_REVISION,TARGET_BRANCH,TARGET_REF,
-  WORKTREE_ROOT,PAYLOAD,REQUIRED_CHANGED,safeRel,assertPayload,manifest,preflight,apply
+  WORKTREE_ROOT,PAYLOAD,REQUIRED_CHANGED,safeRel,assertPayload,assertSafeWorktreeDestination,manifest,preflight,apply
 });
 
 if(require.main===module){
