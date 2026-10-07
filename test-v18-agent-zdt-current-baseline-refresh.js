@@ -62,8 +62,110 @@ test('09 registration builder inserts only fixed promotion bindings',()=>{const 
 test('10 duplicate registration is rejected',()=>{const m=load(),a=m.PROMOTION_ACTION;assert.throws(()=>m.buildRegistrationCandidates({base:a,exec:a,mcp:a,policy:JSON.stringify({operations:{},typed_scopes:[]})}))});
 test('11 registration owner paths are fixed and complete',()=>assert.deepEqual(load().REGISTRATION_OWNER_PATHS,{base:'/opt/prhm-agent-selfmaint/server.js',exec:'/opt/prhm-agent-selfmaint-exec/server.js',policy:'/opt/prhm-company-control-plane/config/approval-policy.json',mcp:'/home/agent/ssh-mcp-server/src/plugins/hostActionsV2.js'}));
 test('12 installer is fixed transactional and rollback-safe',()=>{const m=load(),s=installerForContract(m);for(const p of Object.values(m.REGISTRATION_OWNER_PATHS))assert.ok(s.includes(p));for(const h of Object.values(m.RAHEKOMAK_REGISTRATION_BASELINE_SHA256))assert.ok(s.includes(h));for(const h of Object.values(m.RAHEKOMAK_REGISTRATION_CANDIDATE_SHA256))assert.ok(s.includes(h));assert.match(s,/rahekomak_production_deploy_v1/);assert.match(s,/baseline_drift/);assert.match(s,/candidate_sha_mismatch/);assert.match(s,/backup/i);assert.match(s,/rollback/i);assert.match(s,/--check/);assert.match(s,/prhm-company-approval\.service/);assert.match(s,/prhm-agent-mcp-green\.service/);assert.doesNotMatch(s,/'prhm-agent-mcp\.service'/);assert.doesNotMatch(s,/destinationPath|callerContent/)});
-test('13 exported installer SHA equals immutable artifact in pre or post state',()=>{const m=load(),s=installerForContract(m);assert.equal(m.REGISTRATION_INSTALLER_SOURCE_SHA256,'4534acb2f4e2b747c0a89995c30d9413203c2d27939307b20b846145e033e927');assert.equal(m.REGISTRATION_INSTALLER_SOURCE_SHA256,sha(s));assert.match(s,/\.candidate-'\+process\.pid\+'-'\+n\+'\.js'/);let r=cp.spawnSync('/usr/local/bin/prhm-node',['--check','-'],{input:s,encoding:'utf8',timeout:30000,maxBuffer:1000000});assert.equal(r.status,0,String(r.stderr||r.stdout||r.error||''));const state=rahkomakRegistrationState(m);assert.equal(state.pre||state.post,true)});
-test('14 stage transport contract remains fixed after registration post-state',()=>{const m=load(),state=rahkomakRegistrationState(m);assert.equal(m.REGISTRATION_INSTALLER_DESTINATION,STAGED_INSTALLER);assert.equal(m.REGISTRATION_INSTALLER_SOURCE_SHA256,'4534acb2f4e2b747c0a89995c30d9413203c2d27939307b20b846145e033e927');if(state.pre){const s=m.buildRegistrationStageTransportSource();assert.match(s,/INSTALLER_B64/);assert.ok(s.includes(m.REGISTRATION_INSTALLER_SOURCE_SHA256));assert.match(s,/source_sha_mismatch/);assert.match(s,/candidate_sha_mismatch/)}else{assert.equal(state.post,true);assert.equal(fileSha(STAGED_INSTALLER),m.REGISTRATION_INSTALLER_SOURCE_SHA256)}});
+test('13 exported installer SHA equals immutable artifact in pre or post state',()=>{const m=load(),s=installerForContract(m);assert.equal(m.REGISTRATION_INSTALLER_SOURCE_SHA256,'d864c754d4798a8900e49c6094308f731a035bde57e2154c4af6c3e8f7875d44');assert.equal(m.REGISTRATION_INSTALLER_SOURCE_SHA256,sha(s));assert.match(s,/\.candidate-'\+process\.pid\+'-'\+n\+'\.js'/);let r=cp.spawnSync('/usr/local/bin/prhm-node',['--check','-'],{input:s,encoding:'utf8',timeout:30000,maxBuffer:1000000});assert.equal(r.status,0,String(r.stderr||r.stdout||r.error||''));const state=rahkomakRegistrationState(m);assert.equal(state.pre||state.post,true)});
+test('14 stage transport contract remains fixed after registration post-state',()=>{const m=load(),state=rahkomakRegistrationState(m);assert.equal(m.REGISTRATION_INSTALLER_DESTINATION,STAGED_INSTALLER);assert.equal(m.REGISTRATION_INSTALLER_SOURCE_SHA256,'d864c754d4798a8900e49c6094308f731a035bde57e2154c4af6c3e8f7875d44');if(state.pre){const s=m.buildRegistrationStageTransportSource();assert.match(s,/INSTALLER_B64/);assert.ok(s.includes(m.REGISTRATION_INSTALLER_SOURCE_SHA256));assert.match(s,/source_sha_mismatch/);assert.match(s,/candidate_sha_mismatch/)}else{assert.equal(state.post,true);assert.equal(fileSha(STAGED_INSTALLER),m.REGISTRATION_INSTALLER_SOURCE_SHA256)}});
 test('15 stage transport has no caller-controlled dependency',()=>{const m=load(),state=rahkomakRegistrationState(m);if(state.pre){const s=m.buildRegistrationStageTransportSource();assert.doesNotMatch(s,/GENERATOR_SHA/);assert.doesNotMatch(s,/buildRegistrationInstallerSource/);assert.doesNotMatch(s,/bootstrap-host-actions-v18-agent-zdt-current-baseline-refresh\.js/);assert.doesNotMatch(s,/new_content|callerContent|callerPath|destinationPath|req\.body/)}else{assert.equal(state.post,true);const impl=fs.readFileSync(IMPL,'utf8');assert.doesNotMatch(impl,/callerContent|callerPath|destinationPath|req\.body/)}});
 test('16 stage transport is atomic in pre-state and exact-idempotent in post-state',()=>{const m=load(),state=rahkomakRegistrationState(m);assert.equal(m.REGISTRATION_STAGE_TRANSPORT_ACTION,'control_plane_current_baseline_refresh_registration_installer_stage_v1');assert.equal(m.REGISTRATION_INSTALLER_DESTINATION,STAGED_INSTALLER);if(state.pre){const s=m.buildRegistrationStageTransportSource();assert.match(s,/--preflight-only/);assert.match(s,/--apply/);assert.match(s,/renameSync/);assert.match(s,/rollback/i);assert.match(s,/production_owner_mutation:false/);assert.match(s,/database_mutation:false/)}else{assert.equal(state.post,true);assert.equal(fileSha(STAGED_INSTALLER),m.REGISTRATION_INSTALLER_SOURCE_SHA256)}});
-test('17 mediator binding forward-rebase is fixed Level-4/critical and SHA-bound',()=>{const m=load();assert.equal(m.MEDIATOR_TARGET,'/opt/prhm-company-control-plane/root-scripts-stage-mediator-v1/control-plane-root-scripts-stage-mediator-v1.js');assert.equal(m.MEDIATOR_BASELINE_SHA256,'e8fc3f5185f01efeca5563490461566f64fc8bda1534bad5a3c39e73a7108abb');const source=["export const FIXED_BINDING=Object.freeze({","  risk:'critical',","});","export const CONFIRM_LITERAL='CONFIRM_LEVEL_4_CRITICAL';","if(Number(request.level)!==4)throw new Error('request_binding_mismatch');","return {request_id:request.request_id,binding_metadata:{action:FIXED_BINDING.action,operation:FIXED_BINDING.operation,project:FIXED_BINDING.project,environment:FIXED_BINDING.environment,risk:FIXED_BINDING.risk,arguments_sha256:ARGUMENTS_SHA256,level:4,expires_at:request.expires_at??null}};","if(String(second_confirmation||'')!==CONFIRM_LITERAL)throw new Error('critical_second_confirmation_required');"].join('\n');const out=m.buildMediatorBindingCandidate(source);assert.equal(out.ok,true);assert.equal(out.replacement_count,5);assert.match(out.content,/risk:'critical'/);assert.match(out.content,/CONFIRM_LEVEL_4_CRITICAL/);assert.match(out.content,/Number\(request\.level\)!==4/);assert.match(out.content,/level:4/);assert.match(out.content,/critical_second_confirmation_required/);assert.doesNotMatch(out.content,/risk:'high'|CONFIRM_LEVEL_3_PRODUCTION|request\.level\)!==3|level:3|level3_confirmation_required/);assert.equal(out.content,source);assert.equal(out.production_mutation,false);const rkActual=Object.fromEntries(Object.entries(REG_OWNER_PATHS).map(([n,p])=>[n,fileSha(p)]));assert.deepEqual(rkActual,m.RAHEKOMAK_REGISTRATION_BASELINE_SHA256);const rkInput=Object.fromEntries(Object.entries(REG_OWNER_PATHS).map(([n,p])=>[n,fs.readFileSync(p,'utf8')]));const rk=m.buildRahKomakRegistrationCandidates(rkInput);assert.equal(rk.action,'rahekomak_production_deploy_v1');assert.equal(rk.operation,'host_action.rahekomak_production_deploy_v1');assert.deepEqual(rk.candidate_sha256,m.RAHEKOMAK_REGISTRATION_CANDIDATE_SHA256);assert.deepEqual(rk.candidate_sha256,{"base":"5239d19aedfc56f01717655dd5e3aebd294696b4024498f8cdbc43ea30110bf5","exec":"e7587d0a35ccbf78df0a214c6aad6e6415c6430ffa24b77576c12bf32c0f43e6","policy":"59b4164ab87bf09b5c8f7192729bb9216be47db231ed09c8cb1a4b5ffe5e232e","mcp":"0dc6889891749e8b81271819a9afed8ccbeacddc4526a893d363e8d6819ac4a0"});const rkp=JSON.parse(rk.files.policy),rko=rkp.operations['host_action.rahekomak_production_deploy_v1'];assert.equal(rko.level,4);assert.equal(rko.risk,'critical');assert.equal(rko.requires_second_confirmation,true);assert.ok(rkp.typed_scopes.some(x=>x&&x.action==='rahekomak_production_deploy_v1'&&x.operation==='host_action.rahekomak_production_deploy_v1'&&x.risk==='critical'));assert.match(rk.files.exec,/applyRahKomakProductionDeployV1/);assert.match(rk.files.exec,/\/usr\/bin\/systemd-run/);assert.match(rk.files.exec,/ProtectSystem=strict/);assert.match(rk.files.exec,/RAHEKOMAK_DEPLOY_RESULT/);assert.doesNotMatch(rk.files.exec,/process\.argv\[[23]/);assert.doesNotMatch(rk.files.exec,/req\.body|destinationPath|callerContent|callerPath/)});
+test('17 mediator binding forward-rebase is fixed Level-4/critical and SHA-bound',()=>{const m=load();assert.equal(m.MEDIATOR_TARGET,'/opt/prhm-company-control-plane/root-scripts-stage-mediator-v1/control-plane-root-scripts-stage-mediator-v1.js');assert.equal(m.MEDIATOR_BASELINE_SHA256,'e8fc3f5185f01efeca5563490461566f64fc8bda1534bad5a3c39e73a7108abb');const source=["export const FIXED_BINDING=Object.freeze({","  risk:'critical',","});","export const CONFIRM_LITERAL='CONFIRM_LEVEL_4_CRITICAL';","if(Number(request.level)!==4)throw new Error('request_binding_mismatch');","return {request_id:request.request_id,binding_metadata:{action:FIXED_BINDING.action,operation:FIXED_BINDING.operation,project:FIXED_BINDING.project,environment:FIXED_BINDING.environment,risk:FIXED_BINDING.risk,arguments_sha256:ARGUMENTS_SHA256,level:4,expires_at:request.expires_at??null}};","if(String(second_confirmation||'')!==CONFIRM_LITERAL)throw new Error('critical_second_confirmation_required');"].join('\n');const out=m.buildMediatorBindingCandidate(source);assert.equal(out.ok,true);assert.equal(out.replacement_count,5);assert.match(out.content,/risk:'critical'/);assert.match(out.content,/CONFIRM_LEVEL_4_CRITICAL/);assert.match(out.content,/Number\(request\.level\)!==4/);assert.match(out.content,/level:4/);assert.match(out.content,/critical_second_confirmation_required/);assert.doesNotMatch(out.content,/risk:'high'|CONFIRM_LEVEL_3_PRODUCTION|request\.level\)!==3|level:3|level3_confirmation_required/);assert.equal(out.content,source);assert.equal(out.production_mutation,false);const rkActual=Object.fromEntries(
+  Object.entries(REG_OWNER_PATHS).map(([n,p])=>[n,fileSha(p)])
+);
+
+const rkPre=Object.keys(m.RAHEKOMAK_REGISTRATION_BASELINE_SHA256)
+  .every(n=>rkActual[n]===m.RAHEKOMAK_REGISTRATION_BASELINE_SHA256[n]);
+
+const rkPost=Object.keys(m.RAHEKOMAK_REGISTRATION_CANDIDATE_SHA256)
+  .every(n=>rkActual[n]===m.RAHEKOMAK_REGISTRATION_CANDIDATE_SHA256[n]);
+
+assert.equal(
+  rkPre||rkPost,
+  true,
+  'RahKomak registration owners must be exact pre-state or post-state'
+);
+
+if(rkPre){
+  const rkInput=Object.fromEntries(
+    Object.entries(REG_OWNER_PATHS)
+      .map(([n,p])=>[n,fs.readFileSync(p,'utf8')])
+  );
+
+  const rk=m.buildRahKomakRegistrationCandidates(rkInput);
+
+  assert.equal(rk.action,'rahekomak_production_deploy_v1');
+  assert.equal(rk.operation,'host_action.rahekomak_production_deploy_v1');
+  assert.deepEqual(
+    rk.candidate_sha256,
+    m.RAHEKOMAK_REGISTRATION_CANDIDATE_SHA256
+  );
+
+  const rkp=JSON.parse(rk.files.policy);
+  const rko=rkp.operations['host_action.rahekomak_production_deploy_v1'];
+
+  assert.equal(rko.level,4);
+  assert.equal(rko.risk,'critical');
+  assert.equal(rko.requires_second_confirmation,true);
+
+  assert.ok(
+    rkp.typed_scopes.some(
+      x=>x &&
+      x.action==='rahekomak_production_deploy_v1' &&
+      x.operation==='host_action.rahekomak_production_deploy_v1' &&
+      x.risk==='critical'
+    )
+  );
+
+  assert.ok(rk.files.exec.includes('applyRahKomakProductionDeployV1'));
+  assert.ok(rk.files.exec.includes('/usr/bin/systemd-run'));
+  assert.ok(rk.files.exec.includes('ProtectSystem=strict'));
+  assert.ok(rk.files.exec.includes('RAHEKOMAK_DEPLOY_RESULT'));
+
+  for(const bad of [
+    'process.argv[2]',
+    'process.argv[3]',
+    'req.body',
+    'destinationPath',
+    'callerContent',
+    'callerPath'
+  ]) assert.equal(rk.files.exec.includes(bad),false);
+
+}else{
+  assert.deepEqual(
+    rkActual,
+    m.RAHEKOMAK_REGISTRATION_CANDIDATE_SHA256
+  );
+
+  const livePolicy=JSON.parse(
+    fs.readFileSync(REG_OWNER_PATHS.policy,'utf8')
+  );
+
+  const liveOp=
+    livePolicy.operations['host_action.rahekomak_production_deploy_v1'];
+
+  assert.equal(liveOp.level,4);
+  assert.equal(liveOp.risk,'critical');
+  assert.equal(liveOp.requires_second_confirmation,true);
+
+  assert.ok(
+    livePolicy.typed_scopes.some(
+      x=>x &&
+      x.action==='rahekomak_production_deploy_v1' &&
+      x.operation==='host_action.rahekomak_production_deploy_v1' &&
+      x.risk==='critical'
+    )
+  );
+
+  const liveExec=fs.readFileSync(REG_OWNER_PATHS.exec,'utf8');
+
+  assert.ok(liveExec.includes('applyRahKomakProductionDeployV1'));
+  assert.ok(liveExec.includes('/usr/bin/systemd-run'));
+  assert.ok(liveExec.includes('ProtectSystem=strict'));
+  assert.ok(liveExec.includes('RAHEKOMAK_DEPLOY_RESULT'));
+
+  for(const bad of [
+    'process.argv[2]',
+    'process.argv[3]',
+    'req.body',
+    'destinationPath',
+    'callerContent',
+    'callerPath'
+  ]) assert.equal(liveExec.includes(bad),false);
+}});
