@@ -44,6 +44,11 @@ test('payload is exactly the six verified production login files',()=>{
     assert.match(digest,/^[a-f0-9]{64}$/);
   }
   assert.equal(h.assertPayload(),true);
+  assert.deepEqual(h.REQUIRED_CHANGED.slice().sort(),[
+    'common/themes/metronic/LoginAssets.php',
+    'common/themes/metronic/web/css/login.css',
+    'core/themes/codebase/views/layouts/login.php'
+  ].sort());
 });
 
 test('helper exposes no caller-controlled path, command, branch or revision input',()=>{
@@ -56,6 +61,7 @@ test('helper exposes no caller-controlled path, command, branch or revision inpu
   assert.doesNotMatch(source,/\/bin\/(ba)?sh/);
   assert.doesNotMatch(source,/execSync\s*\(/);
   assert.match(source,/GIT_TERMINAL_PROMPT:'0'/);
+  assert.doesNotMatch(source,/chownSync\(WORKTREE_ROOT/);
   assert.match(source,/worktree','add','--detach'/);
   assert.match(source,/push','--porcelain','origin','HEAD:'\+TARGET_REF/);
 });
