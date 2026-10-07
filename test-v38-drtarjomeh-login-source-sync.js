@@ -18,6 +18,7 @@ test('manifest is fixed Level-4 zero-input and never mutates live runtime',()=>{
     assert.equal(x.zero_input,true);
     assert.equal(x.arbitrary_command,false);
     assert.equal(x.arbitrary_path,false);
+    assert.equal(x.production_mutation,false);
     assert.equal(x.database_mutation,false);
     assert.equal(x.live_runtime_mutation,false);
   }
