@@ -20,6 +20,7 @@ function registrationPlan(){
     arbitrary_path:false,
     source_repository_mutation:true,
     remote_git_branch_mutation:true,
+    production_mutation:false,
     live_runtime_mutation:false,
     database_mutation:false
   });
