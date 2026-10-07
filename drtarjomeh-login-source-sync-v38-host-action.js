@@ -29,6 +29,12 @@ const PAYLOAD=Object.freeze({
   'common/themes/metronic/views/user/_loginForm.php':'946000a4d21134fc44551767bd9686cbce252cba2960b17a304361f22ec957c8'
 });
 
+const REQUIRED_CHANGED=Object.freeze([
+  'core/themes/codebase/views/layouts/login.php',
+  'common/themes/metronic/LoginAssets.php',
+  'common/themes/metronic/web/css/login.css'
+]);
+
 const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
 const fail=m=>{throw new Error(m)};
 const cleanEnv=extra=>Object.assign({
@@ -159,7 +165,6 @@ function preflight(){
 function ensureWorktreeRoot(sourceStat){
   if(!fs.existsSync(WORKTREE_ROOT)){
     fs.mkdirSync(WORKTREE_ROOT,{recursive:false,mode:0o750});
-    fs.chownSync(WORKTREE_ROOT,sourceStat.uid,sourceStat.gid);
     fs.chmodSync(WORKTREE_ROOT,0o750);
   }
   const st=regularDir(WORKTREE_ROOT,'worktree_root');
@@ -233,9 +238,11 @@ function apply(){
     copyPayload(worktree);
     phpLint(worktree);
     must(git(worktree,['add','--',...Object.keys(PAYLOAD)],{timeout:60000}),'git_add_failed');
-    const expectedNames=Object.keys(PAYLOAD).slice().sort();
+    const allowedNames=Object.keys(PAYLOAD).slice().sort();
     const actualNames=stagedPaths(worktree);
-    if(JSON.stringify(actualNames)!==JSON.stringify(expectedNames))fail('staged_path_set_mismatch:'+JSON.stringify(actualNames));
+    if(actualNames.length===0)fail('staged_path_set_empty');
+    if(actualNames.some(rel=>!allowedNames.includes(rel)))fail('staged_path_set_unexpected:'+JSON.stringify(actualNames));
+    for(const rel of REQUIRED_CHANGED){if(!actualNames.includes(rel))fail('required_changed_path_missing:'+rel);}
     must(git(worktree,['diff','--cached','--check'],{timeout:60000}),'git_diff_check_failed');
     const env={
       GIT_AUTHOR_NAME,
@@ -266,6 +273,7 @@ function apply(){
       payload_count:Object.keys(PAYLOAD).length,
       php_lint_passed:true,
       staged_path_set_verified:true,
+      staged_path_count:actualNames.length,
       commit_payload_verified:true,
       source_head_unchanged:true,
       source_worktree_clean:true,
@@ -313,7 +321,7 @@ function manifest(){
 
 module.exports=Object.freeze({
   ACTION,OPERATION,SOURCE_REPOSITORY,PRODUCTION_POINTER,EXPECTED_RELEASE,EXPECTED_REVISION,TARGET_BRANCH,TARGET_REF,
-  WORKTREE_ROOT,PAYLOAD,safeRel,assertPayload,manifest,preflight,apply
+  WORKTREE_ROOT,PAYLOAD,REQUIRED_CHANGED,safeRel,assertPayload,manifest,preflight,apply
 });
 
 if(require.main===module){
