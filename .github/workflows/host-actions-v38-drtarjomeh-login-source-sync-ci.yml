@@ -1,0 +1,34 @@
+name: Host Actions v38 DrTarjomeh Login Source Sync CI
+
+on:
+  push:
+    branches:
+      - feature/drtarjomeh-login-source-sync-v38
+    paths:
+      - 'bootstrap-host-actions-v38-drtarjomeh-login-source-sync.js'
+      - 'drtarjomeh-login-source-sync-v38-host-action.js'
+      - 'test-v38-drtarjomeh-login-source-sync.js'
+      - '.github/workflows/host-actions-v38-drtarjomeh-login-source-sync-ci.yml'
+  pull_request:
+    paths:
+      - 'bootstrap-host-actions-v38-drtarjomeh-login-source-sync.js'
+      - 'drtarjomeh-login-source-sync-v38-host-action.js'
+      - 'test-v38-drtarjomeh-login-source-sync.js'
+      - '.github/workflows/host-actions-v38-drtarjomeh-login-source-sync-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax
+        run: |
+          node --check bootstrap-host-actions-v38-drtarjomeh-login-source-sync.js
+          node --check drtarjomeh-login-source-sync-v38-host-action.js
+          node --check test-v38-drtarjomeh-login-source-sync.js
+      - name: Contract
+        run: node --test test-v38-drtarjomeh-login-source-sync.js
