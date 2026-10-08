@@ -1,0 +1,13 @@
+{
+  "schema_version": "prhm.agent-zdt-registry-repair.decision.v2",
+  "status": "retired_after_failed_validation",
+  "failed_candidate_sha256": "dd3aa536f2f04f49a416b4e2cadda1858d524d92af645b28f66116df326b1517",
+  "restored_registry_sha256": "7432741650ee5c5bc3bb72c1403050b27a665e9218153b40e58955da77b471a4",
+  "failed_request_id": "517f7df8-05a3-41e4-bd99-84ca11c9d544",
+  "failure": "mcp_public_health_failed",
+  "root_cause": "duplicate_registration_of_agent_zdt_existing_topology_rolling_refresh_apply_v1",
+  "resolution": "restore_last_healthy_registry_and_use_existing_action_specific_apply_surface",
+  "git_policy": "failed_candidate_remains_in_history_fix_forward_only",
+  "production_application_mutation": false,
+  "database_mutation": false
+}
