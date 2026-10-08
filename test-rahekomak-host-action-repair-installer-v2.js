@@ -52,14 +52,20 @@ test('installer preserves ProtectHome guard, exact backup, integrity, and rollba
   assert.match(source,/source_blob_drift/);
   assert.match(source,/existing_worker_drift/);
   assert.match(source,/time_of_check_drift/);
-  assert.match(source,/postwrite_executor_sha_mismatch/);
-  assert.match(source,/rollback_sha_mismatch/);
+  assert.match(source,/staged_executor_sha_mismatch/);
+  assert.match(source,/live_executor_drift_during_stage/);
+  assert.match(source,/staging_failed_no_live_mutation/);
+  assert.doesNotMatch(source,/atomic\(EXECUTOR,candidate/);
+  assert.doesNotMatch(source,/atomic\(WORKER_TARGET,worker/);
   assert.doesNotMatch(source,/systemctl\('restart',EXECUTOR_SERVICE\)/);
   assert.match(source,/installation_state:'staged_pending_activation'/);
   assert.match(source,/production_runtime_restarted:false/);
   assert.match(source,/requires_separate_activation_approval:true/);
   assert.match(source,/fs\.mkdirSync\(BACKUP_ROOT,\{recursive:true,mode:0o700\}\)/);
   assert.match(source,/flag:'wx'/);
+  assert.match(source,/production_code_written:false/);
+  assert.match(source,/atomic\(executorCandidate,candidate/);
+  assert.match(source,/atomic\(workerCandidate,worker/);
   assert.doesNotMatch(source,/shell\s*:\s*true|execSync\s*\(|\/bin\/bash|\/bin\/sh/);
 });
 
