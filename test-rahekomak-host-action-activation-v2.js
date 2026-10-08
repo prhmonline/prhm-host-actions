@@ -67,7 +67,7 @@ test('activation is independently gated and does not restart on contract-only in
   assert.match(src,/live_executor_not_old_version/);
   assert.match(src,/atomic\(EXECUTOR,candidate/);
   assert.match(src,/atomic\(WORKER,worker/);
-  assert.match(src,/rollback_performed:attempted&&!rollbackError/);
+  assert.match(src,/rollback_performed:wrote&&!rollbackError/);
   assert.match(src,/persistJson\(RESULT,record\)/);
   assert.match(src,/socketPath:SOCKET,path:'\/health'/);
   assert.doesNotMatch(src,/ProtectHome=no|shell\s*:\s*true|execSync\(/);
