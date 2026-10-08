@@ -55,7 +55,16 @@ function validateStageContract(stage){
     ||stage.worker_git_blob!==WORKER_BLOB
     ||typeof stage.candidate_sha256!=='string'||!/^[a-f0-9]{64}$/.test(stage.candidate_sha256))
       fail('stage_contract_invalid');
-  if(typeof stage.backup!=='string'||!new RegExp('^'+BACKUP_ROOT+'/[0-9]{14}-[0-9]+  if(sha256(fileBytes(path.join(stage.backup,'executor.before')))!==OLD_SHA)
+  if(typeof stage.backup!=='string'||!new RegExp('^'+BACKUP_ROOT+'/[0-9]{14}-[0-9]+$').test(stage.backup))
+      fail('stage_backup_scope_invalid');
+  if(typeof stage.worker_preexisting!=='boolean')fail('stage_worker_presence_invalid');
+  if(stage.worker_preexisting&&(!Number.isInteger(stage.worker_original_mode)||
+      stage.worker_original_mode<0||stage.worker_original_mode>0o777))fail('stage_worker_mode_invalid');
+  return stage;
+}
+function verifyStage(stage){
+  validateStageContract(stage);
+  if(sha256(fileBytes(path.join(stage.backup,'executor.before')))!==OLD_SHA)
       fail('stage_backup_sha_invalid');
   if(sha256(fileBytes(EXECUTOR))!==stage.candidate_sha256)
       fail('staged_executor_sha_drift');
