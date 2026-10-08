@@ -19,6 +19,7 @@ function harness({listing=DISKS,failAt='',job='ok',artifact='ok'}={}){
    return '';
   },
   createOutput(dir,xml,body){calls.push('createOutput');assert.match(xml,/backup\.xml$/);assert.match(body,/domainbackup mode='push'/)},
+  preflight(){calls.push('preflight');return {libvirt_backup_api_supported:true,guest_agent_responsive:true,qemu_output_writable:true,selinux_context_verified:true,stage_path_exclusive:true}},
   artifact(){return artifact==='ok'?{regular:true,symlink:false,bytes:1024,sha256:HASH}:{regular:false,symlink:false,bytes:0,sha256:''}},
   poll(){calls.push('poll')}
  };
@@ -50,6 +51,15 @@ test('live VM full push backup verifies thaw, completion, artifact hash',()=>{
  assert.equal(r.offsite_verified,false);
  assert(h.calls.indexOf('/usr/bin/virsh domfsfreeze prhm-production')<h.calls.indexOf('/usr/bin/virsh backup-begin prhm-production '+m.ROOT+'/'+RUN+'/vm/prhm-production/backup.xml'));
  assert(h.calls.indexOf('/usr/bin/virsh backup-begin prhm-production '+m.ROOT+'/'+RUN+'/vm/prhm-production/backup.xml')<h.calls.indexOf('/usr/bin/virsh domfsthaw prhm-production'));
+});
+test('unsafe runtime preflight blocks VM freeze and backup begin',()=>{
+ const h=harness();h.adapter.preflight=()=>({libvirt_backup_api_supported:true,guest_agent_responsive:true,qemu_output_writable:false,selinux_context_verified:true,stage_path_exclusive:true});
+ assert.throws(()=>m.executeDomainBackup({domain:'prhm-production',runId:RUN,adapter:h.adapter,freeBytes:429*G,vmVirtualBytes:263*G}),/runtime_preflight_failed:qemu_output_writable/);
+ assert(!h.calls.some(x=>x.includes('domfsfreeze')||x.includes('backup-begin')));
+});
+test('unknown VM is rejected before external command',()=>{
+ const h=harness();assert.throws(()=>m.executeDomainBackup({domain:'unknown-vm',runId:RUN,adapter:h.adapter,freeBytes:429*G,vmVirtualBytes:263*G}),/domain_not_allowlisted/);
+ assert.equal(h.calls.length,0);
 });
 test('begin failure still invokes thaw',()=>{
  const h=harness({failAt:'backup-begin'});
