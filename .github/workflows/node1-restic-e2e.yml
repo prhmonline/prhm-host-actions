@@ -1,0 +1,60 @@
+name: Node1 synthetic Restic backup and restore
+on:
+  pull_request:
+    paths:
+      - 'node1-*.js'
+      - 'test-node1-*.js'
+      - '.github/workflows/node1-restic-e2e.yml'
+  push:
+    branches:
+      - 'feature/node1-backup-assurance-v1'
+    paths:
+      - '.github/workflows/node1-restic-e2e.yml'
+permissions:
+  contents: read
+jobs:
+  synthetic-restic-restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Install Restic in isolated GitHub runner
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq restic
+          restic version
+      - name: Encrypted backup, full data check, independent restore and missing-pack detection
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          repo="$RUNNER_TEMP/restic-node1-fixture-repo"
+          input="$RUNNER_TEMP/node1-synthetic-input"
+          restored="$RUNNER_TEMP/node1-synthetic-recovered"
+          password_file="$RUNNER_TEMP/node1-restic-test-password"
+          mkdir -p "$input"/{etc,mariadb,vm} "$restored"
+          openssl rand -hex 32 > "$password_file"
+          chmod 600 "$password_file"
+          printf 'nonproduction config fixture\n' > "$input/etc/config.txt"
+          printf 'CREATE DATABASE test_only;\nCREATE TABLE test_only.fixture (id INT);\nINSERT INTO test_only.fixture VALUES (1);\n' > "$input/mariadb/all-databases.sql"
+          head -c 1048576 /dev/urandom > "$input/vm/prhm-production.qcow2"
+          head -c 262144 /dev/urandom > "$input/vm/imotion-directadmin.qcow2"
+          restic -r "$repo" --password-file "$password_file" init
+          restic -r "$repo" --password-file "$password_file" backup --tag node1-synthetic-ci "$input"
+          restic -r "$repo" --password-file "$password_file" check --read-data
+          restic -r "$repo" --password-file "$password_file" restore latest --target "$restored"
+          rel="$(printf '%s' "$input" | sed 's#^/##')"
+          for f in etc/config.txt mariadb/all-databases.sql vm/prhm-production.qcow2 vm/imotion-directadmin.qcow2; do
+            cmp -- "$input/$f" "$restored/$rel/$f"
+          done
+          printf 'SYNTHETIC_RESTIC_FULL_RESTORE=PASS\n'
+          broken="$RUNNER_TEMP/node1-synthetic-broken-repo"
+          cp -a "$repo" "$broken"
+          pack="$(find "$broken/data" -type f -print -quit)"
+          test -n "$pack"
+          rm -- "$pack"
+          if restic -r "$broken" --password-file "$password_file" check --read-data > /dev/null 2>&1; then
+            echo 'Missing backup pack was not detected' >&2
+            exit 1
+          fi
+          printf 'SYNTHETIC_RESTIC_MISSING_PACK=DETECTED\n'
