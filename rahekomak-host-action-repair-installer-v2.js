@@ -52,7 +52,8 @@ function buildCandidate(executorSource){
 function manifest(){
   return Object.freeze({action:ACTION,repository:REPO,release_head:RELEASE_HEAD,
     executor_preimage_sha256:EXECUTOR_PREIMAGE_SHA256,worker_git_blob:WORKER_GIT_BLOB,
-    patch_git_blob:PATCH_GIT_BLOB,production_mutation:false,
+    patch_git_blob:PATCH_GIT_BLOB,production_mutation:'approved_apply_only',
+    preflight_mutation:false,
     source_git_commit_required:true,level:4,one_time_approval_required:true,
     no_arbitrary_command:true,no_arbitrary_path:true,rollback_required:true,
     installer_status:'candidate_only'});
