@@ -1,0 +1,39 @@
+name: Installer Refresh State Helper v37 Surface CI
+
+on:
+  push:
+    branches:
+      - fix/installer-refresh-state-helper-v37-candidate-v1
+    paths:
+      - 'installer-refresh-state-helper-rebase-v37.js'
+      - 'test-installer-refresh-state-helper-rebase-v37.js'
+      - 'waha-student-bridge-registration-surface-v37.mjs'
+      - 'test-waha-student-bridge-registration-surface-v37.js'
+      - '.github/workflows/installer-refresh-state-helper-v37-surface-ci.yml'
+  pull_request:
+    paths:
+      - 'installer-refresh-state-helper-rebase-v37.js'
+      - 'test-installer-refresh-state-helper-rebase-v37.js'
+      - 'waha-student-bridge-registration-surface-v37.mjs'
+      - 'test-waha-student-bridge-registration-surface-v37.js'
+      - '.github/workflows/installer-refresh-state-helper-v37-surface-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax
+        run: |
+          node --check installer-refresh-state-helper-rebase-v37.js
+          node --check test-installer-refresh-state-helper-rebase-v37.js
+          node --check waha-student-bridge-registration-surface-v37.mjs
+          node --check test-waha-student-bridge-registration-surface-v37.js
+      - name: Contract
+        run: |
+          node --test test-installer-refresh-state-helper-rebase-v37.js
+          node --test test-waha-student-bridge-registration-surface-v37.js
