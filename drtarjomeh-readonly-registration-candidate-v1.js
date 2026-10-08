@@ -105,7 +105,7 @@ function selftest(){
   const artifacts=pins.validateArtifactBytes();
   if(artifacts.length!==3||artifacts.some(x=>x.status!=='MATCH'))fail('artifact_sha_drift');
   const api="'use strict';\nfunction registerHonartikIticketV14PreflightRoutes(app,{auth}){\n  app.post('/test',auth,async(req,res)=>{\n  });\n}\nmodule.exports={};\n";
-  const mcp="import { textResult } from '../core/result.js';\nexport function registerHonartikIticketPreflightPlugin(mcp,{agent}){\n  mcp.registerTool('test',{inputSchema:{}},async()=>textResult(await agent.callAgent('/honartik/iticket/v14/preflight','POST',{})));\n}\n";
+  const mcp="import { textResult } from '../core/result.js';\nexport function registerHonartikIticketPreflightPlugin(mcp,{agent}){\n  mcp.registerTool('test',{\n    inputSchema:{}\n  },async()=>textResult(await agent.callAgent('/honartik/iticket/v14/preflight','POST',{})));\n}\n";
   const a=buildApi(api), b=buildMcp(mcp);
   if(count(a,'registerDrtarjomehReadonlyPreflightRoute(app,{auth});')!==1||
      count(b,'registerDrtarjomehCurrentReleasePreflight(mcp,{agent});')!==1)fail('candidate_registration_cardinality');
