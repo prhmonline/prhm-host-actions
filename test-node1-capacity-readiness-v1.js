@@ -9,13 +9,20 @@ const disks=()=>Object.fromEntries(m.REQUIRED_DOMAINS.map(d=>[d,{source:V.DOMAIN
   virtualBytes:d==='prhm-production'?300*GiB:20*GiB,
   physicalBytes:d==='prhm-production'?250*GiB:2*GiB,
   geometrySource:'qemu-img-info'}]));
-const input=()=>({freeBytes:429*GiB,dbStagingBytes:3*GiB,vmDisks:disks(),checks:okChecks()});
+const input=()=>({freeBytes:550*GiB,dbStagingBytes:3*GiB,vmDisks:disks(),checks:okChecks()});
 test('all static checks with verified aggregate geometry can pass, never approve deployment',()=>{
  const x=m.assess(input());
  assert.equal(x.all_static_gates_pass,true);
  assert.equal(x.approved_for_production,false);
  assert.equal(x.capacity.virtualVmBytes,320*GiB);
  assert.equal(x.capacity.requiredBytes,Math.ceil(323*GiB*1.2)+80*GiB);
+});
+test('429 GiB is inadequate for the synthetic 320 GiB combined virtual VM budget',()=>{
+ const p=input();p.freeBytes=429*GiB;
+ const r=m.assess(p);
+ assert.equal(r.all_static_gates_pass,false);
+ assert.equal(r.approved_for_production,false);
+ assert(r.missing.includes('aggregate_staging_capacity_insufficient'));
 });
 test('physical qcow2 byte size cannot substitute for qemu virtual geometry',()=>{
  const p=input();
