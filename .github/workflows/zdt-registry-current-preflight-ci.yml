@@ -1,0 +1,31 @@
+name: ZDT Registry Current Preflight CI
+
+on:
+  pull_request:
+    paths:
+      - 'zdt-registry-current-preflight-v1.js'
+      - 'test-zdt-registry-current-preflight-v1.js'
+      - '.github/workflows/zdt-registry-current-preflight-ci.yml'
+  push:
+    branches:
+      - 'fix/zdt-registry-current-preflight-20261008'
+    paths:
+      - 'zdt-registry-current-preflight-v1.js'
+      - 'test-zdt-registry-current-preflight-v1.js'
+      - '.github/workflows/zdt-registry-current-preflight-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node --check zdt-registry-current-preflight-v1.js
+      - run: node --check test-zdt-registry-current-preflight-v1.js
+      - run: node --test test-zdt-registry-current-preflight-v1.js
