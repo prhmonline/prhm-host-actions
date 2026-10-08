@@ -1,0 +1,44 @@
+name: DrTarjomeh Agent 3 Read-Only Registration CI
+
+on:
+  push:
+    branches:
+      - feature/drtarjomeh-agent3-readonly-registration-20261008
+    paths:
+      - 'drtarjomeh-preflight-agent-api-route-v1.js'
+      - 'drtarjomeh-preflight-mcp-adapter-v1.mjs'
+      - 'test-drtarjomeh-preflight-registration-v1.js'
+      - 'drtarjomeh-current-release-preflight-v1.js'
+      - '.github/workflows/drtarjomeh-agent3-readonly-registration-ci.yml'
+  pull_request:
+    paths:
+      - 'drtarjomeh-preflight-agent-api-route-v1.js'
+      - 'drtarjomeh-preflight-mcp-adapter-v1.mjs'
+      - 'test-drtarjomeh-preflight-registration-v1.js'
+      - 'drtarjomeh-current-release-preflight-v1.js'
+      - '.github/workflows/drtarjomeh-agent3-readonly-registration-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Syntax
+        run: |
+          node --check drtarjomeh-preflight-agent-api-route-v1.js
+          node --check drtarjomeh-preflight-mcp-adapter-v1.mjs
+          node --check test-drtarjomeh-preflight-registration-v1.js
+      - name: Contract
+        run: node --test test-drtarjomeh-preflight-registration-v1.js test-drtarjomeh-current-release-preflight-v1.js
+      - name: Reject host mutation surfaces in production adapters
+        run: |
+          if grep -En 'child_process|execSync|spawnSync|writeFile|unlinkSync|renameSync|chmodSync|chownSync|https?\.request|fetch\(|eval\(' drtarjomeh-preflight-agent-api-route-v1.js drtarjomeh-preflight-mcp-adapter-v1.mjs; then
+            echo 'Forbidden host mutation/command/network surface'
+            exit 1
+          fi
