@@ -1,0 +1,36 @@
+name: DrTarjomeh Read-Only Transactional Registration CI
+on:
+  push:
+    branches:
+      - feature/drtarjomeh-readonly-transactional-installer-20261009
+    paths:
+      - 'drtarjomeh-readonly-registration-transaction-v1.js'
+      - 'test-drtarjomeh-readonly-registration-transaction-v1.js'
+      - '.github/workflows/drtarjomeh-readonly-registration-transaction-ci.yml'
+  pull_request:
+    paths:
+      - 'drtarjomeh-readonly-registration-transaction-v1.js'
+      - 'test-drtarjomeh-readonly-registration-transaction-v1.js'
+      - '.github/workflows/drtarjomeh-readonly-registration-transaction-ci.yml'
+permissions:
+  contents: read
+jobs:
+  transactional:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Parse registration transaction and tests
+        run: |
+          node --check drtarjomeh-readonly-registration-transaction-v1.js
+          node --check test-drtarjomeh-readonly-registration-transaction-v1.js
+      - name: Fail-closed filesystem + rollback contracts
+        run: node --test test-drtarjomeh-readonly-registration-transaction-v1.js
+      - name: Block direct service, shell and remote mutation surfaces
+        run: |
+          if grep -En 'child_process|systemctl|execFile|spawnSync|https?\.request|fetch\(|eval\(' drtarjomeh-readonly-registration-transaction-v1.js; then
+            echo 'Forbidden shell, network or direct service control'
+            exit 1
+          fi
