@@ -38,7 +38,9 @@ test('route calls exactly the fixed operation with zero input and produces sanit
  assert.deepEqual(requests,[{op:'node1_vm_geometry_readonly_api_v1',payload:{}}]);
  assert.equal(reply.payload.all_domains_verified,true);
  assert.equal(reply.payload.totalVirtualBytes,240*GiB);
- assert(!JSON.stringify(reply.payload).includes('source'));
+ assert.equal(reply.payload.source,'agent3_primary_readonly');
+ assert(!JSON.stringify(reply.payload).includes('/var/lib/libvirt/images/'));
+ assert(!JSON.stringify(reply.payload).includes('Mountpoint'));
 });
 test('route rejects attempted arbitrary command before contacting backend',async()=>{
  let called=false;
