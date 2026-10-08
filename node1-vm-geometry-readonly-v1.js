@@ -55,7 +55,7 @@ function validateFsInfo(output){
   requireValid(text.length>0&&text.length<32768,'guest_agent_empty_or_too_large');
   requireValid(!/error:|failed|not connected|not supported|not running|unavailable/i.test(text),'guest_agent_error');
   // The "domfsinfo" reply may contain guest paths. Never return the raw output.
-  const rows=text.split(/\r?\n/).filter(x=>/^\s*\d+\s+/.test(x));
+  const rows=text.split(/\r?\n/).filter(x=>/^\s*\/\S*\s+\S+\s+\S+(?:\s+\S+)?\s*$/.test(x));
   requireValid(rows.length>=1,'guest_fsinfo_missing');
   return Object.freeze({guestAgentResponsive:true,mountedFilesystems:rows.length});
 }
