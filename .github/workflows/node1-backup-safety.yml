@@ -31,4 +31,5 @@ jobs:
         run: |
           node --check node1-backup-implementation-v1.js
           node --check node1-backup-source-v1.js
-          node --test test-node1-backup-implementation-v1.js test-node1-backup-source-v1.js
+          node --check node1-live-vm-backup-v1.js
+          node --test test-node1-backup-implementation-v1.js test-node1-backup-source-v1.js test-node1-live-vm-backup-v1.js
