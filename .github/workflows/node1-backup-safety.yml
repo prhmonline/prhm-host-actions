@@ -2,17 +2,17 @@ name: Node1 backup safety contracts
 on:
   pull_request:
     paths:
-      - 'node1-backup-*.js'
+      - 'node1-*.js'
       - 'bootstrap-host-actions-node1-backup-implementation-v1.js'
-      - 'test-node1-backup-*.js'
+      - 'test-node1-*.js'
       - '.github/workflows/node1-backup-safety.yml'
   push:
     branches:
       - 'feature/node1-backup-assurance-v1'
     paths:
-      - 'node1-backup-*.js'
+      - 'node1-*.js'
       - 'bootstrap-host-actions-node1-backup-implementation-v1.js'
-      - 'test-node1-backup-*.js'
+      - 'test-node1-*.js'
       - '.github/workflows/node1-backup-safety.yml'
 permissions:
   contents: read
