@@ -98,6 +98,7 @@ function applyApproved(){
   const originalWorker=workerExisted?fs.readFileSync(WORKER_TARGET):null;
   const stamp=new Date().toISOString().replace(/[-:.TZ]/g,'').slice(0,14);
   const backup=path.join(BACKUP_ROOT,stamp+'-'+process.pid);
+  fs.mkdirSync(BACKUP_ROOT,{recursive:true,mode:0o700});
   fs.mkdirSync(backup,{recursive:false,mode:0o700});
   fs.writeFileSync(path.join(backup,'executor.before'),original,{mode:0o600,flag:'wx'});
   if(workerExisted)fs.writeFileSync(path.join(backup,'worker.before'),originalWorker,{mode:0o600,flag:'wx'});
