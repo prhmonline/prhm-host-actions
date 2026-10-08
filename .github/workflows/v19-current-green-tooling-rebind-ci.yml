@@ -1,0 +1,34 @@
+name: V19 current GREEN tooling rebind CI
+
+on:
+  pull_request:
+    paths:
+      - 'zdt-v19-current-green-tooling-rebind-v1.js'
+      - 'test-zdt-v19-current-green-tooling-rebind-v1.js'
+      - '.github/workflows/v19-current-green-tooling-rebind-ci.yml'
+  push:
+    branches:
+      - 'fix/v19-current-green-sha-rebind-20261008'
+    paths:
+      - 'zdt-v19-current-green-tooling-rebind-v1.js'
+      - 'test-zdt-v19-current-green-tooling-rebind-v1.js'
+      - '.github/workflows/v19-current-green-tooling-rebind-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Syntax check implementation
+        run: node --check zdt-v19-current-green-tooling-rebind-v1.js
+      - name: Syntax check test
+        run: node --check test-zdt-v19-current-green-tooling-rebind-v1.js
+      - name: Run V19 tooling rebind contract
+        run: node --test test-zdt-v19-current-green-tooling-rebind-v1.js
