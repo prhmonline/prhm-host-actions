@@ -1,0 +1,59 @@
+{
+  "schema_version": "prhm.drtarjomeh.readonly-registration-pins.v1",
+  "title": "DrTarjomeh Oct-06 Release Read-Only Preflight Agent 3 Registration",
+  "mode": "preflight_only",
+  "production_mutation_authorized": false,
+  "registration_authorized": false,
+  "arbitrary_commands_allowed": false,
+  "provider_credentials_returned": false,
+  "expected_application_release": "20261006-224241-0e8686eed30f",
+  "host_actions_repository": "prhmonline/prhm-host-actions",
+  "approved_adapter_merge_commit": "858fba81f53be63c1257b637fb4a9ca39c7fb7a4",
+  "approved_audit_merge_commit": "d2a56b13a7c076552461bea4d6ea7aaf8e02b683",
+  "application_remediation_commit": "f22b1d17801239f7539f84e5aa8b91250c87dc58",
+  "approved_artifacts": [
+    {
+      "path": "drtarjomeh-current-release-preflight-v1.js",
+      "git_blob_sha": "b69bcc0bab682bd741c66d93b86c82c2091db7c8"
+    },
+    {
+      "path": "drtarjomeh-preflight-agent-api-route-v1.js",
+      "git_blob_sha": "f6d5f921f3903a7da0c6c1873f908fc811a7f5a6"
+    },
+    {
+      "path": "drtarjomeh-preflight-mcp-adapter-v1.mjs",
+      "git_blob_sha": "8103dd0dc7527180dbfdb595501a7112841d31b4"
+    }
+  ],
+  "live_control_plane_preimages": [
+    {
+      "root": "/home/agent/ssh-agent-api",
+      "path": "server.js",
+      "sha256": "c8af6a5ce5955629e5d6dd7737337d26164a267c00de36cd4ebec89a9e5a890c"
+    },
+    {
+      "root": "/home/agent/ssh-agent-api",
+      "path": "honartikIticketV14PreflightRoutes.js",
+      "sha256": "d5f18db17ab57c9f82c1d3a6b9d1805e12ba813fb9a80001bdb781c42eefc42c"
+    },
+    {
+      "root": "/home/agent/ssh-mcp-server",
+      "path": "src/core/registry.js",
+      "sha256": "7432741650ee5c5bc3bb72c1403050b27a665e9218153b40e58955da77b471a4"
+    },
+    {
+      "root": "/home/agent/ssh-mcp-server",
+      "path": "src/plugins/honartikIticketPreflight.js",
+      "sha256": "963529d9ebec49e64ea98798ca0dbf2cd8542f4fb648213a05cb3351f83d28a2"
+    }
+  ],
+  "gates": [
+    "FAIL_CLOSED_ON_ANY_LIVE_SHA_DRIFT",
+    "CONFIRM_API_WRAPPER_ROUTE_REGISTRATION_PATH",
+    "CONFIRM_MCP_REGISTRY_ADDITIVE_REGISTRATION_PATH",
+    "PASS_CONTRACT_CI",
+    "SHA_BOUND_ARTIFACT_INSTALL_WITH_ROLLBACK",
+    "EXPLICIT_LEVEL_4_FOR_ANY_CONTROL_PLANE_MUTATION",
+    "AUDIT_ONLY_NO_PRODUCTION_CUTOVER"
+  ]
+}
