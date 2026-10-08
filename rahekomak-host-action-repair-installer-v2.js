@@ -22,6 +22,9 @@ const EXECUTOR_PREIMAGE_SHA256='410406ba0965ef3a5cad6da6306a85335e38acc3637fb6ed
 const WORKER_GIT_BLOB='6b8df4e4d5e2d7c057251e58717c5b00d5307287';
 const PATCH_GIT_BLOB='255f350ad4a5f29192156fe9c4565ba8cedead3a';
 const BACKUP_ROOT='/var/backups/prhm-rahekomak-host-action-repair-v2';
+const STATE_ROOT='/var/lib/prhm-agent-selfmaint-exec/rahekomak-host-action-repair-v2';
+const STAGE=path.join(STATE_ROOT,'stage.json');
+const ACTIVATION_RESULT=path.join(STATE_ROOT,'activation-result.json');
 const EXECUTOR_SERVICE='prhm-agent-selfmaint-exec.service';
 const RELEASE_HEAD='7f2ea82b0865bb64c8adbc3192e8547fe4f43c25';
 
@@ -91,6 +94,7 @@ function applyApproved(){
   // The trusted typed Host Action must authenticate and authorize this call.
   // This function deliberately accepts no path, command, SHA or token inputs.
   const pre=preflight();
+  if(fs.existsSync(STAGE)||fs.existsSync(ACTIVATION_RESULT))fail('activation_stage_already_exists');
   const original=fs.readFileSync(EXECUTOR);
   const worker=fs.readFileSync(WORKER_SOURCE);
   const candidate=Buffer.from(buildCandidate(original.toString('utf8')),'utf8');
@@ -98,6 +102,7 @@ function applyApproved(){
     fail('time_of_check_drift');
   const workerExisted=fs.existsSync(WORKER_TARGET);
   const originalWorker=workerExisted?fs.readFileSync(WORKER_TARGET):null;
+  const originalWorkerMode=workerExisted?(fs.lstatSync(WORKER_TARGET).mode&0o777):null;
   const stamp=new Date().toISOString().replace(/[-:.TZ]/g,'').slice(0,14);
   const backup=path.join(BACKUP_ROOT,stamp+'-'+process.pid);
   fs.mkdirSync(BACKUP_ROOT,{recursive:true,mode:0o700});
@@ -115,6 +120,13 @@ function applyApproved(){
     // Activation must be independently authorized and can occur only after the
     // original request has returned and a controlled poststate verifier is ready.
     if(systemctl('is-active',EXECUTOR_SERVICE)!=='active')fail('executor_not_active');
+    fs.mkdirSync(STATE_ROOT,{recursive:true,mode:0o700});
+    const stage={action:ACTION,status:'staged_pending_activation',
+      original_sha256:EXECUTOR_PREIMAGE_SHA256,candidate_sha256:pre.candidate_sha256,
+      release_head:RELEASE_HEAD,worker_git_blob:WORKER_GIT_BLOB,
+      worker_preexisting:workerExisted,worker_original_mode:originalWorkerMode,
+      backup,staged_at:new Date().toISOString()};
+    atomic(STAGE,Buffer.from(JSON.stringify(stage)+'\n'),0o600);
     return {ok:true,action:ACTION,source_sha256:pre.source_sha256,
       installed_sha256:pre.candidate_sha256,release_head:RELEASE_HEAD,
       timestamp:new Date().toISOString(),target:EXECUTOR,backup,
@@ -124,6 +136,7 @@ function applyApproved(){
       requires_fresh_deploy_approval:true};
   }catch(err){
     if(changed||fs.existsSync(backup)){
+      try{if(fs.existsSync(STAGE))fs.unlinkSync(STAGE)}catch{}
       let rollbackFailed=null;
       try{
         atomic(EXECUTOR,original,pre.executor_mode);
@@ -140,6 +153,6 @@ function applyApproved(){
   }
 }
 module.exports={ACTION,REPO,EXECUTOR,WORKER_TARGET,EXECUTOR_PREIMAGE_SHA256,
-  WORKER_GIT_BLOB,PATCH_GIT_BLOB,RELEASE_HEAD,manifest,gitBlob,buildCandidate,
+  WORKER_GIT_BLOB,PATCH_GIT_BLOB,RELEASE_HEAD,STATE_ROOT,STAGE,manifest,gitBlob,buildCandidate,
   preflight,applyApproved};
 if(require.main===module)process.stdout.write(JSON.stringify(manifest())+'\n');
