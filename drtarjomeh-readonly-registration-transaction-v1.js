@@ -59,7 +59,12 @@ function inspect(fsImpl,entry){
 function safeWrite(fsImpl,file,bytes,mode,uid,gid){
   const fd=fsImpl.openSync(file,'wx',mode);
   try{
-    fsImpl.writeSync(fd,bytes,0,bytes.length,0);
+    let offset=0;
+    while(offset<bytes.length){
+      const n=fsImpl.writeSync(fd,bytes,offset,bytes.length-offset,offset);
+      if(!Number.isInteger(n)||n<=0)fail('short_atomic_write');
+      offset+=n;
+    }
     fsImpl.fchmodSync(fd,mode);
     if(typeof uid==='number'&&typeof gid==='number')fsImpl.fchownSync(fd,uid,gid);
     fsImpl.fsyncSync(fd);
@@ -143,6 +148,9 @@ function executePrepared(entries,{io=fs,backupRoot=BACKUP_ROOT,verifyApproval,ac
     activated=true;
     if(!health||health.api_ok!==true||health.mcp_ok!==true||
        health.audit_contract_ok!==true)fail('postinstall_health_failed');
+    safeWrite(io,path.join(folder,'outcome.json'),
+      Buffer.from(JSON.stringify({status:'INSTALLED_VERIFIED',api_ok:true,mcp_ok:true,
+        audit_contract_ok:true,transaction:txn})+'\n'),0o600,null,null);
     return {ok:true,status:'INSTALLED_VERIFIED',transaction:txn,
       files:entries.map(e=>({target:e.target,sha256:e.new_sha256})),
       approval_level:4,production_app_mutation:false,database_mutation:false,
@@ -166,7 +174,16 @@ function executePrepared(entries,{io=fs,backupRoot=BACKUP_ROOT,verifyApproval,ac
       try{const health=activate('rollback');if(!health||health.api_ok!==true||health.mcp_ok!==true)fail('rollback_health_failed');}
       catch(e){rollback_errors.push(String(e.message||e));}
     }
-    const state=rollback_errors.length?'ROLLBACK_INCOMPLETE':'ROLLED_BACK';
+    let state=rollback_errors.length?'ROLLBACK_INCOMPLETE':'ROLLED_BACK';
+    try{
+      if(io.existsSync(folder)){
+        safeWrite(io,path.join(folder,'outcome.json'),
+          Buffer.from(JSON.stringify({status:state,phase,
+            cause:String(error.message||error).slice(0,160),
+            rollback_errors:rollback_errors.map(x=>String(x).slice(0,120))})+'\n'),
+          0o600,null,null);
+      }
+    }catch(e){rollback_errors.push('audit_outcome_write_failed');state='ROLLBACK_INCOMPLETE';}
     const wrapped=new Error(state+':'+String(error.message||error)+':phase='+phase+
       (rollback_errors.length?':'+rollback_errors.join('|'):''));
     wrapped.rollback_status=state;
