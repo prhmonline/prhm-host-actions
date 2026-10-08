@@ -1,0 +1,39 @@
+name: DrTarjomeh Read-Only Registration Candidate CI
+on:
+  push:
+    branches:
+      - feature/drtarjomeh-readonly-registration-installer-20261009
+    paths:
+      - 'drtarjomeh-readonly-registration-candidate-v1.js'
+      - 'test-drtarjomeh-readonly-registration-candidate-v1.js'
+      - 'drtarjomeh-preflight-agent3-registration-pins-v1.json'
+      - '.github/workflows/drtarjomeh-readonly-registration-candidate-ci.yml'
+  pull_request:
+    paths:
+      - 'drtarjomeh-readonly-registration-candidate-v1.js'
+      - 'test-drtarjomeh-readonly-registration-candidate-v1.js'
+      - '.github/workflows/drtarjomeh-readonly-registration-candidate-ci.yml'
+permissions:
+  contents: read
+jobs:
+  candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Syntax
+        run: |
+          node --check drtarjomeh-readonly-registration-candidate-v1.js
+          node --check test-drtarjomeh-readonly-registration-candidate-v1.js
+      - name: SHA-pinned artifact selftest
+        run: node drtarjomeh-readonly-registration-candidate-v1.js --selftest-only
+      - name: Fail-closed contract suite
+        run: node --test test-drtarjomeh-readonly-registration-candidate-v1.js
+      - name: No host mutation or shell surfaces
+        run: |
+          if grep -En 'child_process|execSync|spawnSync|execFile|writeFile|unlinkSync|renameSync|chmodSync|chownSync|systemctl|fetch\(|https?\.request' drtarjomeh-readonly-registration-candidate-v1.js; then
+            echo 'Forbidden host mutation or command surface'
+            exit 1
+          fi
