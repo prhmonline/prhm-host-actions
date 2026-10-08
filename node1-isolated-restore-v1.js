@@ -92,9 +92,9 @@ function closureFromEvidence(backup,offsiteEvidence,restoreEvidence,preflight){
  const evaluated=offsite.closureGate(gates);
  // An integrity receipt from a real independent verifier is still required
  // for production. In-process synthetic adapter receipts cannot grant it.
- const production_attested=restoreEvidence?.production_attestation_verified===true &&
-   restoreEvidence?.attestation_runId===runId &&
-   restoreEvidence?.attestation_snapshotId===snapshotId;
+ // Until a cryptographically verified, pinned-trust-root attestation is wired,
+ // receipts and self-declared "verified" flags are untrusted. Stay RED.
+ const production_attested=false;
  const ok=evaluated.ok&&identities_match&&production_attested;
  return Object.freeze({
    gates,identities_match,production_attested,
