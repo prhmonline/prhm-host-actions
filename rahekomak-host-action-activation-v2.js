@@ -19,6 +19,8 @@ const EXECUTOR='/opt/prhm-agent-selfmaint-exec/server.js';
 const WORKER='/opt/prhm-agent-selfmaint-exec/actions/rahekomak-production-deploy-worker-v2.js';
 const STATE_ROOT='/var/lib/prhm-agent-selfmaint-exec/rahekomak-host-action-repair-v2';
 const STAGE=path.join(STATE_ROOT,'stage.json');
+const EXECUTOR_CANDIDATE=path.join(STATE_ROOT,'executor.candidate');
+const WORKER_CANDIDATE=path.join(STATE_ROOT,'worker.candidate');
 const RESULT=path.join(STATE_ROOT,'activation-result.json');
 const BACKUP_ROOT='/var/backups/prhm-rahekomak-host-action-repair-v2';
 const OLD_SHA='410406ba0965ef3a5cad6da6306a85335e38acc3637fb6ed60fa42200a10c2e0';
@@ -57,6 +59,8 @@ function validateStageContract(stage){
       fail('stage_contract_invalid');
   if(typeof stage.backup!=='string'||!new RegExp('^'+BACKUP_ROOT+'/[0-9]{14}-[0-9]+$').test(stage.backup))
       fail('stage_backup_scope_invalid');
+  if(!Number.isInteger(stage.executor_original_mode)||
+      stage.executor_original_mode<0||stage.executor_original_mode>0o777)fail('stage_executor_mode_invalid');
   if(typeof stage.worker_preexisting!=='boolean')fail('stage_worker_presence_invalid');
   if(stage.worker_preexisting&&(!Number.isInteger(stage.worker_original_mode)||
       stage.worker_original_mode<0||stage.worker_original_mode>0o777))fail('stage_worker_mode_invalid');
@@ -64,25 +68,33 @@ function validateStageContract(stage){
 }
 function verifyStage(stage){
   validateStageContract(stage);
-  if(sha256(fileBytes(path.join(stage.backup,'executor.before')))!==OLD_SHA)
-      fail('stage_backup_sha_invalid');
-  if(sha256(fileBytes(EXECUTOR))!==stage.candidate_sha256)
-      fail('staged_executor_sha_drift');
-  if(gitBlob(fileBytes(WORKER))!==WORKER_BLOB)fail('staged_worker_blob_drift');
+  const backup=fileBytes(path.join(stage.backup,'executor.before'));
+  if(sha256(backup)!==OLD_SHA)fail('stage_backup_sha_invalid');
+  if(sha256(fileBytes(EXECUTOR_CANDIDATE))!==stage.candidate_sha256)
+    fail('staged_executor_sha_drift');
+  if(gitBlob(fileBytes(WORKER_CANDIDATE))!==WORKER_BLOB)
+    fail('staged_worker_blob_drift');
+  if(sha256(fileBytes(EXECUTOR))!==OLD_SHA)
+    fail('live_executor_not_old_version');
+  if(stage.worker_preexisting){
+    const original=fileBytes(path.join(stage.backup,'worker.before'));
+    if(gitBlob(fileBytes(WORKER))!==gitBlob(original))fail('live_worker_preimage_drift');
+  }else if(fs.existsSync(WORKER))fail('unexpected_live_worker');
   return stage;
 }
 function restoreOriginal(stage){
-  // Only restore exact recorded candidate; never overwrite an unrelated change.
-  if(sha256(fileBytes(EXECUTOR))!==stage.candidate_sha256)fail('rollback_live_drift');
+  // A rollback must never overwrite unrelated live changes.
+  const live=sha256(fileBytes(EXECUTOR));
+  if(live!==OLD_SHA&&live!==stage.candidate_sha256)fail('rollback_live_drift');
   const original=fileBytes(path.join(stage.backup,'executor.before'));
-  atomic(EXECUTOR,original,0o755);
-  if(stage.worker_preexisting===true){
+  if(sha256(original)!==OLD_SHA)fail('rollback_backup_sha_drift');
+  if(fs.existsSync(WORKER)&&gitBlob(fileBytes(WORKER))!==WORKER_BLOB)
+    fail('rollback_worker_drift');
+  atomic(EXECUTOR,original,stage.executor_original_mode);
+  if(stage.worker_preexisting){
     const originalWorker=fileBytes(path.join(stage.backup,'worker.before'));
     atomic(WORKER,originalWorker,stage.worker_original_mode);
-  }else{
-    if(gitBlob(fileBytes(WORKER))!==WORKER_BLOB)fail('rollback_worker_drift');
-    fs.unlinkSync(WORKER);
-  }
+  }else if(fs.existsSync(WORKER))fs.unlinkSync(WORKER);
   if(sha256(fileBytes(EXECUTOR))!==OLD_SHA)fail('rollback_executor_sha_failed');
 }
 function readStage(){
@@ -116,13 +128,22 @@ async function waitHealth(){
   throw error||new Error('health_probe_failed');
 }
 async function activateApproved(){
-  // This method cannot itself grant any approval. The registration bridge must
-  // permit it only with a fresh signed and consumed Level-4 authorization.
+  // A separately approved typed Host Action must launch this in a transient
+  // unit AFTER its signed one-time authorization has been consumed.
   verifyServiceGuard();
   const stage=readStage();
-  let attempted=false;
+  let wrote=false;
+  let restarted=false;
   try{
-    attempted=true;
+    const candidate=fileBytes(EXECUTOR_CANDIDATE);
+    const worker=fileBytes(WORKER_CANDIDATE);
+    atomic(WORKER,worker,stage.worker_preexisting?stage.worker_original_mode:0o750);
+    wrote=true;
+    atomic(EXECUTOR,candidate,stage.executor_original_mode);
+    if(sha256(fileBytes(EXECUTOR))!==stage.candidate_sha256)
+      fail('postwrite_executor_sha_mismatch');
+    if(gitBlob(fileBytes(WORKER))!==WORKER_BLOB)fail('postwrite_worker_blob_mismatch');
+    restarted=true;
     command('restart',SERVICE);
     const health=await waitHealth();
     if(sha256(fileBytes(EXECUTOR))!==stage.candidate_sha256)fail('postactivation_sha_mismatch');
@@ -134,17 +155,17 @@ async function activateApproved(){
     return record;
   }catch(err){
     let rollbackError=null;
-    if(attempted){
+    if(wrote){
       try{
         restoreOriginal(stage);
-        command('restart',SERVICE);
+        if(restarted)command('restart',SERVICE);
         await waitHealth();
       }catch(e){rollbackError=String(e.message||e)}
     }
     const record={ok:false,action:ACTION,status:rollbackError?'rollback_failed':'rolled_back',
       release_head:RELEASE_HEAD,target:EXECUTOR,time:new Date().toISOString(),
       reason:String(err.message||err).slice(0,360),
-      rollback_performed:attempted&&!rollbackError,rollback_failed:!!rollbackError,
+      rollback_performed:wrote&&!rollbackError,rollback_failed:!!rollbackError,
       rollback_error:rollbackError};
     persistJson(RESULT,record);
     fail(rollbackError?'activation_failed_rollback_failed':'activation_failed_rolled_back');
@@ -158,7 +179,7 @@ function manifest(){
     activation_policy:'separate_deferred_transient_unit_only',
     rollback_required:true,installer_status:'development_only'});
 }
-module.exports={ACTION,SERVICE,EXECUTOR,WORKER,STATE_ROOT,STAGE,RESULT,
+module.exports={ACTION,SERVICE,EXECUTOR,WORKER,STATE_ROOT,STAGE,RESULT,EXECUTOR_CANDIDATE,WORKER_CANDIDATE,
   OLD_SHA,WORKER_BLOB,RELEASE_HEAD,sha256,gitBlob,validateStageContract,verifyStage,
   manifest,activateApproved};
 if(require.main===module){
