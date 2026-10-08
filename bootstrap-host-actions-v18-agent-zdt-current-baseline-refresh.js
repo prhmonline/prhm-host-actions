@@ -136,11 +136,32 @@ function generatedReplaceOne(source,oldValue,newValue,label){
  return source.replace(oldValue,newValue);
 }
 const LEGACY_FIXED_REGISTRATION_INSTALLER_TEMPLATE_SHA='2031d0de149d9f090987fe710df44413cd5ac0a51a7394ff7874c2e9073f077c';
+const FIXED_REGISTRATION_INSTALLER_SOURCE_SHA256='d864c754d4798a8900e49c6094308f731a035bde57e2154c4af6c3e8f7875d44';
+function rahkomakRegistrationOwnerState(ownerPaths){
+ const input=Object.fromEntries(Object.entries(ownerPaths).map(([name,file])=>[name,fs.readFileSync(file,'utf8')]));
+ const actual=Object.freeze(Object.fromEntries(Object.entries(input).map(([name,value])=>[name,crypto.createHash('sha256').update(value,'utf8').digest('hex')])));
+ const pre=Object.keys(RAHEKOMAK_REGISTRATION_BASELINE_SHA256).every(name=>actual[name]===RAHEKOMAK_REGISTRATION_BASELINE_SHA256[name]);
+ const post=Object.keys(RAHEKOMAK_REGISTRATION_CANDIDATE_SHA256).every(name=>actual[name]===RAHEKOMAK_REGISTRATION_CANDIDATE_SHA256[name]);
+ return Object.freeze({input,actual,pre,post});
+}
 function buildRegistrationInstallerSourceFixed(){
  const ownerPaths=base.REGISTRATION_OWNER_PATHS;
  if(!ownerPaths||Object.keys(ownerPaths).sort().join(',')!=='base,exec,mcp,policy')throw new Error('rahekomak_installer_owner_paths_invalid');
- const input=Object.fromEntries(Object.entries(ownerPaths).map(([name,file])=>[name,fs.readFileSync(file,'utf8')]));
- const rk=buildRahKomakRegistrationCandidates(input);
+ const state=rahkomakRegistrationOwnerState(ownerPaths);
+ if(state.post){
+  const existingPath=base.REGISTRATION_INSTALLER_DESTINATION;
+  const existingBytes=fs.readFileSync(existingPath);
+  const existingSha=crypto.createHash('sha256').update(existingBytes).digest('hex');
+  if(existingSha!==FIXED_REGISTRATION_INSTALLER_SOURCE_SHA256)throw new Error('rahekomak_installer_post_state_sha_mismatch:'+existingSha);
+  const syntax=cp.spawnSync('/usr/local/bin/prhm-node',['--check','-'],{input:existingBytes,encoding:null,timeout:30000,maxBuffer:1000000});
+  if(syntax.error||syntax.status!==0)throw new Error('rahekomak_installer_post_state_syntax_invalid:'+String(syntax.stderr||syntax.stdout||syntax.error||'').slice(-1200));
+  return existingBytes.toString('utf8');
+ }
+ if(!state.pre){
+  const name=Object.keys(state.actual).find(n=>state.actual[n]!==RAHEKOMAK_REGISTRATION_BASELINE_SHA256[n]&&state.actual[n]!==RAHEKOMAK_REGISTRATION_CANDIDATE_SHA256[n])||'mixed';
+  throw new Error('rahekomak_registration_owner_state_invalid:'+name);
+ }
+ const rk=buildRahKomakRegistrationCandidates(state.input);
  const templatePath=base.REGISTRATION_INSTALLER_DESTINATION;
  const templateBytes=fs.readFileSync(templatePath);
  const templateSha=crypto.createHash('sha256').update(templateBytes).digest('hex');
@@ -158,7 +179,6 @@ function buildRegistrationInstallerSourceFixed(){
  if(syntax.error||syntax.status!==0)throw new Error('registration_installer_fixed_syntax_invalid:'+String(syntax.stderr||syntax.stdout||syntax.error||'').slice(-1200));
  return fixed;
 }
-const FIXED_REGISTRATION_INSTALLER_SOURCE_SHA256='d864c754d4798a8900e49c6094308f731a035bde57e2154c4af6c3e8f7875d44';
 function buildRegistrationStageTransportSourceFixed(){
  const installer=buildRegistrationInstallerSourceFixed();
  const actual=crypto.createHash('sha256').update(installer,'utf8').digest('hex');
