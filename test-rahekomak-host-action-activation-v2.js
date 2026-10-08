@@ -14,7 +14,7 @@ function validStage(){
     candidate_sha256:'a'.repeat(64),
     release_head:activation.RELEASE_HEAD,
     worker_git_blob:activation.WORKER_BLOB,
-    worker_preexisting:false,worker_original_mode:null,
+    worker_preexisting:false,worker_original_mode:null,executor_original_mode:0o755,
     backup:'/var/backups/prhm-rahekomak-host-action-repair-v2/20261008220200-1234'};
 }
 
@@ -28,6 +28,8 @@ test('activation stage schema is fixed-SHA-bound and path-confined',()=>{
     {release_head:'0'.repeat(40)},
     {worker_git_blob:'0'.repeat(40)},
     {worker_preexisting:'false'},
+    {executor_original_mode:-1},
+    {executor_original_mode:0o7777},
     {worker_preexisting:true,worker_original_mode:-1},
     {worker_preexisting:true,worker_original_mode:0o7777},
     {backup:'/tmp/untrusted'},
@@ -46,7 +48,9 @@ test('staged installer emits the exact state schema consumed by activation',()=>
   assert.match(src,/candidate_sha256:pre\.candidate_sha256/);
   assert.match(src,/activation_stage_already_exists/);
   assert.match(src,/atomic\(STAGE/);
-  assert.match(src,/if\(fs\.existsSync\(STAGE\)\)fs\.unlinkSync\(STAGE\)/);
+  assert.match(src,/for\(const p of \[STAGE,executorCandidate,workerCandidate\]\)/);
+  assert.match(src,/production_code_written:false/);
+  assert.match(src,/live_executor_drift_during_stage/);
 });
 
 test('activation is independently gated and does not restart on contract-only invocation',()=>{
@@ -60,6 +64,9 @@ test('activation is independently gated and does not restart on contract-only in
   assert.match(src,/activation_already_recorded/);
   assert.match(src,/rollback_live_drift/);
   assert.match(src,/staged_executor_sha_drift/);
+  assert.match(src,/live_executor_not_old_version/);
+  assert.match(src,/atomic\(EXECUTOR,candidate/);
+  assert.match(src,/atomic\(WORKER,worker/);
   assert.match(src,/rollback_performed:attempted&&!rollbackError/);
   assert.match(src,/persistJson\(RESULT,record\)/);
   assert.match(src,/socketPath:SOCKET,path:'\/health'/);
