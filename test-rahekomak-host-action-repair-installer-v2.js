@@ -19,7 +19,8 @@ test('the installer is bound to one reviewed live executor preimage and artifact
   ]) {
     assert.equal(installer.gitBlob(fs.readFileSync(path.join(__dirname,file))),pin,file);
   }
-  assert.equal(m.production_mutation,false);
+  assert.equal(m.production_mutation,'approved_apply_only');
+  assert.equal(m.preflight_mutation,false);
   assert.equal(m.source_git_commit_required,true);
   assert.equal(m.level,4);
   assert.equal(m.one_time_approval_required,true);
@@ -39,7 +40,8 @@ test('installer CLI is contract-only, does not install or restart',()=>{
   assert.doesNotMatch(source,/process\.argv\[2\]|process\.argv\.includes|--apply/);
   const out=cp.execFileSync(process.execPath,[path.join(__dirname,'rahekomak-host-action-repair-installer-v2.js')],{encoding:'utf8'});
   const result=JSON.parse(out);
-  assert.equal(result.production_mutation,false);
+  assert.equal(result.production_mutation,'approved_apply_only');
+  assert.equal(result.installer_status,'candidate_only');
   assert.equal(result.installer_status,'candidate_only');
 });
 
