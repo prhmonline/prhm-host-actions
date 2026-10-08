@@ -8,7 +8,7 @@ const impl=require('./drtarjomeh-readonly-registration-candidate-v1.js');
 const pins=require('./drtarjomeh-preflight-agent3-live-pins-check-v1.js');
 
 const API="'use strict';\nfunction registerHonartikIticketV14PreflightRoutes(app,{auth}){\n  app.post('/test',auth,async(req,res)=>{\n  });\n}\nmodule.exports={};\n";
-const MCP="import { textResult } from '../core/result.js';\nexport function registerHonartikIticketPreflightPlugin(mcp,{agent}){\n  mcp.registerTool('test',{inputSchema:{}},async()=>textResult(await agent.callAgent('/honartik/iticket/v14/preflight','POST',{})));\n}\n";
+const MCP="import { textResult } from '../core/result.js';\nexport function registerHonartikIticketPreflightPlugin(mcp,{agent}){\n  mcp.registerTool('test',{\n    inputSchema:{}\n  },async()=>textResult(await agent.callAgent('/honartik/iticket/v14/preflight','POST',{})));\n}\n";
 test('approved artifact files and 4 live-owner hashes are fixed',()=>{
   assert.equal(pins.validateManifest(),true);
   assert.equal(pins.EXPECTED_PREIMAGES.length,4);
