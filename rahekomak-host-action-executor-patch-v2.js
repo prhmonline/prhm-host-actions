@@ -33,7 +33,7 @@ function replacement() {
     "  const st=fs.lstatSync(RAHEKOMAK_DEPLOY_WORKER);",
     "  if(!st.isFile()||st.isSymbolicLink()||fs.realpathSync(RAHEKOMAK_DEPLOY_WORKER)!==RAHEKOMAK_DEPLOY_WORKER)throw new Error('rahekomak_worker_invalid');",
     "  const bytes=fs.readFileSync(RAHEKOMAK_DEPLOY_WORKER);",
-    "  const digest=crypto.createHash('sha1').update('blob '+bytes.length+'\\\\0').update(bytes).digest('hex');",
+    "  const digest=crypto.createHash('sha1').update('blob '+bytes.length+'\\0').update(bytes).digest('hex');",
     "  if(digest!==RAHEKOMAK_DEPLOY_WORKER_GIT_BLOB)throw new Error('rahekomak_worker_git_blob_mismatch');",
     "  const nonce=crypto.randomBytes(16).toString('hex');",
     "  const preflight=runRahKomakBoundWorker('--preflight',nonce,cp,fs);",
