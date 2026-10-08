@@ -91,12 +91,16 @@ function systemctl(...args){
   return String(r.stdout||'').trim();
 }
 function applyApproved(){
-  // The trusted typed Host Action must authenticate and authorize this call.
-  // This function deliberately accepts no path, command, SHA or token inputs.
+  // Level-4 approved STAGING ONLY; never overwrite a live executable here.
+  // The separate activation transaction verifies the stage and performs the
+  // one-time cutover/restart in an independent systemd unit after approval.
   const pre=preflight();
-  if(fs.existsSync(STAGE)||fs.existsSync(ACTIVATION_RESULT))fail('activation_stage_already_exists');
+  const executorCandidate=path.join(STATE_ROOT,'executor.candidate');
+  const workerCandidate=path.join(STATE_ROOT,'worker.candidate');
+  if([STAGE,ACTIVATION_RESULT,executorCandidate,workerCandidate].some(p=>fs.existsSync(p)))
+    fail('activation_stage_already_exists');
   const original=fs.readFileSync(EXECUTOR);
-  const worker=fs.readFileSync(WORKER_SOURCE);
+  const worker=checkedSource(WORKER_SOURCE,WORKER_GIT_BLOB);
   const candidate=Buffer.from(buildCandidate(original.toString('utf8')),'utf8');
   if(sha256(original)!==pre.source_sha256||sha256(candidate)!==pre.candidate_sha256)
     fail('time_of_check_drift');
@@ -109,47 +113,40 @@ function applyApproved(){
   fs.mkdirSync(backup,{recursive:false,mode:0o700});
   fs.writeFileSync(path.join(backup,'executor.before'),original,{mode:0o600,flag:'wx'});
   if(workerExisted)fs.writeFileSync(path.join(backup,'worker.before'),originalWorker,{mode:0o600,flag:'wx'});
-  let changed=false;
   try{
-    atomic(WORKER_TARGET,worker,0o750);
-    atomic(EXECUTOR,candidate,pre.executor_mode);
-    changed=true;
-    if(sha256(fs.readFileSync(EXECUTOR))!==pre.candidate_sha256)fail('postwrite_executor_sha_mismatch');
-    if(gitBlob(fs.readFileSync(WORKER_TARGET))!==WORKER_GIT_BLOB)fail('postwrite_worker_sha_mismatch');
-    // Do NOT restart the Host Actions service from inside its own active request.
-    // Activation must be independently authorized and can occur only after the
-    // original request has returned and a controlled poststate verifier is ready.
-    if(systemctl('is-active',EXECUTOR_SERVICE)!=='active')fail('executor_not_active');
     fs.mkdirSync(STATE_ROOT,{recursive:true,mode:0o700});
+    atomic(executorCandidate,candidate,0o600);
+    atomic(workerCandidate,worker,0o600);
+    if(sha256(fs.readFileSync(executorCandidate))!==pre.candidate_sha256)
+      fail('staged_executor_sha_mismatch');
+    if(gitBlob(fs.readFileSync(workerCandidate))!==WORKER_GIT_BLOB)
+      fail('staged_worker_blob_mismatch');
+    // Files served by the running Host Actions process remain unchanged.
+    if(sha256(fs.readFileSync(EXECUTOR))!==EXECUTOR_PREIMAGE_SHA256)
+      fail('live_executor_drift_during_stage');
+    if(systemctl('is-active',EXECUTOR_SERVICE)!=='active')
+      fail('executor_not_active');
     const stage={action:ACTION,status:'staged_pending_activation',
       original_sha256:EXECUTOR_PREIMAGE_SHA256,candidate_sha256:pre.candidate_sha256,
       release_head:RELEASE_HEAD,worker_git_blob:WORKER_GIT_BLOB,
+      executor_original_mode:pre.executor_mode,
       worker_preexisting:workerExisted,worker_original_mode:originalWorkerMode,
       backup,staged_at:new Date().toISOString()};
     atomic(STAGE,Buffer.from(JSON.stringify(stage)+'\n'),0o600);
     return {ok:true,action:ACTION,source_sha256:pre.source_sha256,
-      installed_sha256:pre.candidate_sha256,release_head:RELEASE_HEAD,
-      timestamp:new Date().toISOString(),target:EXECUTOR,backup,
+      candidate_sha256:pre.candidate_sha256,release_head:RELEASE_HEAD,
+      timestamp:stage.staged_at,target:EXECUTOR,backup,
       installation_state:'staged_pending_activation',
-      production_code_written:true,production_runtime_restarted:false,
+      production_code_written:false,production_runtime_restarted:false,
       rollback_performed:false,requires_separate_activation_approval:true,
       requires_fresh_deploy_approval:true};
   }catch(err){
-    if(changed||fs.existsSync(backup)){
-      try{if(fs.existsSync(STAGE))fs.unlinkSync(STAGE)}catch{}
-      let rollbackFailed=null;
-      try{
-        atomic(EXECUTOR,original,pre.executor_mode);
-        if(workerExisted)atomic(WORKER_TARGET,originalWorker,0o750);
-        else if(fs.existsSync(WORKER_TARGET))fs.unlinkSync(WORKER_TARGET);
-        // Activation has not been attempted. Restore files without restarting
-        // the service processing the approval transaction.
-        if(systemctl('is-active',EXECUTOR_SERVICE)!=='active')fail('rollback_executor_not_active');
-        if(sha256(fs.readFileSync(EXECUTOR))!==EXECUTOR_PREIMAGE_SHA256)fail('rollback_sha_mismatch');
-      }catch(r){rollbackFailed=String(r.message||r)}
-      if(rollbackFailed)fail('install_failed_and_rollback_failed:'+rollbackFailed);
+    for(const p of [STAGE,executorCandidate,workerCandidate]){
+      try{if(fs.existsSync(p))fs.unlinkSync(p)}catch{}
     }
-    fail('install_failed_rolled_back:'+String(err.message||err));
+    if(sha256(fs.readFileSync(EXECUTOR))!==EXECUTOR_PREIMAGE_SHA256)
+      fail('staging_failed_live_executor_drift:'+String(err.message||err));
+    fail('staging_failed_no_live_mutation:'+String(err.message||err));
   }
 }
 module.exports={ACTION,REPO,EXECUTOR,WORKER_TARGET,EXECUTOR_PREIMAGE_SHA256,
