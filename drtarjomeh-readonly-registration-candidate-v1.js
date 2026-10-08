@@ -19,23 +19,27 @@ const sha=x=>crypto.createHash('sha256').update(x).digest('hex');
 function fail(code){throw new Error(code);}
 function count(haystack,needle){return haystack.split(needle).length-1;}
 function insertOnce(source,anchor,insertion,label){
-  if(typeof source!=='string'||source.includes(MARKER))fail(label+'_already_registered');
+  if(typeof source!=='string')fail(label+'_source_invalid');
   if(count(source,anchor)!==1)fail(label+'_anchor_count_'+count(source,anchor));
   return source.replace(anchor,anchor+insertion);
 }
 function buildApi(source){
+  if(source.includes(MARKER))fail('api_already_registered');
   const importAnchor="'use strict';\n";
   const withImport=insertOnce(source,importAnchor,
     "// PRHM_DRT_READONLY_REGISTRATION_V1 import\n"+
     "const {registerDrtarjomehReadonlyPreflightRoute}=require('./drtarjomeh-preflight-agent-api-route-v1.js');\n",
     'api_import');
   const fnAnchor="  });\n}\nmodule.exports=";
-  return insertOnce(withImport,fnAnchor.replace('module.exports=',''),
+  if(count(withImport,fnAnchor)!==1)fail('api_registration_anchor_count_'+count(withImport,fnAnchor));
+  return withImport.replace(fnAnchor,
+    "  });\n"+
     "  // PRHM_DRT_READONLY_REGISTRATION_V1 route\n"+
-    "  registerDrtarjomehReadonlyPreflightRoute(app,{auth});\n",
-    'api_registration');
+    "  registerDrtarjomehReadonlyPreflightRoute(app,{auth});\n"+
+    "}\nmodule.exports=");
 }
 function buildMcp(source){
+  if(source.includes(MARKER))fail('mcp_already_registered');
   const importAnchor="import { textResult } from '../core/result.js';\n";
   const withImport=insertOnce(source,importAnchor,
     "// PRHM_DRT_READONLY_REGISTRATION_V1 import\n"+
