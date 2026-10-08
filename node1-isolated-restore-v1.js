@@ -69,6 +69,16 @@ function restoreIndependently(plan,adapter){
  return Object.freeze({schema_version:'prhm.node1-isolated-restore-evidence.v1',runId:plan.runId,snapshotId:plan.snapshotId,read_only_on_production:true,disposable_sandbox:plan.root,isolated_restore_pass:true,...proof,sandbox_destroyed:true,closed:false});
 }
 function closureFromEvidence(backup,offsiteEvidence,restoreEvidence,preflight){
+ // A successful restore of run A must NEVER close a backup of run B.
+ const runId=restoreEvidence?.runId;
+ const snapshotId=restoreEvidence?.snapshotId;
+ const validRun=/^20[0-9]{6}T[0-9]{6}Z$/.test(runId||'');
+ const validSnapshot=/^[0-9a-f]{64}$/.test(snapshotId||'');
+ const identities_match=validRun&&validSnapshot&&
+   backup?.runId===runId&&
+   offsiteEvidence?.runId===runId&&
+   offsiteEvidence?.snapshotId===snapshotId&&
+   preflight?.runId===runId;
  const gates={
    backup_pass:backup?.backup_pass===true,
    offsite_pass:offsiteEvidence?.remote_snapshot_confirmed===true,
@@ -77,8 +87,22 @@ function closureFromEvidence(backup,offsiteEvidence,restoreEvidence,preflight){
    sql_replay_verified:restoreEvidence?.database_replayed===true,
    vm_boot_restore_verified:restoreEvidence?.vm_prhm_production_boot===true&&restoreEvidence?.vm_imotion_directadmin_boot===true,
    offsite_full_integrity_verified:restoreEvidence?.restic_full_integrity===true,
-   closed:restoreEvidence?.sandbox_destroyed===true
+   closed:restoreEvidence?.sandbox_destroyed===true&&restoreEvidence?.read_only_on_production===true
  };
- return Object.freeze({gates,...offsite.closureGate(gates)});
+ const evaluated=offsite.closureGate(gates);
+ // An integrity receipt from a real independent verifier is still required
+ // for production. In-process synthetic adapter receipts cannot grant it.
+ const production_attested=restoreEvidence?.production_attestation_verified===true &&
+   restoreEvidence?.attestation_runId===runId &&
+   restoreEvidence?.attestation_snapshotId===snapshotId;
+ const ok=evaluated.ok&&identities_match&&production_attested;
+ return Object.freeze({
+   gates,identities_match,production_attested,
+   ok,fail_closed:!ok,
+   missing:[...evaluated.missing,
+     ...(!identities_match?['backup_restore_identity_mismatch']:[]),
+     ...(!production_attested?['trusted_production_attestation_missing']:[])]
+ });
 }
+
 module.exports={STAGE,RESTORE,GATES,buildPlan,verifyRecovered,validSqlReceipt,validVmReceipt,restoreIndependently,closureFromEvidence};
