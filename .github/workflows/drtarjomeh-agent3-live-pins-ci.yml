@@ -1,0 +1,43 @@
+name: DrTarjomeh Agent 3 Live Pin Preflight CI
+
+on:
+  push:
+    branches:
+      - feature/drtarjomeh-preflight-registration-pins-20261008
+    paths:
+      - 'drtarjomeh-preflight-agent3-registration-pins-v1.json'
+      - 'drtarjomeh-preflight-agent3-live-pins-check-v1.js'
+      - 'test-drtarjomeh-preflight-agent3-live-pins-v1.js'
+      - '.github/workflows/drtarjomeh-agent3-live-pins-ci.yml'
+  pull_request:
+    paths:
+      - 'drtarjomeh-preflight-agent3-registration-pins-v1.json'
+      - 'drtarjomeh-preflight-agent3-live-pins-check-v1.js'
+      - 'test-drtarjomeh-preflight-agent3-live-pins-v1.js'
+      - '.github/workflows/drtarjomeh-agent3-live-pins-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Syntax
+        run: |
+          node --check drtarjomeh-preflight-agent3-live-pins-check-v1.js
+          node --check test-drtarjomeh-preflight-agent3-live-pins-v1.js
+      - name: Fixed local manifest verification
+        run: node drtarjomeh-preflight-agent3-live-pins-check-v1.js --selftest-only
+      - name: Fail-closed contract tests
+        run: node --test test-drtarjomeh-preflight-agent3-live-pins-v1.js
+      - name: Reject mutation surfaces
+        run: |
+          if grep -En 'child_process|execSync|spawnSync|writeFile|unlinkSync|renameSync|chmodSync|chownSync|https?\.request|fetch\(|eval\(' drtarjomeh-preflight-agent3-live-pins-check-v1.js; then
+            echo 'Forbidden host mutation/command/network surface'
+            exit 1
+          fi
