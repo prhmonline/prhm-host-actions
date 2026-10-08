@@ -49,6 +49,7 @@ test('successful transaction installs exactly five pinned outputs and keeps priv
   assert.equal(fs.existsSync(path.join(f.backupRoot,'install.lock')),false);
   assert.equal(sha(fs.readFileSync(path.join(result.backup_directory,'before-3'))),f.entries[3].old_sha256);
   assert.equal(fs.statSync(result.backup_directory).mode&0o777,0o700);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(result.backup_directory,'outcome.json'),'utf8')).status,'INSTALLED_VERIFIED');
 });
 test('refuses unsigned, wrong commit, wrong level and unconsumed approval before writes',t=>{
   const f=fixture(t);
@@ -109,6 +110,15 @@ test('backup lock cannot be stolen, and releases are not altered',t=>{
   assert.throws(()=>tx.executePrepared(f.entries,f.options),/installer_lock_busy_or_missing_root/);
   assert.equal(fs.readFileSync(path.join(f.backupRoot,'install.lock'),'utf8'),'other transaction');
   for(let i=0;i<3;i++)assert.equal(fs.existsSync(f.paths[i]),false);
+});
+test('short write cannot silently produce a corrupted production target',t=>{
+  const f=fixture(t);
+  const io={...fs,writeSync:()=>0};
+  assert.throws(()=>tx.executePrepared(f.entries,{...f.options,io}),/short_atomic_write/);
+  for(let i=0;i<5;i++){
+    if(f.originals[i])assert.deepEqual(fs.readFileSync(f.paths[i]),f.originals[i]);
+    else assert.equal(fs.existsSync(f.paths[i]),false);
+  }
 });
 test('candidate builder on non-production CI host fails closed',()=>{
   assert.throws(()=>tx.generateEntries(),/live_sha_drift/);
