@@ -15,13 +15,25 @@ permissions:
 jobs:
   synthetic-restic-restore:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_ROOT_PASSWORD: synthetic-ci-only-password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
     steps:
       - name: Install Restic in isolated GitHub runner
         run: |
           set -euo pipefail
           sudo apt-get update -qq
-          sudo apt-get install -y -qq restic
+          sudo apt-get install -y -qq restic mariadb-client
           restic version
       - name: Encrypted backup, full data check, independent restore and missing-pack detection
         shell: bash
@@ -36,7 +48,9 @@ jobs:
           openssl rand -hex 32 > "$password_file"
           chmod 600 "$password_file"
           printf 'nonproduction config fixture\n' > "$input/etc/config.txt"
-          printf 'CREATE DATABASE test_only;\nCREATE TABLE test_only.fixture (id INT);\nINSERT INTO test_only.fixture VALUES (1);\n' > "$input/mariadb/all-databases.sql"
+          export MYSQL_PWD='synthetic-ci-only-password'
+          mariadb --protocol=tcp -h127.0.0.1 -uroot -e "CREATE DATABASE node1_ci_fixture; CREATE TABLE node1_ci_fixture.fixture(id INT PRIMARY KEY, label VARCHAR(40)); INSERT INTO node1_ci_fixture.fixture VALUES(1,'first'),(2,'second');"
+          mariadb-dump --protocol=tcp -h127.0.0.1 -uroot --single-transaction --routines --events --triggers --databases node1_ci_fixture > "$input/mariadb/all-databases.sql"
           head -c 1048576 /dev/urandom > "$input/vm/prhm-production.qcow2"
           head -c 262144 /dev/urandom > "$input/vm/imotion-directadmin.qcow2"
           restic -r "$repo" --password-file "$password_file" init
@@ -47,6 +61,13 @@ jobs:
           for f in etc/config.txt mariadb/all-databases.sql vm/prhm-production.qcow2 vm/imotion-directadmin.qcow2; do
             cmp -- "$input/$f" "$restored/$rel/$f"
           done
+          mariadb --protocol=tcp -h127.0.0.1 -uroot -e "DROP DATABASE node1_ci_fixture"
+          mariadb --protocol=tcp -h127.0.0.1 -uroot < "$restored/$rel/mariadb/all-databases.sql"
+          count="$(mariadb --protocol=tcp -h127.0.0.1 -uroot --batch --skip-column-names -e 'SELECT COUNT(*) FROM node1_ci_fixture.fixture')"
+          test "$count" = "2"
+          second="$(mariadb --protocol=tcp -h127.0.0.1 -uroot --batch --skip-column-names -e 'SELECT label FROM node1_ci_fixture.fixture WHERE id=2')"
+          test "$second" = "second"
+          printf 'SYNTHETIC_MARIADB_REPLAY=PASS\n'
           printf 'SYNTHETIC_RESTIC_FULL_RESTORE=PASS\n'
           broken="$RUNNER_TEMP/node1-synthetic-broken-repo"
           cp -a "$repo" "$broken"
