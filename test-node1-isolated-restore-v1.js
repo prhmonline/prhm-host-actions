@@ -66,9 +66,28 @@ test('missing sandbox isolation refuses any remote operations',()=>{
  assert.throws(()=>h.restoreIndependently(p,a),/restore_sandbox_cleanup_unverified/);
  assert.equal(a.calls.length,0);
 });
-test('closure requires every independently verified backup/offsite/replay gate',()=>{
+test('synthetic restore never closes production without cryptographic attestation',()=>{
  const p=plan(),r=h.restoreIndependently(p,adapter(p));
- const c=h.closureFromEvidence({backup_pass:true},{remote_snapshot_confirmed:true},r,{central_capacity_preflight_pass:true});
- assert.equal(c.ok,true);
- assert.equal(h.closureFromEvidence({backup_pass:true},{remote_snapshot_confirmed:true},r,{central_capacity_preflight_pass:false}).ok,false);
+ const goodBackup={runId:RUN,backup_pass:true};
+ const goodRemote={runId:RUN,snapshotId:SH,remote_snapshot_confirmed:true};
+ const goodCapacity={runId:RUN,central_capacity_preflight_pass:true};
+ const c=h.closureFromEvidence(goodBackup,goodRemote,r,goodCapacity);
+ assert.equal(c.identities_match,true);
+ assert.equal(c.production_attested,false);
+ assert.equal(c.ok,false);
+ assert(c.missing.includes('trusted_production_attestation_missing'));
+ // A malicious or accidental self-assertion cannot turn a synthetic receipt GREEN.
+ const forged={...r,production_attestation_verified:true,attestation_runId:RUN,attestation_snapshotId:SH};
+ assert.equal(h.closureFromEvidence(goodBackup,goodRemote,forged,goodCapacity).ok,false);
+});
+test('backup/offsite/restore from different runs cannot be mixed',()=>{
+ const p=plan(),r=h.restoreIndependently(p,adapter(p));
+ const otherRun='20261008T165500Z';
+ const backup={runId:RUN,backup_pass:true};
+ const remote={runId:otherRun,snapshotId:SH,remote_snapshot_confirmed:true};
+ const cap={runId:RUN,central_capacity_preflight_pass:true};
+ const result=h.closureFromEvidence(backup,remote,r,cap);
+ assert.equal(result.identities_match,false);
+ assert(result.missing.includes('backup_restore_identity_mismatch'));
+ assert.equal(result.ok,false);
 });
