@@ -1,0 +1,36 @@
+name: ZDT Registry Current Repair CI
+
+on:
+  pull_request:
+    paths:
+      - 'artifacts/agent-mcp-registry-zdt-repair-v1.js'
+      - 'agent-zdt-registry-current-repair-v1.json'
+      - 'test-zdt-registry-current-repair-v1.js'
+      - '.github/workflows/zdt-registry-current-repair-ci.yml'
+  push:
+    branches:
+      - 'fix/zdt-registry-current-repair-v1-20261008'
+    paths:
+      - 'artifacts/agent-mcp-registry-zdt-repair-v1.js'
+      - 'agent-zdt-registry-current-repair-v1.json'
+      - 'test-zdt-registry-current-repair-v1.js'
+      - '.github/workflows/zdt-registry-current-repair-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Syntax candidate registry
+        run: node --check artifacts/agent-mcp-registry-zdt-repair-v1.js
+      - name: Syntax test
+        run: node --check test-zdt-registry-current-repair-v1.js
+      - name: Contract
+        run: node --test test-zdt-registry-current-repair-v1.js
