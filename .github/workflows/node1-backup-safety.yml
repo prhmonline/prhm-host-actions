@@ -1,0 +1,34 @@
+name: Node1 backup safety contracts
+on:
+  pull_request:
+    paths:
+      - 'node1-backup-*.js'
+      - 'bootstrap-host-actions-node1-backup-implementation-v1.js'
+      - 'test-node1-backup-*.js'
+      - '.github/workflows/node1-backup-safety.yml'
+  push:
+    branches:
+      - 'feature/node1-backup-assurance-v1'
+    paths:
+      - 'node1-backup-*.js'
+      - 'bootstrap-host-actions-node1-backup-implementation-v1.js'
+      - 'test-node1-backup-*.js'
+      - '.github/workflows/node1-backup-safety.yml'
+permissions:
+  contents: read
+jobs:
+  safety-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax check and isolated tests (no server access)
+        run: |
+          node --check node1-backup-implementation-v1.js
+          node --check node1-backup-source-v1.js
+          node --test test-node1-backup-implementation-v1.js test-node1-backup-source-v1.js
