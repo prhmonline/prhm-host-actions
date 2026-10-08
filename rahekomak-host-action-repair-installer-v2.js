@@ -55,6 +55,7 @@ function manifest(){
     patch_git_blob:PATCH_GIT_BLOB,production_mutation:'approved_apply_only',
     preflight_mutation:false,
     source_git_commit_required:true,level:4,one_time_approval_required:true,
+    separate_activation_required:true,
     no_arbitrary_command:true,no_arbitrary_path:true,rollback_required:true,
     installer_status:'candidate_only'});
 }
@@ -110,12 +111,17 @@ function applyApproved(){
     changed=true;
     if(sha256(fs.readFileSync(EXECUTOR))!==pre.candidate_sha256)fail('postwrite_executor_sha_mismatch');
     if(gitBlob(fs.readFileSync(WORKER_TARGET))!==WORKER_GIT_BLOB)fail('postwrite_worker_sha_mismatch');
-    systemctl('restart',EXECUTOR_SERVICE);
+    // Do NOT restart the Host Actions service from inside its own active request.
+    // Activation must be independently authorized and can occur only after the
+    // original request has returned and a controlled poststate verifier is ready.
     if(systemctl('is-active',EXECUTOR_SERVICE)!=='active')fail('executor_not_active');
     return {ok:true,action:ACTION,source_sha256:pre.source_sha256,
       installed_sha256:pre.candidate_sha256,release_head:RELEASE_HEAD,
       timestamp:new Date().toISOString(),target:EXECUTOR,backup,
-      rollback_performed:false,requires_fresh_deploy_approval:true};
+      installation_state:'staged_pending_activation',
+      production_code_written:true,production_runtime_restarted:false,
+      rollback_performed:false,requires_separate_activation_approval:true,
+      requires_fresh_deploy_approval:true};
   }catch(err){
     if(changed||fs.existsSync(backup)){
       let rollbackFailed=null;
@@ -123,7 +129,8 @@ function applyApproved(){
         atomic(EXECUTOR,original,pre.executor_mode);
         if(workerExisted)atomic(WORKER_TARGET,originalWorker,0o750);
         else if(fs.existsSync(WORKER_TARGET))fs.unlinkSync(WORKER_TARGET);
-        systemctl('restart',EXECUTOR_SERVICE);
+        // Activation has not been attempted. Restore files without restarting
+        // the service processing the approval transaction.
         if(systemctl('is-active',EXECUTOR_SERVICE)!=='active')fail('rollback_executor_not_active');
         if(sha256(fs.readFileSync(EXECUTOR))!==EXECUTOR_PREIMAGE_SHA256)fail('rollback_sha_mismatch');
       }catch(r){rollbackFailed=String(r.message||r)}
