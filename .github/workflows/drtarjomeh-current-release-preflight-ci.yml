@@ -1,0 +1,39 @@
+name: DrTarjomeh Current Release Read-Only Preflight CI
+
+on:
+  push:
+    branches:
+      - feature/drtarjomeh-current-release-readonly-preflight-20261008
+    paths:
+      - 'drtarjomeh-current-release-preflight-v1.js'
+      - 'test-drtarjomeh-current-release-preflight-v1.js'
+      - '.github/workflows/drtarjomeh-current-release-preflight-ci.yml'
+  pull_request:
+    paths:
+      - 'drtarjomeh-current-release-preflight-v1.js'
+      - 'test-drtarjomeh-current-release-preflight-v1.js'
+      - '.github/workflows/drtarjomeh-current-release-preflight-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Syntax validation
+        run: |
+          node --check drtarjomeh-current-release-preflight-v1.js
+          node --check test-drtarjomeh-current-release-preflight-v1.js
+      - name: Read-only preflight contract
+        run: node --test test-drtarjomeh-current-release-preflight-v1.js
+      - name: No production mutation surfaces in preflight
+        run: |
+          if grep -En 'child_process|execSync|spawnSync|writeFile|unlinkSync|renameSync|chmodSync|chownSync|https?\.request|fetch\(' drtarjomeh-current-release-preflight-v1.js; then
+            echo 'Forbidden write/command/network surface in preflight'
+            exit 1
+          fi
