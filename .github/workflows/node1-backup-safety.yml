@@ -35,4 +35,5 @@ jobs:
           node --check node1-db-offsite-v1.js
           node --check node1-host-adapter-v1.js
           node --check node1-isolated-restore-v1.js
-          node --test test-node1-backup-implementation-v1.js test-node1-backup-source-v1.js test-node1-live-vm-backup-v1.js test-node1-db-offsite-v1.js test-node1-host-adapter-v1.js test-node1-isolated-restore-v1.js
+          node --check node1-host-backend-v1.js
+          node --test test-node1-backup-implementation-v1.js test-node1-backup-source-v1.js test-node1-live-vm-backup-v1.js test-node1-db-offsite-v1.js test-node1-host-adapter-v1.js test-node1-isolated-restore-v1.js test-node1-host-backend-v1.js
