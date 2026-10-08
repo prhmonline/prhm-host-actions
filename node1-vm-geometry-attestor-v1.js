@@ -13,11 +13,11 @@ const PINNED=Object.freeze(registration.FILES.filter(x=>[
 ].includes(x.path)).map(x=>Object.freeze({...x})));
 function deny(condition,reason){if(!condition)throw Error(reason)}
 function shaGitBlob(bytes){deny(Buffer.isBuffer(bytes),'bytes_missing');return crypto.createHash('sha1').update(Buffer.from('blob '+bytes.length+'\0')).update(bytes).digest('hex')}
-function safeOpenRegularRootOwned(file,limit=1048576){
+function safeOpenRegularRootOwned(file,limit=1048576,secret=false){
  const fd=fs.openSync(file,fs.constants.O_RDONLY|fs.constants.O_NOFOLLOW);
  try{
   const st=fs.fstatSync(fd);
-  deny(st.isFile()&&st.uid===0&&(st.mode&0o022)===0&&st.size>0&&st.size<=limit,'pinned_file_insecure');
+  deny(st.isFile()&&st.uid===0&&(st.mode&0o022)===0&&(!secret||(st.mode&0o077)===0)&&st.size>0&&st.size<=limit,'pinned_file_insecure');
   const data=Buffer.alloc(st.size);let cursor=0;
   while(cursor<st.size){const n=fs.readSync(fd,data,cursor,st.size-cursor,cursor);deny(n>0,'pinned_file_short_read');cursor+=n}
   const after=fs.fstatSync(fd);
@@ -70,7 +70,7 @@ function main(args=process.argv.slice(2)){
  return makeBundle({
   getPinned(rel){deny(PINNED.some(x=>x.path===rel),'source_not_pinned');return safeOpenRegularRootOwned(path.join(BASE,rel))},
   run:runFixed,
-  loadKey(){return safeOpenRegularRootOwned(SIGNING_KEY,16384)},
+  loadKey(){return safeOpenRegularRootOwned(SIGNING_KEY,16384,true)},
   now:Date.now,nonce:()=>crypto.randomBytes(24).toString('base64url')
  });
 }
