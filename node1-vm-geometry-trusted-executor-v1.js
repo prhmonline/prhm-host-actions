@@ -4,7 +4,6 @@
 // Import has no effects. No arbitrary host, command, SSH or file paths accepted.
 const api=require('./node1-vm-geometry-agent-api-route-v1');
 const registration=require('./node1-vm-geometry-registration-plan-v1');
-const manifest=require('./node1-vm-geometry-deploy-preflight-v1');
 const crypto=require('node:crypto');
 const NODE1='server1.prhm.ir';
 const OP=api.OP;
