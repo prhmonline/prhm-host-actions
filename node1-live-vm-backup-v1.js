@@ -53,11 +53,17 @@ function assertAdapter(adapter){
 function executeDomainBackup({domain,runId,adapter,freeBytes,vmVirtualBytes,timeoutPolls=1440}){
   assertAdapter(adapter);
   invariant(Number.isInteger(timeoutPolls)&&timeoutPolls>=1&&timeoutPolls<=1440,'invalid_poll_budget');
+  invariant(Object.prototype.hasOwnProperty.call(DOMAINS,domain),'domain_not_allowlisted');
   // Stage capacity is checked against VM *virtual* size; no unsupported best-effort fallbacks.
   const c=capacityGate({freeBytes,vmVirtualBytes});
   invariant(c.ok,'capacity_preflight_failed');
   const listing=adapter.command('/usr/bin/virsh',['domblklist',domain,'--details']);
   const plan=makePlan(domain,runId,listing);
+  invariant(typeof adapter.preflight==='function','runtime_preflight_unavailable');
+  const pf=adapter.preflight(plan);
+  for(const gate of ['libvirt_backup_api_supported','guest_agent_responsive','qemu_output_writable','selinux_context_verified','stage_path_exclusive']){
+    invariant(pf?.[gate]===true,'runtime_preflight_failed:'+gate);
+  }
   checkNoActiveJob(adapter.command('/usr/bin/virsh',['domjobinfo',domain]));
   const state=String(adapter.command('/usr/bin/virsh',['domstate',domain])).trim();
   invariant(state==='running','vm_not_running');
