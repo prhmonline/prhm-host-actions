@@ -22,21 +22,25 @@ function fixture(){
  const plan={inputs:files,candidates,candidate_sha256:Object.fromEntries(r.KEYS.map(k=>[k,r.sha(Buffer.from(candidates[k]))]))};
  return {root,files,original,plan,cleanup:()=>fs.rmSync(root,{recursive:true,force:true})}
 }
-function withMappedPath(f){
- const saved={...r.PATHS};
- // Patch only filesystem fixture hooks; candidate module itself has immutable fixed roots.
- const io={...fs,
-  lstatSync:(name)=>fs.lstatSync(name),
-  realpathSync:(name)=>fs.realpathSync(name),
-  readFileSync:(name)=>fs.readFileSync(name),
-  mkdirSync:(...a)=>fs.mkdirSync(...a),
-  writeFileSync:(...a)=>fs.writeFileSync(...a),
-  chownSync:(...a)=>fs.chownSync(...a),
-  chmodSync:(...a)=>fs.chmodSync(...a),
-  renameSync:(...a)=>fs.renameSync(...a),
-  unlinkSync:(...a)=>fs.unlinkSync(...a)
+function mappedIO(x,backupDir){
+ const fakeBackup=path.join(x.root,'backup');
+ const alias=Object.fromEntries(r.KEYS.map(k=>[r.PATHS[k],x.files[k].path]));
+ const convert=(name)=>{
+  if(alias[name])return alias[name];
+  if(name===backupDir)return fakeBackup;
+  if(typeof name==='string'&&name.startsWith(backupDir+'/'))
+   return fakeBackup+name.slice(backupDir.length);
+  return name;
  };
- return f(io,saved);
+ return {fakeBackup,
+  io:{...fs,
+   lstatSync:(name)=>fs.lstatSync(convert(name)),
+   realpathSync:(name)=>alias[name]?name:fs.realpathSync(convert(name)),
+   readFileSync:(name,...args)=>fs.readFileSync(convert(name),...args),
+   writeFileSync:(name,...args)=>fs.writeFileSync(convert(name),...args),
+   mkdirSync:(name,...args)=>fs.mkdirSync(convert(name),...args)
+  }
+ };
 }
 test('requires an authenticated consumed Level-4 one-time approval before mutation',()=>{
  assert.throws(()=>r.checkStagedApproval(null),/trusted_level4/);
@@ -73,38 +77,27 @@ test('candidate generator rejects any changed pinned preimage',()=>{
  assert.throws(()=>r.planRegistration(original),/preimage_sha_mismatch/);
 });
 test('fixture transaction succeeds and records exact SHA results without modifying outside fixtures',()=>{
- const x=fixture();const baseBackup=path.join(r.BACKUP_ROOT,'fixture-success-'+process.pid);
- // Only a mock IO remaps an allowlisted backup root into a temporary directory.
- const backupFake=path.join(x.root,'backups');
- const io={...fs,
-  mkdirSync:(p,opts)=>fs.mkdirSync(p===baseBackup?backupFake:p,opts),
-  writeFileSync:(p,...args)=>fs.writeFileSync(p.startsWith(baseBackup+'/')?p.replace(baseBackup,backupFake):p,...args),
-  readFileSync:(p,...args)=>fs.readFileSync(p.startsWith(baseBackup+'/')?p.replace(baseBackup,backupFake):p,...args)
- };
- // Fixed-path containment is tested independently; mutation requires valid verifier.
- const oldPaths={...r.PATHS};
+ const x=fixture();
+ const backupDir=path.join(r.BACKUP_ROOT,'fixture-success-'+process.pid);
+ const {io,fakeBackup}=mappedIO(x,backupDir);
  try{
-  for(const k of r.KEYS)r.PATHS[k]=x.files[k].path;
-  const result=r.executeTransaction(x.plan,{io,backupDir:baseBackup,approval:approval(),
+  const result=r.executeTransaction(x.plan,{io,backupDir,approval:approval(),
    restart:()=>{},health:()=>{}});
   assert.equal(result.ok,true);
   for(const k of r.KEYS)assert.equal(fs.readFileSync(x.files[k].path,'utf8'),'after-'+k);
-  assert.equal(JSON.parse(fs.readFileSync(path.join(backupFake,'result.json'))).rollback_performed,false);
- }finally{for(const k of r.KEYS)r.PATHS[k]=oldPaths[k];x.cleanup()}
+  assert.equal(JSON.parse(fs.readFileSync(path.join(fakeBackup,'result.json'),'utf8')).rollback_performed,false);
+ }finally{x.cleanup()}
 });
 test('failure after swaps triggers exact byte restoration in reverse order',()=>{
- const x=fixture();const backupRoot=path.join(r.BACKUP_ROOT,'fixture-fail-'+process.pid);
- const backing=path.join(x.root,'backup');
- const io={...fs,
-  mkdirSync:(p,opts)=>fs.mkdirSync(p===backupRoot?backing:p,opts),
-  writeFileSync:(p,...args)=>fs.writeFileSync(p.startsWith(backupRoot+'/')?p.replace(backupRoot,backing):p,...args),
-  readFileSync:(p,...args)=>fs.readFileSync(p.startsWith(backupRoot+'/')?p.replace(backupRoot,backing):p,...args)
- };
- const oldPaths={...r.PATHS};
+ const x=fixture();
+ const backupDir=path.join(r.BACKUP_ROOT,'fixture-failure-'+process.pid);
+ const {io,fakeBackup}=mappedIO(x,backupDir);
+ let restarts=0;
  try{
-  for(const k of r.KEYS)r.PATHS[k]=x.files[k].path;
-  assert.throws(()=>r.executeTransaction(x.plan,{io,backupDir:backupRoot,approval:approval(),
-    restart:(svc)=>{if(svc===r.SERVICES[0])throw new Error('injected_restart_failure')},health:()=>{}}),/registration_failed/);
+  assert.throws(()=>r.executeTransaction(x.plan,{io,backupDir,approval:approval(),
+   restart:()=>{if(++restarts===1)throw new Error('injected_restart_failure')},
+   health:()=>{}}),/registration_failed:injected_restart_failure:ROLLED_BACK/);
   for(const k of r.KEYS)assert.equal(fs.readFileSync(x.files[k].path,'utf8'),'before-'+k);
- }finally{for(const k of r.KEYS)r.PATHS[k]=oldPaths[k];x.cleanup()}
+  assert.equal(JSON.parse(fs.readFileSync(path.join(fakeBackup,'result.json'),'utf8')).rollback_performed,true);
+ }finally{x.cleanup()}
 });
