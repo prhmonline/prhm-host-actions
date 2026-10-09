@@ -14,7 +14,7 @@ function fixture(){
  const files={},sources={},original={};
  for(const key of r.KEYS){
   const p=path.join(root,key+'.txt');
-  fs.writeFileSync(p,'before-'+key);
+  fs.writeFileSync(p,'before-'+key,{mode:0o600});
   files[key]={path:p,bytes:Buffer.from('before-'+key),sha256:r.sha(Buffer.from('before-'+key)),mode:0o600,uid:process.getuid(),gid:process.getgid()};
   sources[key]='before-'+key; original[key]='before-'+key;
  }
