@@ -1,0 +1,36 @@
+name: RahKomak atomic registry installer candidate
+on:
+  pull_request:
+    paths:
+      - 'rahekomak-web-only-host-action-registry-installer-candidate-v1.js'
+      - 'test-rahekomak-web-only-host-action-registry-installer-candidate-v1.js'
+      - 'rahekomak-web-only-host-action-registry-candidate-v1.js'
+      - '.github/workflows/rahekomak-atomic-registry-installer-ci.yml'
+  push:
+    branches:
+      - 'feat/rahekomak-atomic-registration-installer-v1'
+permissions:
+  contents: read
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Syntax
+        run: |
+          node --check rahekomak-web-only-host-action-registry-candidate-v1.js
+          node --check rahekomak-web-only-host-action-registry-installer-candidate-v1.js
+      - name: Exact-preimage and atomic-rollback tests
+        run: |
+          node --test test-rahekomak-web-only-host-action-registry-candidate-v1.js test-rahekomak-web-only-host-action-registry-installer-candidate-v1.js
+      - name: Check absence of direct apply entrypoint
+        run: |
+          node rahekomak-web-only-host-action-registry-installer-candidate-v1.js --contract
+          if node rahekomak-web-only-host-action-registry-installer-candidate-v1.js --apply; then
+            echo "Unsafe unapproved apply entrypoint" >&2
+            exit 1
+          fi
