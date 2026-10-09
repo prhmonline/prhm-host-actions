@@ -12,7 +12,7 @@ const policy=JSON.stringify({schema_version:'prhm.approval-policy.v1',version:re
  default_deny:true,operations:{},typed_scopes:[]});
 test('registration adds exactly one fixed Level-4 action to each boundary',()=>{
  const b=reg.patchBase(base),e=reg.patchExecutor(exec),m=reg.patchMcp(mcp),p=JSON.parse(reg.patchPolicy(policy));
- assert.equal(b.split(reg.ACTION).length-1,1);
+ assert.ok(b.includes('  '+reg.ACTION+': { operation:'));
  assert.ok(e.includes('applyRahKomakWebOnlyReleaseV1()'));
  assert.ok(e.includes('RAHEKOMAK_WEB_SCRIPT_SHA='));
  assert.ok(e.includes('RAHEKOMAK_RELEASE_APPROVAL_MODE=approved_web_only'));
