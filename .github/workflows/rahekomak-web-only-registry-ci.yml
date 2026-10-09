@@ -1,0 +1,25 @@
+name: RahKomak web-only registration candidate
+on:
+  pull_request:
+    paths:
+      - 'rahekomak-web-only-host-action-registry-candidate-v1.js'
+      - 'test-rahekomak-web-only-host-action-registry-candidate-v1.js'
+      - '.github/workflows/rahekomak-web-only-registry-ci.yml'
+  push:
+    branches:
+      - 'feat/rahekomak-web-only-registry-v1'
+permissions:
+  contents: read
+jobs:
+  candidate-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Static syntax check
+        run: node --check rahekomak-web-only-host-action-registry-candidate-v1.js
+      - name: Fail-closed registry unit tests
+        run: node --test test-rahekomak-web-only-host-action-registry-candidate-v1.js
