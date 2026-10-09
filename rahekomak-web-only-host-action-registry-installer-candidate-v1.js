@@ -66,6 +66,7 @@ function checkCurrent(plan,io=fs){
  for(const key of KEYS){
   const f=plan.inputs[key],filename=PATHS[key],st=io.lstatSync(filename);
   validatePath(filename,st,io.realpathSync(filename));
+  if(st.uid!==f.uid||st.gid!==f.gid||(st.mode&0o777)!==f.mode)fail('owner_or_mode_drift:'+key);
   if(sha(io.readFileSync(filename))!==f.sha256)fail('concurrent_drift:'+key);
  }
 }
@@ -86,9 +87,11 @@ function executeTransaction(plan,{io=fs,restart,health,approval,backupDir}={}){
  // typed Host Action mediator may pass its verified Level-4 approval context.
  checkStagedApproval(approval);
  if(typeof restart!=='function'||typeof health!=='function')fail('verified_restart_and_health_required');
- if(!backupDir||!path.isAbsolute(backupDir)||!backupDir.startsWith(BACKUP_ROOT+'/'))
+ if(!backupDir||path.dirname(path.resolve(backupDir))!==BACKUP_ROOT||
+    !/^[a-zA-Z0-9-]{8,120}$/.test(path.basename(backupDir)))
    fail('backup_root_not_allowlisted');
  checkCurrent(plan,io);
+ io.mkdirSync(BACKUP_ROOT,{recursive:true,mode:0o700});
  io.mkdirSync(backupDir,{recursive:false,mode:0o700});
  const written=[];
  let didRollback=false,rollbackErrors=[];
@@ -123,7 +126,7 @@ function executeTransaction(plan,{io=fs,restart,health,approval,backupDir}={}){
     if(sha(io.readFileSync(file.path))!==file.sha256)fail('rollback_postwrite_sha_mismatch:'+key);
    }catch(e){rollbackErrors.push(key+':'+String(e.message))}
   }
-  try{
+  if(written.length>0)try{
    for(const service of SERVICES){restart(service);health(service)}
   }catch(e){rollbackErrors.push('restart:'+String(e.message))}
   didRollback=written.length>0&&rollbackErrors.length===0;
