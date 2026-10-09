@@ -38,7 +38,7 @@ function mappedIO(x,backupDir){
    realpathSync:(name)=>alias[name]?name:fs.realpathSync(convert(name)),
    readFileSync:(name,...args)=>fs.readFileSync(convert(name),...args),
    writeFileSync:(name,...args)=>fs.writeFileSync(convert(name),...args),
-   mkdirSync:(name,...args)=>fs.mkdirSync(convert(name),...args)
+   mkdirSync:(name,...args)=>fs.mkdirSync(name===r.BACKUP_ROOT?x.root:convert(name),...args)
   }
  };
 }
@@ -99,5 +99,16 @@ test('failure after swaps triggers exact byte restoration in reverse order',()=>
    health:()=>{}}),/registration_failed:injected_restart_failure:ROLLED_BACK/);
   for(const k of r.KEYS)assert.equal(fs.readFileSync(x.files[k].path,'utf8'),'before-'+k);
   assert.equal(JSON.parse(fs.readFileSync(path.join(fakeBackup,'result.json'),'utf8')).rollback_performed,true);
+ }finally{x.cleanup()}
+});
+
+test('absolute sibling or traversal backup paths are rejected before mutation',()=>{
+ const x=fixture();const {io}=mappedIO(x,path.join(r.BACKUP_ROOT,'fixture-'+process.pid));
+ try{
+  for(const bad of [r.BACKUP_ROOT+'/../escaped',r.BACKUP_ROOT+'/not_ok!']){
+   assert.throws(()=>r.executeTransaction(x.plan,{io,backupDir:bad,approval:approval(),
+     restart:()=>{},health:()=>{}}),/backup_root_not_allowlisted/);
+  }
+  for(const k of r.KEYS)assert.equal(fs.readFileSync(x.files[k].path,'utf8'),'before-'+k);
  }finally{x.cleanup()}
 });
