@@ -1,0 +1,30 @@
+name: DrTarjomeh incident 47 signed L4 registration candidate
+
+on:
+  pull_request:
+    paths:
+      - 'drtarjomeh-incident47-l4-registration-candidate-v1.js'
+      - 'test-drtarjomeh-incident47-l4-registration-candidate-v1.js'
+      - '.github/workflows/drtarjomeh-incident47-l4-bridge-candidate-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'drtarjomeh-incident47-l4-registration-candidate-v1.js'
+      - 'test-drtarjomeh-incident47-l4-registration-candidate-v1.js'
+      - '.github/workflows/drtarjomeh-incident47-l4-bridge-candidate-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  fail-closed-pinned-registration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check candidate syntax
+        run: node --check drtarjomeh-incident47-l4-registration-candidate-v1.js
+      - name: Run read-only signed Level-4 registration contracts
+        run: node --test test-drtarjomeh-incident47-l4-registration-candidate-v1.js
