@@ -10,7 +10,7 @@ const ACTION=pins.ACTION;
 const OPERATION=pins.OPERATION;
 const HOST_BASE='4665863cbb40532298e78ba1588d45124ad20da8';
 const RUNNER_TARGET='/opt/prhm-agent-selfmaint-exec/actions/drtarjomeh-incident47-reviewed-host-runner-v1.js';
-const RUNNER_GIT_BLOB='368cf4c93c068093f702b399193c700cbd9a3cff';
+const RUNNER_GIT_BLOB='df6a4ab6450d2a9c794bb42782e17ceda1c23f65';
 const APP_SHA=pins.SOURCE_COMMIT;
 const FALLBACK_DISPATCH='async function applyHostActionV2(action){const spec=hostActionV2Spec(action);';
 const BASE_ANCHOR='const HOST_ACTION_V2_SPECS = Object.freeze({\n';
@@ -44,7 +44,7 @@ function executorTransform(source){
   const fn=[
     "function applyDrtI47GuardAfterTrustedApproval(){",
     " const bytes=fs.readFileSync('/opt/prhm-agent-selfmaint-exec/actions/drtarjomeh-incident47-reviewed-host-runner-v1.js');",
-    " const expected='368cf4c93c068093f702b399193c700cbd9a3cff';",
+    " const expected='df6a4ab6450d2a9c794bb42782e17ceda1c23f65';",
     " const gitsha=require('node:crypto').createHash('sha1').update(Buffer.concat([Buffer.from('blob '+bytes.length+'\\0'),bytes])).digest('hex');",
     " if(gitsha!==expected)throw new Error('drt_i47_runner_source_mismatch');",
     " const runner=require('/opt/prhm-agent-selfmaint-exec/actions/drtarjomeh-incident47-reviewed-host-runner-v1.js');",
