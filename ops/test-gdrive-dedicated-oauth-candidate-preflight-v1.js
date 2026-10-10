@@ -45,6 +45,7 @@ test('wrong size or filename prevents cutover',()=>{
 test('verify-only CLI never accepts apply and never emits secrets',()=>{
  const r=cp.spawnSync(process.execPath,[path.join(__dirname,'gdrive-dedicated-oauth-candidate-preflight-v1.js'),'--apply'],{encoding:'utf8',timeout:6000});
  assert.equal(r.status,3);
- assert.match(r.stdout,/READ_ONLY_MODES_ONLY/);
+ assert.match(r.stdout,/"status": "BLOCKED"/);
+ assert.match(r.stdout,/"production_config_mutation": false/);
  assert.doesNotMatch(r.stdout,/access_token|refresh_token|client_secret/);
 });
