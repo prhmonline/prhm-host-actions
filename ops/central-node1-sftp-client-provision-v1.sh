@@ -30,7 +30,7 @@ export SCAN
 python3 - "$TRUST" "$KNOWN" <<'PY'
 import os,sys,subprocess
 known=sys.argv[1];out=sys.argv[2]
-result=subprocess.run(['ssh-keygen','-F','185.191.76.138','-f',known],text=True,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL)
+result=subprocess.run(['ssh-keygen','-F','185.191.76.138','-f',known],universal_newlines=True,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL)
 assert result.returncode==0
 trusted=set(' '.join(x.split()[1:3]) for x in result.stdout.splitlines() if x and not x.startswith('#') and len(x.split())>=3)
 scan=[]
