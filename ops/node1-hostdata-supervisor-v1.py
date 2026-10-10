@@ -144,7 +144,8 @@ def classify_last(report, now, free_bytes, max_age_hours=MAX_AGE_HOURS):
         'sha_verified': report.get('snapshot_sha256_verified') is True,
         'full_site_coverage': report.get('coverage_ratio', 0) >= 0.95,
         'db_inventory': report.get('database_count', 0) >= 6,
-        'snapshot_bound': bool(SNAPSHOT_PATTERN.fullmatch(report.get('snapshot', ''))),
+        'snapshot_bound': bool(isinstance(report.get('snapshot'), str) and
+                               SNAPSHOT_PATTERN.fullmatch(report['snapshot'])),
         'disk_above_floor': free_bytes >= MIN_FREE_BYTES,
     }
     try:
@@ -153,8 +154,16 @@ def classify_last(report, now, free_bytes, max_age_hours=MAX_AGE_HOURS):
         # Python 3.6 only accepts timezone offsets without the colon.
         if timestamp[-3:-2] == ':':
             timestamp = timestamp[:-3] + timestamp[-2:]
-        stamp = datetime.datetime.strptime(
-            timestamp, '%Y-%m-%dT%H:%M:%S.%f%z')
+        stamp = None
+        for fmt in ('%Y-%m-%dT%H:%M:%S.%f%z',
+                    '%Y-%m-%dT%H:%M:%S%z'):
+            try:
+                stamp = datetime.datetime.strptime(timestamp, fmt)
+                break
+            except ValueError:
+                pass
+        if stamp is None:
+            raise ValueError('INVALID_REPORT_TIMESTAMP')
         age_hours = (now - stamp).total_seconds() / 3600.0
         checks['fresh_within_36h'] = 0 <= age_hours <= max_age_hours
     except (TypeError, ValueError, KeyError):
