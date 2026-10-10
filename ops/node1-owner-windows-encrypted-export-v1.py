@@ -57,6 +57,55 @@ def owner_paths():
     return key_directory, out_directory
 
 
+def choose_output_directory(preferred, custom=None):
+    """Prefer owner home; select another local Windows volume when space is short."""
+    required = 3 * 1024 ** 3
+    if custom:
+        selected = pathlib.Path(custom).expanduser()
+        if not selected.is_absolute():
+            stop("OUTPUT_PATH_MUST_BE_ABSOLUTE")
+        if selected.is_symlink():
+            stop("OUTPUT_DIRECTORY_SYMLINK_NOT_ALLOWED")
+        selected.mkdir(parents=True, exist_ok=True)
+        if shutil.disk_usage(str(selected)).free < required:
+            stop("SELECTED_OUTPUT_DRIVE_NEEDS_3_GIB_FREE")
+        print("OUTPUT_DIRECTORY=" + str(selected), flush=True)
+        return selected
+    if preferred.is_symlink():
+        stop("OUTPUT_DIRECTORY_SYMLINK_NOT_ALLOWED")
+    preferred.mkdir(exist_ok=True)
+    if shutil.disk_usage(str(preferred)).free >= required:
+        print("OUTPUT_DIRECTORY=" + str(preferred), flush=True)
+        return preferred
+    if platform.system() == "Windows":
+        import ctypes
+        volumes = []
+        for letter in "DEFGHIJKLMNOPQRSTUVWXYZABC":
+            root = letter + ":\\"
+            try:
+                drive_type = ctypes.windll.kernel32.GetDriveTypeW(root)
+                if drive_type not in (2, 3):  # removable or fixed; never network
+                    continue
+                free = shutil.disk_usage(root).free
+                if free >= required:
+                    volumes.append((free, root))
+            except OSError:
+                continue
+        for free, root in sorted(volumes, reverse=True):
+            selected = pathlib.Path(root) / "PRHM-Node1-Encrypted-Exports"
+            if selected.is_symlink():
+                continue
+            try:
+                selected.mkdir(exist_ok=True)
+                if shutil.disk_usage(str(selected)).free >= required:
+                    print("OUTPUT_DRIVE_AUTO_SELECTED=" + root, flush=True)
+                    print("OUTPUT_DIRECTORY=" + str(selected), flush=True)
+                    return selected
+            except OSError:
+                continue
+    stop("NO_LOCAL_DISK_WITH_3_GIB_FREE")
+
+
 def check_receipt(key_dir):
     secret_path = key_dir / KEY_FILENAME
     receipt_path = key_dir / RECEIPT_FILENAME
@@ -227,21 +276,19 @@ def verify_archive(path, local_key, expected_digest=None):
             "site_regular_files": coverage["site_regular_files"]}
 
 
-def diagnose():
+def diagnose(output_dir=None):
     """Read-only diagnostic; avoids downloading the large snapshot."""
     print("DIAGNOSTIC_START=YES", flush=True)
     assert_owner_windows()
     print("WINDOWS_OWNER_HOST=PASS", flush=True)
-    key_dir, out_dir = owner_paths()
+    key_dir, preferred = owner_paths()
     check_receipt(key_dir)
     print("OFF_DEVICE_RECOVERY_KEY=PASS", flush=True)
     ssh_identity = find_authorized_key()
     print("APPROVED_WINDOWS_SSH_KEY=PASS", flush=True)
     gpg_executable()
     print("WINDOWS_GPG=PASS", flush=True)
-    out_dir.mkdir(exist_ok=True)
-    if shutil.disk_usage(str(out_dir)).free < 3 * 1024**3:
-        stop("NOT_ENOUGH_INDEPENDENT_WINDOWS_DISK_SPACE")
+    out_dir = choose_output_directory(preferred, output_dir)
     print("WINDOWS_DISK_SPACE=PASS", flush=True)
     archive = out_dir / (SNAPSHOT + ".snapshot.tar.gpg")
     part = pathlib.Path(str(archive) + ".partial")
@@ -269,15 +316,13 @@ def diagnose():
     print("OWNER_OFFSITE_DIAGNOSE=PASS", flush=True)
 
 
-def fetch():
+def fetch(output_dir=None):
     assert_owner_windows()
-    key_dir, out_dir = owner_paths()
+    key_dir, preferred = owner_paths()
     local_key = check_receipt(key_dir)
     ssh_identity = find_authorized_key()
     gpg_executable()
-    out_dir.mkdir(exist_ok=True)
-    if shutil.disk_usage(str(out_dir)).free < 3 * 1024**3:
-        stop("NOT_ENOUGH_INDEPENDENT_WINDOWS_DISK_SPACE")
+    out_dir = choose_output_directory(preferred, output_dir)
     archive = out_dir / (SNAPSHOT + ".snapshot.tar.gpg")
     part = pathlib.Path(str(archive) + ".partial")
     metadata = pathlib.Path(str(archive) + ".verification.json")
@@ -348,17 +393,19 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     modes = p.add_subparsers(dest="action")
     modes.required = True
-    modes.add_parser("fetch", help="read-only SSH stream of encrypted archive to owner's Windows PC")
-    modes.add_parser("diagnose", help="local and SSH preflight only, no large backup transfer")
+    fetch_parser = modes.add_parser("fetch", help="read-only SSH stream of encrypted archive to owner's Windows PC")
+    fetch_parser.add_argument("--output-dir", help="optional absolute path on a drive with at least 3 GiB free")
+    diagnostic_parser = modes.add_parser("diagnose", help="local and SSH preflight only, no large backup transfer")
+    diagnostic_parser.add_argument("--output-dir", help="optional absolute path on a drive with at least 3 GiB free")
     v = modes.add_parser("verify", help="verify an independently downloaded ciphertext")
     v.add_argument("--file", required=True)
     v.add_argument("--expected-sha256")
     args = p.parse_args()
     try:
         if args.action == "fetch":
-            fetch()
+            fetch(args.output_dir)
         elif args.action == "diagnose":
-            diagnose()
+            diagnose(args.output_dir)
         else:
             verify(args)
     except (OSError, RuntimeError, ValueError, tarfile.TarError,
@@ -373,6 +420,8 @@ def main():
                 "OPENSSH_KEYGEN_NOT_AVAILABLE",
                 "EXPECTED_ONE_PREVIOUSLY_AUTHORIZED_WINDOWS_SSH_KEY",
                 "GPG_NOT_AVAILABLE", "NOT_ENOUGH_INDEPENDENT_WINDOWS_DISK_SPACE",
+                "NO_LOCAL_DISK_WITH_3_GIB_FREE", "SELECTED_OUTPUT_DRIVE_NEEDS_3_GIB_FREE",
+                "OUTPUT_PATH_MUST_BE_ABSOLUTE", "OUTPUT_DIRECTORY_SYMLINK_NOT_ALLOWED",
                 "ARCHIVE_ALREADY_EXISTS_NEVER_OVERWRITE",
                 "SSH_REMOTE_READONLY_PREFLIGHT_FAILED",
                 "SSH_TRANSFER_INCOMPLETE_OR_SOURCE_FAILED",
