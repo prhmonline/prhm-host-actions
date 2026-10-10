@@ -160,13 +160,13 @@ class OfflineOwnerExport(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             root = pathlib.Path(t)
             output = root / "out"
-            target = mock.Mock(returncode=0, stdout=b"READ_ONLY_SSH_PREFLIGHT_OK\\n")
-            with mock.patch.object(m, "assert_owner_windows"), \\
-                 mock.patch.object(m, "owner_paths", return_value=(root, output)), \\
-                 mock.patch.object(m, "check_receipt", return_value=root / "fake.key"), \\
-                 mock.patch.object(m, "find_authorized_key", return_value=root / "fake.ssh"), \\
-                 mock.patch.object(m, "gpg_executable", return_value="/usr/bin/gpg"), \\
-                 mock.patch.object(m, "make_ssh_command", return_value=["ssh", "PLACEHOLDER"]), \\
+            target = mock.Mock(returncode=0, stdout=b"READ_ONLY_SSH_PREFLIGHT_OK\n")
+            with mock.patch.object(m, "assert_owner_windows"), \
+                 mock.patch.object(m, "owner_paths", return_value=(root, output)), \
+                 mock.patch.object(m, "check_receipt", return_value=root / "fake.key"), \
+                 mock.patch.object(m, "find_authorized_key", return_value=root / "fake.ssh"), \
+                 mock.patch.object(m, "gpg_executable", return_value="/usr/bin/gpg"), \
+                 mock.patch.object(m, "make_ssh_command", return_value=["ssh", "PLACEHOLDER"]), \
                  mock.patch.object(m.subprocess, "run", return_value=target) as run_mock:
                 m.diagnose()
             self.assertTrue(output.is_dir())
@@ -181,7 +181,7 @@ class OfflineOwnerExport(unittest.TestCase):
         old = sys.argv
         try:
             sys.argv = ["owner-export", "diagnose"]
-            with mock.patch.object(m, "diagnose", side_effect=RuntimeError("GPG_NOT_AVAILABLE")), \\
+            with mock.patch.object(m, "diagnose", side_effect=RuntimeError("GPG_NOT_AVAILABLE")), \
                  mock.patch.object(m.sys, "stderr", new_callable=io.StringIO) as sink:
                 self.assertEqual(m.main(), 3)
                 rendered = sink.getvalue()
