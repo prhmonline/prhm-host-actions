@@ -227,6 +227,48 @@ def verify_archive(path, local_key, expected_digest=None):
             "site_regular_files": coverage["site_regular_files"]}
 
 
+def diagnose():
+    """Read-only diagnostic; avoids downloading the large snapshot."""
+    print("DIAGNOSTIC_START=YES", flush=True)
+    assert_owner_windows()
+    print("WINDOWS_OWNER_HOST=PASS", flush=True)
+    key_dir, out_dir = owner_paths()
+    check_receipt(key_dir)
+    print("OFF_DEVICE_RECOVERY_KEY=PASS", flush=True)
+    ssh_identity = find_authorized_key()
+    print("APPROVED_WINDOWS_SSH_KEY=PASS", flush=True)
+    gpg_executable()
+    print("WINDOWS_GPG=PASS", flush=True)
+    out_dir.mkdir(exist_ok=True)
+    if shutil.disk_usage(str(out_dir)).free < 3 * 1024**3:
+        stop("NOT_ENOUGH_INDEPENDENT_WINDOWS_DISK_SPACE")
+    print("WINDOWS_DISK_SPACE=PASS", flush=True)
+    archive = out_dir / (SNAPSHOT + ".snapshot.tar.gpg")
+    part = pathlib.Path(str(archive) + ".partial")
+    metadata = pathlib.Path(str(archive) + ".verification.json")
+    if any(p.exists() for p in (archive, part, metadata)):
+        stop("ARCHIVE_ALREADY_EXISTS_NEVER_OVERWRITE")
+    print("IMMUTABLE_OUTPUT_PATH=PASS", flush=True)
+    checks = (
+        "set -eu; test \"$(hostname -f)\" = 'prhm-production.prhm.ir'; "
+        "test \"$(stat -c %a /etc/prhm-backup/physical-offsite/node1-hostdata-gpg.passphrase)\" = 600; "
+        "test -f /etc/prhm-backup/physical-offsite/node1-hostdata-escrow.json; "
+        "command -v gpg >/dev/null; "
+        "/usr/bin/ssh -o BatchMode=yes -o ConnectTimeout=15 "
+        "-o StrictHostKeyChecking=yes root@185.191.76.138 "
+        + shlex.quote("test -f " + REMOTE_ROOT + "/" + SNAPSHOT + "/COMPLETE")
+        + "; printf 'READ_ONLY_SSH_PREFLIGHT_OK\\n'"
+    )
+    cmd = make_ssh_command(ssh_identity)
+    cmd[-1] = "bash -c " + shlex.quote(checks)
+    print("SSH_READ_ONLY_PRECHECK_BEGIN=YES", flush=True)
+    proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=None, timeout=90)
+    if proc.returncode != 0 or proc.stdout.strip() != b"READ_ONLY_SSH_PREFLIGHT_OK":
+        stop("SSH_REMOTE_READONLY_PREFLIGHT_FAILED")
+    print("SSH_REMOTE_READONLY_PREFLIGHT=PASS", flush=True)
+    print("OWNER_OFFSITE_DIAGNOSE=PASS", flush=True)
+
+
 def fetch():
     assert_owner_windows()
     key_dir, out_dir = owner_paths()
@@ -307,6 +349,7 @@ def main():
     modes = p.add_subparsers(dest="action")
     modes.required = True
     modes.add_parser("fetch", help="read-only SSH stream of encrypted archive to owner's Windows PC")
+    modes.add_parser("diagnose", help="local and SSH preflight only, no large backup transfer")
     v = modes.add_parser("verify", help="verify an independently downloaded ciphertext")
     v.add_argument("--file", required=True)
     v.add_argument("--expected-sha256")
@@ -314,12 +357,34 @@ def main():
     try:
         if args.action == "fetch":
             fetch()
+        elif args.action == "diagnose":
+            diagnose()
         else:
             verify(args)
     except (OSError, RuntimeError, ValueError, tarfile.TarError,
             subprocess.SubprocessError, KeyError, json.JSONDecodeError) as e:
         # Never echo secret bytes or remote SSH credential.
         print("OWNER_OFFSITE_EXPORT_BLOCKED=" + type(e).__name__, file=sys.stderr)
+        if isinstance(e, RuntimeError):
+            # These are our fixed, non-secret, enumerated error codes.
+            known = {s for s in (
+                "OWNER_WINDOWS_DEVICE_REQUIRED", "OFF_DEVICE_KEY_OR_RECEIPT_MISSING",
+                "INVALID_OWNER_KEY_FORMAT", "OWNER_KEY_RECOVERY_NOT_VERIFIED",
+                "OPENSSH_KEYGEN_NOT_AVAILABLE",
+                "EXPECTED_ONE_PREVIOUSLY_AUTHORIZED_WINDOWS_SSH_KEY",
+                "GPG_NOT_AVAILABLE", "NOT_ENOUGH_INDEPENDENT_WINDOWS_DISK_SPACE",
+                "ARCHIVE_ALREADY_EXISTS_NEVER_OVERWRITE",
+                "SSH_REMOTE_READONLY_PREFLIGHT_FAILED",
+                "SSH_TRANSFER_INCOMPLETE_OR_SOURCE_FAILED",
+                "UNEXPECTED_TAR_PREFIX", "UNSAFE_TAR_NAME",
+                "UNREADABLE_TAR_ENTRY", "GPG_DECRYPTION_FAILED",
+                "MISSING_COMPLETE_MARKER", "INCOMPLETE_BACKUP_MEMBERS",
+                "ORIGINAL_SHA256SUMS_MISMATCH", "RESTORE_COVERAGE_NOT_PROVEN",
+                "ENCRYPTED_CLOUD_BYTES_MISMATCH", "ENCRYPTED_ARCHIVE_MISSING",
+                "EXPECTED_DIGEST_INVALID")}
+            reason = str(e)
+            if reason in known:
+                print("OWNER_OFFSITE_REASON=" + reason, file=sys.stderr)
         return 3
     return 0
 
