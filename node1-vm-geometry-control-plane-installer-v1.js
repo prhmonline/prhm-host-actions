@@ -68,15 +68,19 @@ async function activate({intent,ports}={}){
    transport?.operation==='node1_vm_geometry_readonly_api_v1'&&transport?.readOnly===true&&
    transport?.signedReceipts===true&&transport?.pinnedTrustRoot===true&&transport?.persistentAntiReplay===true,
    'trusted_fixed_node1_transport_missing');
- let begun=false,previous=null,stage='approved';
+ let beginAttempted=false,previous=null,stage='approved';
  try {
-   await ports.begin({action:ACTION,requestId:scope.requestId,commitSha:scope.commitSha});begun=true;
-   await ports.audit({event:'begin',stage,repo:scope.repo,branch:'feature/node1-backup-assurance-v1',
-     commitSha:scope.commitSha,target:scope.target,requestId:scope.requestId});
+   // Capture a verified pre-change baseline BEFORE beginning any mutating transaction.
    previous=await ports.snapshot(SERVICES);
    assert(previous?.verified===true&&previous?.services?.join('|')===SERVICES.join('|')&&
       previous?.rollbackAvailable===true,'baseline_snapshot_unverified');
    stage='snapshot';
+   // Begin may mutate state before throwing. Mark the attempt first so partial failures roll back.
+   beginAttempted=true;
+   await ports.begin({action:ACTION,requestId:scope.requestId,commitSha:scope.commitSha});
+   stage='begun';
+   await ports.audit({event:'begin',stage,repo:scope.repo,branch:'feature/node1-backup-assurance-v1',
+     commitSha:scope.commitSha,target:scope.target,requestId:scope.requestId});
    await ports.stage({files:bundle.FILES,sourceCommit:scope.commitSha,runnerCommit:REGISTRATION.SOURCE_COMMIT});
    stage='staged';
    await ports.bind(FIXED_REGISTRATIONS);
@@ -94,19 +98,20 @@ async function activate({intent,ports}={}){
      sourceSha:scope.commitSha,rollbackPerformed:false,probesPerformed:false});
  } catch(error){
    let rolledBack=false,rollbackHealthy=false;
-   if(begun){
+   if(beginAttempted){
      try{
        await ports.restore({snapshot:previous,services:SERVICES});
        const recovery=await ports.verifyRollback({services:SERVICES,snapshot:previous});
        rolledBack=recovery?.restored===true;
-       rollbackHealthy=recovery?.servicesHealthy===true;
+       rollbackHealthy=recovery?.api===true&&recovery?.mcp===true;
      }catch{}
      try{await ports.audit({event:'failed',stage,commitSha:scope.commitSha,
        repo:scope.repo,branch:'feature/node1-backup-assurance-v1',target:scope.target,
        requestId:scope.requestId,rolledBack,rollbackHealthy,
        errorCode:String(error?.message||error).replace(/[^a-z0-9:_-]/gi,'').slice(0,140)})}catch{}
    }
-   if(begun&&(!rolledBack||!rollbackHealthy))throw Error('activation_failed_rollback_unverified');
+   if(beginAttempted&&(!rolledBack||!rollbackHealthy))throw Error('activation_failed_rollback_unverified');
+   if(!beginAttempted)throw Error('activation_aborted_prebegin:'+String(error?.message||error).replace(/[^a-z0-9:_-]/gi,'').slice(0,100));
    throw Error('activation_failed_rolled_back:'+String(error?.message||error).replace(/[^a-z0-9:_-]/gi,'').slice(0,100));
  }
 }
