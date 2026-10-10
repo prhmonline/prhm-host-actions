@@ -56,6 +56,8 @@ test('malformed policy, unpinned real-policy bytes and unsupported grants fail c
   const duplicate=JSON.parse(fixture());
   duplicate.operations[m.OPERATION]={level:1};
   assert.throws(()=>m.buildPolicyStructure(Buffer.from(JSON.stringify(duplicate))),/already_registered/);
+  duplicate.operations[m.OPERATION]=null;
+  assert.throws(()=>m.buildPolicyStructure(Buffer.from(JSON.stringify(duplicate))),/already_registered/);
   assert.throws(()=>m.buildPolicyCandidate(fixture()),/policy_sha_drift/);
   assert.throws(()=>m.buildPolicyCandidate('arbitrary-user-value'),/policy_bytes_required/);
 });
