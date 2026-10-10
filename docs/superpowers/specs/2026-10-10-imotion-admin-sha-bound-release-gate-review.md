@@ -1,6 +1,6 @@
-# iMotion Admin SHA-bound release gate — review-only design
+# iMotion Admin SHA-bound release gate r2 — review-only design
 
-**Status:** DRAFT — requires explicit security/release-owner approval. **No implementation or Production authorization is provided by this document.**
+**Status:** REVIEW-ONLY — updated to the r2 candidate after GitHub PR #20. Requires fresh exact-SHA authorization and independent execution-policy decision. **No implementation or Production authorization is provided by this document.**
 
 Related: [control-plane issue #169](https://github.com/prhmonline/prhm-host-actions/issues/169), [application issue #18](https://github.com/prhmonline/Imo-back/issues/18).
 
@@ -8,7 +8,7 @@ Related: [control-plane issue #169](https://github.com/prhmonline/prhm-host-acti
 
 The existing `imotion_next_safe_deploy` route is explicitly scoped to `imotion_front_prod` in `bootstrap-imotion-safe-deploy-v1.js` (`patchPolicy`/`validatePolicy`) and dispatches to `/home/imotion/domains/i-motion.ir/public_html/scripts/safe-build-deploy.sh` (`remoteScriptSha`). It **does not** authorize or target the admin backend. It must not be used for admin release by changing a caller-side name, tool or parameters.
 
-The user's previously supplied `CONFIRM_LEVEL_3_PRODUCTION` approval bound to the exact admin candidate did not overcome the execution-layer security block. A proposed future fixed action cannot reinterpret or bypass that denial. The owner must review the actual denial and explicitly authorize an appropriate route **before implementation or use**.
+The user's previous `CONFIRM_LEVEL_3_PRODUCTION` approval was bound to **superseded** candidate `d849d758fe31056caa28558271d159ba410cd4ca`; it did not overcome the execution-layer security block and **does not approve r2**. A proposed future fixed action cannot reinterpret or bypass that denial. The owner must review the actual denial and explicitly authorize an appropriate route **before implementation or use**.
 
 ## Immutable intended release identity (design constraints, not active grants)
 
@@ -17,16 +17,24 @@ The user's previously supplied `CONFIRM_LEVEL_3_PRODUCTION` approval bound to th
 | Repository | `prhmonline/Imo-back` |
 | Target host | `imotion-prod-vm` |
 | Target root | `/home/imotion/domains/admin.i-motion.ir/public_html` |
-| Source ref | Local verified bare backup `refs/heads/release/imotion-github-integrated-20261010` |
-| Approved candidate SHA | `d849d758fe31056caa28558271d159ba410cd4ca` |
-| Candidate tree SHA | `a771c535add594b02716d7c873a3e6a191218ab6` |
+| Source ref | Local verified bare backup `refs/heads/release/imotion-github-integrated-20261010-r2` |
+| Candidate r2 SHA (**pending fresh approval**) | `9c94ad4dc7e770dd7b7534cf2f22717287a2245f` |
+| Candidate tree SHA | `50ac66d36e30122911e5350ec11d2fa35a6770df` |
 | Expected preimage HEAD | `663627e38880db68c9fbe9488681773fbf605e2c` |
 | Expected preimage branch | `main` |
-| Expected dirty source files | 26, each hashed in the private capture manifest |
+| Expected dirty source files | 27: 13 modified and 14 untracked; **fresh 27-file SHA256/mode manifest required immediately before permitted deployment** |
 | Authorization operation | `deploy.production`, Level 3, project `imotion_admin_prod` |
 
 These values must be fixed server-side. No runtime host, path, SHA, script, SQL, content or arbitrary command input is allowed. A different release, even a fast-forward, requires a newly reviewed immutable binding and new approval. The control plane must reject use of the existing frontend deployment scope.
 
+## R2 release evidence and superseded approval boundary
+
+- **Internal exact-release commit:** `9c94ad4dc7e770dd7b7534cf2f22717287a2245f`; tree `50ac66d36e30122911e5350ec11d2fa35a6770df`. Its reconciled Git ancestry preserves the pre-existing Production history and the earlier hardened-release candidate.
+- **GitHub source equivalence:** public `prhmonline/Imo-back` `main` SHA `05112307acd9bf3d754a2f25d47a1be6be64e1ad` has the **same tree**, but is a distinct commit. The local r2 commit was saved in the internal bare backup and **has not been pushed to GitHub**. A GitHub-only release path must not pretend that r2 SHA is present there; the security/release owner must explicitly bind and approve the actual immutable source identity.
+- **Reason for r2:** PR #20 changed `app/controllers/AdminReserveController.php` to display default-today dates in filter inputs. Current live file matches GitHub's new blob `044cf1a10ec96c06dab3f8da4bbc11c7ffe4df79` exactly, but the previous candidate `d849d758...` did not contain it.
+- **Current Production preimage:** old Git SHA `663627e38880db68c9fbe9488681773fbf605e2c` with **27 dirty paths** (13 modified, 14 untracked). Of these, 21 file blobs match GitHub's current tree; six differ. Five differences are historical audit-log privacy-redaction/read behavior, for which r2 has stronger safeguards; one is a financial regression-test correction. This is a potential privacy exposure risk, **not evidence of actual disclosure**.
+- **Validated without altering Production:** PHP lint of six changed PHP files PASS, five offline finance/privacy/schema regression suites PASS; separate rehearsal matched 27/27 live file contents, entered r2, ran all five suites, restored exact old commit and all 27 original source file contents, and cleaned the rehearsal stash. Rehearsal is not a substitute for a fresh durable backup with file modes immediately before a real cutover.
+- **No authorization carry-over:** prior L3 confirmation authorized only superseded `d849d758...`; r2 requires **fresh explicit approval of the exact full SHA**, separate from formal resolution of the original tool execution safety block. A docs-only merge, owner GitHub review, or equal Git tree alone provides no production execution permission.
 ## Existing Fast Delivery v1/v2 components — not an approved admin deployment route
 
 **Verified against merged PRs #159 and #160 in this repository:** `prhm-fast-delivery-coordinator-v1.cjs` is a source-only reusable transaction coordinator with a read-only planning CLI; it has no registered production adapter registry, native approval consumer or privileged deploy entrypoint. `prhm-fast-delivery-typed-sha-v2.cjs` provides a SHA-digest binding and native consumption proof *only* for `rahekomak_web_only_release_v2` / project `rahekomak`; its implementation deliberately rejects other projects (`project_unregistered_for_typed_v2`). Its documentation explicitly says the trusted typed request/consume bridge and host-action registration are uninstalled, and an L4-controlled bootstrap is still required.
@@ -50,7 +58,7 @@ The independent security owner must decide whether to (a) approve an existing de
 
 ## Transactional preflight
 
-- Acquire an exclusive deployment lock and record correlation ID; verify current identity, `main` head, remote source identity, approved SHA, exact tree, and the original 26 file SHA256/mode/path values.
+- Acquire an exclusive deployment lock and record correlation ID; verify current identity, `main` head, remote source identity, approved SHA, exact tree, and a freshly captured and verified 27-file SHA256/mode/path preimage.
 - Verify backup repository contains exact immutable candidate SHA; ensure a clean isolated candidate and healthy app/DB containers. Validate the actual Yii database with application identity and the mounted Unix socket `/run/mysqld/mysqld.sock`; mandatory audit columns already independently verified.
 - Confirm no deploy job/lock or filesystem mutation has occurred since preflight. Reject symlinks, unexpected paths, changed file content, mismatched mode, unknown untracked files or additional local commits.
 - Before any production change, persist a separate recoverable backup of the entire dirty worktree and its metadata, *not just a volatile stash*. Verify restore from this backup in an isolated staging worktree.
@@ -60,7 +68,7 @@ The independent security owner must decide whether to (a) approve an existing de
 - Checkout exactly the reviewed commit via a Git-first, SHA-bound operation. Preserve previous `main` and both Git histories, and do **not** reset/revert/force-push any Git branch.
 - Run PHP lint of affected files, the five confirmed finance/privacy/schema-guard regression tests, app/DB container health checks and HTTP smoke (`/login` 200, unauthenticated audit endpoints 302).
 - Require an **authenticated** role-based acceptance check for admin/manager viewing and normal user rejection, without logging cookies or personal data; a successful guest redirect is not sufficient.
-- On any failed/ambiguous gate, restore the previous Production commit, its 26 exact dirty files, modes and checksums, and verify login/health. Log rollback failure separately and fail closed.
+- On any failed/ambiguous gate, restore the previous Production commit, its 27 exact dirty files, modes and checksums, and verify login/health. Log rollback failure separately and fail closed.
 - Log before/after repo/branch/full SHA/tree, destination, timestamp, test results, approval ID (not token), app/DB health, final state, and rollback evidence; make it auditable by both Issues #169 and #18.
 
 ## Explicit negative test cases before authorizing implementation
