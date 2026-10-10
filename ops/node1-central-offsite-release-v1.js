@@ -3,7 +3,7 @@
 // This action never changes SSHD/backup repos/DBs, never prunes and reverts its own unit installation.
 const fs=require('node:fs'),cp=require('node:child_process'),path=require('node:path'),crypto=require('node:crypto');
 const REPO_ROOT=path.resolve(__dirname,'..');
-const ACTION='prhm-node1-central-offsite-v1';
+const ACTION='prhm-node1-central-offsite';
 const SERVICE=ACTION+'.service',TIMER=ACTION+'.timer';
 const LOG='/var/log/prhm-deployments/node1-central-offsite-v1';
 const SOURCE=[
