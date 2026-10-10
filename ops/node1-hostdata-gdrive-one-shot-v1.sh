@@ -100,8 +100,13 @@ run_backup(){
   (( expected_size > 104857600 && expected_size < 10000000000 )) || fail UNEXPECTED_SOURCE_SIZE
   guard_capacity "$expected_size"
   remote_object="$REMOTE/$n.snapshot.tar.gpg"
-  # Immutable remote path. Any existing object is a hard stop, never overwrite or delete.
-  if rclone_read lsjson --stat "$remote_object" >/dev/null 2>&1; then fail REMOTE_OBJECT_ALREADY_EXISTS; fi
+  # Fail closed on a missing/inaccessible destination folder or API failure.
+  # The target folder must be provisioned separately by a SHA-pinned release.
+  local listing
+  listing="$(rclone_read lsjson "$REMOTE" --files-only)" || fail REMOTE_FOLDER_OR_INVENTORY_UNAVAILABLE
+  if printf '%s' "$listing" | python3 -c 'import json,sys; items=json.load(sys.stdin); sys.exit(0 if any(x.get("Name")==sys.argv[1] for x in items) else 1)' "$n.snapshot.tar.gpg"; then
+    fail REMOTE_OBJECT_ALREADY_EXISTS
+  fi
   mkdir -p "$LOGROOT"
   [[ "$(stat -c '%u:%a' "$LOGROOT")" == '0:700' ]] || fail LOGROOT_PERMISSIONS
   stage="$(mktemp -d "$STAGING/.staging-$n-XXXXXXXX")"
