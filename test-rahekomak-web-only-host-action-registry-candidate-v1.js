@@ -39,3 +39,13 @@ test('registration payload cannot alter app, API, DB, Apache or host services',(
  assert.ok(b.includes("'/usr/bin/systemd-run'"));
  assert.ok(b.includes("RAHEKOMAK_WEB_SHA='"+reg.SHA+"'"));
 });
+
+test('binding uses the already released RahKomak SHA and helper and never old untested revision',()=>{
+ assert.equal(reg.SHA,'c89241e415a093f9c07782ce156b51c7019368c5');
+ assert.equal(reg.HELPER_SHA,'bf901961635986ff917bade164610ecc80cd3e9ebb549ef79ecc9efecce41320');
+ const body=reg.patchExecutor(exec);
+ assert.ok(body.includes("RAHEKOMAK_WEB_SHA='"+reg.SHA+"'"));
+ assert.ok(body.includes("RAHEKOMAK_WEB_SCRIPT_SHA='"+reg.HELPER_SHA+"'"));
+ assert.equal(body.includes('e628baa430aa60bdf949fc70d993098152bb8b7c'),false);
+ assert.equal(body.includes('a99696f3c371f6ad39ee450f1579af345de8a39f483734b63821f018aaea12d5'),false);
+});
