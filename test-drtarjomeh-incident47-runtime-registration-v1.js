@@ -19,6 +19,7 @@ test('registration only changes the one fixed action in four approved sites',()=
   assert.match(e,/runner_source_mismatch/);
   assert.match(e,/if\(action==='drtarjomeh_incident47_uploads_guard_install_v1'\)/);
   assert.equal(e.split("if(action==='previous_v1')").length-1,1);
+  assert.doesNotThrow(()=>new Function(e), 'generated executor JS must compile');
   assert.ok(m.includes("'control_plane_current_owner_binding_refresh_v1','"+app+"'"));
   assert.ok(a.includes("previous_v1"));assert.ok(e.includes("previous_v1"));
 });
