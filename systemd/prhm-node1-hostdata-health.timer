@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily PRHM Node1 hostdata verification at 08:30 Tehran local time
+
+[Timer]
+OnCalendar=*-*-* 08:30:00 Asia/Tehran
+AccuracySec=1min
+Persistent=true
+Unit=prhm-node1-hostdata-health.service
+
+[Install]
+WantedBy=timers.target
