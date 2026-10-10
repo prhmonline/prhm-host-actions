@@ -42,7 +42,7 @@ passwd --lock prhmbackup >/dev/null 2>&1 || true
 install -d -o root -g root -m 0755 "$ROOT" "$ROOT/repo"
 install -d -o prhmbackup -g prhmbackup -m 0700 "$REPO"
 printf '%s\n' "$PUB" >"$KEYS"
-chown root:root "$KEYS";chmod 0600 "$KEYS"
+chown root:prhmbackup "$KEYS";chmod 0640 "$KEYS"
 cat >>"$SSHD" <<'EOF'
 
 # PRHM_NODE1_CENTRAL_RESTIC_SFTP_V1
