@@ -151,8 +151,7 @@ class OfflineOwnerExport(unittest.TestCase):
                  mock.patch.object(m, "owner_paths", return_value=(root, out)), \
                  mock.patch.object(m, "check_receipt", return_value=root / "fake.key"), \
                  mock.patch.object(m, "find_authorized_key", return_value=root / "fake.ssh"), \
-                 mock.patch.object(m, "gpg_executable", return_value="/usr/bin/gpg"), \
-                 mock.patch.object(m.shutil, "disk_usage", return_value=(10000000000,0,10000000000)):
+                 mock.patch.object(m, "gpg_executable", return_value="/usr/bin/gpg"):
                 with self.assertRaisesRegex(RuntimeError, "ARCHIVE_ALREADY_EXISTS_NEVER_OVERWRITE"):
                     m.fetch()
             self.assertEqual((out / (m.SNAPSHOT + ".snapshot.tar.gpg")).read_bytes(), b"do not touch")
