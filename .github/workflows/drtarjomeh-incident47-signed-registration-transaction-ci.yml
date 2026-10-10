@@ -8,6 +8,7 @@ on:
       - 'drtarjomeh-incident47-signed-registration-transaction-v1.js'
       - 'test-drtarjomeh-incident47-signed-registration-transaction-v1.js'
       - 'test-drtarjomeh-incident47-merged-sha-coherence-v1.js'
+      - 'test-drtarjomeh-incident47-runtime-verified-bytes-v1.js'
       - 'drtarjomeh-incident47-l4-registration-candidate-v1.js'
       - '.github/workflows/drtarjomeh-incident47-signed-registration-transaction-ci.yml'
   push:
@@ -18,6 +19,7 @@ on:
       - 'drtarjomeh-incident47-signed-registration-transaction-v1.js'
       - 'test-drtarjomeh-incident47-signed-registration-transaction-v1.js'
       - 'test-drtarjomeh-incident47-merged-sha-coherence-v1.js'
+      - 'test-drtarjomeh-incident47-runtime-verified-bytes-v1.js'
       - 'drtarjomeh-incident47-l4-registration-candidate-v1.js'
       - '.github/workflows/drtarjomeh-incident47-signed-registration-transaction-ci.yml'
 
@@ -38,4 +40,4 @@ jobs:
           node --check drtarjomeh-incident47-reviewed-host-runner-v1.js
           node --check drtarjomeh-incident47-runtime-registration-v1.js
       - name: Signed-boundary and rollback mock tests
-        run: node --test test-drtarjomeh-incident47-signed-registration-transaction-v1.js test-drtarjomeh-incident47-runtime-registration-v1.js test-drtarjomeh-incident47-merged-sha-coherence-v1.js test-drtarjomeh-incident47-l4-registration-candidate-v1.js
+        run: node --test test-drtarjomeh-incident47-signed-registration-transaction-v1.js test-drtarjomeh-incident47-runtime-registration-v1.js test-drtarjomeh-incident47-merged-sha-coherence-v1.js test-drtarjomeh-incident47-l4-registration-candidate-v1.js test-drtarjomeh-incident47-runtime-verified-bytes-v1.js
