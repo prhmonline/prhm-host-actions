@@ -44,10 +44,11 @@ function inspect(read=fs.readFileSync,exists=fs.existsSync,probe=run){
  result.checks.sftp_known_hosts=safeFile(C.knownHosts,0o600);
  result.checks.sftp_key=safeFile(C.privateKey,0o600);
  result.checks.restic_password=safeFile(C.password,0o600);
- const ssh=probe('/usr/bin/ssh',['-o','BatchMode=yes','-o','ConnectTimeout=6','-o','StrictHostKeyChecking=yes',
-  'root@'+C.node1Host,'getent passwd '+C.backupUser+' >/dev/null && stat -c %a '+C.remoteRepo+' && df -B1 / | tail -1'],12000);
+ const sshBase=['-o','BatchMode=yes','-o','ConnectTimeout=6','-o','StrictHostKeyChecking=yes','root@'+C.node1Host];
+ const ssh=probe('/usr/bin/ssh',[...sshBase,'getent passwd '+C.backupUser+' >/dev/null && stat -c %a '+C.remoteRepo],12000);
  result.checks.node1_restricted_account=Boolean(ssh.ok&&/^700\s*$/m.test(ssh.stdout));
- result.checks.node1_capacity=Boolean(ssh.ok&&ssh.stdout.trim().split('\n').some(line=>{
+ const disk=probe('/usr/bin/ssh',[...sshBase,'df -B1 / | tail -1'],12000);
+ result.checks.node1_capacity=Boolean(disk.ok&&disk.stdout.trim().split('\n').some(line=>{
   const parts=line.trim().split(/\s+/);return parts.length>=4&&Number(parts[3])>=C.minFreeBytes;
  }));
  const missing=Object.entries(result.checks).filter(([,v])=>!v).map(([k])=>k);
