@@ -11,6 +11,7 @@ NODE_ROOT=/var/backups/prhm-node1-hostdata-v1
 RCLONE=/var/lib/prhm-central-gdrive-restic/rclone-1.75.0
 CONFIG=/etc/prhm-rclone/rclone.conf
 REMOTE='gdrive-backup:PRHM-Backups/node1-hostdata-offsite-v1'
+EXPECTED_ACCOUNT='prhmonline@gmail.com'
 PASSPHRASE=/etc/prhm-backup/physical-offsite/node1-hostdata-gpg.passphrase
 ESCROW=/etc/prhm-backup/physical-offsite/node1-hostdata-escrow.json
 RELEASE_SHA_FILE=/etc/prhm-backup/physical-offsite/release-commit-sha
@@ -44,6 +45,46 @@ ssh_node(){
 quota_json(){
   rclone_read about gdrive-backup: --json
 }
+verify_destination_identity(){
+  # rclone's own configured OAuth token is checked against Google's authenticated
+  # About.user.emailAddress. Provider quota/folder names are NOT identity proof.
+  # The token is read locally, never logged or placed on the command line.
+  # A read-only "about" first allows rclone to refresh an expired access token.
+  quota_json >/dev/null || fail DESTINATION_IDENTITY_REFRESH_UNAVAILABLE
+  python3 - "$CONFIG" "$EXPECTED_ACCOUNT" <<'PY'
+import configparser
+import json
+import sys
+import urllib.error
+import urllib.request
+
+config_path, expected = sys.argv[1:]
+cfg = configparser.ConfigParser(interpolation=None)
+if not cfg.read(config_path) or not cfg.has_section('gdrive-backup'):
+    raise SystemExit('DESTINATION_IDENTITY_CONFIG_MISSING')
+try:
+    token = json.loads(cfg.get('gdrive-backup', 'token'))
+    access = token.get('access_token', '')
+except (ValueError, configparser.Error, TypeError):
+    raise SystemExit('DESTINATION_IDENTITY_TOKEN_INVALID')
+if not access:
+    raise SystemExit('DESTINATION_IDENTITY_TOKEN_MISSING')
+request = urllib.request.Request(
+    'https://www.googleapis.com/drive/v3/about?fields=user(emailAddress)',
+    headers={'Authorization': 'Bearer ' + access,
+             'Accept': 'application/json'},
+)
+try:
+    with urllib.request.urlopen(request, timeout=15) as response:
+        profile = json.load(response)
+except (urllib.error.URLError, ValueError, OSError):
+    raise SystemExit('DESTINATION_IDENTITY_API_UNAVAILABLE')
+actual = profile.get('user', {}).get('emailAddress', '').lower()
+if actual != expected.lower():
+    raise SystemExit('DESTINATION_ACCOUNT_MISMATCH')
+print('DESTINATION_ACCOUNT_BOUND=PASS')
+PY
+}
 validate_snapshot_name(){
   [[ "$SNAP" =~ ^20[0-9]{6}T[0-9]{6}Z$ ]] || fail INVALID_SNAPSHOT_ID
 }
@@ -70,6 +111,7 @@ PY
 inspect(){
   assert_host
   assert_runtime
+  verify_destination_identity || fail DESTINATION_ACCOUNT_NOT_VERIFIED
   local free
   free="$(remote_capacity)" || fail REMOTE_CAPACITY_UNKNOWN
   echo "RCLONE_PROVIDER_ACCESS=PASS"
@@ -89,6 +131,7 @@ run_backup(){
   validate_snapshot_name
   assert_host
   assert_runtime
+  verify_destination_identity || fail DESTINATION_ACCOUNT_NOT_VERIFIED
   require_key_escrow
   # Never race the local Node1 backup service or use a partial/unknown snapshot.
   local n expected_size local_encrypted local_received remote_object stage logpath size_file release_sha
