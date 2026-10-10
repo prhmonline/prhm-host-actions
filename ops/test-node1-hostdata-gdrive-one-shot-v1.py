@@ -58,7 +58,7 @@ class CloudBackupContracts(unittest.TestCase):
 
     def test_approved_google_account_binding_and_fail_closed_order(self):
         code=SCRIPT.read_text()
-        self.assertIn("EXPECTED_ACCOUNT='aytec.ir@gmail.com'",code)
+        self.assertIn("EXPECTED_ACCOUNT='prhmonline@gmail.com'",code)
         self.assertIn("fields=user(emailAddress)",code)
         self.assertIn("DESTINATION_ACCOUNT_MISMATCH",code)
         self.assertIn("DESTINATION_IDENTITY_API_UNAVAILABLE",code)
