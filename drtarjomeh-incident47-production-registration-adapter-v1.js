@@ -222,7 +222,7 @@ function createProductionAdapter(){
       }
     },
     record:async outcome=>{
-      immutableDir(path.dirname(AUDIT));immutableDir(AUDIT);
+      parentRootTrusted(path.dirname(AUDIT));immutableDir(AUDIT);
       if(outcome.action!==ACTION||typeof outcome.ok!=='boolean')error('bad_audit_record');
       const file=path.join(AUDIT,'result-'+Date.now()+'-'+process.pid+'-'+crypto.randomBytes(5).toString('hex')+'.json');
       const report={timestamp:new Date().toISOString(),action:ACTION,
