@@ -1,0 +1,26 @@
+[Unit]
+Description=PRHM Node1 host-data verified backup (DB, iMotion files, DirectAdmin)
+Documentation=https://github.com/prhmonline/prhm-host-actions
+After=local-fs.target mariadb.service
+RequiresMountsFor=/var/backups/prhm-node1-hostdata-v1
+ConditionPathExists=/usr/local/sbin/prhm-node1-hostdata-backup
+ConditionPathExists=/usr/local/sbin/prhm-node1-hostdata-supervisor
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+UMask=0077
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/usr/local/sbin/prhm-node1-hostdata-supervisor --run
+TimeoutStartSec=65min
+Nice=10
+IOSchedulingClass=idle
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=yes
+PrivateDevices=yes
+ReadWritePaths=/var/backups/prhm-node1-hostdata-v1 /var/log/prhm-backup-assurance /run/lock
+StandardOutput=journal
+StandardError=journal
