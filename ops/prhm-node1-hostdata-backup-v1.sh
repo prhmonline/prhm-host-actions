@@ -28,7 +28,7 @@ flock -n 9 || { echo 'NODE1_BACKUP_LOCK_BUSY' >&2;exit 8; }
 cleanup(){
   rc=$?
   if [[ "$rc" != 0 ]];then
-    if [[ "$PARTIAL" == "$ROOT"/.partial-20????????T??????Z-* && -d "$PARTIAL" ]];then
+    if [[ "$PARTIAL" == "$ROOT"/.partial-20??????T??????Z-* && -d "$PARTIAL" ]];then
       rm -rf -- "$PARTIAL"
     fi
     echo "NODE1_HOSTDATA_STATUS=FAILED exit=$rc" >&2
