@@ -27,6 +27,20 @@ The user's previously supplied `CONFIRM_LEVEL_3_PRODUCTION` approval bound to th
 
 These values must be fixed server-side. No runtime host, path, SHA, script, SQL, content or arbitrary command input is allowed. A different release, even a fast-forward, requires a newly reviewed immutable binding and new approval. The control plane must reject use of the existing frontend deployment scope.
 
+## Existing Fast Delivery v1/v2 components — not an approved admin deployment route
+
+**Verified against merged PRs #159 and #160 in this repository:** `prhm-fast-delivery-coordinator-v1.cjs` is a source-only reusable transaction coordinator with a read-only planning CLI; it has no registered production adapter registry, native approval consumer or privileged deploy entrypoint. `prhm-fast-delivery-typed-sha-v2.cjs` provides a SHA-digest binding and native consumption proof *only* for `rahekomak_web_only_release_v2` / project `rahekomak`; its implementation deliberately rejects other projects (`project_unregistered_for_typed_v2`). Its documentation explicitly says the trusted typed request/consume bridge and host-action registration are uninstalled, and an L4-controlled bootstrap is still required.
+
+Consequently, **neither shared Fast Delivery source nor the frontend-specific `imotion_next_safe_deploy` is an authorized alternate execution method** for the blocked iMotion Admin cutover. A future admin backend adapter may reuse reviewed transaction/approval concepts but must have a **distinct trusted implementation, policy binding and execution-security decision**. The former user's L3 release confirmation is not authorization for installing a new privileged adapter, skipping native signature checks, or consuming a request on behalf of another tool.
+
+The independent security owner must decide whether to (a) approve an existing deployment platform after proving its exact admin binding and resolving the previous tool safety denial, (b) accept a new admin-only fixed implementation via the separate authorized bootstrap process, or (c) reject deployment with a documented reason. This document makes no assertion that any of these decisions has already been made.
+
+### Review handoff: required human decision
+
+- **Security decision:** Why was the actual cutover tool invocation blocked? Is any release path explicitly permitted for this exact admin backend and SHA, without attempting to circumvent the block?
+- **Architecture decision:** Use a separately registered fixed admin action or extend the existing reviewed coordinator only after its native trusted, approval-consumption and backend adapter contracts are implemented and independently validated.
+- **Execution decision:** Require a separately authorized bootstrap/registration before enabling any Production mutation. This PR remains documentation-only and cannot grant that approval.
+
 ## Policy and implementation prerequisites
 
 1. Security/release owner inspects and resolves the prior execution-tool denial in the platform-approved workflow. There is **no permission to use another executor as a workaround**.
