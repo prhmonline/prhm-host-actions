@@ -142,7 +142,9 @@ def classify_last(report, now, free_bytes, max_age_hours=MAX_AGE_HOURS):
         'disk_above_floor': free_bytes >= MIN_FREE_BYTES,
     }
     try:
-        stamp = datetime.datetime.fromisoformat(report['finished_utc'])
+        # Node1 runs Python 3.6; datetime.fromisoformat requires Python 3.7.
+        stamp = datetime.datetime.strptime(
+            report['finished_utc'], '%Y-%m-%dT%H:%M:%S.%f%z')
         age_hours = (now - stamp).total_seconds() / 3600.0
         checks['fresh_within_36h'] = 0 <= age_hours <= max_age_hours
     except (TypeError, ValueError, KeyError):
@@ -167,14 +169,14 @@ def report_write(data, latest=False):
         f.write(packed)
         f.flush()
         os.fsync(f.fileno())
-    if latest:
-        temp = LOG_DIR / ('latest-' + str(os.getpid()) + '.tmp')
+    for label in (['last.json', 'latest.json'] if latest else ['last.json']):
+        temp = LOG_DIR / ('temporary-' + label + '-' + str(os.getpid()))
         fd = os.open(str(temp), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         with os.fdopen(fd, 'w') as f:
             f.write(packed)
             f.flush()
             os.fsync(f.fileno())
-        os.replace(str(temp), str(LOG_DIR / 'latest.json'))
+        os.replace(str(temp), str(LOG_DIR / label))
     return str(target)
 
 
@@ -230,7 +232,7 @@ def check_latest():
         print(json.dumps({'status': 'FAIL', 'reason': 'PREFLIGHT_BLOCKED',
                           'checks': result['checks']}))
         return 3
-    latest = LOG_DIR / 'latest.json'
+    latest = LOG_DIR / 'last.json'
     try:
         report = json.loads(latest.read_text(encoding='utf8'))
         disk = os.statvfs(str(ROOT))
