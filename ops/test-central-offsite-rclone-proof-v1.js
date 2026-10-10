@@ -32,10 +32,14 @@ test('persistent transient failures never green and not labeled deleted',()=>{
   assert.equal(result.ok,false);assert.equal(result.status,'indeterminate');assert.equal(result.attempts.length,4);
   assert.ok(result.attempts.every(x=>x.status==='transport_error'));
 });
-test('rate limit and access failures redacted and never auto-green',()=>{
-  const {result}=run([failure('429 quotaExceeded secret=SHOULD_NOT_LEAK'),failure('403 permission denied'),failure('401 invalid_grant'),failure('404 filesystem missing')]);
-  assert.equal(result.ok,false);assert.equal(result.status,'indeterminate');assert.deepEqual(result.attempts.map(x=>x.status),['rate_limited','access_error','access_error','remote_stat_error']);
-  assert.ok(!JSON.stringify(result).includes('SHOULD_NOT_LEAK'));
+test('quota and auth errors stop retries immediately, with redacted evidence',()=>{
+  for(const [reason,category] of [['429 quotaExceeded secret=SHOULD_NOT_LEAK','rate_limited'],['403 permission denied','access_error'],['401 invalid_grant','access_error']]){
+    const {result}=run([failure(reason),item(),item()]);
+    assert.equal(result.ok,false);assert.equal(result.status,'indeterminate');
+    assert.equal(result.attempts.length,1);
+    assert.equal(result.attempts[0].status,category);
+    assert.ok(!JSON.stringify(result).includes('SHOULD_NOT_LEAK'));
+  }
 });
 test('wrong-size response immediately fails closed',()=>{
   const {result}=run([item(size-1),item(),item()]);
