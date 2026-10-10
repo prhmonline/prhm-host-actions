@@ -39,6 +39,8 @@ function stableRemoteProof(auditRun,binary,config,remote,name,size){
     }
     if(observation.status!=='match')consecutive=0;
     records.push(observation); // No raw stderr, URL, tokens, client IDs or config bytes
+    // Authorization and provider quota failures are not fixed by immediate retries.
+    if(['rate_limited','access_error','size_mismatch'].includes(observation.status))break;
   }
   const ok=consecutive>=2 && !integrityMismatch;
   return {ok,count:remoteCount,size:remoteSize,status:ok?'verified':integrityMismatch?'integrity_mismatch':'indeterminate',attempts:records};
