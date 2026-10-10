@@ -19,6 +19,26 @@ spec.loader.exec_module(mod)
 
 
 class OwnerOfflineEscrow(unittest.TestCase):
+    def test_real_cli_help_and_blocked_host(self):
+        import subprocess
+        import sys
+        with tempfile.TemporaryDirectory() as t:
+            p = subprocess.run([sys.executable, str(SCRIPT), "--help"],
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                               timeout=10)
+            self.assertEqual(p.returncode, 0, p.stderr.decode(errors="replace"))
+            self.assertIn(b"attest", p.stdout)
+            # No production-central key should be created even if invoked by mistake.
+            unsafe = pathlib.Path(t) / "refuse"
+            blocked = subprocess.run([sys.executable, str(SCRIPT), "create",
+                                      "--directory", str(unsafe)],
+                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                     timeout=10)
+            # This runner itself is executed on PRHM's central guest.
+            if "prhm-production" in mod.socket.getfqdn().lower():
+                self.assertEqual(blocked.returncode, 3)
+                self.assertFalse(unsafe.exists())
+
     def test_refuse_on_prod_or_node1(self):
         for host in ["prhm-production.prhm.ir", "server1.prhm.ir", "node1"]:
             with self.assertRaisesRegex(ValueError, "REFUSE_ON_NODE1_OR_PRODUCTION_HOST"):
