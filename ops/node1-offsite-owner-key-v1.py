@@ -102,6 +102,7 @@ def gpg_drill(original_file, recovered_file):
     executable = shutil.which("gpg")
     if not executable:
         raise ValueError("GPG_NOT_INSTALLED_ON_OWNER_DEVICE")
+    challenge = secrets.token_bytes(512)
     with subprocess.Popen(
         [executable, "--batch", "--no-tty", "--pinentry-mode", "loopback",
          "--passphrase-file", str(original_file), "--symmetric",
@@ -109,8 +110,7 @@ def gpg_drill(original_file, recovered_file):
          "--s2k-digest-algo", "SHA256"],
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
     ) as encoder:
-        encrypted, error = encoder.communicate(secrets.token_bytes(512), timeout=30)
-        # A random challenge is compared via a deterministic round trip below.
+        encrypted, error = encoder.communicate(challenge, timeout=30)
     if encoder.returncode or not encrypted:
         raise ValueError("ENCRYPTION_DRILL_FAILED")
     # Verify the *separately recovered* key can decode the ciphertext.
@@ -120,7 +120,7 @@ def gpg_drill(original_file, recovered_file):
         input=encrypted, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         timeout=30,
     )
-    if decoder.returncode or len(decoder.stdout) != 512:
+    if decoder.returncode or not hmac.compare_digest(decoder.stdout, challenge):
         raise ValueError("OFF_DEVICE_DECRYPT_DRILL_FAILED")
     return True
 
