@@ -13,6 +13,7 @@ CONFIG=/etc/prhm-rclone/rclone.conf
 REMOTE='gdrive-backup:PRHM-Backups/node1-hostdata-offsite-v1'
 PASSPHRASE=/etc/prhm-backup/physical-offsite/node1-hostdata-gpg.passphrase
 ESCROW=/etc/prhm-backup/physical-offsite/node1-hostdata-escrow.json
+RELEASE_SHA_FILE=/etc/prhm-backup/physical-offsite/release-commit-sha
 STAGING=/var/lib/prhm-node1-hostdata-physical-offsite-v1
 LOGROOT=/var/log/prhm-backup-assurance/node1-hostdata-physical-offsite-v1
 GPG=/usr/bin/gpg
@@ -53,7 +54,7 @@ remote_capacity(){
   printf '%s' "$free"
 }
 require_key_escrow(){
-  for p in "$PASSPHRASE" "$ESCROW";do
+  for p in "$PASSPHRASE" "$ESCROW" "$RELEASE_SHA_FILE";do
     [[ -f "$p" && ! -L "$p" ]] || fail MISSING_OFFHOST_ESCROW
     [[ "$(stat -c '%u:%a' "$p")" == '0:600' ]] || fail ESCROW_PERMISSIONS
   done
@@ -90,7 +91,9 @@ run_backup(){
   assert_runtime
   require_key_escrow
   # Never race the local Node1 backup service or use a partial/unknown snapshot.
-  local n expected_size local_encrypted local_received remote_object stage logpath size_file
+  local n expected_size local_encrypted local_received remote_object stage logpath size_file release_sha
+  release_sha="$(cat "$RELEASE_SHA_FILE")"
+  [[ "$release_sha" =~ ^[0-9a-f]{40}$ ]] || fail RELEASE_GIT_SHA_NOT_PINNED
   n="$SNAP"
   [[ -d "$STAGING" ]] || fail STAGING_NOT_PROVISIONED
   [[ "$(stat -c '%u:%a' "$STAGING")" == '0:700' ]] || fail STAGING_PERMISSIONS
@@ -129,14 +132,14 @@ run_backup(){
   [[ -f "$stage/restored/$n/COMPLETE" ]] || fail RESTORED_INCOMPLETE
   ( cd "$stage/restored/$n"; sha256sum -c SHA256SUMS >/dev/null ) || fail RESTORED_SNAPSHOT_SHA256_BAD
   [[ -s "$stage/restored/$n/files/coverage-proof.json" ]] || fail RESTORED_COVERAGE_MISSING
-  python3 - "$stage/restored/$n" "$remote_object" "$GIT_REPO" "$GIT_BRANCH" <<'PY' >"$stage/evidence.json"
+  python3 - "$stage/restored/$n" "$remote_object" "$GIT_REPO" "$GIT_BRANCH" "$release_sha" <<'PY' >"$stage/evidence.json"
 import json,sys,datetime,os
-p,remote,repo,branch=sys.argv[1:]
+p,remote,repo,branch,commit_sha=sys.argv[1:]
 proof=json.load(open(os.path.join(p,'files/coverage-proof.json')))
 names=open(os.path.join(p,'db/database_names.txt')).read().splitlines()
 if proof.get('ok') is not True or proof.get('ratio',0)<.95 or proof.get('site_regular_files',0)<1000 or len(names)<6: raise SystemExit('RESTORED_COVERAGE_INVALID')
 print(json.dumps({'schema':'prhm.node1-hostdata-cloud-proof.v1',
-  'repo':repo,'branch':branch,'status':'PASS','verified_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),
+  'repo':repo,'branch':branch,'commit_sha':commit_sha,'destination':'Google Drive encrypted one-shot','rollback':False,'status':'PASS','verified_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),
   'remote_object':remote,'snapshot':os.path.basename(p),'encrypted':True,
   'cloud_download_byte_compare':True,'full_snapshot_sha256_restored':True,
   'site_regular_files':proof['site_regular_files'],'site_coverage_ratio':proof['ratio'],
