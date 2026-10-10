@@ -56,8 +56,14 @@ def preflight(check_sha=True):
     checks['node1_hostname'] = socket.gethostname() == HOST
     checks['root_identity'] = os.geteuid() == 0
     checks['snapshot_directory'] = ROOT.is_dir()
-    checks['runner_exists'] = RUNNER.is_file()
-    checks['validator_exists'] = VALIDATOR.is_file()
+    checks['runner_exists'] = RUNNER.is_file() and not RUNNER.is_symlink()
+    checks['validator_exists'] = VALIDATOR.is_file() and not VALIDATOR.is_symlink()
+    checks['runner_root_only'] = (checks['runner_exists'] and
+                                  RUNNER.stat().st_uid == 0 and
+                                  RUNNER.stat().st_mode & 0o777 == 0o700)
+    checks['validator_root_only'] = (checks['validator_exists'] and
+                                     VALIDATOR.stat().st_uid == 0 and
+                                     VALIDATOR.stat().st_mode & 0o777 == 0o600)
     checks['runner_matches_git'] = bool(check_sha and checks['runner_exists'] and
                                          file_sha(RUNNER) == RUNNER_SHA)
     checks['validator_matches_git'] = bool(check_sha and checks['validator_exists'] and
@@ -143,8 +149,12 @@ def classify_last(report, now, free_bytes, max_age_hours=MAX_AGE_HOURS):
     }
     try:
         # Node1 runs Python 3.6; datetime.fromisoformat requires Python 3.7.
+        timestamp = report['finished_utc']
+        # Python 3.6 only accepts timezone offsets without the colon.
+        if timestamp[-3:-2] == ':':
+            timestamp = timestamp[:-3] + timestamp[-2:]
         stamp = datetime.datetime.strptime(
-            report['finished_utc'], '%Y-%m-%dT%H:%M:%S.%f%z')
+            timestamp, '%Y-%m-%dT%H:%M:%S.%f%z')
         age_hours = (now - stamp).total_seconds() / 3600.0
         checks['fresh_within_36h'] = 0 <= age_hours <= max_age_hours
     except (TypeError, ValueError, KeyError):
