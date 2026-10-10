@@ -190,6 +190,60 @@ class OfflineOwnerExport(unittest.TestCase):
         finally:
             sys.argv = old
 
+    def test_select_explicit_alternative_drive_directory(self):
+        with tempfile.TemporaryDirectory() as t:
+            parent = pathlib.Path(t)
+            preferred = parent / "default"
+            custom = parent / "usb-disk" / "exports"
+            preferred.mkdir()
+            with mock.patch.object(m.shutil, "disk_usage") as mock_usage:
+                mock_usage.return_value = mock.Mock(free=5 * 1024 ** 3)
+                chosen = m.choose_output_directory(preferred, str(custom))
+            self.assertEqual(chosen, custom)
+            self.assertTrue(custom.is_dir())
+            self.assertFalse(any(custom.iterdir()))
+
+    def test_reject_explicit_drive_with_low_space_and_preserve_previous(self):
+        with tempfile.TemporaryDirectory() as t:
+            preferred = pathlib.Path(t) / "default"
+            custom = pathlib.Path(t) / "small-drive" / "exports"
+            with mock.patch.object(m.shutil, "disk_usage", return_value=mock.Mock(free=1 * 1024 ** 3)):
+                with self.assertRaisesRegex(RuntimeError, "SELECTED_OUTPUT_DRIVE_NEEDS_3_GIB_FREE"):
+                    m.choose_output_directory(preferred, str(custom))
+
+    def test_auto_selection_another_windows_drive(self):
+        import ctypes
+        import types
+        with tempfile.TemporaryDirectory() as t:
+            root = pathlib.Path(t)
+            preferred = root / "low-space-home"
+            preferred.mkdir()
+            previous = pathlib.Path.cwd()
+            try:
+                os.chdir(str(root))
+                pathlib.Path("D:\\\\").mkdir()
+                def free_for(path):
+                    return types.SimpleNamespace(free=5 * 1024 ** 3 if "D:" in str(path) else 1 * 1024 ** 3)
+                kernel = mock.Mock()
+                kernel.GetDriveTypeW.side_effect = lambda root_path: 3 if root_path.startswith("D:") else 0
+                with mock.patch.object(m.platform, "system", return_value="Windows"), \
+                     mock.patch.object(ctypes, "windll", mock.Mock(kernel32=kernel), create=True), \
+                     mock.patch.object(m.shutil, "disk_usage", side_effect=free_for):
+                    chosen = m.choose_output_directory(preferred)
+                self.assertTrue(chosen.is_dir())
+                self.assertTrue(str(chosen).startswith("D:"))
+                self.assertEqual(chosen.name, "PRHM-Node1-Encrypted-Exports")
+            finally:
+                os.chdir(str(previous))
+
+    def test_no_drive_with_sufficient_space_fails_closed(self):
+        with tempfile.TemporaryDirectory() as t:
+            preferred = pathlib.Path(t) / "preferred"
+            with mock.patch.object(m.platform, "system", return_value="Linux"), \
+                 mock.patch.object(m.shutil, "disk_usage", return_value=mock.Mock(free=1)):
+                with self.assertRaisesRegex(RuntimeError, "NO_LOCAL_DISK_WITH_3_GIB_FREE"):
+                    m.choose_output_directory(preferred)
+
     def test_cli_help(self):
         p = subprocess.run([sys.executable, str(PATH), "--help"],
                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10)
