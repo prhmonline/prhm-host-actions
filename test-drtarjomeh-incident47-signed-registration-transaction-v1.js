@@ -9,7 +9,7 @@ const child=require('node:child_process');
 const gitBlob=b=>crypto.createHash('sha1').update(Buffer.concat([Buffer.from('blob '+b.length+'\0'),b])).digest('hex');
 const runnerBytes=fs.readFileSync(path.join(__dirname,'drtarjomeh-incident47-reviewed-host-runner-v1.js'));
 const runtime=require('./drtarjomeh-incident47-runtime-registration-v1.js');
-const appScriptBlob='39e78c45f4c454e56874bc3941f82a5a43cfc8f8';
+const appScriptBlob='4f532f6a1b58d80d4010002b954fe13eaaecb420';
 test('corrected application Git blob is bound in reviewed runner',()=>{
   const s=runnerBytes.toString('utf8');
   assert.ok(s.includes(appScriptBlob));
