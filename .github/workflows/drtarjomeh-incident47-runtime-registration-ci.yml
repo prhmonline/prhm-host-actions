@@ -1,0 +1,31 @@
+name: DrTarjomeh incident47 trusted runtime registration contracts
+on:
+  pull_request:
+    paths:
+      - 'drtarjomeh-incident47-runtime-registration-v1.js'
+      - 'drtarjomeh-incident47-reviewed-host-runner-v1.js'
+      - 'test-drtarjomeh-incident47-runtime-registration-v1.js'
+      - '.github/workflows/drtarjomeh-incident47-runtime-registration-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'drtarjomeh-incident47-runtime-registration-v1.js'
+      - 'drtarjomeh-incident47-reviewed-host-runner-v1.js'
+      - 'test-drtarjomeh-incident47-runtime-registration-v1.js'
+      - '.github/workflows/drtarjomeh-incident47-runtime-registration-ci.yml'
+permissions:
+  contents: read
+jobs:
+  static-and-fixture-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Node syntax checks
+        run: |
+          node --check drtarjomeh-incident47-runtime-registration-v1.js
+          node --check drtarjomeh-incident47-reviewed-host-runner-v1.js
+      - name: Read-only registry and trusted dispatcher tests
+        run: node --test test-drtarjomeh-incident47-runtime-registration-v1.js
