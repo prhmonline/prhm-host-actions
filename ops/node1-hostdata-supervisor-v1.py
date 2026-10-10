@@ -259,6 +259,23 @@ def check_latest():
         # Recheck that previously verified snapshot still exists.
         status['checks']['snapshot_still_complete'] = (
             ROOT.joinpath(report.get('snapshot', ''), 'COMPLETE').is_file())
+        # Check real systemd outcome: a killed/timeout run may not write last.json.
+        unit = subprocess.run(
+            ['/usr/bin/systemctl', 'show', '--property=Result', '--value',
+             'prhm-node1-hostdata-backup.service'],
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            universal_newlines=True, timeout=10)
+        status['checks']['last_service_result_success'] = (
+            unit.returncode == 0 and unit.stdout.strip() == 'success')
+        if status['ok'] and status['checks']['snapshot_still_complete']:
+            snap = report['snapshot']
+            stamp = datetime.datetime.strptime(snap, '%Y%m%dT%H%M%SZ')
+            stamp = stamp.replace(tzinfo=datetime.timezone.utc)
+            proof = verify_snapshot(ROOT / snap, stamp, checksum_command=True)
+            status['checks']['snapshot_reverified_sha256'] = (
+                proof['snapshot_sha256_verified'])
+        else:
+            status['checks']['snapshot_reverified_sha256'] = False
         status['ok'] = all(status['checks'].values())
     except Exception:
         status = {'ok': False, 'reason': 'NO_VALID_SUPERVISOR_PROOF'}
