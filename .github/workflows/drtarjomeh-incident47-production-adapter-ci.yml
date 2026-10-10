@@ -1,0 +1,35 @@
+name: DrTarjomeh incident47 privileged adapter offline verification
+
+on:
+  pull_request:
+    paths:
+      - 'drtarjomeh-incident47-production-registration-adapter-v1.js'
+      - 'test-drtarjomeh-incident47-production-registration-adapter-v1.js'
+      - '.github/workflows/drtarjomeh-incident47-production-adapter-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'drtarjomeh-incident47-production-registration-adapter-v1.js'
+      - 'test-drtarjomeh-incident47-production-registration-adapter-v1.js'
+      - '.github/workflows/drtarjomeh-incident47-production-adapter-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  exact-targets-and-rollback:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax verification
+        run: |
+          node --check drtarjomeh-incident47-production-registration-adapter-v1.js
+          node --check test-drtarjomeh-incident47-production-registration-adapter-v1.js
+      - name: Restricted fixture integration tests (no root or prod access)
+        run: |
+          node --test test-drtarjomeh-incident47-production-registration-adapter-v1.js
+          node --test test-drtarjomeh-incident47-signed-registration-transaction-v1.js test-drtarjomeh-incident47-merged-sha-coherence-v1.js
