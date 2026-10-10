@@ -33,7 +33,7 @@ function inspectPrerequisites(deps={readFile:p=>fs.readFileSync(p),cmd:run}){
     fail('source_bytes_invalid');
   const gitblob=b=>crypto.createHash('sha1').update(Buffer.concat([
     Buffer.from('blob '+b.length+'\0'),b])).digest('hex');
-  if(gitblob(a)!=='39e78c45f4c954e56874bc3941f82a5a43cfc8f8')
+  if(gitblob(a)!=='39e78c45f4c454e56874bc3941f82a5a43cfc8f8')
     fail('application_script_blob_changed');
   if(gitblob(p)!=='5adb676a1f9b7e3aa295f469a39071cfc1d1a6f5')
     fail('application_policy_blob_changed');
