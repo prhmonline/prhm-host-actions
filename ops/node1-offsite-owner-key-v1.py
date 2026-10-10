@@ -158,7 +158,8 @@ def attest_key(directory, recovered_file):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    commands = parser.add_subparsers(dest="action", required=True)
+    commands = parser.add_subparsers(dest="action")
+    commands.required = True  # Python 3.6 compatible
     create = commands.add_parser("create")
     create.add_argument("--directory", required=True)
     attest = commands.add_parser("attest")
