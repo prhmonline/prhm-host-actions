@@ -16,6 +16,9 @@ test('shell runner parses but has no unapproved installation side effects',()=>{
  assert.ok(source.includes('RESTIC_PASSWORD_FILE="$PASSFILE"'));
  assert.ok(source.includes('sftp.command=$SFTP_COMMAND'));
  assert.ok(source.includes('--read-data-subset=5%'));
+ assert.ok(source.includes('os.listdir(root)'));
+ assert.ok(!source.includes('prhm-central-gdrive-bundle'));
+ assert.ok(!source.includes('gdrive-backup:'));
  assert.ok(source.includes('restore "$RESTIC_ID"'));
  assert.ok(source.includes('sha256sum -c SHA256SUMS'));
  for(const absent of ['restic forget',' restic prune','rclone ','ssh root@','ssh -oStrictHostKeyChecking=no','rm -rf /srv','DROP DATABASE','mysql -e']){
