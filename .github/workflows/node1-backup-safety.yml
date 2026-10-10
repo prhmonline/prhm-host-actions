@@ -1,0 +1,51 @@
+name: Node1 backup safety contracts
+on:
+  pull_request:
+    paths:
+      - 'node1-*.js'
+      - 'bootstrap-host-actions-node1-backup-implementation-v1.js'
+      - 'test-node1-*.js'
+      - '.github/workflows/node1-backup-safety.yml'
+  push:
+    branches:
+      - 'feature/node1-backup-assurance-v1'
+    paths:
+      - 'node1-*.js'
+      - 'bootstrap-host-actions-node1-backup-implementation-v1.js'
+      - 'test-node1-*.js'
+      - '.github/workflows/node1-backup-safety.yml'
+permissions:
+  contents: read
+jobs:
+  safety-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax check and isolated tests (no server access)
+        run: |
+          node --check node1-backup-implementation-v1.js
+          node --check node1-backup-source-v1.js
+          node --check node1-live-vm-backup-v1.js
+          node --check node1-db-offsite-v1.js
+          node --check node1-host-adapter-v1.js
+          node --check node1-isolated-restore-v1.js
+          node --check node1-host-backend-v1.js
+          node --check node1-capacity-readiness-v1.js
+          node --check node1-vm-geometry-readonly-v1.js
+          node --check node1-vm-geometry-runner-v1.js
+          node --check node1-vm-geometry-agent-api-route-v1.js
+          node --check node1-vm-geometry-registration-plan-v1.js
+          node --check node1-vm-geometry-deploy-preflight-v1.js
+          node --check node1-vm-geometry-trusted-executor-v1.js
+          node --check node1-vm-geometry-attestor-v1.js
+          node --check node1-vm-geometry-attested-bundle-v1.js
+          node --check node1-vm-geometry-stage-transaction-v1.js
+          node --check node1-vm-geometry-control-plane-installer-v1.js
+          node --check node1-vm-geometry-mcp-plugin-v1.mjs
+          node --test test-node1-backup-implementation-v1.js test-node1-backup-source-v1.js test-node1-live-vm-backup-v1.js test-node1-db-offsite-v1.js test-node1-host-adapter-v1.js test-node1-isolated-restore-v1.js test-node1-host-backend-v1.js test-node1-capacity-readiness-v1.js test-node1-vm-geometry-readonly-v1.js test-node1-vm-geometry-runner-v1.js test-node1-vm-geometry-agent-api-route-v1.js test-node1-vm-geometry-mcp-plugin-v1.js test-node1-vm-geometry-registration-plan-v1.js test-node1-vm-geometry-deploy-preflight-v1.js test-node1-vm-geometry-trusted-executor-v1.js test-node1-vm-geometry-attestor-v1.js test-node1-vm-geometry-attested-bundle-v1.js test-node1-vm-geometry-stage-transaction-v1.js test-node1-vm-geometry-control-plane-installer-v1.js
