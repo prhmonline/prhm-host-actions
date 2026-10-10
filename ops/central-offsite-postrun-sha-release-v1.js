@@ -8,6 +8,7 @@ const crypto=require('node:crypto');
 const {plan,hash,TARGET}=require('./central-offsite-postrun-sha-fix-v1.js');
 
 const SERVICE='prhm-agent-selfmaint-exec.service';
+const HEALTH_SOCKET='/run/prhm-agent-selfmaint-exec/exec.sock';
 const LOG_ROOT='/var/log/prhm-deployments/central-offsite-postrun-sha-v1';
 const REPO_NAME='prhmonline/prhm-host-actions';
 const BRANCH_NAME='fix/central-offsite-postrun-evidence-sha-v1';
@@ -34,13 +35,26 @@ function checkService(){
   if(pid<=0)throw Error('SELFMAINT_SERVICE_MISSING_PID');
   return {pid};
 }
+function socketHealth(){
+  const data=exec('/usr/bin/curl',['--silent','--show-error','--fail','--max-time','4','--unix-socket',HEALTH_SOCKET,'http://localhost/health'],8000);
+  const response=JSON.parse(data);
+  if(response.ok!==true||response.service!=='prhm-agent-selfmaint-exec')throw Error('SELFMAINT_HEALTH_API_BAD_RESPONSE');
+  return {ok:true,service:response.service,version:String(response.version||'').slice(0,120)};
+}
+function waitSocketHealth(){
+  let last='';
+  for(let attempt=0;attempt<10;attempt++){
+    try{return socketHealth()}catch(e){last=String(e.message||e);if(attempt<9)exec('/usr/bin/sleep',['1'],2000)}
+  }
+  throw Error('SELFMAINT_HEALTH_API_TIMEOUT:'+last);
+}
 function preflight(){
   if(git(['status','--porcelain']).trim())throw Error('GIT_WORKTREE_NOT_CLEAN');
   const h=currentHead();
   if(!SHA_RE.test(h))throw Error('INVALID_GIT_HEAD');
   const {plan:p}=checkLiveTarget();
-  const service=checkService();
-  return {repo:REPO_NAME,branch:BRANCH_NAME,head_sha:h,target:TARGET,old_sha256:p.old_sha256,new_sha256:p.new_sha256,service,change_count:1,production_mutation:false};
+  const service=checkService(),api=socketHealth();
+  return {repo:REPO_NAME,branch:BRANCH_NAME,head_sha:h,target:TARGET,old_sha256:p.old_sha256,new_sha256:p.new_sha256,service,api,change_count:1,production_mutation:false};
 }
 function writeLog(rec){
   fs.mkdirSync(LOG_ROOT,{recursive:true,mode:0o700});
@@ -77,6 +91,7 @@ function apply(expectedCommit,confirmation){
     exec('/usr/bin/systemctl',['restart',SERVICE],45000);
     if(exec('/usr/bin/systemctl',['is-active',SERVICE])!=='active')throw Error('SERVICE_HEALTH_FAIL');
     const live=checkService();
+    waitSocketHealth();
     if(live.pid===pf.service.pid)throw Error('SERVICE_PID_UNCHANGED');
     if(fileSha(TARGET)!==p.new_sha256)throw Error('DEPLOY_SHA_DRIFT');
     result='SUCCEEDED';
@@ -93,6 +108,7 @@ function apply(expectedCommit,confirmation){
         exec('/usr/bin/systemctl',['restart',SERVICE],45000);
         if(fileSha(TARGET)!==p.old_sha256)throw Error('ROLLBACK_SHA_FAIL');
         checkService();
+        waitSocketHealth();
         rollback=true;
       }catch(re){rollback_error=String(re.message||re)}
     }
