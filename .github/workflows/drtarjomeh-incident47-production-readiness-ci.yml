@@ -1,0 +1,34 @@
+name: DrTarjomeh incident47 production preflight gate
+
+on:
+  pull_request:
+    paths:
+      - 'drtarjomeh-incident47-production-readiness-v1.js'
+      - 'test-drtarjomeh-incident47-production-readiness-v1.js'
+      - 'drtarjomeh-incident47-signed-registration-transaction-v1.js'
+      - '.github/workflows/drtarjomeh-incident47-production-readiness-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'drtarjomeh-incident47-production-readiness-v1.js'
+      - 'test-drtarjomeh-incident47-production-readiness-v1.js'
+      - 'drtarjomeh-incident47-signed-registration-transaction-v1.js'
+      - '.github/workflows/drtarjomeh-incident47-production-readiness-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  readonly-p0-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax check
+        run: |
+          node --check drtarjomeh-incident47-production-readiness-v1.js
+          node --check drtarjomeh-incident47-signed-registration-transaction-v1.js
+      - name: No-mutation contract tests
+        run: node --test test-drtarjomeh-incident47-production-readiness-v1.js test-drtarjomeh-incident47-signed-registration-transaction-v1.js
