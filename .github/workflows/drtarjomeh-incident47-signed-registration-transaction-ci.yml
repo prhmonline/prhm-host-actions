@@ -1,0 +1,37 @@
+name: DrTarjomeh incident47 signed registration transaction CI
+
+on:
+  pull_request:
+    paths:
+      - 'drtarjomeh-incident47-reviewed-host-runner-v1.js'
+      - 'drtarjomeh-incident47-runtime-registration-v1.js'
+      - 'drtarjomeh-incident47-signed-registration-transaction-v1.js'
+      - 'test-drtarjomeh-incident47-signed-registration-transaction-v1.js'
+      - '.github/workflows/drtarjomeh-incident47-signed-registration-transaction-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'drtarjomeh-incident47-reviewed-host-runner-v1.js'
+      - 'drtarjomeh-incident47-runtime-registration-v1.js'
+      - 'drtarjomeh-incident47-signed-registration-transaction-v1.js'
+      - 'test-drtarjomeh-incident47-signed-registration-transaction-v1.js'
+      - '.github/workflows/drtarjomeh-incident47-signed-registration-transaction-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  rollback-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Node syntax
+        run: |
+          node --check drtarjomeh-incident47-signed-registration-transaction-v1.js
+          node --check drtarjomeh-incident47-reviewed-host-runner-v1.js
+          node --check drtarjomeh-incident47-runtime-registration-v1.js
+      - name: Signed-boundary and rollback mock tests
+        run: node --test test-drtarjomeh-incident47-signed-registration-transaction-v1.js test-drtarjomeh-incident47-runtime-registration-v1.js
