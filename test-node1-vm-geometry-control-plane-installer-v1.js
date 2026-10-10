@@ -22,7 +22,7 @@ function fixture(options={}){
   async verifyFixedTransport(x){calls.push('transport');return {
     approved:!options.noTransport,fixedOnly:true,host:x.host,operation:x.operation,
     readOnly:true,signedReceipts:true,pinnedTrustRoot:true,persistentAntiReplay:true}},
-  async begin(x){calls.push('begin');sources.request=x},
+  async begin(x){calls.push('begin');sources.request=x;if(options.beginPartialThrows)throw Error('begin_partial_failure')},
   async audit(entry){calls.push('audit:'+entry.event);if(options.badAudit&&entry.event==='verified')throw Error('journal_fail')},
   async snapshot(s){calls.push('snapshot');snapshot={verified:!options.badSnapshot,services:s,rollbackAvailable:true};return snapshot},
   async stage(x){calls.push('stage');sources.stage=x;if(options.badStage)throw Error('stage_failure')},
@@ -31,7 +31,7 @@ function fixture(options={}){
   async health(x){calls.push('health');return {api:true,mcp:true,fixedToolVisible:true,exactSchema:!options.badHealth,probeMutation:false}},
   async commit(x){calls.push('commit');sources.commit=x},
   async restore(x){calls.push('restore');if(options.rollbackThrows)throw Error('rollback_failure')},
-  async verifyRollback(){calls.push('verifyRollback');return {restored:!options.badRecovery,servicesHealthy:!options.badRecovery}}
+  async verifyRollback(){calls.push('verifyRollback');return {restored:!options.badRecovery,api:!options.badRecovery&&!options.badRecoveryApi,mcp:!options.badRecovery&&!options.badRecoveryMcp}}
  };
  return {p,calls,sources};
 }
@@ -74,7 +74,7 @@ test('missing signed fixed transport blocks BEFORE any write',async()=>{
 test('healthy approved scenario calls exactly two registration targets and health gates',async()=>{
  const x=fixture();
  const result=await m.activate({intent:intent(),ports:x.p});
- assert.deepEqual(x.calls,['authorize','owners','source','transport','begin','audit:begin','snapshot','stage',
+ assert.deepEqual(x.calls,['authorize','owners','source','transport','snapshot','begin','audit:begin','stage',
    'bind','reload','health','audit:verified','commit']);
  assert.equal(result.ok,true);
  assert.equal(result.activated,true);
@@ -111,10 +111,25 @@ test('rollback failure takes precedence and leaves outcome explicitly unknown',a
   assert(x.calls.includes('audit:failed'));
  }
 });
-test('invalid snapshot cannot be misclassified as verified activation',async()=>{
+test('invalid snapshot aborts before begin; no needless rollback or false success',async()=>{
  const x=fixture({badSnapshot:true});
- await assert.rejects(()=>m.activate({intent:intent(),ports:x.p}),/activation_failed_rolled_back:baseline_snapshot_unverified/);
- assert(x.calls.includes('restore'));assert(!x.calls.includes('commit'));
+ await assert.rejects(()=>m.activate({intent:intent(),ports:x.p}),/activation_aborted_prebegin:baseline_snapshot_unverified/);
+ assert.deepEqual(x.calls,['authorize','owners','source','transport','snapshot']);
+ assert(!x.calls.includes('restore'));assert(!x.calls.includes('commit'));
+});
+test('verified snapshot precedes begin; a partially failed begin restores both services',async()=>{
+ const x=fixture({beginPartialThrows:true});
+ await assert.rejects(()=>m.activate({intent:intent(),ports:x.p}),/activation_failed_rolled_back:begin_partial_failure/);
+ assert(x.calls.indexOf('snapshot')<x.calls.indexOf('begin'));
+ assert(x.calls.includes('restore'));assert(x.calls.includes('verifyRollback'));
+ assert(x.calls.includes('audit:failed'));assert(!x.calls.includes('commit'));
+});
+test('per-service rollback gates fail closed when either service does not recover',async()=>{
+ for(const opts of [{badRecoveryApi:true},{badRecoveryMcp:true}]){
+  const x=fixture({...opts,beginPartialThrows:true});
+  await assert.rejects(()=>m.activate({intent:intent(),ports:x.p}),/activation_failed_rollback_unverified/);
+  assert(x.calls.includes('verifyRollback'));assert(!x.calls.includes('commit'));
+ }
 });
 test('no arbitrary shell operations are present in candidate activation engine',()=>{
  const fs=require('node:fs'),path=require('node:path');
