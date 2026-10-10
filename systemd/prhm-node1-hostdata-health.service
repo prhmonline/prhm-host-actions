@@ -1,0 +1,20 @@
+[Unit]
+Description=Read-only PRHM Node1 hostdata backup freshness and capacity check
+After=local-fs.target
+ConditionPathExists=/usr/local/sbin/prhm-node1-hostdata-supervisor
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+UMask=0077
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/usr/local/sbin/prhm-node1-hostdata-supervisor --check
+TimeoutStartSec=3min
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=yes
+PrivateDevices=yes
+StandardOutput=journal
+StandardError=journal
