@@ -18,7 +18,7 @@ function testHarness(){
   const dirs=new Set(['/var/backups','/var/lib/prhm-agent-selfmaint-exec']);
   const map=p=>{
     if(typeof p!=='string')return p;
-    if(p.startsWith('/opt/')||p.startsWith('/var/'))return root+p;
+    if(p.startsWith('/opt/')||p.startsWith('/var/')||p.startsWith('/home/agent/'))return root+p;
     return p;
   };
   for(const dir of dirs)fs.mkdirSync(map(dir),{recursive:true,mode:0o755});
