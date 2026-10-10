@@ -18,6 +18,6 @@ test('remote provisioner forces nonroot chroot and rollback on SSHD failure',()=
 });
 test('central provisioner pins prior trusted Node1 host key, forbids passwords',()=>{
  const s=fs.readFileSync(path.join(base,'central-node1-sftp-client-provision-v1.sh'),'utf8');
- for(const part of ['ssh-keygen -F','HOST_KEY_PIN_MISMATCH','GlobalKnownHostsFile /dev/null','StrictHostKeyChecking yes','BatchMode yes','PreferredAuthentications publickey','PasswordAuthentication no','openssl rand -hex 48','id_ed25519','chmod 0600'])assert.ok(s.includes(part),part);
+ for(const part of ['ssh-keygen\',\'-F','HOST_KEY_PIN_MISMATCH','GlobalKnownHostsFile /dev/null','StrictHostKeyChecking yes','BatchMode yes','PreferredAuthentications publickey','PasswordAuthentication no','openssl rand -hex 48','id_ed25519','chmod 0600'])assert.ok(s.includes(part),part);
  assert.ok(!s.includes('StrictHostKeyChecking no'));
 });
