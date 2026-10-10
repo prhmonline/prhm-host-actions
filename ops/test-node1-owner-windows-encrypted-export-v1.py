@@ -171,11 +171,12 @@ class OfflineOwnerExport(unittest.TestCase):
                 m.diagnose()
             self.assertTrue(output.is_dir())
             self.assertFalse(list(output.iterdir()))
-            args = run_mock.call_args.args[0]
-            self.assertIn("bash -c", args[-1])
-            self.assertIn("test -f", args[-1])
-            self.assertNotIn("tar -C ", args[-1])
-            self.assertNotIn("--passphrase-file", args[-1])
+            self.assertTrue(run_mock.called)
+            all_remote_arguments = repr(run_mock.call_args_list)
+            self.assertIn("bash -c", all_remote_arguments)
+            self.assertIn("test -f", all_remote_arguments)
+            self.assertNotIn("tar -C ", all_remote_arguments)
+            self.assertNotIn("--passphrase-file", all_remote_arguments)
 
     def test_error_code_output_without_any_secret(self):
         old = sys.argv
