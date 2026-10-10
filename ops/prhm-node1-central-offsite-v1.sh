@@ -3,7 +3,6 @@
 set -Eeuo pipefail
 umask 077
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-STATE=/var/lib/prhm-central-gdrive-bundle/latest.json
 SOURCE_ROOT=/var/backups/prhm-central
 RESTIC=/var/lib/prhm-central-gdrive-restic/restic-0.19.1
 PASSFILE=/etc/prhm-backup/node1/restic.password
@@ -49,23 +48,26 @@ print('NODE1_RESULT='+data['status']+' STAGE='+data['stage'])
 print('NODE1_EVIDENCE='+str(f))
 PY
 }
-trap cleanup EXIT
 if [[ $# != 1 || "$1" != --run ]];then
  echo 'FIXED_RUNNER_REQUIRES_APPROVED_SERVICE_INSTALL' >&2;exit 2
 fi
-[[ -x "$RESTIC" && -s "$STATE" ]] || { STAGE=missing_dependency;exit 3; }
+trap cleanup EXIT
+[[ -x "$RESTIC" && -d "$SOURCE_ROOT" ]] || { STAGE=missing_dependency;exit 3; }
 for f in "$PASSFILE" "$SSHCONFIG" "$KNOWNHOSTS" "$IDENTITY";do
  [[ -s "$f" && "$(stat -c '%u:%g:%a' "$f")" == 0:0:600 ]] || { STAGE=missing_secure_ssh_or_password;exit 4; }
 done
-SNAP="$(python3 - "$STATE" <<'PY'
-import json,re,sys
-s=json.load(open(sys.argv[1]))
-x=s.get('snapshot','')
-if s.get('status')!='pass' or not re.fullmatch(r'20[0-9]{6}T[0-9]{6}Z',x):
+SNAP="$(python3 - "$SOURCE_ROOT" <<'PY'
+import os,re,sys
+root=sys.argv[1]
+names=sorted((x for x in os.listdir(root) if re.fullmatch(r'20[0-9]{6}T[0-9]{6}Z',x) and os.path.isdir(os.path.join(root,x))),reverse=True)
+for x in names:
+ if os.path.isfile(os.path.join(root,x,'COMPLETE')) and os.path.isfile(os.path.join(root,x,'SHA256SUMS')):
+  print(x)
+  break
+else:
  raise SystemExit(2)
-print(x)
 PY
-)" || { STAGE=invalid_snapshot_state;exit 5; }
+)" || { STAGE=missing_complete_local_snapshot;exit 5; }
 SRC="$SOURCE_ROOT/$SNAP"
 [[ -d "$SRC" && -f "$SRC/COMPLETE" && -s "$SRC/SHA256SUMS" ]] || { STAGE=incomplete_source;exit 6; }
 [[ "$(df -Pk /var/tmp | awk 'NR==2 {print $4}')" -gt 8388608 ]] || { STAGE=low_restore_disk;exit 7; }
