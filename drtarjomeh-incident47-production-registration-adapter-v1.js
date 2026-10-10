@@ -245,8 +245,7 @@ function preflight(){
     paths:plan.steps.map(s=>s.path),preimages_verified:true,
     install_authorized:false,production_mutation:false};
 }
-module.exports=Object.freeze({ACTION,BACKUPS,AUDIT,LOCK,SERVICES,createProductionAdapter,preflight,
-  _reviewTest: Object.freeze({checkPath,statTarget,commands})});
+module.exports=Object.freeze({ACTION,BACKUPS,AUDIT,LOCK,SERVICES,createProductionAdapter,preflight});
 if(require.main===module){
   process.stderr.write('Not a CLI installer; signed Level-4 bootstrap only.\n');
   process.exitCode=64;
