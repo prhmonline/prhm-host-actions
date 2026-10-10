@@ -13,7 +13,7 @@ const executor="const HOST_ACTION_V2_SPECS = Object.freeze({\n  previous_v1:{ope
 const mcp="const HostActionV2=z.enum(['previous_v1','control_plane_current_owner_binding_refresh_v1']);";
 test('registration only changes the one fixed action in four approved sites',()=>{
   const a=r.baseTransform(base),e=r.executorTransform(executor),m=r.mcpTransform(mcp);
-  assert.equal(a.split(app).length-1,1);
+  assert.equal(a.split(app).length-1,2); // registry key and operation name
   assert.match(a,/rollback: 'host-action-v2:drtarjomeh-incident47-guard-v1:preimage-restore'/);
   assert.match(e,/applyDrtI47GuardAfterTrustedApproval/);
   assert.match(e,/runner_source_mismatch/);
