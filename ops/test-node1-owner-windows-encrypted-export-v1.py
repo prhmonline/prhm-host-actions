@@ -156,6 +156,39 @@ class OfflineOwnerExport(unittest.TestCase):
                     m.fetch()
             self.assertEqual((out / (m.SNAPSHOT + ".snapshot.tar.gpg")).read_bytes(), b"do not touch")
 
+    def test_diagnose_is_read_only_and_reports_checkpoint(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = pathlib.Path(t)
+            output = root / "out"
+            target = mock.Mock(returncode=0, stdout=b"READ_ONLY_SSH_PREFLIGHT_OK\\n")
+            with mock.patch.object(m, "assert_owner_windows"), \\
+                 mock.patch.object(m, "owner_paths", return_value=(root, output)), \\
+                 mock.patch.object(m, "check_receipt", return_value=root / "fake.key"), \\
+                 mock.patch.object(m, "find_authorized_key", return_value=root / "fake.ssh"), \\
+                 mock.patch.object(m, "gpg_executable", return_value="/usr/bin/gpg"), \\
+                 mock.patch.object(m, "make_ssh_command", return_value=["ssh", "PLACEHOLDER"]), \\
+                 mock.patch.object(m.subprocess, "run", return_value=target) as run_mock:
+                m.diagnose()
+            self.assertTrue(output.is_dir())
+            self.assertFalse(list(output.iterdir()))
+            args = run_mock.call_args.args[0]
+            self.assertIn("bash -c", args[-1])
+            self.assertIn("test -f", args[-1])
+            self.assertNotIn("tar -C ", args[-1])
+            self.assertNotIn("--passphrase-file", args[-1])
+
+    def test_error_code_output_without_any_secret(self):
+        old = sys.argv
+        try:
+            sys.argv = ["owner-export", "diagnose"]
+            with mock.patch.object(m, "diagnose", side_effect=RuntimeError("GPG_NOT_AVAILABLE")), \\
+                 mock.patch.object(m.sys, "stderr", new_callable=io.StringIO) as sink:
+                self.assertEqual(m.main(), 3)
+                rendered = sink.getvalue()
+            self.assertIn("OWNER_OFFSITE_REASON=GPG_NOT_AVAILABLE", rendered)
+        finally:
+            sys.argv = old
+
     def test_cli_help(self):
         p = subprocess.run([sys.executable, str(PATH), "--help"],
                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10)
