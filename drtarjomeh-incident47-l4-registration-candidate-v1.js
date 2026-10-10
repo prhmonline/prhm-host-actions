@@ -73,7 +73,7 @@ function buildPolicyStructure(source){
   let p;try{p=JSON.parse(source.toString('utf8'));}catch{fail('policy_json_invalid');}
   if(p.schema_version!=='prhm.approval-policy.v1'||p.version!==LIVE_POLICY_VERSION)fail('policy_baseline_mismatch');
   if(!p.operations||typeof p.operations!=='object'||Array.isArray(p.operations)||!Array.isArray(p.typed_scopes))fail('policy_structure_invalid');
-  if(p.operations[OPERATION]||p.typed_scopes.some(x=>x?.action===ACTION||x?.operation===OPERATION))fail('action_already_registered');
+  if(Object.prototype.hasOwnProperty.call(p.operations,OPERATION)||p.typed_scopes.some(x=>x?.action===ACTION||x?.operation===OPERATION))fail('action_already_registered');
   const beforeOps=Object.keys(p.operations).length,beforeScopes=p.typed_scopes.length;
   p.version=POLICY_VERSION;
   p.operations[OPERATION]=approvalPolicyOperation();
