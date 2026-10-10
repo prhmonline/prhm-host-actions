@@ -20,7 +20,7 @@ const fixture=()=>Buffer.from(JSON.stringify({
 test('fixed action, SHA pins, and narrow one-time Level-4 policy',()=>{
   assert.equal(m.ACTION,'drtarjomeh_incident47_uploads_guard_install_v1');
   assert.equal(m.OPERATION,'host_action.drtarjomeh_incident47_uploads_guard_install_v1');
-  assert.equal(m.SOURCE_COMMIT,'e20f4055610d9e61bd8ec42e4d271d97f7433ace');
+  assert.equal(m.SOURCE_COMMIT,'c1e03335f5b9c963672af1050089d8e197a729ef');
   assert.equal(Object.keys(m.LIVE).length,4);
   assert.equal(Object.keys(m.APP_BLOBS).length,2);
   const spec=m.approvalPolicyOperation();
