@@ -59,7 +59,9 @@ function safeBytes(file){
     if(!checked.isFile()||checked.ino!==st.ino||checked.dev!==st.dev)
       error('file_replaced_during_open');
     const out=fs.readFileSync(fd);
-    if(out.length!==checked.size||digest(out)!==digest(fs.readFileSync(fd,{position:0})))
+    const after=fs.fstatSync(fd);
+    if(out.length!==checked.size||after.ino!==checked.ino||after.dev!==checked.dev||
+      after.size!==checked.size||after.mtimeMs!==checked.mtimeMs)
       error('file_changed_during_read');
     return out;
   }finally{fs.closeSync(fd);}
@@ -99,6 +101,11 @@ function atomicReplace(file,bytes,mode,uid,gid,allowAbsent=false){
     try{fs.unlinkSync(tmp)}catch(e){if(e.code!=='ENOENT')throw e}
   }
 }
+function parentRootTrusted(folder){
+  const st=fs.lstatSync(folder);
+  if(!st.isDirectory()||st.isSymbolicLink()||(st.mode&0o002)!==0)
+    error('unsafe_existing_root_parent');
+}
 function immutableDir(folder){
   if(!path.isAbsolute(folder))error('root_directory_required');
   try{const st=fs.lstatSync(folder);if(!st.isDirectory()||st.isSymbolicLink()||(st.mode&0o077)!==0)error('unsafe_private_directory')}
@@ -107,6 +114,7 @@ function immutableDir(folder){
 function createProductionAdapter(){
   if(process.getuid?.()!==0)error('root_required_for_privileged_adapter');
   let copyDir=null,backups=null,lockedFd=null;
+  const applied=new Map();
   return Object.freeze({
     hostMainSha:()=>reg.HOST_BASE,
     readOwner:p=>{if(!Object.values(pins.LIVE).some(entry=>entry.path===p))error('owner_not_allowlisted');return safeBytes(p)},
@@ -114,7 +122,7 @@ function createProductionAdapter(){
     targetState:file=>statTarget(file),
     lock:async action=>{
       if(action!==ACTION)error('unapproved_action');
-      immutableDir(path.dirname(AUDIT));immutableDir(AUDIT);
+      parentRootTrusted(path.dirname(AUDIT));immutableDir(AUDIT);
       lockedFd=fs.openSync(LOCK,fs.constants.O_CREAT|fs.constants.O_EXCL|fs.constants.O_WRONLY|fs.constants.O_NOFOLLOW,0o600);
       fs.writeFileSync(lockedFd,String(process.pid));fs.fsyncSync(lockedFd);
       const own=fs.fstatSync(lockedFd);
@@ -169,6 +177,7 @@ function createProductionAdapter(){
       const current=statTarget(step.path);
       if(before.absent!==!current.exists||(current.exists&&current.sha256!==before.sha256))
         error('preimage_changed_after_backup');
+      applied.set(step.kind,step.after_sha256);
       atomicReplace(step.path,step.bytes,step.mode,step.uid,step.gid,before.absent);
     },
     verify:async step=>{
@@ -204,6 +213,8 @@ function createProductionAdapter(){
           fs.unlinkSync(file);syncParent(path.dirname(file));
         }
       }else{
+        if(current.exists&&current.sha256!==b.sha256&&current.sha256!==applied.get(kind))
+          error('rollback_refused_unreviewed_mutation');
         const bytes=fs.readFileSync(b.backup);
         if(digest(bytes)!==b.sha256)error('backup_corrupted');
         atomicReplace(file,bytes,b.mode,b.uid,b.gid,false);
