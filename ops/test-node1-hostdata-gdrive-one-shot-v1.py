@@ -43,6 +43,8 @@ class CloudBackupContracts(unittest.TestCase):
         self.assertIn('REMOTE_QUOTA_INSUFFICIENT',s)
         self.assertIn('LOCAL_CAPACITY_INSUFFICIENT',s)
         self.assertIn('INVALID_SNAPSHOT_ID',s)
+        self.assertIn('RELEASE_SHA_FILE',s)
+        self.assertIn("commit_sha':commit_sha",s)
 
     def test_cloud_restore_must_validate_all_snapshot_sha_and_coverage(self):
         s=SCRIPT.read_text()
