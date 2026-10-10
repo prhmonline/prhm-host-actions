@@ -83,7 +83,7 @@ async function applyPrepared(plan,adapter){
     await adapter.reloadAndHealth('candidate');
     const result={ok:true,action:ACTION,source_commit:plan.baseline_sha,
       app_sha:plan.app_sha,targets:[...ORDER],rollback_performed:false,
-      approval_consumed_by_trusted_dispatcher:true,production_application_mutation:false,
+      authorization_attested_by_transaction:false,production_application_mutation:false,
       database_mutation:false,credential_values_returned:false};
     await adapter.record(result);
     return Object.freeze(result);
