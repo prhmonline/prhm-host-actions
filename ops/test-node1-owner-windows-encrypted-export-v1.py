@@ -221,7 +221,7 @@ class OfflineOwnerExport(unittest.TestCase):
             previous = pathlib.Path.cwd()
             try:
                 os.chdir(str(root))
-                pathlib.Path("D:\\\\").mkdir()
+                pathlib.Path("D:" + chr(92)).mkdir()
                 def free_for(path):
                     return types.SimpleNamespace(free=5 * 1024 ** 3 if "D:" in str(path) else 1 * 1024 ** 3)
                 kernel = mock.Mock()
