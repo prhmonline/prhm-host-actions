@@ -46,7 +46,7 @@ test('current source pins and suspect hashes are fixed and scoped',()=>{
   assert.equal(Object.keys(m.FILES).length,2);
   assert.ok(m.SUSPECTS.every(x=>/^[a-f0-9]{64}$/.test(x.sha)&&
      !x.rel.startsWith('/')&&!x.rel.includes('..')));
-  assert.equal(pins.SOURCE_COMMIT,'e20f4055610d9e61bd8ec42e4d271d97f7433ace');
+  assert.equal(pins.SOURCE_COMMIT,'c1e03335f5b9c963672af1050089d8e197a729ef');
   assert.ok(m.EXPECTED_RELEASE.includes('20261010-security-5d4e6cf0'));
 });
 test('symlinks and large/nonregular files fail closed',()=>{
