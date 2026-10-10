@@ -165,6 +165,8 @@ def verify_archive(path, local_key, expected_digest=None):
     try:
         with tarfile.open(fileobj=proc.stdout, mode="r|") as tar:
             for member in tar:
+                if member.isdir() and member.name.rstrip("/") == SNAPSHOT:
+                    continue
                 if not member.name.startswith(SNAPSHOT + "/"):
                     stop("UNEXPECTED_TAR_PREFIX")
                 if not member.isfile():
@@ -197,6 +199,8 @@ def verify_archive(path, local_key, expected_digest=None):
         if proc.wait(timeout=60) != 0:
             stop("GPG_DECRYPTION_FAILED")
     except BaseException:
+        if proc.stdout is not None and not proc.stdout.closed:
+            proc.stdout.close()
         if proc.poll() is None:
             proc.kill()
             proc.wait()
