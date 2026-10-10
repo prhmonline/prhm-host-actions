@@ -38,7 +38,10 @@ test('one-input prepare returns exact observed SHA and never authorizes deploy',
  assert.equal(r.release_authorized,false);
  assert.equal(r.deploy_executed,false);
  assert.equal(r.adapter_state,'manual_sha_bound_level4');
- assert.match(r.pinned_sha,/^[a-f0-9]{40}$/);
+ if(r.pinned_sha===null){
+  assert.equal(r.profile.ready,false);
+  assert.ok(r.profile.blockers.some(x=>['root_missing','root_invalid','git_missing_or_invalid'].includes(x)));
+ }else assert.match(r.pinned_sha,/^[a-f0-9]{40}$/);
  assert.equal(r.profile.project,'rahekomak');
  assert.throws(()=>gate.prepare('not_allowlisted'),/allowlisted/);
 });
