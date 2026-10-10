@@ -1,29 +1,25 @@
-# Node1 encrypted Google Drive offsite — exact authenticated account gate
+# Node1 encrypted Google Drive offsite — explicitly approved destination
 
-**Verification date: 2026-10-10. Status: BLOCKED. No production/cloud backup uploaded by this change.**
+**Date: 2026-10-10. Status: GIT-ONLY; no cloud upload and no new deployment.**
 
-## Grounded finding
+## Identity and owner decision
 
-The existing root-only rclone remote `gdrive-backup:` on `prhm-production.prhm.ir` is OAuth-authenticated as **`prhmonline@gmail.com`**, verified via the Google Drive `about.user.emailAddress` API with the configured access token. The owner-approved destination for sensitive Node1 host-data archives is **`aytec.ir@gmail.com`**. These accounts are different. Similar drive quota, matching folder names or a successful read-only rclone `about` response **do not** authorize uploading to another account.
+Google Drive API `about.user.emailAddress`, queried with the OAuth access token in the existing root-only rclone config on `prhm-production.prhm.ir`, authenticated `gdrive-backup:` as **`prhmonline@gmail.com`**. The previous design expected `aytec.ir@gmail.com`, so the first fail-closed identity check correctly returned `DESTINATION_ACCOUNT_MISMATCH` and exit 3.
 
-The previously approved production one-shot candidate has exact SHA `42eb31e0edf6fb7ae2efeb4189c8b9bec24d12ec` and is installed root-only; it currently stops at `MISSING_OFFHOST_ESCROW` before data transfer. It has NOT copied any business data to Drive. Its existing runtime remains untouched by this PR.
+**The owner subsequently explicitly approved using `prhmonline@gmail.com` instead.** Therefore the new Git candidate sets `EXPECTED_ACCOUNT='prhmonline@gmail.com'`, while preserving the exact OAuth identity gate. It must never silently send customer-containing archives to any other account.
 
-## Fix in this separate Git-only branch
+## New Git-only gate
 
-The new guarded candidate reads the **existing** root-only rclone configuration on the same machine, lets rclone refresh an access token via read-only `about`, then checks the authenticated Google `user.emailAddress` against hard-coded `aytec.ir@gmail.com` via Google Drive API. Failure to authenticate or account mismatch exits nonzero **before key access, source-file read, encryption, remote write or any backup upload**. No token, client secret or refresh token is printed/logged or committed.
+- Existing root-only rclone config and OAuth token are used only for a read-only authenticated Google Drive `about.user.emailAddress` comparison. Identity must exactly match the owner-approved destination; no token/secret is printed or committed.
+- `--inspect` verifies identity and available quota read-only. It may refresh an OAuth access token; it does not upload, create, delete or move customer files.
+- `--run` requires the identity check **before** any key access, source snapshot read or cloud upload, and also requires valid owner-attested independent off-Node1 key escrow and release SHA. The previously approved production script SHA `42eb31e0edf6fb7ae2efeb4189c8b9bec24d12ec` remains installed and is unchanged by this PR. New SHA needs a new scoped Level-4 release approval.
+- The connected Drive previously reported about **5.17 GB free** and showed `PRHM-Backups/`. This is capacity/access evidence, **not** proof of upload permission to a yet-to-be-created one-shot folder, transfer success or independent recoverability.
+- The remote uses rclone's shared Google client ID, which warned it is being retired during 2026. Long-term unattended reliability requires a separately reviewed renewal plan.
 
-Test results on production-central checkout under exact Git SHA (read-only):
-- Python 3.6 offline unit suite: **7/7 PASS**, including real synthetic OpenPGP AES-256 encrypt/decrypt + tamper rejection.
-- Shell syntax: PASS.
-- Actual `--inspect` negative integration against current existing rclone remote: `DESTINATION_ACCOUNT_MISMATCH`, `OFFSITE_BLOCKED:DESTINATION_ACCOUNT_NOT_VERIFIED`, **exit code 3**, and **zero data uploads**.
+## Hard stop: out-of-Node1 recovery key
 
-## Authorization boundaries and options
+No owner-confirmed physical off-Node1 secret escrow currently exists. Until it is established and independently tested, **do not create/upload a real encrypted business backup**. The required owner-owned high-entropy passphrase must be retained on a different failure domain (for example a password manager accessible on a different device); never send it in this chat or Git. Check authentic ownership and access from another device before signing `node1-hostdata-escrow.json`.
 
-**No new production deployment is authorized for the amended SHA.** First, the owner must choose a permitted recipient account:
+After owner-held key recovery is evidenced and approved Git SHA deployed, only one encrypted snapshot may be transferred and it must be downloaded **back from Google Drive**, decrypted into isolated storage, and verified against the complete original Snapshot SHA256SUMS, 6 DB names, actual site coverage and COMPLETE marker before accepting `offsite_verified=true`. No automatic pruning, running-VM image copy or claim of full disaster recovery.
 
-- **Original designated work account**: authenticate rclone with `aytec.ir@gmail.com` using an owner-controlled supported login (do not share OAuth tokens in chat). Read-only identity verification must return an exact match, then verify quota and folder ACLs.
-- **Alternative existing PRHM account**: if the owner explicitly approves `prhmonline@gmail.com` as a destination for encrypted customer-containing archives, amend the hardcoded expected account **in Git**, test, and obtain new pinned Level-4 approval. Never silently reuse the original approval.
-
-For either destination, the owner must securely retain a high-entropy recovery passphrase and prove access to it **from a different physical device/failure domain**, separate from Node1. Do not send passphrases, tokens or DB contents via Git, ChatGPT, email, logs, comments or unsecured browser forms.
-
-After an exact Git-SHA release and owner escrow verification, run at most **one** bounded encrypted upload; require remote independent full download, decrypt and complete snapshot SHA256 verification before setting `offsite_verified=true`. No automatic pruning, no live QCOW2 copy and no VM boot recovery claim. The rclone shared Google OAuth client is scheduled for deprecation in 2026; longer-term unattended durability is still not proven.
+The current verified local backup timers remain active and unchanged. Existing live `prhm-production` VM disk still lacks a consistent boot-recoverable independent backup.
