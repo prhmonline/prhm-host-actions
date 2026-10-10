@@ -5,7 +5,6 @@ const fs=require('node:fs');
 const cp=require('node:child_process');
 const path=require('node:path');
 const C=Object.freeze({
- snapshotState:'/var/lib/prhm-central-gdrive-bundle/latest.json',
  source:'/var/backups/prhm-central',
  restic:'/var/lib/prhm-central-gdrive-restic/restic-0.19.1',
  node1Host:'185.191.76.138',
@@ -33,10 +32,14 @@ function inspect(read=fs.readFileSync,exists=fs.existsSync,probe=run){
   target:'server1.prhm.ir',transport:'sftp',repository:'sftp:prhm-node1-backup:/repo/central-production',
   cloud_subscription_required:false,remote_mutation:false,production_mutation:false,
   checks:{},warnings:[]};
- let state;
- try{state=JSON.parse(read(C.snapshotState,'utf8'))}catch{state=null}
- result.checks.source_state=Boolean(state?.status==='pass'&&/^20\d{6}T\d{6}Z$/.test(state.snapshot||''));
- const snapshot=result.checks.source_state?state.snapshot:null;
+ let snapshot=null;
+ try{
+  const candidates=fs.readdirSync(C.source,{withFileTypes:true})
+   .filter(x=>x.isDirectory()&&/^20\d{6}T\d{6}Z$/.test(x.name))
+   .map(x=>x.name).sort().reverse();
+  snapshot=candidates.find(x=>exists(path.join(C.source,x,'COMPLETE'))&&exists(path.join(C.source,x,'SHA256SUMS')))||null;
+ }catch{}
+ result.checks.source_state=Boolean(snapshot);
  result.snapshot=snapshot;
  result.checks.local_snapshot_complete=Boolean(snapshot&&exists(path.join(C.source,snapshot,'COMPLETE'))&&exists(path.join(C.source,snapshot,'SHA256SUMS')));
  result.checks.restic_executable=Boolean(exists(C.restic));
