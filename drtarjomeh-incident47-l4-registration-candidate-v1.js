@@ -5,9 +5,9 @@ const crypto=require('node:crypto');
 
 const ACTION='drtarjomeh_incident47_uploads_guard_install_v1';
 const OPERATION='host_action.'+ACTION;
-const HOST_ACTIONS_BASE='83eb88558decaaf09b6e66706ffe413dc404ed8d';
+const HOST_ACTIONS_BASE='2ae43c70b38a61a21ebf2c6caebe9ae1571caec4';
 const SOURCE_REPO='prhmonline/drtarjomeh';
-const SOURCE_COMMIT='e20f4055610d9e61bd8ec42e4d271d97f7433ace';
+const SOURCE_COMMIT='c1e03335f5b9c963672af1050089d8e197a729ef';
 const SOURCE_PR=50;
 const SITE='drtarjomeh.ir';
 const TARGET='/etc/httpd/conf.d/95-drt-wordpress-uploads-deny.conf';
@@ -20,7 +20,7 @@ const LIVE=Object.freeze({
  mcp:Object.freeze({path:'/home/agent/ssh-mcp-server/src/plugins/hostActionsV2.js',sha256:'bd768f992dab75710558e3f47187c311c2ee5b5ec6f5751a74e0bbfa64729166'})
 });
 const APP_BLOBS=Object.freeze({
- guard:Object.freeze({path:'ops/security-cutover/incident47-host-guard-v1.py',git_blob_sha:'39e78c45f4c454e56874bc3941f82a5a43cfc8f8'}),
+ guard:Object.freeze({path:'ops/security-cutover/incident47-host-guard-v1.py',git_blob_sha:'4f532f6a1b58d80d4010002b954fe13eaaecb420'}),
  policy:Object.freeze({path:'ops/security-cutover/apache-wp-uploads-exec-deny-v1.conf',git_blob_sha:'5adb676a1f9b7e3aa295f469a39071cfc1d1a6f5'})
 });
 const SHA256=/^[0-9a-f]{64}$/;
