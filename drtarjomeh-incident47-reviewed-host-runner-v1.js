@@ -41,11 +41,36 @@ function inspectPrerequisites(deps={readFile:p=>fs.readFileSync(p),cmd:run}){
      script:SCRIPT,policy:POLICY,action:ACTION,source_verified:true});
 }
 // This code is a *constant*, not constructed from user parameters.
-const INVOKE_PYTHON=String.raw`import importlib.util,json
+const INVOKE_PYTHON=String.raw`import hashlib,json,os,stat,types
 p='/home/drtarjomeh/domains/drtarjomeh.ir/repository/ops/security-cutover/incident47-host-guard-v1.py'
-spec=importlib.util.spec_from_file_location('i47_reviewed_host_guard',p)
-m=importlib.util.module_from_spec(spec)
-spec.loader.exec_module(m)
+source_blob='4f532f6a1b58d80d4010002b954fe13eaaecb420'
+policy_blob='5adb676a1f9b7e3aa295f469a39071cfc1d1a6f5'
+def gitblob(payload):
+    return hashlib.sha1(b'blob '+str(len(payload)).encode()+b'\0'+payload).hexdigest()
+fd=os.open(p,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK)
+try:
+    st=os.fstat(fd)
+    if not stat.S_ISREG(st.st_mode) or st.st_size<100 or st.st_size>1000000:
+        raise RuntimeError('reviewed_python_source_not_regular')
+    source=b''
+    while len(source)<=st.st_size:
+        part=os.read(fd,min(65536,st.st_size-len(source)+1))
+        if not part:break
+        source+=part
+    if len(source)!=st.st_size or gitblob(source)!=source_blob:
+        raise RuntimeError('reviewed_python_source_changed')
+finally:
+    os.close(fd)
+m=types.ModuleType('i47_reviewed_host_guard')
+m.__file__=p
+exec(compile(source,p,'exec'),m.__dict__)
+reviewed_read=m.read_exact_regular
+def verified_read(path):
+    body,metadata=reviewed_read(path)
+    if path==m.POLICY and gitblob(body)!=policy_blob:
+        raise RuntimeError('reviewed_apache_policy_changed')
+    return body,metadata
+m.read_exact_regular=verified_read
 policy,evidence=m.preflight('c1e03335f5b9c963672af1050089d8e197a729ef')
 result=m.install_guard(policy,'c1e03335f5b9c963672af1050089d8e197a729ef',evidence)
 print(json.dumps({'schema_version':'prhm.host-action-result.v1',
