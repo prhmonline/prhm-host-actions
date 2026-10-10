@@ -68,9 +68,10 @@ function testHarness(){
     if(p==='./drtarjomeh-incident47-l4-registration-candidate-v1.js')return pins;
     throw Error('unapproved_fixture_import:'+p);
   };
-  vm.runInNewContext(src,{require:requireMock,module:mod,__dirname,Buffer,process:{
+  const vmContext={require:requireMock,module:mod,__dirname,Buffer,process:{
     pid:process.pid,getuid:()=>0,exitCode:0,stderr:{write:()=>{}}
-  }},{timeout:5000});
+  }};
+  vm.runInNewContext(src+'\nglobalThis.__reviewTest={checkPath,commands};',vmContext,{timeout:5000});
   const adapter=mod.exports.createProductionAdapter();
   const steps=Object.entries(newbytes).map(([kind,bytes])=>{
     const stat=adapter.targetState(tx.TARGETS[kind]);
@@ -79,7 +80,7 @@ function testHarness(){
       after_sha256:sha,mode:kind==='runner'?0o700:0o644,
       uid:stat.exists?stat.uid:process.getuid(),gid:stat.exists?stat.gid:process.getgid()};
   });
-  return {root,map,old,steps,commands,adapter,api:mod.exports,
+  return {root,map,old,steps,commands,adapter,api:mod.exports,review:vmContext.__reviewTest,
     dispose:()=>fs.rmSync(root,{recursive:true,force:true})};
 }
 test('production adapter exports fixed paths but NO root apply CLI',()=>{
@@ -142,9 +143,9 @@ test('rollback never overwrites an unknown concurrent target mutation',async()=>
 test('unregistered paths and arbitrary shell are rejected',()=>{
   const t=testHarness();
   try{
-    assert.throws(()=>t.api._reviewTest.checkPath('/etc/shadow'),/not_in_fixed_allowlist/);
-    assert.throws(()=>t.api._reviewTest.commands('/bin/bash',['-c','id']),/unreviewed_command/);
-    assert.throws(()=>t.api._reviewTest.commands('/usr/bin/systemctl',
+    assert.throws(()=>t.review.checkPath('/etc/shadow'),/not_in_fixed_allowlist/);
+    assert.throws(()=>t.review.commands('/bin/bash',['-c','id']),/unreviewed_command/);
+    assert.throws(()=>t.review.commands('/usr/bin/systemctl',
       ['restart','ssh.service']),/unreviewed_command/);
     assert.deepEqual(t.commands,[]);
   }finally{t.dispose()}
