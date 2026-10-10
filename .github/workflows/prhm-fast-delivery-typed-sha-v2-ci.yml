@@ -1,0 +1,42 @@
+name: PRHM Fast Delivery SHA-bound v2
+
+on:
+  pull_request:
+    paths:
+      - 'prhm-fast-delivery-typed-sha-v2.cjs'
+      - 'test-prhm-fast-delivery-typed-sha-v2.cjs'
+      - 'prhm-fast-delivery-coordinator-v1.cjs'
+      - 'prhm-fast-delivery-gate-v1.cjs'
+      - '.github/workflows/prhm-fast-delivery-typed-sha-v2-ci.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'prhm-fast-delivery-typed-sha-v2.cjs'
+      - 'test-prhm-fast-delivery-typed-sha-v2.cjs'
+      - 'prhm-fast-delivery-coordinator-v1.cjs'
+      - 'prhm-fast-delivery-gate-v1.cjs'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Syntax and shared-contract checks
+        run: |
+          node --check prhm-fast-delivery-typed-sha-v2.cjs
+          node --check test-prhm-fast-delivery-typed-sha-v2.cjs
+          node --test test-prhm-fast-delivery-typed-sha-v2.cjs test-prhm-fast-delivery-coordinator-v1.cjs test-prhm-fast-delivery-gate-v1.cjs
+      - name: Reject any direct production apply in v2 contract
+        run: |
+          if node prhm-fast-delivery-typed-sha-v2.cjs --apply; then
+            echo 'Unsafe v2 CLI apply is exposed'
+            exit 1
+          fi
