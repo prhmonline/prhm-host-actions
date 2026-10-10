@@ -31,3 +31,28 @@ test('read-only complete inventory handles missing roots',()=>{
  assert.equal(r.total,22);assert.equal(r.profiles.length,22);
  assert.ok(r.profiles.every(x=>x.ready===false));
 });
+
+test('one-input prepare returns exact observed SHA and never authorizes deploy',()=>{
+ const r=gate.prepare('rahekomak');
+ assert.equal(r.mode,'prepare');
+ assert.equal(r.release_authorized,false);
+ assert.equal(r.deploy_executed,false);
+ assert.equal(r.adapter_state,'manual_sha_bound_level4');
+ assert.match(r.pinned_sha,/^[a-f0-9]{40}$/);
+ assert.equal(r.profile.project,'rahekomak');
+ assert.throws(()=>gate.prepare('not_allowlisted'),/allowlisted/);
+});
+test('one-input prepare for unregistered project keeps deployment blocked',()=>{
+ const r=gate.prepare('help');
+ assert.equal(r.adapter_state,'adapter_missing');
+ assert.equal(r.profile.ready,false);
+ assert.equal(r.release_authorized,false);
+});
+test('inventory exposes cross-project readiness counts without deployment',()=>{
+ const x=gate.main(['--all']);
+ assert.equal(x.read_only,true);
+ assert.ok(x.summary.adapter_missing>=1);
+ assert.ok(x.summary.dirty_git>=0);
+ assert.ok(x.summary.clean_git>=0);
+ assert.equal(x.total,22);
+});

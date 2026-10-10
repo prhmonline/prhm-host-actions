@@ -59,16 +59,40 @@ function inspect(name,opts={}){
  r.ready=r.blockers.length===0;
  return r;
 }
+function prepare(project) {
+ const first=inspect(project);
+ const profile=first.head&&SHA.test(first.head)?inspect(project,{sha:first.head}):first;
+ // This never authorizes a release. Approval and deploy are only possible
+ // through a separately registered, SHA-bound, rollback-capable adapter.
+ const adapter_state=profile.adapter==='unregistered'?'adapter_missing':
+  profile.adapter==='web-only-manual-level4'?'manual_sha_bound_level4':
+  'fixed_adapter_declared_runtime_verification_required';
+ return {
+  ok:true,read_only:true,mode:'prepare',project,
+  pinned_sha:profile.head,profile,adapter_state,
+  release_authorized:false,deploy_executed:false,
+  next:!profile.ready?'resolve_profile_blockers':
+    'run_project_tests_and_request_exact_sha_approval_using_registered_adapter'
+ };
+}
 function main(argv=process.argv.slice(2)){
  if(argv.length===1&&argv[0]==='--all'){
   const rows=Object.keys(PROFILES).map(p=>inspect(p));
-  return {ok:true,read_only:true,mode:'inventory',total:rows.length,profiles:rows};
+  const counts={clean_git:0,adapter_missing:0,dirty_git:0,root_unavailable:0};
+  for(const p of rows){
+   if(p.changed_files===0&&p.branch===PROFILES[p.project].branch)counts.clean_git++;
+   if(p.adapter==='unregistered')counts.adapter_missing++;
+   if(p.blockers.includes('dirty_git'))counts.dirty_git++;
+   if(p.blockers.some(b=>['root_missing','root_invalid','git_missing_or_invalid'].includes(b)))counts.root_unavailable++;
+  }
+  return {ok:true,read_only:true,mode:'inventory',total:rows.length,summary:counts,profiles:rows};
  }
- if(argv.length!==4||argv[0]!=='--project'||argv[2]!=='--sha')throw new Error('usage: --all OR --project <allowlisted-id> --sha <40hex>');
+ if(argv.length===2&&argv[0]==='--prepare')return prepare(argv[1]);
+ if(argv.length!==4||argv[0]!=='--project'||argv[2]!=='--sha')throw new Error('usage: --all OR --prepare <allowlisted-id> OR --project <allowlisted-id> --sha <40hex>');
  return {ok:true,read_only:true,mode:'preflight',profile:inspect(argv[1],{sha:argv[3]})};
 }
 if(require.main===module){
  try{const res=main();process.stdout.write(JSON.stringify(res)+'\n');process.exitCode=res.mode==='preflight'&&!res.profile.ready?3:0}
  catch(e){process.stderr.write(JSON.stringify({ok:false,error:e.message})+'\n');process.exitCode=2}
 }
-module.exports={PROFILES,SHA,inspect,main};
+module.exports={PROFILES,SHA,inspect,prepare,main};
