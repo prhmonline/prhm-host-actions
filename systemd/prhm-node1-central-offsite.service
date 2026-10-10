@@ -1,0 +1,20 @@
+[Unit]
+Description=PRHM encrypted central snapshot replication to Node1
+Wants=network-online.target
+After=network-online.target
+ConditionPathExists=/etc/prhm-backup/node1/restic.password
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+UMask=0077
+ExecStart=/usr/local/sbin/prhm-node1-central-offsite --run
+TimeoutStartSec=8h
+Nice=10
+IOSchedulingClass=idle
+NoNewPrivileges=yes
+ProtectSystem=full
+PrivateDevices=yes
+StandardOutput=journal
+StandardError=journal
