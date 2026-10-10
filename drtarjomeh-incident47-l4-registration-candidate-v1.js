@@ -69,9 +69,7 @@ function typedScope(){
     principals:[{principal_id:'mohammad',roles:['mcp-operator']}]
   });
 }
-function buildPolicyCandidate(source){
-  if(!Buffer.isBuffer(source))fail('policy_bytes_required');
-  if(sha256(source)!==LIVE.policy.sha256)fail('policy_sha_drift');
+function buildPolicyStructure(source){
   let p;try{p=JSON.parse(source.toString('utf8'));}catch{fail('policy_json_invalid');}
   if(p.schema_version!=='prhm.approval-policy.v1'||p.version!==LIVE_POLICY_VERSION)fail('policy_baseline_mismatch');
   if(!p.operations||typeof p.operations!=='object'||Array.isArray(p.operations)||!Array.isArray(p.typed_scopes))fail('policy_structure_invalid');
@@ -82,6 +80,11 @@ function buildPolicyCandidate(source){
   p.typed_scopes.push(typedScope());
   if(Object.keys(p.operations).length!==beforeOps+1||p.typed_scopes.length!==beforeScopes+1)fail('policy_cardinality_invalid');
   return Buffer.from(JSON.stringify(p,null,2)+'\n');
+}
+function buildPolicyCandidate(source){
+  if(!Buffer.isBuffer(source))fail('policy_bytes_required');
+  if(sha256(source)!==LIVE.policy.sha256)fail('policy_sha_drift');
+  return buildPolicyStructure(source);
 }
 function buildReadOnlyPlan({readOwner,readArtifact,hostMainCommit=HOST_ACTIONS_BASE,appHeadCommit=SOURCE_COMMIT,appPrMerged=false}={}){
   if(hostMainCommit!==HOST_ACTIONS_BASE)fail('host_actions_base_sha_drift');
@@ -126,4 +129,4 @@ if(require.main===module){
 }
 module.exports=Object.freeze({ACTION,OPERATION,SOURCE_COMMIT,HOST_ACTIONS_BASE,APP_BLOBS,LIVE,
   approvalPolicyOperation,typedScope,sha256,gitBlob,verifyOwnerPreimages,verifyApplicationBlobs,
-  buildPolicyCandidate,buildReadOnlyPlan,runCli});
+  buildPolicyStructure,buildPolicyCandidate,buildReadOnlyPlan,runCli});
