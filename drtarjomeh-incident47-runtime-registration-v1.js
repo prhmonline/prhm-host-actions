@@ -8,9 +8,9 @@ const pins=require('./drtarjomeh-incident47-l4-registration-candidate-v1.js');
 
 const ACTION=pins.ACTION;
 const OPERATION=pins.OPERATION;
-const HOST_BASE='4665863cbb40532298e78ba1588d45124ad20da8';
+const HOST_BASE='2ae43c70b38a61a21ebf2c6caebe9ae1571caec4';
 const RUNNER_TARGET='/opt/prhm-agent-selfmaint-exec/actions/drtarjomeh-incident47-reviewed-host-runner-v1.js';
-const RUNNER_GIT_BLOB='df6a4ab6450d2a9c794bb42782e17ceda1c23f65';
+const RUNNER_GIT_BLOB='78ae40c71956ef47a35ff5a2a2d3bd3878d317dc';
 const APP_SHA=pins.SOURCE_COMMIT;
 const FALLBACK_DISPATCH='async function applyHostActionV2(action){const spec=hostActionV2Spec(action);';
 const BASE_ANCHOR='const HOST_ACTION_V2_SPECS = Object.freeze({\n';
@@ -44,7 +44,7 @@ function executorTransform(source){
   const fn=[
     "function applyDrtI47GuardAfterTrustedApproval(){",
     " const bytes=fs.readFileSync('/opt/prhm-agent-selfmaint-exec/actions/drtarjomeh-incident47-reviewed-host-runner-v1.js');",
-    " const expected='df6a4ab6450d2a9c794bb42782e17ceda1c23f65';",
+    " const expected='78ae40c71956ef47a35ff5a2a2d3bd3878d317dc';",
     " const gitsha=require('node:crypto').createHash('sha1').update(Buffer.concat([Buffer.from('blob '+bytes.length+'\\0'),bytes])).digest('hex');",
     " if(gitsha!==expected)throw new Error('drt_i47_runner_source_mismatch');",
     " const runner=require('/opt/prhm-agent-selfmaint-exec/actions/drtarjomeh-incident47-reviewed-host-runner-v1.js');",
@@ -101,7 +101,7 @@ function buildCandidates({readOwner,readRunner,hostMainSha=HOST_BASE}={}){
     deployment_authorized:false,
     reasons:Object.freeze([
       'SIGNED_L4_REGISTRATION_INSTALLER_NOT_YET_APPROVED',
-      'DRT_APP_PR50_NOT_MERGED',
+      'SOURCE_APP_MERGED_BUT_NOT_DEPLOYED',
       'EFFECTIVE_GUARD_NOT_INSTALLED'
     ])
   });
