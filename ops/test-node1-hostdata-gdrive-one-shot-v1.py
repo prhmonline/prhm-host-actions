@@ -56,6 +56,20 @@ class CloudBackupContracts(unittest.TestCase):
         for forbidden in ['restic prune','rclone purge','virsh','qemu-img','gcloud']:
             self.assertNotIn(forbidden,s)
 
+    def test_approved_google_account_binding_and_fail_closed_order(self):
+        code=SCRIPT.read_text()
+        self.assertIn("EXPECTED_ACCOUNT='aytec.ir@gmail.com'",code)
+        self.assertIn("fields=user(emailAddress)",code)
+        self.assertIn("DESTINATION_ACCOUNT_MISMATCH",code)
+        self.assertIn("DESTINATION_IDENTITY_API_UNAVAILABLE",code)
+        self.assertIn("DESTINATION_ACCOUNT_BOUND=PASS",code)
+        self.assertIn("DESTINATION_ACCOUNT_NOT_VERIFIED",code)
+        self.assertIn("configparser.ConfigParser(interpolation=None)",code)
+        self.assertIn("urllib.request.Request(",code)
+        run=code[code.index('run_backup(){'):]
+        self.assertLess(run.index('verify_destination_identity'),run.index('require_key_escrow'))
+        self.assertLess(run.index('verify_destination_identity'),run.index('rclone_read --transfers'))
+
     def test_real_synthetic_aes256_openpgp_encrypt_restore_and_tamper(self):
         if not os.path.exists('/usr/bin/gpg'):
             self.skipTest('GnuPG unavailable on test machine')
