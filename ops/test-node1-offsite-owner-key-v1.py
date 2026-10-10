@@ -83,7 +83,7 @@ class OwnerOfflineEscrow(unittest.TestCase):
         source = SCRIPT.read_text()
         self.assertIn("REFUSE_ON_NODE1_OR_PRODUCTION_HOST", source)
         self.assertIn("OFF_SERVER_RECOVERED_KEY_GPG_TEST=PASS", source)
-        self.assertIn("if not hmac.compare_digest(decoder.stdout, challenge)", source)
+        self.assertIn("if decoder.returncode or not hmac.compare_digest(decoder.stdout, challenge)", source)
         self.assertIn('if not hmac.compare_digest(original_secret, recovered_secret)', source)
         self.assertIn('"confirmed_by": "owner"', source)
         self.assertIn('"independent_physical_copy_confirmed": False', source)
