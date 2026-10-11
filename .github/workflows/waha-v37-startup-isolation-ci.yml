@@ -1,0 +1,30 @@
+name: WAHA V37 Startup Isolation CI
+
+on:
+  push:
+    paths:
+      - 'safeFiles-waha-singlefile-isolated-v2.mjs'
+      - 'test-waha-v37-startup-isolation-v2.mjs'
+      - '.github/workflows/waha-v37-startup-isolation-ci.yml'
+  pull_request:
+    paths:
+      - 'safeFiles-waha-singlefile-isolated-v2.mjs'
+      - 'test-waha-v37-startup-isolation-v2.mjs'
+      - '.github/workflows/waha-v37-startup-isolation-ci.yml'
+
+jobs:
+  startup-isolation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Validate wrapper syntax
+        run: node --check safeFiles-waha-singlefile-isolated-v2.mjs
+      - name: Exercise real reviewed WAHA module import and exact tool registration
+        run: node --test test-waha-v37-startup-isolation-v2.mjs
+      - name: Regression tests from previous releases
+        run: |
+          node --test test-waha-singlefile-release-v1.mjs
+          node --test test-waha-current-mcp-composite-v1.mjs
