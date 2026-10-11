@@ -17,7 +17,7 @@ const WAHA_SOURCE='/home/agent/ssh-mcp-server/src/plugins/waha-student-bridge-re
 
 const sha256=bytes=>createHash('sha256').update(bytes).digest('hex');
 const gitBlobSha1=bytes=>createHash('sha1')
-  .update(Buffer.concat([Buffer.from('blob '+bytes.length+'\\0'),bytes])).digest('hex');
+  .update(Buffer.concat([Buffer.from('blob '+bytes.length),Buffer.from([0]),bytes])).digest('hex');
 const fail=code=>{throw new Error(code);};
 function regularFile(file,label){
   const stat=fs.lstatSync(file);
