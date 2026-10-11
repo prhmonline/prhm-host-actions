@@ -35,3 +35,19 @@ test('missing or extra sensitive evidence always fails closed',()=>{
   assert.equal(fn({secret:'never'}).evidence_shape_valid,false);
  }
 });
+
+test('manifest metadata cannot smuggle fields, spoof modification category or unsafe modes',()=>{
+ const altered=[
+  {path:g.IMOTION.paths[0],status:'untracked'},
+  {path:g.IMOTION.paths[13],status:'modified'},
+  {path:g.IMOTION.paths[0],mode:0},
+  {path:g.IMOTION.paths[0],sha256:'b'.repeat(63)+'x'},
+  {path:g.IMOTION.paths[0],extraSecret:'do-not-accept'},
+ ];
+ for(const {path,...mutation} of altered){
+  const e=i(),entry=e.fileManifest.find(x=>x.path===path);
+  Object.assign(entry,mutation);
+  assert.equal(g.imotion(e).evidence_shape_valid,false);
+ }
+ const e=i();e.paths[0]=e.paths[1];assert.equal(g.imotion(e).evidence_shape_valid,false);
+});
