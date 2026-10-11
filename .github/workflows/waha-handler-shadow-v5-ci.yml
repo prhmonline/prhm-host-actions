@@ -1,0 +1,28 @@
+name: WAHA Handler Shadow V5 CI
+on:
+  push:
+    paths:
+      - 'safeFiles-waha-singlefile-handler-shadow-v5.mjs'
+      - 'test-waha-handler-shadow-v5.mjs'
+      - '.github/workflows/waha-handler-shadow-v5-ci.yml'
+  pull_request:
+    paths:
+      - 'safeFiles-waha-singlefile-handler-shadow-v5.mjs'
+      - 'test-waha-handler-shadow-v5.mjs'
+      - '.github/workflows/waha-handler-shadow-v5-ci.yml'
+jobs:
+  handler:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Syntax and shadow-handler exact contract
+        run: |
+          node --check safeFiles-waha-singlefile-handler-shadow-v5.mjs
+          node --test test-waha-handler-shadow-v5.mjs
+      - name: Sandbox transport real source regression
+        run: node --test test-waha-systemd-journal-v4.mjs
+      - name: Boot source isolation regression
+        run: node --test test-waha-v37-startup-isolation-v2.mjs
