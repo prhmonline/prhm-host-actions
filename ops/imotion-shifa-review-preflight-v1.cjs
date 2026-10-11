@@ -41,9 +41,11 @@ function imotion(e){
  if(!Array.isArray(e.fileManifest)||e.fileManifest.length!==27||
   new Set(e.fileManifest.map(x=>x?.path)).size!==27||
   !IMOTION.paths.every(p=>e.fileManifest.some(x=>x?.path===p))||
-  e.fileManifest.some(x=>!x||typeof x.sha256!=='string'||!/^[a-f0-9]{64}$/.test(x.sha256)||
-   !Number.isInteger(x.mode)||x.mode<0||x.mode>0o777||x.symlink!==false||
-   !['modified','untracked'].includes(x.status)))errors.push('PREIMAGE_SHA_MODE_INCOMPLETE');
+  e.fileManifest.some(x=>!onlyKeys(x,['path','sha256','mode','symlink','status'])||
+   typeof x.sha256!=='string'||!/^[a-f0-9]{64}$/.test(x.sha256)||
+   !Number.isInteger(x.mode)||x.mode<0o400||x.mode>0o777||x.symlink!==false||
+   x.status!==(IMOTION.paths.slice(0,13).includes(x.path)?'modified':'untracked')))
+   errors.push('PREIMAGE_SHA_MODE_INCOMPLETE');
  return end(IMOTION.project,errors);
 }
 function shifa(e){
