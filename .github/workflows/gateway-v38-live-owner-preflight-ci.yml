@@ -1,0 +1,31 @@
+name: Gateway v38 live owner preflight CI
+
+on:
+  pull_request:
+    paths:
+      - 'gateway-v38-live-owner-preflight-v1.js'
+      - 'test-gateway-v38-live-owner-preflight-v1.js'
+      - '.github/workflows/gateway-v38-live-owner-preflight-ci.yml'
+  push:
+    branches:
+      - 'fix/gateway-v38-live-owner-preflight-20261008'
+    paths:
+      - 'gateway-v38-live-owner-preflight-v1.js'
+      - 'test-gateway-v38-live-owner-preflight-v1.js'
+      - '.github/workflows/gateway-v38-live-owner-preflight-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node --check gateway-v38-live-owner-preflight-v1.js
+      - run: node --check test-gateway-v38-live-owner-preflight-v1.js
+      - run: node --test test-gateway-v38-live-owner-preflight-v1.js
