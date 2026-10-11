@@ -1,0 +1,28 @@
+name: WAHA Idempotent Registration CI
+on:
+  push:
+    paths:
+      - 'safeFiles-waha-singlefile-idempotent-v3.mjs'
+      - 'test-waha-idempotent-registrar-v3.mjs'
+      - '.github/workflows/waha-idempotent-registration-ci.yml'
+  pull_request:
+    paths:
+      - 'safeFiles-waha-singlefile-idempotent-v3.mjs'
+      - 'test-waha-idempotent-registrar-v3.mjs'
+      - '.github/workflows/waha-idempotent-registration-ci.yml'
+jobs:
+  repeated-initialize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Source syntax and exact source binding
+        run: |
+          node --check safeFiles-waha-singlefile-idempotent-v3.mjs
+          node --check test-waha-idempotent-registrar-v3.mjs
+      - name: Repeated MCP initialize and collision safety contract
+        run: node --test test-waha-idempotent-registrar-v3.mjs
+      - name: Reviewed WAHA source runtime import regression
+        run: node --test test-waha-v37-startup-isolation-v2.mjs
