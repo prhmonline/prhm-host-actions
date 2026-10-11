@@ -1,0 +1,28 @@
+name: WAHA Single File Release CI
+on:
+  push:
+    paths:
+      - 'safeFiles-waha-singlefile-release-v1.mjs'
+      - 'test-waha-singlefile-release-v1.mjs'
+      - '.github/workflows/waha-singlefile-release-ci.yml'
+  pull_request:
+    paths:
+      - 'safeFiles-waha-singlefile-release-v1.mjs'
+      - 'test-waha-singlefile-release-v1.mjs'
+      - '.github/workflows/waha-singlefile-release-ci.yml'
+jobs:
+  sha-bound-source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Verify syntax
+        run: |
+          node --check safeFiles-waha-singlefile-release-v1.mjs
+          node --check test-waha-singlefile-release-v1.mjs
+      - name: Verify one-file artifact & capability-guard contract
+        run: node --test test-waha-singlefile-release-v1.mjs
+      - name: Verify earlier capability-retention contract
+        run: node --test test-waha-current-mcp-composite-v1.mjs
