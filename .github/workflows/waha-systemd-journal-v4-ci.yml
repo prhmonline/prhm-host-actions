@@ -1,0 +1,30 @@
+name: WAHA Systemd Journal Transport CI
+on:
+  push:
+    paths:
+      - 'safeFiles-waha-singlefile-journal-v4.mjs'
+      - 'test-waha-systemd-journal-v4.mjs'
+      - '.github/workflows/waha-systemd-journal-v4-ci.yml'
+  pull_request:
+    paths:
+      - 'safeFiles-waha-singlefile-journal-v4.mjs'
+      - 'test-waha-systemd-journal-v4.mjs'
+      - '.github/workflows/waha-systemd-journal-v4-ci.yml'
+jobs:
+  transport:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Static syntax
+        run: |
+          node --check safeFiles-waha-singlefile-journal-v4.mjs
+          node --check test-waha-systemd-journal-v4.mjs
+      - name: Strict SHA and read-only worker output verification
+        run: node --test test-waha-systemd-journal-v4.mjs
+      - name: Regression - idempotent MCP registration
+        run: node --test test-waha-idempotent-registrar-v3.mjs
+      - name: Regression - isolated original reviewed WAHA module
+        run: node --test test-waha-v37-startup-isolation-v2.mjs
