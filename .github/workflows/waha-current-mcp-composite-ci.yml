@@ -1,0 +1,36 @@
+name: WAHA Current MCP Composite CI
+
+on:
+  pull_request:
+    paths:
+      - 'waha-current-mcp-register-filter-v1.mjs'
+      - 'safeFiles-waha-current-composite-v1.mjs'
+      - 'test-waha-current-mcp-composite-v1.mjs'
+      - 'waha-student-bridge-registration-surface-v37.mjs'
+      - '.github/workflows/waha-current-mcp-composite-ci.yml'
+  push:
+    paths:
+      - 'waha-current-mcp-register-filter-v1.mjs'
+      - 'safeFiles-waha-current-composite-v1.mjs'
+      - 'test-waha-current-mcp-composite-v1.mjs'
+      - 'waha-student-bridge-registration-surface-v37.mjs'
+      - '.github/workflows/waha-current-mcp-composite-ci.yml'
+
+jobs:
+  compatibility:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Validate syntax
+        run: |
+          node --check waha-current-mcp-register-filter-v1.mjs
+          node --check safeFiles-waha-current-composite-v1.mjs
+          node --check test-waha-current-mcp-composite-v1.mjs
+      - name: Verify reviewed WAHA artifact identity
+        run: |
+          test "$(git hash-object waha-student-bridge-registration-surface-v37.mjs)" = "7b6e08d2ffb9faed164115be085491fce7ce6261"
+      - name: Test exact-two-tool registration and capability retention
+        run: node --test test-waha-current-mcp-composite-v1.mjs
