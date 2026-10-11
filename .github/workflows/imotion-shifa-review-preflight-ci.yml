@@ -1,0 +1,36 @@
+name: iMotion Admin and Shifa Review-only Gate Tests
+on:
+  push:
+    branches:
+      - review/imotion-shifa-pinned-gates-20261011
+    paths:
+      - 'ops/imotion-shifa-review-preflight-v1.cjs'
+      - 'ops/imotion-shifa-review-preflight-v1.test.cjs'
+      - '.github/workflows/imotion-shifa-review-preflight-ci.yml'
+  pull_request:
+    paths:
+      - 'ops/imotion-shifa-review-preflight-v1.cjs'
+      - 'ops/imotion-shifa-review-preflight-v1.test.cjs'
+      - '.github/workflows/imotion-shifa-review-preflight-ci.yml'
+permissions:
+  contents: read
+jobs:
+  offline-negative-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Syntax checks
+        run: |
+          node --check ops/imotion-shifa-review-preflight-v1.cjs
+          node --check ops/imotion-shifa-review-preflight-v1.test.cjs
+      - name: Fail-closed preflight tests
+        run: node --test ops/imotion-shifa-review-preflight-v1.test.cjs
+      - name: No direct command, network, or file mutation surfaces
+        run: |
+          if grep -En 'child_process|execSync|spawnSync|writeFile|unlinkSync|renameSync|chmodSync|chownSync|https?\.request|fetch\(' ops/imotion-shifa-review-preflight-v1.cjs; then
+            echo 'Forbidden write/command/network surface in review-only gate'
+            exit 1
+          fi
