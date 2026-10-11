@@ -1,0 +1,29 @@
+name: WAHA Current Owner Registration V6 CI
+on:
+  push:
+    paths:
+      - 'safeFiles-waha-current-owners-v6.mjs'
+      - 'test-waha-current-owners-v6.mjs'
+      - '.github/workflows/waha-current-owners-v6-ci.yml'
+  pull_request:
+    paths:
+      - 'safeFiles-waha-current-owners-v6.mjs'
+      - 'test-waha-current-owners-v6.mjs'
+      - '.github/workflows/waha-current-owners-v6-ci.yml'
+jobs:
+  registration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Syntax and exact registration contract
+        run: |
+          node --check safeFiles-waha-current-owners-v6.mjs
+          node --check test-waha-current-owners-v6.mjs
+          node --test test-waha-current-owners-v6.mjs
+      - name: Preserve V5 handler arbitration and V4 transport
+        run: |
+          node --test test-waha-handler-shadow-v5.mjs
+          node --test test-waha-systemd-journal-v4.mjs
