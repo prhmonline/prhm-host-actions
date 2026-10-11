@@ -1,0 +1,11 @@
+[Unit]
+Description=Schedule PRHM encrypted central snapshot offsite to Node1
+
+[Timer]
+OnCalendar=*-*-* 19:00:00 Asia/Tehran
+RandomizedDelaySec=15min
+Persistent=true
+Unit=prhm-node1-central-offsite.service
+
+[Install]
+WantedBy=timers.target
