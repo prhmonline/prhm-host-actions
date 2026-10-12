@@ -89,6 +89,29 @@ test('candidate health and persistent receipt failures cause rollback',async()=>
    h.assertRestored();assert.ok(h.events.includes('health:baseline'));
  }
 });
+test('live ownership and mode drift fails closed before backup or write',async()=>{
+ for(const changed of [
+    {mode:0o600,uid:0,gid:0},
+    {mode:0o644,uid:450,gid:0},
+    {mode:0o644,uid:0,gid:450}
+ ]){
+   const h=setup();
+   const original=h.io.statExact;
+   h.io.statExact=p=>{
+     const value=original(p);
+     return p===h.steps[0].target?{...value,...changed}:value;
+   };
+   await assert.rejects(simulateTransaction(h.io,plan(h.steps)),/owner_metadata_drift/);
+   assert.ok(!h.events.includes('replace'));
+   assert.ok(!h.events.includes('backup'));
+ }
+});
+test('pinned artifact metadata cannot be changed through public plan',()=>{
+ const h=setup();
+ const x=plan(h.steps);
+ x.steps[4].mode=0o777;
+ assert.throws(()=>m.assertPlan(x),/owner_plan_preimage_invalid|artifact_plan_blob_invalid|plan_step_invalid/);
+});
 test('live byte drift fails before any backup or write',async()=>{
  const h=setup();h.io.readBytes=p=>Buffer.from('drifted');
  await assert.rejects(simulateTransaction(h.io,plan(h.steps)),/prewrite_drift/);

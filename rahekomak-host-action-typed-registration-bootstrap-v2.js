@@ -66,11 +66,13 @@ function assertPlan(plan){
  for(let i=0;i<9;i++){
    const s=plan.steps[i];
    if(s.target!==required[i]||!Buffer.isBuffer(s.bytes)||sha(s.bytes)!==s.next_sha||
-      s.was_present!==(i<4)||s.uid<0||s.gid<0||!Number.isInteger(s.mode))
+      s.was_present!==(i<4)||s.uid<0||s.gid<0||!Number.isInteger(s.mode)||
+      (s.mode&0o002)!==0)
       fail('plan_step_invalid:'+i);
    if(i<4&&(!Buffer.isBuffer(s.previous)||sha(s.previous)!==registry.PREIMAGE[KEYS[i]]||
       s.previous_sha!==registry.PREIMAGE[KEYS[i]]))fail('owner_plan_preimage_invalid:'+i);
-   if(i>=4&&(s.previous!==null||blob(s.bytes)!==registry.ARTIFACTS[NAMES[i-4]]))
+   if(i>=4&&(s.previous!==null||blob(s.bytes)!==registry.ARTIFACTS[NAMES[i-4]]||
+      s.mode!==0o644||s.uid!==0||s.gid!==0))
       fail('artifact_plan_blob_invalid:'+i);
  }
 }
@@ -93,7 +95,10 @@ async function runApprovedTransaction(adapter,plan){
       !approval.request_id)fail('trusted_signed_consumed_level4_required');
    if(await adapter.hasReceipt(ACTION))fail('registration_replay_forbidden');
    for(const s of plan.steps){
-     strictState(await adapter.statExact(s.target),s.target,s.was_present);
+     const state=await adapter.statExact(s.target);
+     strictState(state,s.target,s.was_present);
+     if(s.was_present&&(state.mode!==s.mode||state.uid!==s.uid||state.gid!==s.gid))
+       fail('owner_metadata_drift:'+s.key);
      if(s.was_present&&sha(await adapter.readBytes(s.target))!==s.previous_sha)
        fail('prewrite_drift:'+s.key);
    }
