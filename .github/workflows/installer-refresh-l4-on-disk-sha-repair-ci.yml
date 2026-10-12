@@ -1,0 +1,33 @@
+name: Installer Refresh L4 On-Disk SHA Repair Contract
+
+on:
+  pull_request:
+    paths:
+      - 'installer-refresh-l4-state-on-disk-sha-repair-v1.cjs'
+      - 'test-installer-refresh-l4-state-on-disk-sha-repair-v1.cjs'
+      - 'safeFiles-installer-refresh-l4-binding-repair-surface-v1.js'
+      - 'INSTALLER-REFRESH-L4-STATE-SHA-REPAIR-NOTES.md'
+      - '.github/workflows/installer-refresh-l4-on-disk-sha-repair-ci.yml'
+  push:
+    branches:
+      - 'fix/installer-refresh-l4-state-on-disk-sha-20261013'
+    paths:
+      - 'installer-refresh-l4-state-on-disk-sha-repair-v1.cjs'
+      - 'test-installer-refresh-l4-state-on-disk-sha-repair-v1.cjs'
+      - 'safeFiles-installer-refresh-l4-binding-repair-surface-v1.js'
+      - 'INSTALLER-REFRESH-L4-STATE-SHA-REPAIR-NOTES.md'
+      - '.github/workflows/installer-refresh-l4-on-disk-sha-repair-ci.yml'
+
+permissions:
+  contents: read
+jobs:
+  source-and-rollback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Node syntax and exact signed transaction tests
+        run: |
+          node --check installer-refresh-l4-state-on-disk-sha-repair-v1.cjs
+          node --check test-installer-refresh-l4-state-on-disk-sha-repair-v1.cjs
+          node --test test-installer-refresh-l4-state-on-disk-sha-repair-v1.cjs
