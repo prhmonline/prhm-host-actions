@@ -239,39 +239,45 @@
       "repository": "prhmonline/Honar-front-new",
       "default_branch": "main",
       "github_write_permission_observed": true,
-      "risk": "push_main_dispatches_production",
+      "risk": "github_actions_production_dispatch_manual_only_external_hooks_unverified",
       "existing_repo_instructions_observed": false,
       "rollout": {
-        "status": "committed_on_safe_branch_pending_merge",
-        "branch": "docs/git-fast-lane-20261013",
-        "commit_sha": "571c57c53205c03f3d079582ff49f65821872482",
-        "pr_url": "https://github.com/prhmonline/Honar-front-new/pull/20"
+        "status": "active_on_default_branch",
+        "branch": "main",
+        "commit_sha": "ee520772172a88020faaf52e9368fd46dedd8b8f",
+        "pr_url": "https://github.com/prhmonline/Honar-front-new/pull/20",
+        "merged": true,
+        "ci": "no_ci_runs_for_merge_commit"
       }
     },
     {
       "repository": "prhmonline/aranob",
       "default_branch": "main",
       "github_write_permission_observed": true,
-      "risk": "push_main_dispatches_production",
+      "risk": "github_actions_production_dispatch_manual_only_external_hooks_unverified",
       "existing_repo_instructions_observed": true,
       "rollout": {
-        "status": "committed_on_safe_branch_pending_merge",
-        "branch": "codex/git-fast-lane-20261013",
-        "commit_sha": "e6e4344541a5bb03fcdf4b1e4ac4f1b062110f62",
-        "pr_url": "https://github.com/prhmonline/aranob/pull/15"
+        "status": "active_on_default_branch",
+        "branch": "main",
+        "commit_sha": "6236cfdee8fcb54878ed8e225d9287cb09e6d3eb",
+        "pr_url": "https://github.com/prhmonline/aranob/pull/15",
+        "merged": true,
+        "ci": "launch_readiness_passed"
       }
     },
     {
       "repository": "prhmonline/honar-back-new",
       "default_branch": "main",
       "github_write_permission_observed": true,
-      "risk": "push_main_dispatches_production",
+      "risk": "github_actions_production_dispatch_manual_only_external_hooks_unverified",
       "existing_repo_instructions_observed": false,
       "rollout": {
-        "status": "committed_on_safe_branch_pending_merge",
-        "branch": "docs/git-fast-lane-20261013",
-        "commit_sha": "5c808f38fada6749c624bf21737ac7461982a743",
-        "pr_url": "https://github.com/prhmonline/honar-back-new/pull/19"
+        "status": "active_on_default_branch",
+        "branch": "main",
+        "commit_sha": "51b34d1b3ea0f3b35b55b1ee295ece6a4ddb510a",
+        "pr_url": "https://github.com/prhmonline/honar-back-new/pull/19",
+        "merged": true,
+        "ci": "no_ci_runs_for_merge_commit"
       }
     },
     {
@@ -583,15 +589,17 @@
     "GitHub write permission is verified for 40 repositories; this is not proof of deployability or source/runtime parity.",
     "prhmonline/help is the canonical RahKomak Git repository; prhmonline/rahekomak is an empty standalone repository and must not be used as the deploy source.",
     "External webhooks/DeployHQ triggers are not exhaustively audited; never assume an ordinary default-branch push cannot deploy.",
-    "An absent Git remote in a server root does not prevent a GitHub source-only commit, but blocks any assumption that the live runtime matches it."
+    "An absent Git remote in a server root does not prevent a GitHub source-only commit, but blocks any assumption that the live runtime matches it.",
+    "2026-10-13: three previously auto-dispatching workflows now manual-only on main, require DEPLOY PRODUCTION confirmation; merged PRs #15 Aranob, #20 Honar-front-new, #19 honar-back-new. Unknown external webhooks not conclusively audited."
   ],
   "rollout_last_verified_date": "2026-10-13",
   "rollout_summary": {
     "total_repositories": 40,
-    "active_default_branch": 33,
-    "safe_branch_pending_merge": 3,
+    "active_default_branch": 36,
+    "safe_branch_pending_merge": 0,
     "empty_uninitialized": 4,
-    "validated_scope": "AGENTS.md source-only instructions; CI tests not implied",
-    "production_deployment": "not requested; no intentional deployment"
+    "validated_scope": "Git Fast Lane AGENTS.md and workflow_dispatch guards verified on default branches; not deployment parity",
+    "production_deployment": "None intentionally run; no new central deployment workflow run observed following the merges.",
+    "ci_note": "Aranob Launch Readiness passed; Honartik front/back no CI runs for merge commit."
   }
 }
