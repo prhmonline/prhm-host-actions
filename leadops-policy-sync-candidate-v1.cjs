@@ -58,10 +58,10 @@ function verifyPolicySemantics(live,canon){
    fail('unexpected_leadops_role_registration');
  return {operations:75,scopes:52,only_change:['version','deployment_integrity']};
 }
-function getPlan({livePolicy,mediator,canonical}){
+function getPlan({livePolicy,mediatorSha256,canonical}){
  if(!Buffer.isBuffer(livePolicy)||hash(livePolicy)!==LIVE_SHA)
    fail('live_policy_sha_drift');
- if(!Buffer.isBuffer(mediator)||hash(mediator)!==MEDIATOR_SHA)
+ if(mediatorSha256!==MEDIATOR_SHA)
    fail('mediator_sha_drift');
  if(!Buffer.isBuffer(canonical)||blob(canonical)!==CANON_BLOB)
    fail('canonical_git_blob_mismatch');
@@ -106,9 +106,9 @@ async function applyPrepared(plan,adapter){
       l?.uid!==0||l?.mode!==0o644)fail('live_policy_preimage_drift');
    if(m?.regular!==true||m?.symlink!==false||m?.sha256!==MEDIATOR_SHA)
       fail('live_mediator_preimage_drift');
-   const live=await adapter.readFile(TARGET),mediator=await adapter.readFile(MEDIATOR);
+   const live=await adapter.readFile(TARGET);
    const canonical=fs.readFileSync(CANON_FILE);
-   const actual=getPlan({livePolicy:live,mediator,canonical});
+   const actual=getPlan({livePolicy:live,mediatorSha256:m.sha256,canonical});
    if(actual.target_sha256!==plan.target_sha256)
       fail('prepared_plan_drift');
    snapshot=await adapter.saveDurableBackup(TARGET,live,{
@@ -125,6 +125,9 @@ async function applyPrepared(plan,adapter){
    if(current?.regular!==true||current?.symlink!==false||
       current?.sha256!==plan.target_sha256)
       fail('postwrite_sha_mismatch');
+   const mediatorPost=await adapter.fileState(MEDIATOR);
+   if(mediatorPost?.sha256!==MEDIATOR_SHA||mediatorPost?.symlink!==false)
+     fail('mediator_modified_during_sync');
    await adapter.reloadAndHealth({expected_policy_sha256:plan.target_sha256});
    const audit={ok:true,action:ACTION,operation:OPERATION,request_id:auth.request_id,
      source_commit:SOURCE_COMMIT,policy_sha256_before:LIVE_SHA,
