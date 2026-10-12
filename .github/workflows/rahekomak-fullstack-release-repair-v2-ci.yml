@@ -1,0 +1,21 @@
+name: RahKomak release smoke repair source regression
+
+on:
+  pull_request:
+    paths:
+      - 'packages/rahekomak-fullstack-release-repair-v2/**'
+      - '.github/workflows/rahekomak-fullstack-release-repair-v2-ci.yml'
+permissions:
+  contents: read
+jobs:
+  source-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax checks (no application deploy)
+        run: |
+          node --check packages/rahekomak-fullstack-release-repair-v2/production-deploy-v2.cjs
+          node --check packages/rahekomak-fullstack-release-repair-v2/test-production-deploy-v2.cjs
+      - name: Test ten-category smoke and fail-closed app binding
+        run: node --test packages/rahekomak-fullstack-release-repair-v2/test-production-deploy-v2.cjs
