@@ -23,7 +23,7 @@ const CONTRACT = Object.freeze({
 const REQUIRED_ADAPTER = Object.freeze([
   'withExclusiveLock',
   'readPreflight',
-  'consumeApprovedRequest',
+  'attestConsumedApproval',
   'runFixedEnrollment',
   'runFixedRollback',
   'readPostcondition',
@@ -117,9 +117,10 @@ function createAction(adapter) {
         try {
           const attestation = await adapter.readPreflight(fixed);
           if (!validatePreflight(attestation)) return publicStatus('blocked', 'not_needed');
-          // Approval consumption must be atomic and performed by the trusted
-          // host executor, after it validates the Level-4 signed request.
-          const approval = await adapter.consumeApprovedRequest({
+          // Existing trusted Host Actions executor already consumed the signed one-time
+          // approval before it dispatches this handler. Attest that consumed
+          // authorization here; NEVER consume the same request twice.
+          const approval = await adapter.attestConsumedApproval({
             requestId, action: fixed.action, operation: fixed.operation,
             level: fixed.approvalLevel, sourceSha: fixed.scriptGitSha
           });
