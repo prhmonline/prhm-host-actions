@@ -1,0 +1,25 @@
+name: iMotion Admin Writer Gate
+on:
+  pull_request:
+    paths:
+      - "ops/imotion/admin_writer_gate.py"
+      - "tests/test_imotion_admin_writer_gate.py"
+      - "docs/imotion-admin-writer-gate.md"
+      - ".github/workflows/imotion-admin-writer-gate-ci.yml"
+  push:
+    paths:
+      - "ops/imotion/admin_writer_gate.py"
+      - "tests/test_imotion_admin_writer_gate.py"
+      - ".github/workflows/imotion-admin-writer-gate-ci.yml"
+permissions:
+  contents: read
+jobs:
+  gate-unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test fail-closed renderer
+        run: python3 tests/test_imotion_admin_writer_gate.py -v
+      - name: Syntax-check Python
+        run: python3 -m py_compile ops/imotion/admin_writer_gate.py tests/test_imotion_admin_writer_gate.py
