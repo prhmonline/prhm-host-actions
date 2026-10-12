@@ -376,12 +376,18 @@
       "verification": "no_remote"
     },
     "rahekomak": {
-      "repository": null,
-      "verification": "no_remote"
+      "repository": "prhmonline/help",
+      "verification": "canonical_source_user_directed; Agent runtime remote not configured"
     },
     "help": {
       "repository": "prhmonline/help",
       "verification": "remote"
     }
-  }
+  },
+  "notes": [
+    "GitHub write permission is verified for 40 repositories; this is not proof of deployability or source/runtime parity.",
+    "prhmonline/help is the canonical RahKomak Git repository; prhmonline/rahekomak is an empty standalone repository and must not be used as the deploy source.",
+    "External webhooks/DeployHQ triggers are not exhaustively audited; never assume an ordinary default-branch push cannot deploy.",
+    "An absent Git remote in a server root does not prevent a GitHub source-only commit, but blocks any assumption that the live runtime matches it."
+  ]
 }
