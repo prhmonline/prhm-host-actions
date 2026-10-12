@@ -18,18 +18,25 @@ async function executeBoundRegistration(input,adapter){
   const plan=buildCandidates(sources,{expected});
   if(plan.installation_authorized!==false||plan.requires_signed_level4!==true)
     fail('registration_plan_unsafe');
+  const targetsSha=Object.fromEntries(
+    KEYS.map(k=>[k,plan.targets[k].sha256]));
   const auth=await adapter.assertConsumedLevel4({
     operation:OPERATION,action:ACTION,level:4,
-    plan_target_sha256:Object.fromEntries(
-      KEYS.map(k=>[k,plan.targets[k].sha256]))
+    plan_target_sha256:targetsSha
   });
   if(auth?.signed!==true||auth?.consumed!==true||
       auth?.one_time!==true||auth?.level!==4||
       auth?.operation!==OPERATION||auth?.approver!=='mohammad')
     fail('signed_level4_not_proven');
+  if(!auth?.plan_target_sha256||
+    KEYS.some(k=>auth.plan_target_sha256[k]!==targetsSha[k])||
+    Object.keys(auth.plan_target_sha256).length!==KEYS.length)
+    fail('signed_target_sha_binding_mismatch');
   const pin=await adapter.assertReviewedGitCommit();
   if(typeof pin!=='string'||!/^[a-f0-9]{40}$/.test(pin))
     fail('registration_git_sha_unbound');
+  if(auth.reviewed_registration_sha!==pin)
+    fail('signed_registration_commit_mismatch');
   const release=await adapter.lock(ACTION);
   if(typeof release!=='function')fail('exclusive_lock_failed');
   let backupSaved=false;
