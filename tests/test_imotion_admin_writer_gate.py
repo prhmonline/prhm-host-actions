@@ -44,6 +44,17 @@ class GateTests(unittest.TestCase):
             self.assertIn("if (-f " + gate.DEFAULT_FLAG + ") { return 503; }", part)
         self.assertLess(segment.find(gate.MARKER), segment.find('if ($request_method = OPTIONS)'))
 
+    def test_missing_ready_marker_fails_closed_on_both_dynamic_routes(self):
+        rendered = gate.render(FIXTURE)
+        expected = "if (!-f /run/prhm-imotion-writer-gate/.ready) { return 503; }"
+        self.assertEqual(rendered.count(expected), 2)
+        self.assertLess(rendered.find(expected), rendered.find("if (-f " + gate.DEFAULT_FLAG))
+        self.assertNotIn(expected, rendered.split(gate.NEXT_SERVER)[1])
+
+    def test_test_flag_has_matching_ready_marker_directory(self):
+        rendered = gate.render(FIXTURE, "/tmp/candidate-test/sentinel")
+        self.assertEqual(rendered.count("if (!-f /tmp/candidate-test/.ready)"), 2)
+
     def test_default_flag_uses_private_readonly_docker_bind(self):
         self.assertEqual(gate.DEFAULT_FLAG,
                          "/run/prhm-imotion-writer-gate/admin-i-motion-ir.cutover")

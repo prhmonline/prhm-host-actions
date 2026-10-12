@@ -47,6 +47,13 @@ Default sentinel path **inside the Nginx container** is:
 
     /run/prhm-imotion-writer-gate/admin-i-motion-ir.cutover
 
+The directory must also contain a root-owned, regular, Nginx-readable
+readiness marker named .ready (0644). The Nginx guard first verifies this
+marker is accessible and returns 503 for dynamic requests when it is absent,
+including when the bind mount is missing, misconfigured or not traversable.
+Only with the readiness marker available and the cutover flag absent are
+dynamic requests allowed. Never delete .ready as a routine flag toggle.
+
 This MUST be a read-only bind mount from a root-owned host path, NOT from
 /home/imotion (owned by imotion, therefore replaceable by the PHP user).
 
@@ -119,7 +126,8 @@ the flag; the actual PHP container could not see the flag path;
 Nginx UID 101 could read, but not write, the bound flag. The real
 full Nginx config passed nginx -t. GET/POST/OPTIONS/index.php
 returned 503 with flag active, while static and status returned 200;
-removing it restored baseline behavior. Disposable test container and
+removing it restored baseline behavior. Add missing-bind and missing-.ready
+negative tests to CI; disposable test container and
 root-owned flag directory were both cleaned up. No production service
 or configuration was changed.
 

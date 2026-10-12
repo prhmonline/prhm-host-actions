@@ -9,6 +9,7 @@ NAME="imotion-gate-integration-$$"
 cleanup() {
   status=$?
   docker rm -f "$NAME" >/dev/null 2>&1 || true
+  docker rm -f "$NAME-unmounted" >/dev/null 2>&1 || true
   rm -rf -- "$D"
   echo "SANDBOX_CLEANUP exit=$status"
   exit "$status"
@@ -61,6 +62,21 @@ docker run --rm --network none \
   --tmpfs /var/log/nginx:rw,nosuid,size=8m \
   "$NGINX_IMAGE" nginx -t >/dev/null 2>&1
 echo "NGINX_SYNTAX_PASS"
+echo "MISSING_BIND_MOUNT_FAIL_CLOSED_TEST"
+docker run --rm -d --network none --name "$NAME-unmounted" \
+  --memory 256m --pids-limit 128 \
+  --mount type=bind,src="$D/candidate.conf",dst=/etc/nginx/nginx.conf,readonly \
+  --mount type=bind,src="$D/certs",dst=/etc/nginx/test-certs,readonly \
+  --mount type=bind,src="$D/web",dst="$DEST_ROOT",readonly \
+  --tmpfs /var/cache/nginx:rw,nosuid,size=8m \
+  --tmpfs /var/log/nginx:rw,nosuid,size=8m \
+  "$NGINX_IMAGE" >/dev/null
+missing_status="$(docker exec "$NAME-unmounted" curl -ksS --max-time 5 -X GET \
+  --resolve admin.i-motion.ir:443:127.0.0.1 -o /dev/null -w '%{http_code}' \
+  https://admin.i-motion.ir/__dynamic_probe)"
+test "$missing_status" = "503" || { echo "MISSING_MOUNT_GAVE_$missing_status"; exit 1; }
+docker rm -f "$NAME-unmounted" >/dev/null
+echo "MISSING_BIND_MOUNT_503_PASS"
 docker run --rm -d --network none --name "$NAME" \
   --memory 256m --pids-limit 128 \
   --mount type=bind,src="$D/candidate.conf",dst=/etc/nginx/nginx.conf,readonly \
@@ -93,6 +109,15 @@ probe() {
   fi
   echo "HTTP_PASS method=$method uri=$uri host=$host status=$status"
 }
+echo "MISSING_READY_MARKER_FAIL_CLOSED_TEST"
+probe GET /__dynamic_probe 503
+probe POST /__dynamic_probe 503
+probe OPTIONS /__dynamic_probe 503
+probe GET /assets/.empty 200
+probe GET /nginx-status 204
+printf 'ready\n' > "$D/flag/.ready"
+chmod 0644 "$D/flag/.ready"
+echo "READY_MARKER_CREATED"
 echo "FLAG_OFF_BASELINE"
 probe GET /__dynamic_probe 502
 probe POST /__dynamic_probe 502

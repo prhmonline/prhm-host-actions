@@ -54,8 +54,13 @@ def render(source, flag=DEFAULT_FLAG):
     segment = source[start:end]
     if segment.count(ROUTE) != 1 or segment.count(PHP_ROUTE) != 1:
         raise ValueError("expected two dynamic routes missing or duplicated")
+    # Default to 503 unless the root-owned, Nginx-readable readiness marker
+    # is present. A missing bind mount or inaccessible directory must NOT
+    # silently bypass the maintenance flag.
+    ready = os.path.dirname(flag) + "/.ready"
     clause = (
         "            # BEGIN " + MARKER + "\n"
+        "            if (!-f " + ready + ") { return 503; }\n"
         "            if (-f " + flag + ") { return 503; }\n"
         "            # END " + MARKER + "\n"
     )
