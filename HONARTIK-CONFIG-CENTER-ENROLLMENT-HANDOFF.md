@@ -17,13 +17,13 @@ This branch is a **fixed-scope transaction contract and offline tests**, NOT an 
 
 ## Integration gate (NOT DONE)
 
-The actual Agent 3 tool, its fixed allowlist entry, Approval Center policy and Host Actions executor adapter have NOT been deployed. These must first be Git-committed, protected by immutable preimage SHAs and separately authorized.
+The actual Agent 3 tool, its fixed allowlist entry, Approval Center policy and Host Actions executor adapter have NOT been deployed. The live Control Plane worktree has two preexisting uncommitted modifications (approval-policy.json and root-scripts-stage mediator); these changes must be preserved, not overwritten. The attempt to generate a direct runtime registration candidate was blocked by the execution safety gate, so registration remains unimplemented. These must first be Git-committed, protected by immutable preimage SHAs and separately authorized.
 
 The trusted executor adapter must implement all eight REQUIRED_ADAPTER methods:
 
 1. An exclusive lock covering enrollment, verification and rollback.
 2. Read-only preflight that independently attests actual SHA/clean state, tenant, revision, private path and zero active credentials.
-3. Atomic one-time consumption of a verified signed Level-4 request with exact action and SHA binding.
+3. Independently attest an already-consumed, signed Level-4 approval with the exact action, request ID and source SHA. The trusted Agent 3 Host Actions executor consumes the one-time approval **before dispatching the handler**; the adapter must never consume it again.
 4. Invocation of only the fixed PHP enrollment script without a shell interpolation interface or plaintext credentials in outputs.
 5. Independent postcondition proof: one active config:read-only credential, correct private file owner/mode, config API 200, secrets API 403.
 6. Exact CLI validation: CONFIG_CENTER_READONLY_PASS tenant=honartik revision=1 source=remote.
