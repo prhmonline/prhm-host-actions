@@ -4,7 +4,7 @@
 
 - Application: /home/prhm/projects/generated/rahekomak
 - Branch: main, clean at last validation
-- Exact app commit: c89241e415a093f9c07782ce156b51c7019368c5
+- Exact app commit: 13917a36df76c0dfdd75f4a84111ba68391f166e
 - Exact helper: infra/docker/web-only-release-v1.cjs
 - Helper SHA-256: bf901961635986ff917bade164610ecc80cd3e9ebb549ef79ecc9efecce41320
 - Action: rahekomak_web_only_release_v1
@@ -34,3 +34,11 @@ This first fixed release action is bound to one exact application commit; a futu
 - Exact backups and rollback-on-failure are part of the transaction.
 - No generic command, path, SQL or URL input is accepted.
 - Critical production registration has NOT been applied by this commit.
+
+## 2026-10-12 binding refresh
+
+- Current checked RahKomak main HEAD: `13917a36df76c0dfdd75f4a84111ba68391f166e` (clean).
+- Read-only helper SHA-256 still `bf901961635986ff917bade164610ecc80cd3e9ebb549ef79ecc9efecce41320`.
+- RahKomak web official-source test 23/23 and static-release contract test 10/10 PASS; typecheck PASS, ESLint 0 errors/1 nonblocking warning.
+- Four control-plane preimage SHA-256 values match the pinned inventory from this document.
+- Source rebinding is not approval, action registration, or production deployment. The trusted native Level-4 registration gate remains mandatory; never replay failed request `279e5825-4197-4e10-b2a1-3e49e8398789`.
