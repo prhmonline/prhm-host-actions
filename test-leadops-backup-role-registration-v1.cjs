@@ -15,6 +15,8 @@ function fixtures(){
  const policy=JSON.stringify({
   schema_version:'prhm.approval-policy.v1',default_deny:true,one_time_use:true,
   levels:{'4':{human_approval:true}},
+  deployment_integrity:{git_first_required:true,exact_commit_sha_required_for_production:true,
+    direct_production_file_edit_forbidden:true},
   operations:{'host_action.leadops_economics_inputs_foundation_v1':{level:3,risk:'high'}},
   typed_scopes:[],dirty_custom_property:{kept:true}
  },null,2)+'\n';
@@ -116,6 +118,23 @@ test('changed file preimage and symlink are rejected before snapshot',async()=>{
  await assert.rejects(executeBoundRegistration({sources:s.initial,expected:s.expected},s.adapter),
     /target_preimage_changed:policy/);
  assert.equal(s.snapshots.size,0);assert.equal(s.getUnlock(),1);
+});
+test('live policy lacking canonical Git-first protections fails closed',()=>{
+ const f=fixtures();
+ const bad=JSON.parse(f.sources.policy);
+ delete bad.deployment_integrity;
+ const policy=JSON.stringify(bad,null,2)+'\n';
+ assert.throws(()=>r.buildCandidates({...f.sources,policy},
+   {expected:{...f.expected,policy:r.sha(policy)}}),
+   /missing_git_first_runtime_integrity_guard/);
+});
+test('canonical Git-first protections survive registration',()=>{
+ const f=fixtures();
+ const p=r.buildCandidates(f.sources,{expected:f.expected});
+ const x=JSON.parse(p.candidate_sources.policy);
+ assert.equal(x.deployment_integrity.git_first_required,true);
+ assert.equal(x.deployment_integrity.exact_commit_sha_required_for_production,true);
+ assert.equal(x.deployment_integrity.direct_production_file_edit_forbidden,true);
 });
 test('helper is not allowed to self-authorize registration',()=>{
  assert.equal(typeof r.buildCandidates,'function');
