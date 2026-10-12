@@ -23,10 +23,12 @@ function simulatedAdapter({sources,expected}={}){
   .map(([k,text])=>[r.TARGETS[k],text]));
  const snapshots=new Map();
  const audits=[];
- let failOn=null,auth=true,pin=true,unlock=0;
+ let failOn=null,auth=true,pin=true,unlock=0,signedTargets=true,signedCommit=true;
  const adapter={
-  async assertConsumedLevel4(){return auth?{signed:true,consumed:true,one_time:true,
+  async assertConsumedLevel4({plan_target_sha256}){return auth?{signed:true,consumed:true,one_time:true,
     level:4,operation:r.OPERATION,approver:'mohammad',
+    plan_target_sha256:signedTargets?{...plan_target_sha256}:{...plan_target_sha256,policy:'f'.repeat(64)},
+    reviewed_registration_sha:signedCommit?'0123456789abcdef0123456789abcdef01234567':'f'.repeat(40),
     request_id:'123e4567-e89b-42d3-a456-426614174000'}:{signed:false};},
   async assertReviewedGitCommit(){return pin?'0123456789abcdef0123456789abcdef01234567':null;},
   async readFile(p){return state.get(p);},
@@ -45,7 +47,8 @@ function simulatedAdapter({sources,expected}={}){
   async audit(x){audits.push(x);}
  };
  return {adapter,state,snapshots,audits,setFail:k=>{failOn=r.TARGETS[k];},
-  setAuth:b=>{auth=b;},setPin:b=>{pin=b;},getUnlock:()=>unlock,initial:s,expected:e};
+  setAuth:b=>{auth=b;},setPin:b=>{pin=b;},setSignedTargets:b=>{signedTargets=b;},
+  setSignedCommit:b=>{signedCommit=b;},getUnlock:()=>unlock,initial:s,expected:e};
 }
 test('reviewed SQL + helper Git blobs remain pinned',()=>{
  assert.equal(r.blob(sql),r.SQL_BLOB);
@@ -90,6 +93,17 @@ test('missing/unsigned approval and unbound Git commit cannot write',async()=>{
   await assert.rejects(executeBoundRegistration({sources:s.initial,expected:s.expected},s.adapter),
     what==='auth'?/signed_level4_not_proven/:/registration_git_sha_unbound/);
   assert.deepEqual(s.state,before);assert.equal(s.getUnlock(),0);
+ }
+});
+test('approval token must bind the exact five file SHAs and reviewed commit',async()=>{
+ for(const scenario of ['targets','commit']){
+   const m=simulatedAdapter(),before=new Map(m.state);
+   if(scenario==='targets')m.setSignedTargets(false);
+   else m.setSignedCommit(false);
+   await assert.rejects(executeBoundRegistration({sources:m.initial,expected:m.expected},m.adapter),
+     scenario==='targets'?/signed_target_sha_binding_mismatch/:/signed_registration_commit_mismatch/);
+   assert.deepEqual(m.state,before);
+   assert.equal(m.getUnlock(),0);
  }
 });
 test('trusted approved registration writes five exact targets; no database role',async()=>{
