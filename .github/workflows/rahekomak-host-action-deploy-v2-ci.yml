@@ -13,6 +13,8 @@ on:
       - 'test-rahekomak-host-action-activation-v2.js'
       - 'rahekomak-host-action-stage-v2.js'
       - 'rahekomak-host-action-registration-v2.js'
+      - 'rahekomak-host-action-typed-registration-bootstrap-v2.js'
+      - 'test-rahekomak-host-action-typed-registration-bootstrap-v2.js'
       - 'test-rahekomak-host-action-registration-v2.js'
       - '.github/workflows/rahekomak-host-action-deploy-v2-ci.yml'
   push:
@@ -53,6 +55,8 @@ jobs:
           node --check test-rahekomak-host-action-activation-v2.js
           node --check rahekomak-host-action-stage-v2.js
           node --check rahekomak-host-action-registration-v2.js
+          node --check rahekomak-host-action-typed-registration-bootstrap-v2.js
+          node --check test-rahekomak-host-action-typed-registration-bootstrap-v2.js
           node --check test-rahekomak-host-action-registration-v2.js
       - name: Run fail-closed contract tests
         run: node --test test-rahekomak-production-deploy-worker-v2.js test-rahekomak-host-action-executor-patch-v2.js test-rahekomak-host-action-repair-installer-v2.js test-rahekomak-host-action-activation-v2.js test-rahekomak-host-action-registration-v2.js
