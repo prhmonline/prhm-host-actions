@@ -1,0 +1,32 @@
+name: Honartik Config Center Enrollment Action Contract
+
+on:
+  pull_request:
+    paths:
+      - 'honartik-config-center-enrollment-action-v1.cjs'
+      - 'test-honartik-config-center-enrollment-action-v1.cjs'
+      - '.github/workflows/honartik-config-center-enrollment-contract-ci.yml'
+  push:
+    branches:
+      - 'integration/honartik-config-center-enrollment-action-v1-20261012'
+    paths:
+      - 'honartik-config-center-enrollment-action-v1.cjs'
+      - 'test-honartik-config-center-enrollment-action-v1.cjs'
+      - '.github/workflows/honartik-config-center-enrollment-contract-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate action syntax and fail-closed transaction contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check honartik-config-center-enrollment-action-v1.cjs
+          node --check test-honartik-config-center-enrollment-action-v1.cjs
+          node --test test-honartik-config-center-enrollment-action-v1.cjs
