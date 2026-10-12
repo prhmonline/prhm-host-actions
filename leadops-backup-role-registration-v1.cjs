@@ -57,6 +57,10 @@ function buildCandidates(src,{expected=LIVE}={}){
   const mcp=replaceOnce(src.mcp,"'leadops_economics_inputs_foundation_v1',",
     "'"+ACTION+"','leadops_economics_inputs_foundation_v1',",'mcp_enum');
   const policy=JSON.parse(src.policy);
+  if(policy.deployment_integrity?.git_first_required!==true||
+     policy.deployment_integrity?.exact_commit_sha_required_for_production!==true||
+     policy.deployment_integrity?.direct_production_file_edit_forbidden!==true)
+    fail('missing_git_first_runtime_integrity_guard');
   if(policy.default_deny!==true||policy.one_time_use!==true||
      policy.levels?.['4']?.human_approval!==true||
      !Array.isArray(policy.typed_scopes)||policy.operations?.[OPERATION])
