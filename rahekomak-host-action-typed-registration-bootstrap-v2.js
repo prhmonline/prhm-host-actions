@@ -74,8 +74,7 @@ function assertPlan(plan){
       fail('artifact_plan_blob_invalid:'+i);
  }
 }
-async function applyFromTrustedDispatcher(adapter,plan){
- assertPlan(plan);
+async function runApprovedTransaction(adapter,plan){
  const methods=['acquireExclusive','consumeSignedLevel4','hasReceipt','statExact','readBytes',
    'backupExact','replaceAtomic','removeExact','reloadAndHealth','persistReceipt'];
  for(const name of methods)if(typeof adapter?.[name]!=='function')
@@ -105,8 +104,9 @@ async function applyFromTrustedDispatcher(adapter,plan){
       request_id:approval.request_id,changed:[],production_mutation:false});
    mutating=true;
    for(const s of plan.steps){
-     await adapter.replaceAtomic(s.target,s.bytes,{mode:s.mode,uid:s.uid,gid:s.gid});
+     // Must record intent before I/O: an atomic rename may succeed and then throw.
      changed.push(s);
+     await adapter.replaceAtomic(s.target,s.bytes,{mode:s.mode,uid:s.uid,gid:s.gid});
      if(sha(await adapter.readBytes(s.target))!==s.next_sha)fail('postwrite_mismatch:'+s.key);
    }
    const health=await adapter.reloadAndHealth('candidate',{
@@ -146,6 +146,11 @@ async function applyFromTrustedDispatcher(adapter,plan){
    throw error;
  }finally{await release()}
 }
+async function applyFromTrustedDispatcher(adapter,plan){
+ assertPlan(plan);
+ return runApprovedTransaction(adapter,plan);
+}
 module.exports=Object.freeze({ACTION,OPERATION,SOURCE_COMMIT,KEYS,NAMES,ARTIFACT_ROOT,
-  sha,blob,paths,prepare,assertPlan,applyFromTrustedDispatcher});
+  sha,blob,paths,prepare,assertPlan,applyFromTrustedDispatcher,
+  _testTransactionOnly:runApprovedTransaction});
 if(require.main===module){process.stderr.write('No direct apply. Trusted, signed, consumed Level-4 dispatcher required.\n');process.exitCode=64}
