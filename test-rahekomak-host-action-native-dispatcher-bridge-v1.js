@@ -41,7 +41,9 @@ test('reject unreviewed blobs, arbitrary writes, metadata and owner deletes',asy
  await assert.rejects(b.replaceAtomic(mod.TARGETS[0],Buffer.from('x'),{mode:0o666,uid:0,gid:0}),/invalid_replacement/);
  await assert.rejects(b.removeExact(mod.OWNERS[0]),/unapproved_removal/);
  await assert.rejects(b.backupExact(mod.TARGETS[4],Buffer.from('x'),'f'.repeat(64),'r'),/invalid_owner_backup/);
- assert.deepEqual(n.calls,[]);
+ assert.deepEqual(n.calls.map(x=>x.n),['readSourceBlob']);
+ assert.deepEqual(n.calls[0].a[0],{repository:'prhmonline/prhm-host-actions',
+  commit:mod.SOURCE_COMMIT,path:tx.NAMES[0]});
 });
 test('native signed approval proof cannot be made up by the bridge',async()=>{
  const n=native(),b=mod.createNativeBridge(n.io);
