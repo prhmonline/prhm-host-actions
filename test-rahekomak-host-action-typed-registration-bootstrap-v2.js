@@ -3,6 +3,13 @@ const test=require('node:test'),assert=require('node:assert/strict');
 const crypto=require('node:crypto');
 const m=require('./rahekomak-host-action-typed-registration-bootstrap-v2.js');
 const reg=require('./rahekomak-host-action-registration-v2.js');
+const vm=require('node:vm'),fs=require('node:fs'),path=require('node:path');
+const candidate=fs.readFileSync(path.join(__dirname,'rahekomak-host-action-typed-registration-bootstrap-v2.js'),'utf8');
+const sandbox={require,module:{exports:{}},Buffer,process:{argv:['node','test-only'],stderr:{write(){}}}};
+vm.runInNewContext(candidate+'\\n;__simulateTransaction=runApprovedTransaction;',sandbox,{
+ filename:'isolated-regression-fixture',timeout:1000});
+const simulateTransaction=sandbox.__simulateTransaction;
+
 const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
 function setup(cfg={}){
  const file=new Map(),original=new Map(),events=[],receipts=[];
@@ -42,7 +49,8 @@ function setup(cfg={}){
  return {io,steps,events,receipts,assertRestored};
 }
 const plan=s=>({action:m.ACTION,operation:m.OPERATION,source_commit:m.SOURCE_COMMIT,steps:s});
-test('exact 4+5 target allowlist; production API rejects unpinned test plans',async()=>{
+test('exact 4+5 target allowlist; public API has NO test-only bypass',async()=>{
+ assert.equal(Object.hasOwn(m,'_testTransactionOnly'),false);
  const h=setup();assert.equal(m.paths().length,9);
  assert.equal(new Set(m.paths()).size,9);
  await assert.rejects(m.applyFromTrustedDispatcher(h.io,plan(h.steps)),/owner_plan_preimage_invalid/);
@@ -51,14 +59,14 @@ test('exact 4+5 target allowlist; production API rejects unpinned test plans',as
 test('signed consumed approval and replay gate happen before backups and writes',async()=>{
  for(const cfg of [{badAuth:true},{replay:true}]){
   const h=setup(cfg);
-  await assert.rejects(m._testTransactionOnly(h.io,plan(h.steps)),
+  await assert.rejects(simulateTransaction(h.io,plan(h.steps)),
     /trusted_signed_consumed_level4_required|registration_replay_forbidden/);
   h.assertRestored();assert.ok(!h.events.includes('replace'));
   assert.equal(h.events.at(-1),'unlock');
  }
 });
 test('success: all four backups precede nine atomic writes, positive health & receipt',async()=>{
- const h=setup(),r=await m._testTransactionOnly(h.io,plan(h.steps));
+ const h=setup(),r=await simulateTransaction(h.io,plan(h.steps));
  assert.equal(r.status,'registration_installed');assert.equal(r.changed.length,9);
  assert.equal(h.events.filter(x=>x==='backup').length,4);
  assert.ok(h.events.lastIndexOf('backup')<h.events.indexOf('replace'));
@@ -68,7 +76,7 @@ test('success: all four backups precede nine atomic writes, positive health & re
 test('every write can fail AFTER rename: exact rollback of nine targets',async()=>{
  for(let n=1;n<=9;n++){
    const h=setup({failAt:n});
-   await assert.rejects(m._testTransactionOnly(h.io,plan(h.steps)),/registration_failed_rollback_complete/);
+   await assert.rejects(simulateTransaction(h.io,plan(h.steps)),/registration_failed_rollback_complete/);
    h.assertRestored();assert.ok(h.events.includes('health:baseline'));
    assert.equal(h.receipts.at(-1).rollback_performed,true);
    assert.equal(h.events.at(-1),'unlock');
@@ -77,13 +85,13 @@ test('every write can fail AFTER rename: exact rollback of nine targets',async()
 test('candidate health and persistent receipt failures cause rollback',async()=>{
  for(const cfg of [{badHealth:true},{badReceipt:true}]){
    const h=setup(cfg);
-   await assert.rejects(m._testTransactionOnly(h.io,plan(h.steps)),/registration_failed_rollback_complete/);
+   await assert.rejects(simulateTransaction(h.io,plan(h.steps)),/registration_failed_rollback_complete/);
    h.assertRestored();assert.ok(h.events.includes('health:baseline'));
  }
 });
 test('live byte drift fails before any backup or write',async()=>{
  const h=setup();h.io.readBytes=p=>Buffer.from('drifted');
- await assert.rejects(m._testTransactionOnly(h.io,plan(h.steps)),/prewrite_drift/);
+ await assert.rejects(simulateTransaction(h.io,plan(h.steps)),/prewrite_drift/);
  assert.ok(!h.events.includes('replace'));assert.ok(!h.events.includes('backup'));
 });
 test('no standalone CLI mutation; sources pinned to fixed Git commit',()=>{

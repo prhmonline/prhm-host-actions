@@ -151,6 +151,5 @@ async function applyFromTrustedDispatcher(adapter,plan){
  return runApprovedTransaction(adapter,plan);
 }
 module.exports=Object.freeze({ACTION,OPERATION,SOURCE_COMMIT,KEYS,NAMES,ARTIFACT_ROOT,
-  sha,blob,paths,prepare,assertPlan,applyFromTrustedDispatcher,
-  _testTransactionOnly:runApprovedTransaction});
+  sha,blob,paths,prepare,assertPlan,applyFromTrustedDispatcher});
 if(require.main===module){process.stderr.write('No direct apply. Trusted, signed, consumed Level-4 dispatcher required.\n');process.exitCode=64}
