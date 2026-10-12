@@ -1,0 +1,24 @@
+name: RahKomak native registrar bridge contract (no installation)
+on:
+  pull_request:
+    paths:
+      - 'rahekomak-host-action-native-dispatcher-bridge-v1.js'
+      - 'test-rahekomak-host-action-native-dispatcher-bridge-v1.js'
+      - '.github/workflows/rahekomak-native-dispatcher-bridge-ci.yml'
+  push:
+    branches: [fix/rahekomak-native-dispatcher-bridge]
+permissions:
+  contents: read
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          node --check rahekomak-host-action-native-dispatcher-bridge-v1.js
+          node --check test-rahekomak-host-action-native-dispatcher-bridge-v1.js
+      - run: node --test test-rahekomak-host-action-native-dispatcher-bridge-v1.js test-rahekomak-host-action-typed-registration-bootstrap-v2.js test-rahekomak-host-action-registration-v2.js
