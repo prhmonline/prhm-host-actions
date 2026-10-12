@@ -6,7 +6,7 @@ const reg=require('./rahekomak-host-action-registration-v2.js');
 const vm=require('node:vm'),fs=require('node:fs'),path=require('node:path');
 const candidate=fs.readFileSync(path.join(__dirname,'rahekomak-host-action-typed-registration-bootstrap-v2.js'),'utf8');
 const sandbox={require,module:{exports:{}},Buffer,process:{argv:['node','test-only'],stderr:{write(){}}}};
-vm.runInNewContext(candidate+'\\n;__simulateTransaction=runApprovedTransaction;',sandbox,{
+vm.runInNewContext(candidate+String.fromCharCode(10)+';__simulateTransaction=runApprovedTransaction;',sandbox,{
  filename:'isolated-regression-fixture',timeout:1000});
 const simulateTransaction=sandbox.__simulateTransaction;
 
