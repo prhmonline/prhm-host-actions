@@ -28,7 +28,7 @@ function harness(override = {}) {
   const api = {
     withExclusiveLock: async (_, fn) => { calls.push('lock'); return fn(); },
     readPreflight: async () => { calls.push('read'); return before(); },
-    consumeApprovedRequest: async () => { calls.push('approve'); return approved(); },
+    attestConsumedApproval: async () => { calls.push('attest'); return approved(); },
     runFixedEnrollment: async () => { calls.push('issue'); return 'issued'; },
     runFixedRollback: async () => { calls.push('revoke'); data.post={activeCredentialCount:0,credentialFileExists:false}; return 'revoked'; },
     readPostcondition: async () => { calls.push('post'); return data.post; },
@@ -44,14 +44,14 @@ test('preflight is read-only and returns bounded status',async()=>{
 test('exact approved operation succeeds, without returning credential material',async()=>{
   const h=harness(); const result=await h.action.apply(request());
   assert.equal(result.status,'success'); assert.equal(JSON.stringify(result).includes('ccm_'),false);
-  assert.deepEqual(h.calls,['lock','read','approve','issue','post','yii','audit:success']);
+  assert.deepEqual(h.calls,['lock','read','attest','issue','post','yii','audit:success']);
 });
 test('wrong approval level is refused without issuer invocation',async()=>{
-  const h=harness({consumeApprovedRequest:async()=>({...approved(),level:3})});
+  const h=harness({attestConsumedApproval:async()=>({...approved(),level:3})});
   assert.equal((await h.action.apply(request())).status,'denied'); assert.equal(h.calls.includes('issue'),false);
 });
 test('wrong source SHA binding is refused',async()=>{
-  const h=harness({consumeApprovedRequest:async()=>({...approved(),sourceSha:'0'.repeat(40)})});
+  const h=harness({attestConsumedApproval:async()=>({...approved(),sourceSha:'0'.repeat(40)})});
   assert.equal((await h.action.apply(request())).status,'denied'); assert.equal(h.calls.includes('issue'),false);
 });
 test('request must contain exactly one valid identifier',async()=>{
@@ -61,7 +61,7 @@ test('request must contain exactly one valid identifier',async()=>{
 });
 test('preexisting credential fails closed before approval',async()=>{
   const h=harness({readPreflight:async()=>({...before(),activeCredentialCount:1})});
-  assert.equal((await h.action.apply(request())).status,'blocked');assert.equal(h.calls.includes('approve'),false);
+  assert.equal((await h.action.apply(request())).status,'blocked');assert.equal(h.calls.includes('attest'),false);
 });
 test('dirty source code blocks issuance',async()=>{
   const h=harness({readPreflight:async()=>({...before(),scriptGitClean:false})});
@@ -97,7 +97,7 @@ test('issuing function failure invokes bounded recovery',async()=>{
   const result=await h.action.apply(request());assert.equal(result.status,'failed');assert.equal(result.rollback,'verified');assert.equal(JSON.stringify(result).includes('do-not-disclose'),false);
 });
 test('approval consumer failure never invokes issuance',async()=>{
-  const h=harness({consumeApprovedRequest:async()=>{throw new Error('authorization-unavailable')}});
+  const h=harness({attestConsumedApproval:async()=>{throw new Error('authorization-unavailable')}});
   const result=await h.action.apply(request());assert.equal(result.status,'blocked');assert.equal(h.calls.includes('issue'),false);
 });
 test('adapter cannot omit the locking or approval implementation',()=>{
