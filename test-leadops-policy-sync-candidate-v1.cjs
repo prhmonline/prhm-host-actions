@@ -44,7 +44,8 @@ function mock(overrides={}){
     if(failPoint==='reload'&&changed)throw Error('simulated_reload_failure');
   },
   async restoreBackup(p,b){
-    rollback++;assert.equal(p,C.TARGET);assert.deepEqual(b,backup);files.set(p,Buffer.from(b));
+    rollback++;assert.equal(p,C.TARGET);assert.equal(b.durable,true);
+    assert.equal(b.sha256,C.hash(backup));files.set(p,Buffer.from(backup));
     changed=false;
   },
   async recordAudit(v){audits.push(v);if(failPoint==='audit'&&v.ok)throw Error('simulated_audit_failure');}
