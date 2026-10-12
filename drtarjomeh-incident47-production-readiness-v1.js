@@ -37,11 +37,25 @@ const sha256=b=>crypto.createHash('sha256').update(b).digest('hex');
 const blobSha=b=>crypto.createHash('sha1').update(Buffer.concat([Buffer.from('blob '+b.length+'\0'),b])).digest('hex');
 
 function safeRead(reader,p){
+  // Read only from an O_NOFOLLOW file descriptor. A second pathname lookup
+  // after lstat could observe different attacker-controlled upload bytes.
+  let fd;
   try{
-    const st=reader.lstatSync(p);
-    if(st.isSymbolicLink()||!st.isFile()||st.size>1024*1024||st.size<=0)return null;
-    return reader.readFileSync(p);
+    const before=reader.lstatSync(p);
+    if(before.isSymbolicLink()||!before.isFile()||
+      before.size>1024*1024||before.size<=0)return null;
+    fd=reader.openSync(p,fs.constants.O_RDONLY|fs.constants.O_NOFOLLOW|fs.constants.O_NONBLOCK);
+    const opened=reader.fstatSync(fd);
+    if(!opened.isFile()||opened.size!==before.size||
+      opened.dev!==before.dev||opened.ino!==before.ino)return null;
+    const bytes=reader.readFileSync(fd);
+    const after=reader.fstatSync(fd);
+    if(!Buffer.isBuffer(bytes)||bytes.length!==opened.size||
+      after.dev!==opened.dev||after.ino!==opened.ino||
+      after.size!==opened.size||after.mtimeMs!==opened.mtimeMs)return null;
+    return bytes;
   }catch{return null;}
+  finally{if(fd!==undefined)reader.closeSync(fd);}
 }
 function inspect({read=fs,run,now=()=>new Date().toISOString()}={}){
   // Pass exactly one fixed set of read-only CLI checks.
@@ -99,7 +113,17 @@ function inspect({read=fs,run,now=()=>new Date().toISOString()}={}){
     source_repo:'prhmonline/drtarjomeh',source_sha:pins.SOURCE_COMMIT,
     host_actions_base:registry.HOST_BASE,allow_arbitrary_commands:false,
     registration_authorized:false,production_mutation:false,
-    security_guard_active:indicators.apache_guard_installed,
+    // Installed-file metadata is NOT proof of effective Apache/FPM denial.
+    // Only an authorized benign HTTP+HTTPS negative origin test can prove it.
+    security_guard_present:indicators.apache_guard_installed,
+    security_guard_active:false,
+    effective_php_denial_verified:false,
+    missing_effectiveness_evidence:Object.freeze([
+      'ORIGIN_HTTP_BENIGN_PHP_403',
+      'ORIGIN_HTTPS_BENIGN_PHP_403',
+      'STATIC_MEDIA_HEALTH',
+      'RECURRENCE_MONITORING_24H'
+    ]),
     indicators:Object.freeze(indicators),blockers:Object.freeze(reasons),
     status:reasons.length?'BLOCKED':'READY_FOR_REVIEW_NOT_AUTHORIZED',
     note:'No root writes. READY does not establish signed L4 authorization.'
