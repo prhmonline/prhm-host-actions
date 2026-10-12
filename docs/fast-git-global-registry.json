@@ -1,0 +1,387 @@
+{
+  "schema_version": 1,
+  "effective_date": "2026-10-13",
+  "authority": "Git-only source delivery policy; no waiver of existing approvals, project instructions or deployment controls",
+  "canonical_policy": "https://github.com/prhmonline/prhm-host-actions/blob/main/docs/fast-git-delivery.md",
+  "default_operation": "github_connector_source_commit",
+  "requirements": [
+    "Confirm exact repo, branch, paths and current blobs",
+    "Never push secrets or local configuration",
+    "Respect AGENTS.md, branch protections and required reviews",
+    "Validate scoped changes and report repo, branch, SHA, CI",
+    "Never perform production deployment as part of Git-only delivery",
+    "If push-to-main can dispatch production, commit only to a non-production branch unless release separately approved"
+  ],
+  "repositories": [
+    {
+      "repository": "prhmonline/Fun-front",
+      "default_branch": "main",
+      "github_write_permission_observed": true,
+      "risk": "verify_workflows_and_external_deploy_hooks_before_main_push",
+      "existing_repo_instructions_observed": false
+    },
+    {
+      "repository": "prhmonline/Fun-back",
+      "default_branch": "master",
+      "github_write_permission_observed": true,
+      "risk": "verify_workflows_and_external_deploy_hooks_before_main_push",
+      "existing_repo_instructions_observed": false
+    },
+    {
+      "repository": "prhmonline/Imo-back",
+      "default_branch": "main",
+      "github_write_permission_observed": true,
+      "risk": "verify_workflows_and_external_deploy_hooks_before_main_push",
+      "existing_repo_instructions_observed": false
+    },
+    {
+      "repository": "prhmonline/Honar-back",
+      "default_branch": "main",
+      "github_write_permission_observed": true,
+      "risk": "verify_workflows_and_external_deploy_hooks_before_main_push",
+      "existing_repo_instructions_observed": false
+    },
+    {
+      "repository": "prhmonline/Honar-front",
+      "default_branch": "main",
+      "github_write_permission_observed": true,
+      "risk": "verify_workflows_and_external_deploy_hooks_before_main_push",
+      "existing_repo_instructions_observed": false
+    },
+    {
+      "repository": "prhmonline/Tourfun-back",
+      "default_branch": "main",
+      "github_write_permission_observed": true,
+      "risk": "verify_workflows_and_external_deploy_hooks_before_main_push",
+      "existing_repo_instructions_observed": false
+    },
+    {
+      "repository": "prhmonline/Tourfun-front",
+      "default_branch": "main",
+      "github_write_permission_observed": true,
+      "risk": "verify_workflows_and_external_deploy_hooks_before_main_push",
+      "existing_repo_instructions_observed": false
+    },
+    {
+      "repository": "prhmonline/Imo-front",
+      "default_branch": "main",
+      "github_write_permission_observed": true,
+      "risk": "verify_workflows_and_external_deploy_hooks_before_main_push",
+      "existing_repo_instructions_observed": false
+    },
+    {
+      "repository": "prhmonline/drtarjomeh",
+      "default_branch": "main",
+      "github_write_permission_observed": true,
+      "risk": "verify_workflows_and_external_deploy_hooks_before_main_push",
+      "existing_repo_instructions_observed": false
+    },
+    {
+      "repository": "prhmonline/cfpark",
+      "default_branch": "main",
+      "github_write_permission_observed": true,
+      "risk": "verify_workflows_and_external_deploy_hooks_before_main_push",
+      "existing_repo_instructions_observed": false
+    },
+    {
+      "repository": "prhmonline/cfpark-back-new",
+      "default_branch": "main",
+      "github_write_permission_observed": true,
+      "risk": "verify_workflows_and_external_deploy_hooks_before_main_push",
+      "existing_repo_instructions_observed": false
+    },
+    {
+      "repository": "prhmonline/cfpark_new_front",
+      "default_branch": "main",
+      "github_write_permission_observed": true,
+      "risk": "verify_workflows_and_external_deploy_hooks_before_main_push",
+      "existing_repo_instructions_observed": false
+    },
+    {
+      "repository": "prhmonline/moeinshow-front",
+      "default_branch": "main",
+      "github_write_permission_observed": true,
+      "risk": "verify_workflows_and_external_deploy_hooks_before_main_push",
+      "existing_repo_instructions_observed": false
+    },
+    {
+      "repository": "prhmonline/moeinshowback",
+      "default_branch": "main",
+      "github_write_permission_observed": true,
+      "risk": "verify_workflows_and_external_deploy_hooks_before_main_push",
+      "existing_repo_instructions_observed": false
+    },
+    {
+      "repository": "prhmonline/titan-front",
+      "default_branch": "main",
+      "github_write_permission_observed": true,
+      "risk": "verify_workflows_and_external_deploy_hooks_before_main_push",
+      "existing_repo_instructions_observed": false
+    },
+    {
+      "repository": "prhmonline/titan-back",
+      "default_branch": "main",
+      "github_write_permission_observed": true,
+      "risk": "verify_workflows_and_external_deploy_hooks_before_main_push",
+      "existing_repo_instructions_observed": false
+    },
+    {
+      "repository": "prhmonline/IMotionLockerBridge",
+      "default_branch": "master",
+      "github_write_permission_observed": true,
+      "risk": "verify_workflows_and_external_deploy_hooks_before_main_push",
+      "existing_repo_instructions_observed": false
+    },
+    {
+      "repository": "prhmonline/gisheh360-wordpress",
+      "default_branch": "main",
+      "github_write_permission_observed": true,
+      "risk": "verify_workflows_and_external_deploy_hooks_before_main_push",
+      "existing_repo_instructions_observed": false
+    },
+    {
+      "repository": "prhmonline/translation-office",
+      "default_branch": "main",
+      "github_write_permission_observed": true,
+      "risk": "verify_workflows_and_external_deploy_hooks_before_main_push",
+      "existing_repo_instructions_observed": false
+    },
+    {
+      "repository": "prhmonline/Honar-front-new",
+      "default_branch": "main",
+      "github_write_permission_observed": true,
+      "risk": "push_main_dispatches_production",
+      "existing_repo_instructions_observed": false
+    },
+    {
+      "repository": "prhmonline/aranob",
+      "default_branch": "main",
+      "github_write_permission_observed": true,
+      "risk": "push_main_dispatches_production",
+      "existing_repo_instructions_observed": true
+    },
+    {
+      "repository": "prhmonline/honar-back-new",
+      "default_branch": "main",
+      "github_write_permission_observed": true,
+      "risk": "push_main_dispatches_production",
+      "existing_repo_instructions_observed": false
+    },
+    {
+      "repository": "prhmonline/shifa-platform",
+      "default_branch": "main",
+      "github_write_permission_observed": true,
+      "risk": "verify_workflows_and_external_deploy_hooks_before_main_push",
+      "existing_repo_instructions_observed": true
+    },
+    {
+      "repository": "prhmonline/prhm-ir",
+      "default_branch": "main",
+      "github_write_permission_observed": true,
+      "risk": "verify_workflows_and_external_deploy_hooks_before_main_push",
+      "existing_repo_instructions_observed": false
+    },
+    {
+      "repository": "prhmonline/honartik-monitoring-bootstrap",
+      "default_branch": "main",
+      "github_write_permission_observed": true,
+      "risk": "verify_workflows_and_external_deploy_hooks_before_main_push",
+      "existing_repo_instructions_observed": false
+    },
+    {
+      "repository": "prhmonline/sshagent",
+      "default_branch": "main",
+      "github_write_permission_observed": true,
+      "risk": "verify_workflows_and_external_deploy_hooks_before_main_push",
+      "existing_repo_instructions_observed": false
+    },
+    {
+      "repository": "prhmonline/mohammad-manager-agent-relay",
+      "default_branch": "main",
+      "github_write_permission_observed": true,
+      "risk": "verify_workflows_and_external_deploy_hooks_before_main_push",
+      "existing_repo_instructions_observed": false
+    },
+    {
+      "repository": "prhmonline/academic-editing-rule-miner",
+      "default_branch": "main",
+      "github_write_permission_observed": true,
+      "risk": "verify_workflows_and_external_deploy_hooks_before_main_push",
+      "existing_repo_instructions_observed": false
+    },
+    {
+      "repository": "prhmonline/prhm-host-actions",
+      "default_branch": "main",
+      "github_write_permission_observed": true,
+      "risk": "verify_workflows_and_external_deploy_hooks_before_main_push",
+      "existing_repo_instructions_observed": false
+    },
+    {
+      "repository": "prhmonline/park-bazar",
+      "default_branch": "main",
+      "github_write_permission_observed": true,
+      "risk": "verify_workflows_and_external_deploy_hooks_before_main_push",
+      "existing_repo_instructions_observed": false
+    },
+    {
+      "repository": "prhmonline/gisheh",
+      "default_branch": "main",
+      "github_write_permission_observed": true,
+      "risk": "verify_workflows_and_external_deploy_hooks_before_main_push",
+      "existing_repo_instructions_observed": false
+    },
+    {
+      "repository": "prhmonline/solo-company",
+      "default_branch": "main",
+      "github_write_permission_observed": true,
+      "risk": "verify_workflows_and_external_deploy_hooks_before_main_push",
+      "existing_repo_instructions_observed": false
+    },
+    {
+      "repository": "prhmonline/deploy-control",
+      "default_branch": "main",
+      "github_write_permission_observed": true,
+      "risk": "verify_workflows_and_external_deploy_hooks_before_main_push",
+      "existing_repo_instructions_observed": false
+    },
+    {
+      "repository": "prhmonline/prhm-company-control-plane",
+      "default_branch": "main",
+      "github_write_permission_observed": true,
+      "risk": "verify_workflows_and_external_deploy_hooks_before_main_push",
+      "existing_repo_instructions_observed": false
+    },
+    {
+      "repository": "prhmonline/prhm-readonly-bridge",
+      "default_branch": "main",
+      "github_write_permission_observed": true,
+      "risk": "verify_workflows_and_external_deploy_hooks_before_main_push",
+      "existing_repo_instructions_observed": false
+    },
+    {
+      "repository": "prhmonline/ticketing-core-front",
+      "default_branch": "main",
+      "github_write_permission_observed": true,
+      "risk": "verify_workflows_and_external_deploy_hooks_before_main_push",
+      "existing_repo_instructions_observed": false
+    },
+    {
+      "repository": "prhmonline/ticketing-core-back",
+      "default_branch": "main",
+      "github_write_permission_observed": true,
+      "risk": "verify_workflows_and_external_deploy_hooks_before_main_push",
+      "existing_repo_instructions_observed": false
+    },
+    {
+      "repository": "prhmonline/help",
+      "default_branch": "main",
+      "github_write_permission_observed": true,
+      "risk": "verify_workflows_and_external_deploy_hooks_before_main_push",
+      "existing_repo_instructions_observed": false
+    },
+    {
+      "repository": "prhmonline/prhm-admin-design-system",
+      "default_branch": "main",
+      "github_write_permission_observed": true,
+      "risk": "verify_workflows_and_external_deploy_hooks_before_main_push",
+      "existing_repo_instructions_observed": false
+    },
+    {
+      "repository": "prhmonline/rahekomak",
+      "default_branch": "main",
+      "github_write_permission_observed": true,
+      "risk": "empty_or_uninitialized_repository",
+      "existing_repo_instructions_observed": false
+    }
+  ],
+  "agent_primary_project_routes": {
+    "shifa": {
+      "repository": "prhmonline/shifa-platform",
+      "verification": "remote"
+    },
+    "honartik_front_prod": {
+      "repository": null,
+      "verification": "local_bare_origin"
+    },
+    "honartik_admin_prod": {
+      "repository": "prhmonline/honar-back-new",
+      "verification": "remote"
+    },
+    "honartik_front_staging": {
+      "repository": null,
+      "verification": "configured_path_missing"
+    },
+    "honartik_admin_staging": {
+      "repository": null,
+      "verification": "configured_path_missing"
+    },
+    "imotion_front_prod": {
+      "repository": "prhmonline/Imo-front",
+      "verification": "remote"
+    },
+    "imotion_admin_prod": {
+      "repository": "prhmonline/Imo-back",
+      "verification": "remote"
+    },
+    "tarjomeh_wordpress": {
+      "repository": null,
+      "verification": "local_bare_origin"
+    },
+    "drtarjomeh_prod": {
+      "repository": null,
+      "verification": "working_directory_not_git"
+    },
+    "moeinshow_front_prod": {
+      "repository": null,
+      "verification": "local_bare_origin"
+    },
+    "gisheh360": {
+      "repository": "prhmonline/gisheh360-wordpress",
+      "verification": "remote"
+    },
+    "titan_front_prod": {
+      "repository": "prhmonline/titan-front",
+      "verification": "remote_alias"
+    },
+    "titan_back_prod": {
+      "repository": "prhmonline/titan-back",
+      "verification": "remote_alias"
+    },
+    "cfpark_front_prod": {
+      "repository": "prhmonline/cfpark_new_front",
+      "verification": "remote_alias"
+    },
+    "cfpark_admin_prod": {
+      "repository": "prhmonline/cfpark-back-new",
+      "verification": "remote_alias"
+    },
+    "aranob": {
+      "repository": "prhmonline/aranob",
+      "verification": "remote"
+    },
+    "prhm_site": {
+      "repository": null,
+      "verification": "working_directory_not_git"
+    },
+    "ticketing_core_back_wave4": {
+      "repository": "prhmonline/ticketing-core-back",
+      "verification": "remote_alias"
+    },
+    "moeinshow_admin_prod": {
+      "repository": null,
+      "verification": "local_bare_origin"
+    },
+    "prhm_config_center": {
+      "repository": null,
+      "verification": "no_remote"
+    },
+    "rahekomak": {
+      "repository": null,
+      "verification": "no_remote"
+    },
+    "help": {
+      "repository": "prhmonline/help",
+      "verification": "remote"
+    }
+  }
+}
