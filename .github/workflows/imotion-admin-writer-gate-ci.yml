@@ -5,10 +5,13 @@ on:
       - "ops/imotion/admin_writer_gate.py"
       - "tests/test_imotion_admin_writer_gate.py"
       - "docs/imotion-admin-writer-gate.md"
+      - "ops/imotion/compose.writer-gate.override.yml"
       - ".github/workflows/imotion-admin-writer-gate-ci.yml"
   push:
     paths:
       - "ops/imotion/admin_writer_gate.py"
+      - "ops/imotion/compose.writer-gate.override.yml"
+      - "docs/imotion-admin-writer-gate.md"
       - "tests/test_imotion_admin_writer_gate.py"
       - ".github/workflows/imotion-admin-writer-gate-ci.yml"
 permissions:

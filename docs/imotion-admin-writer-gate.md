@@ -34,47 +34,70 @@ Baseline fingerprint observed in isolated preflight on 2026-10-12:
 
 The renderer rejects source drift, unexpected routing layout, double-injection,
 invalid flag paths, an existing output file and output in the managed config or
-live production webroot. It modifies only two dynamic location blocks of
-the SSL vhost admin.i-motion.ir. A future independent approval-bound deployment
-action must verify the commit SHA of this renderer and the exact Nginx config
-preimage, render a candidate, test nginx -t in a disconnected container, then
-install/activate it under an explicit deployment approval. There is currently
-no such authorized deployment action attached to this PR.
+live production webroot. A non-default flag path requires a separate explicit
+test-only switch. It modifies only two dynamic location blocks of the SSL vhost
+admin.i-motion.ir. A future independent approval-bound deployment action must
+verify the commit SHA, Nginx config preimage, and Compose preimage; render and
+test candidates before any approved installation. No approved deployment action
+is attached to this PR.
 
-## Control state, security and reversibility
+## Root-only control mount; no PHP access
 
-Default sentinel path is
-/home/imotion/.deploy-gates/admin-i-motion-ir.cutover. The future controller
-must create this directory outside the document root (root-owned, traversable
-by Nginx) and create/remove only the sentinel atomically with a restrictive,
-audited host-action workflow. A sentinel file alone does nothing until a
-reviewed Nginx config is deployed.
+Default sentinel path **inside the Nginx container** is:
 
-The web server's /home/imotion mount is read-only; the PHP container has a
-writeable /home/imotion mount. A security-reviewed control must ensure
-untrusted application code cannot create, remove or replace the sentinel
-(e.g. root-owned directory not writable by the imotion PHP user). Never
-make this a public URL or store secrets in the sentinel.
+    /run/prhm-imotion-writer-gate/admin-i-motion-ir.cutover
+
+This MUST be a read-only bind mount from a root-owned host path, NOT from
+/home/imotion (owned by imotion, therefore replaceable by the PHP user).
+
+Proposed additional, **NOT installed** Compose override:
+
+    ops/imotion/compose.writer-gate.override.yml
+
+It adds a bind from host source:
+
+    /opt/imotion-stack/control/imotion-admin-writer-gate
+
+to the container destination:
+
+    /run/prhm-imotion-writer-gate
+
+with read_only: true and create_host_path: false. The future Git-reviewed
+controller must provision the source directory root:root 0755, with all parents
+root-owned and inaccessible for writes by imotion, and must prove the PHP
+container CANNOT mount/write it while Nginx UID 101 CAN stat a root-owned
+0644 flag. PHP currently has /home/imotion rw; Nginx has /home/imotion ro.
+No secrets, token, or user data are stored in the flag. Host-only root action
+creates/removes the flag atomically; the override remains a distinct deployment
+change requiring authorization, container recreate and health validation.
 
 When the flag is absent, routing is unchanged. When present, the dynamic
 locations return 503, including GET, POST and OPTIONS. Other iMotion domains
-are unaffected. Restore the original, exact config on abort if required; never
-silently overwrite Nginx config or assume a flag transition restarts workers.
-The config needs installation and testing before the flag can protect writes.
+are unaffected. Retain exact old Nginx and Compose configs and reversion method
+for rollback. A sentinel file has NO effect until a reviewed Nginx config and
+the private bind mount are active.
 
-HTTP admission is only one element. Quiesce all scheduled SMS, device,
-WordPress and maintenance writers, coordinate imotion-frontend-watchdog.timer,
-drain in-flight requests, take a new consistent MariaDB backup and finalize
-Shared delta sync. This gate does not stop direct DB writes, background jobs,
-WebSocket sessions or external device requests. Review all relevant ingress
-routes (including proxy/canonical aliases) and bypasses before Production
-approval. Keep monitoring on where safe.
+HTTP admission is only one element. Quiesce SMS, device, WordPress and
+maintenance writers, coordinate imotion-frontend-watchdog.timer, drain
+in-flight requests, take a new consistent MariaDB backup and finalize Shared
+delta sync. This gate does not stop direct DB writes, background jobs,
+WebSocket sessions or external device requests. Review all alternate ingress
+routes and bypasses before Production approval; keep monitoring on where safe.
 
-## Preflight integration tests (no Production config changes)
+## Isolated HTTP integration and CI
 
-With an unconnected nginx:1.27-alpine container (--network none, no published
-ports), the generated candidate Nginx config passed nginx -t.
-Actual HTTPS status tests with a sandbox-only flag path gave:
+The Nginx renderer, full real Nginx config and candidate override are tested
+outside Production. Run Python unit tests via:
+
+    python3 tests/test_imotion_admin_writer_gate.py -v
+
+Use a root-owned sandbox directory (e.g. under sticky /var/tmp) with 0755
+permissions, mounted READ-ONLY in a network-isolated nginx:1.27-alpine test
+container at /run/prhm-imotion-writer-gate. Do not mount the PHP-writable
+/home/imotion tree as the flag source. Never publish test container ports.
+
+The earlier isolated functional test used a sandbox-only flag path and passed
+nginx -t; HTTP statuses were:
 
 | Request | Flag absent | Flag present |
 |---|---:|---:|
@@ -85,31 +108,36 @@ Actual HTTPS status tests with a sandbox-only flag path gave:
 | GET /assets/.empty | 200 | 200 |
 | GET /nginx-status | 200 | 200 |
 
-*502 expected: isolated test instance had no PHP upstream. Removing
-the flag restored the pre-gate behavior without config reload. The sandbox
-container was removed. This proves isolated HTTP behavior, not real live
-application health or safe production deployment.
+*502 expected: isolated test instance had no PHP upstream. Removing the
+flag restored prior behavior without reload. The sandbox container was removed.
+This proves isolated HTTP behavior, not Production readiness.
 
-Local unit tests:
-
-    python3 tests/test_imotion_admin_writer_gate.py -v
+A second isolated test on 2026-10-12 validated the final root-only
+mount design: a root:root 0755 host directory was mounted RO at
+/run/prhm-imotion-writer-gate. The imotion user could not create
+the flag; the actual PHP container could not see the flag path;
+Nginx UID 101 could read, but not write, the bound flag. The real
+full Nginx config passed nginx -t. GET/POST/OPTIONS/index.php
+returned 503 with flag active, while static and status returned 200;
+removing it restored baseline behavior. Disposable test container and
+root-owned flag directory were both cleaned up. No production service
+or configuration was changed.
 
 ## Production acceptance gates — all required
 
-- Reviewed Pull Request merged to a fixed Git commit; SHA-bound installation
-  control approved by the owner; no ad hoc live config edits.
-- Source Nginx config SHA and target vhost still match the expected snapshot;
-  inspect proxy aliases and complete ingress routing.
-- Root-only flag directory/sentinel permission tests succeed in the actual
-  Nginx worker and PHP user namespaces; no publicly writable control surface.
-- Block/no-block functional tests on staging or equally isolated dry-run,
-  plus HTTP/static/health regression and origin/upstream verification.
-- Confirm zero in-flight writers, pause relevant timers and watchdog by
-  approved operation, obtain final DB backup and verified delta sync.
-- Pre-stage known-good old Nginx config and prior dirty Production tree as
-  recoverable versions. Test atomic code exchange and reversal with opcache
-  refresh, restore exact timer state on abort. Monitor immediate catch-up.
-- Audited logger records repo, SHA, destination, timestamp, test results,
-  explicit approval and rollback when applicable.
+- Reviewed PR merged to an immutable commit; exact SHA-bound, single-use
+  installation action approved by the owner. NO ad hoc live config edits.
+- Nginx and Compose preimages match reviewed fingerprints; tests cover all
+  alternate ingress and app-level background writers.
+- Root-owned directory /opt/imotion-stack/control/… is NOT writable/replaceable
+  from PHP; Nginx worker CAN stat the flag in its read-only mount.
+- Nginx config syntax and HTTP block/no-block cases pass in isolated context;
+  planned Compose merged output mounts only Nginx, not PHP.
+- Quiesce and drain all writers, pause relevant timers/watchdog; take fresh
+  consistent MariaDB backup; final Shared sync and hash/permission checks.
+- Retain known-good Nginx config and old code including 27 dirty Production
+  files; test atomic swap/reversal and PHP opcache refresh.
+- Logged exact SHA, approval, pre/post health, destination, timestamp,
+  unit states and rollback result.
 
-Production remains NO-GO until these separate controls are complete.
+**Production remains NO-GO until separate controls are complete.**

@@ -44,6 +44,24 @@ class GateTests(unittest.TestCase):
             self.assertIn("if (-f " + gate.DEFAULT_FLAG + ") { return 503; }", part)
         self.assertLess(segment.find(gate.MARKER), segment.find('if ($request_method = OPTIONS)'))
 
+    def test_default_flag_uses_private_readonly_docker_bind(self):
+        self.assertEqual(gate.DEFAULT_FLAG,
+                         "/run/prhm-imotion-writer-gate/admin-i-motion-ir.cutover")
+        self.assertNotIn("/home/imotion", gate.DEFAULT_FLAG)
+
+    def test_cli_nondefault_flag_requires_test_switch(self):
+        with tempfile.TemporaryDirectory() as d:
+            src = os.path.join(d, "in.conf")
+            dst = os.path.join(d, "out.conf")
+            with open(src, "w") as f: f.write(FIXTURE)
+            sha = hashlib.sha256(FIXTURE.encode()).hexdigest()
+            p = subprocess.run([sys.executable, str(SCRIPT), "--input", src,
+                "--output", dst, "--expected-sha256", sha,
+                "--flag-path", "/tmp/insecure-flag"],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            self.assertNotEqual(p.returncode, 0)
+            self.assertFalse(os.path.lexists(dst))
+
     def test_double_application_fails_closed(self):
         with self.assertRaises(ValueError):
             gate.render(gate.render(FIXTURE))
@@ -73,7 +91,7 @@ class GateTests(unittest.TestCase):
             def call(expected):
                 return subprocess.run([sys.executable, str(SCRIPT), "--input", src,
                     "--output", dst, "--expected-sha256", expected,
-                    "--flag-path", "/tmp/candidate-gate-test"],
+                    "--flag-path", "/run/prhm-imotion-writer-gate/candidate-test", "--test-only-nondefault-flag"],
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             self.assertNotEqual(call("0"*64).returncode, 0)
             self.assertFalse(os.path.exists(dst))

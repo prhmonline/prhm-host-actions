@@ -10,7 +10,7 @@ import os
 import re
 import sys
 
-DEFAULT_FLAG = "/home/imotion/.deploy-gates/admin-i-motion-ir.cutover"
+DEFAULT_FLAG = "/run/prhm-imotion-writer-gate/admin-i-motion-ir.cutover"
 SERVER_START = (
     "    server {\n"
     "        listen 443 ssl http2;\n"
@@ -38,8 +38,8 @@ def validate_flag(flag):
         raise ValueError("flag path must be a safe absolute literal")
     if any(part in ("", ".", "..") for part in flag.split("/")[1:]):
         raise ValueError("flag path contains empty, . or .. segment")
-    if flag.startswith("/home/imotion/domains/"):
-        raise ValueError("flag must not reside in the served application tree")
+    if flag.startswith("/home/imotion/"):
+        raise ValueError("flag must not reside in the PHP-writable home mount")
     return flag
 
 
@@ -78,7 +78,11 @@ def main(argv=None):
     parser.add_argument("--output", required=True)
     parser.add_argument("--expected-sha256", required=True)
     parser.add_argument("--flag-path", default=DEFAULT_FLAG)
+    parser.add_argument("--test-only-nondefault-flag", action="store_true",
+                        help="permit alternate sentinel only for isolated tests")
     args = parser.parse_args(argv)
+    if args.flag_path != DEFAULT_FLAG and not args.test_only_nondefault_flag:
+        parser.error("non-default flag requires --test-only-nondefault-flag")
     if not re.match(r"^[0-9a-f]{64}$", args.expected_sha256):
         parser.error("expected SHA256 must be 64 lowercase hex characters")
     infile = os.path.realpath(args.input)
