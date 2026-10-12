@@ -1,0 +1,13 @@
+# Proposed, NOT installed. Append only as a reviewed third -f Compose input.
+# Host precondition: root:root 0755 directory created at source path; PHP must
+# NOT have that source mounted and imotion must NOT be able to replace it.
+# Target is read-only in Nginx; root-only controller toggles the sentinel.
+services:
+  nginx:
+    volumes:
+      - type: bind
+        source: /opt/imotion-stack/control/imotion-admin-writer-gate
+        target: /run/prhm-imotion-writer-gate
+        read_only: true
+        bind:
+          create_host_path: false

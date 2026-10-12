@@ -1,0 +1,32 @@
+name: iMotion Admin Writer Gate
+on:
+  pull_request:
+    paths:
+      - "ops/imotion/admin_writer_gate.py"
+      - "tests/test_imotion_admin_writer_gate.py"
+      - "tests/imotion_admin_writer_gate_nginx_integration.sh"
+      - "docs/imotion-admin-writer-gate.md"
+      - "ops/imotion/compose.writer-gate.override.yml"
+      - ".github/workflows/imotion-admin-writer-gate-ci.yml"
+  push:
+    paths:
+      - "ops/imotion/admin_writer_gate.py"
+      - "ops/imotion/compose.writer-gate.override.yml"
+      - "docs/imotion-admin-writer-gate.md"
+      - "tests/test_imotion_admin_writer_gate.py"
+      - "tests/imotion_admin_writer_gate_nginx_integration.sh"
+      - ".github/workflows/imotion-admin-writer-gate-ci.yml"
+permissions:
+  contents: read
+jobs:
+  gate-unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test fail-closed renderer
+        run: python3 tests/test_imotion_admin_writer_gate.py -v
+      - name: Syntax-check Python
+        run: python3 -m py_compile ops/imotion/admin_writer_gate.py tests/test_imotion_admin_writer_gate.py
+      - name: Isolated Nginx HTTPS gate integration (no network, no published ports)
+        run: bash tests/imotion_admin_writer_gate_nginx_integration.sh
