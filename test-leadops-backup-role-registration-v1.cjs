@@ -12,14 +12,7 @@ function fixtures(){
  "  leadops_economics_inputs_foundation_v1:{operation:'host_action.leadops_economics_inputs_foundation_v1',kind:'leadops_economics_inputs_foundation_v1'},\n"+
  "async function applyHostActionV2(action){const spec=hostActionV2Spec(action);return spec;}\n";
  const mcp="const x=['leadops_economics_inputs_foundation_v1',];";
- const policy=JSON.stringify({
-  schema_version:'prhm.approval-policy.v1',default_deny:true,one_time_use:true,
-  levels:{'4':{human_approval:true}},
-  deployment_integrity:{git_first_required:true,exact_commit_sha_required_for_production:true,
-    direct_production_file_edit_forbidden:true},
-  operations:{'host_action.leadops_economics_inputs_foundation_v1':{level:3,risk:'high'}},
-  typed_scopes:[],dirty_custom_property:{kept:true}
- },null,2)+'\n';
+ const policy=fs.readFileSync(path.join(__dirname,'leadops-backup-role-reviewed-policy-v1.json'),'utf8');
  const sources={executor,mcp,policy,helper,sql};
  const expected=Object.fromEntries(['executor','mcp','policy'].map(k=>[k,r.sha(sources[k])]));
  return {sources,expected};
@@ -58,6 +51,9 @@ test('reviewed SQL + helper Git blobs remain pinned',()=>{
  assert.equal(r.blob(sql),r.SQL_BLOB);
  assert.equal(r.blob(helper),r.HELPER_BLOB);
  assert.match(helper,/leadops_backup_role_provision_v1/);
+ const canon=fs.readFileSync(path.join(__dirname,'leadops-backup-role-reviewed-policy-v1.json'));
+ assert.equal(r.blob(canon),r.CANONICAL_POLICY_BLOB);
+ assert.equal(r.sha(canon),r.LIVE.policy);
 });
 test('exact source registration changes only intended surfaces',()=>{
  const f=fixtures(),p=r.buildCandidates(f.sources,{expected:f.expected});
@@ -68,7 +64,7 @@ test('exact source registration changes only intended surfaces',()=>{
  assert.equal(policy.operations[r.OPERATION].risk,'critical');
  assert.equal(policy.operations[r.OPERATION].one_time_use,true);
  assert.equal(policy.typed_scopes.filter(x=>x.operation===r.OPERATION).length,1);
- assert.equal(policy.dirty_custom_property.kept,true);
+ assert.equal(policy.version,'2026-10-12.1-policy-git-live-reconciliation-v1');
  assert.equal(p.candidate_sources.helper,helper);
  assert.equal(p.candidate_sources.sql,sql);
  assert.match(p.candidate_sources.executor,/applyLeadopsBackupRoleProvisionV1/);
@@ -126,7 +122,7 @@ test('live policy lacking canonical Git-first protections fails closed',()=>{
  const policy=JSON.stringify(bad,null,2)+'\n';
  assert.throws(()=>r.buildCandidates({...f.sources,policy},
    {expected:{...f.expected,policy:r.sha(policy)}}),
-   /missing_git_first_runtime_integrity_guard/);
+   /post_sync_policy_blob_mismatch/);
 });
 test('canonical Git-first protections survive registration',()=>{
  const f=fixtures();
@@ -135,6 +131,15 @@ test('canonical Git-first protections survive registration',()=>{
  assert.equal(x.deployment_integrity.git_first_required,true);
  assert.equal(x.deployment_integrity.exact_commit_sha_required_for_production,true);
  assert.equal(x.deployment_integrity.direct_production_file_edit_forbidden,true);
+});
+test('legacy live policy cannot be used for a backup role registration',()=>{
+ const f=fixtures(),old=JSON.parse(f.sources.policy);
+ old.version='2026-10-02.1-control-plane-current-owner-bootstrap-repair-v1';
+ delete old.deployment_integrity;
+ const legacy=JSON.stringify(old,null,2)+'\\n';
+ assert.throws(()=>r.buildCandidates({...f.sources,policy:legacy},
+   {expected:{...f.expected,policy:r.sha(legacy)}}),
+   /post_sync_policy_blob_mismatch/);
 });
 test('helper is not allowed to self-authorize registration',()=>{
  assert.equal(typeof r.buildCandidates,'function');
