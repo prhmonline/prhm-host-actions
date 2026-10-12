@@ -1,14 +1,21 @@
 'use strict';
 // Pure, non-executable Agent 3 registration candidate. Signed installer required.
 const crypto=require('node:crypto');
+const fs=require('node:fs');
+const path=require('node:path');
 const ACTION='leadops_backup_role_provision_v1',OPERATION='host_action.'+ACTION;
 const SOURCE_COMMIT='325f8fcce1ee9289125d7cd08e495c331911f740';
 const SQL_BLOB='0ecbca4fd712f8a6e87595be526305763ad539d3';
 const HELPER_BLOB='dc2551dc17e4e6cc975fc365128905adbed4b3bb';
+const CANONICAL_POLICY_BLOB='7e7d22bee0156e4fa3def84b3739f84e8b614bcd';
+const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
+const blob=b=>{b=Buffer.from(b);return crypto.createHash('sha1').update('blob '+b.length+'\0').update(b).digest('hex');};
+const canonicalPolicyBytes=fs.readFileSync(path.join(__dirname,'leadops-backup-role-reviewed-policy-v1.json'));
+if(blob(canonicalPolicyBytes)!==CANONICAL_POLICY_BLOB)throw Error('canonical_policy_git_blob_mismatch');
 const LIVE=Object.freeze({
   executor:'410406ba0965ef3a5cad6da6306a85335e38acc3637fb6ed60fa42200a10c2e0',
   mcp:'bd768f992dab75710558e3f47187c311c2ee5b5ec6f5751a74e0bbfa64729166',
-  policy:'148fe2a724befc15cd8c731b0195d83e254d39215792a5084b70dd5b5c178174'
+  policy:sha(canonicalPolicyBytes)
 });
 const TARGETS=Object.freeze({
   executor:'/opt/prhm-agent-selfmaint-exec/server.js',
@@ -17,8 +24,6 @@ const TARGETS=Object.freeze({
   helper:'/opt/prhm-agent-selfmaint-exec/actions/leadops-backup-role-provision-v1.cjs',
   sql:'/opt/prhm-agent-selfmaint-exec/actions/leadops-backup-role-provision-v1.sql'
 });
-const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
-const blob=b=>{b=Buffer.from(b);return crypto.createHash('sha1').update('blob '+b.length+'\0').update(b).digest('hex');};
 function fail(code){throw Error(code);}
 function replaceOnce(s,needle,value,label){
   if(s.split(needle).length!==2)fail('anchor_mismatch:'+label);
@@ -29,6 +34,7 @@ function buildCandidates(src,{expected=LIVE}={}){
     if(typeof src[key]!=='string'||sha(src[key])!==expected[key])fail('owner_sha_mismatch:'+key);
     if(src[key].includes(ACTION))fail('already_registered:'+key);
   }
+  if(blob(src.policy)!==CANONICAL_POLICY_BLOB)fail('post_sync_policy_blob_mismatch');
   if(blob(src.sql)!==SQL_BLOB)fail('sql_binding_mismatch');
   if(blob(src.helper)!==HELPER_BLOB)fail('helper_binding_mismatch');
   const executorAnchor="  leadops_economics_inputs_foundation_v1:{operation:'host_action.leadops_economics_inputs_foundation_v1',kind:'leadops_economics_inputs_foundation_v1'},";
@@ -89,5 +95,5 @@ function buildCandidates(src,{expected=LIVE}={}){
     candidate_sources:output
   });
 }
-module.exports={ACTION,OPERATION,SOURCE_COMMIT,SQL_BLOB,HELPER_BLOB,
+module.exports={ACTION,OPERATION,SOURCE_COMMIT,SQL_BLOB,HELPER_BLOB,CANONICAL_POLICY_BLOB,
   LIVE,TARGETS,sha,blob,buildCandidates};
