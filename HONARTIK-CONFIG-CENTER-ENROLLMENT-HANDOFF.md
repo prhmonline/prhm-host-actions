@@ -37,3 +37,14 @@ All failed/unverified rollbacks must block further attempts pending investigatio
 The offline Node test suite contains 16 synthetic tests covering approval failure, wrong SHA, credential preexistence, dirty source, invalid input schema, privilege escalation, bad file mode, secret endpoint access, failed CLI check, audit failure and rollback failure. It does not perform any production mutation or create secrets.
 
 Go-live is only complete after a separately approved adapter/policy registration and real server-side test. Do not claim this PR alone activates the Agent 3 action.
+
+## Git-first implementation update (2026-10-13)
+
+- Live read-only SHA checks against the actual Control Plane: all four pinned base/executor/policy/MCP preimages match the registration candidate.
+- `honartik-config-center-registration-candidate-v1.cjs`: exact-preimage, additive base/executor/MCP/policy source generation. This code **does not install** any of these candidates.
+- `honartik-config-center-trusted-adapter-v1.cjs`: fixed, typed bridge for the eight adapter methods; it projects out secret-bearing output fields, forbids arbitrary action names, and never consumes signed approval. It depends on a **separately trusted and installed server-side host implementation**. It is NOT a complete privileged credential provisioning backend.
+- Registration's executor dispatch is intentionally **fail-closed**, even if the runner path exists: it raises `honartik_enrollment_dispatch_not_yet_approved`. Before installation, replace this guard only through reviewed, SHA-pinned Git with a fully implemented trusted runner that binds the fixed PHP issuance/revoke script and independently verifies postconditions. Never simply delete the guard or fabricate an environment variable.
+- Node contract tests cover registration anchors, duplicate/drift and policy, plus the adapter happy path, denied approval, rollback and audit redaction. CI run 38404062122 on `1977d877ab0d971b1acdd117db405bb9e2368d26` passed.
+- Honartik production backend verified at `7ae8b99677ec13b3498b4a5425267a49fc87806e`, but the live read-only check still returns `CONFIG_CENTER_READONLY_FAIL`. The read-only consumer is opt-in diagnostic only.
+- **Remaining before approved install:** implement actual fixed privileged host IO and reviewed runner, prove exact script and Config Center release identity, add atomic protected installation/restart/rollback for registration, reconcile any dirty production worktrees without deleting untracked business data, then request a new signed Level-4 authorization. Do not consume an old approval request. After authorized install, execute real postconditions and audit.
+- **Current state:** PR remains draft; Source/CI PASS, runtime registration NOT installed, credential NOT issued, live enrollment NO-GO, no changes to application payments/SMS/reservations.
