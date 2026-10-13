@@ -11,7 +11,8 @@
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
-const {ACTION} = require('./honartik-config-center-atomic-registration-installer-v1.cjs');
+const ACTION='honartik_config_center_registration_install_v1';
+const EXPECTED_POLICY_VERSION='2026-10-13.2-honartik-config-center-registration-bootstrap-v1';
 const PUBLIC_KEY='/var/lib/prhm-company-approval/ed25519-public.pem';
 const CONSUMED_DIR='/var/lib/prhm-company-approval/consumed';
 const OPERATION='host_action.'+ACTION;
@@ -94,7 +95,7 @@ function readPrivateBoundaryFile(filename,{maxBytes=32768,ownerUid=null}={}){
   return fs.readFileSync(fd);
  }finally{fs.closeSync(fd)}
 }
-function verifyAlreadyConsumedFromLive({token,manifestSha,commitSha,nowSec,expectedPolicyVersion}){
+function verifyAlreadyConsumedFromLive({token,manifestSha,commitSha,nowSec}){
  // Root-owned, separately provisioned trusted bootstrap ONLY. No caller paths.
  requireThat(process.getuid?.()===0,'trusted_root_mediator_required');
  const parent=fs.lstatSync(CONSUMED_DIR);
@@ -111,10 +112,10 @@ function verifyAlreadyConsumedFromLive({token,manifestSha,commitSha,nowSec,expec
  try{ledger=JSON.parse(ledgerBytes.toString('utf8'))}
  catch{throw new Error('approval_consumption_json_invalid')}
  return validateConsumedReceipt({
-  token,publicKey,ledger,manifestSha,commitSha,nowSec,expectedPolicyVersion
+  token,publicKey,ledger,manifestSha,commitSha,nowSec,expectedPolicyVersion:EXPECTED_POLICY_VERSION
  });
 }
 module.exports=Object.freeze({
- ACTION,OPERATION,PUBLIC_KEY,CONSUMED_DIR,expectedArgsSha256,
+ ACTION,OPERATION,EXPECTED_POLICY_VERSION,PUBLIC_KEY,CONSUMED_DIR,expectedArgsSha256,
  parseSignedApproval,validateConsumedReceipt,verifyAlreadyConsumedFromLive
 });
