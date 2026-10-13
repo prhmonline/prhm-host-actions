@@ -13,8 +13,8 @@ const CONTRACT = Object.freeze({
   scope: 'config:read',
   backendSha: '7ae8b99677ec13b3498b4a5425267a49fc87806e',
   configCenterRelease: 'git-9b41e4534382',
-  scriptGitSha: '740827bc445d028bca285e20b13b8765c4d75f28',
-  scriptSha256: 'b9978bd782282ee385b487cc7d4614edc2b6f4f3b8c513797c657b32f0d50903',
+  scriptGitSha: 'a9da4735445dcd0833cd1ef5435c77884cb74e64',
+  scriptSha256: '9ccbcbdba457691e1d140d6e32ad379cbe6d98d5448c13970220c72ba2e8278c',
   credentialName: 'Honartik Backend Readonly Production 20261012',
   credentialPath: '/home/honartik/.config/prhm/config-center/readonly-machine-token',
   consumer: 'php yii config-center/check'
