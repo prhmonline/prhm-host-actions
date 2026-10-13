@@ -7,7 +7,7 @@ The installed MCP enum, Self-Maintenance action specs, Host Actions executor, an
 
 ## One-time bootstrap required
 1. Extend the EXISTING Host Actions v2 request/confirm/authorize-consume/execute pipeline with the shared fixed action prhm_action_registry_install_v1. Preserve all existing action-only requests and approvals.
-2. Bind canonical arguments {action,project,source_commit,manifest_sha256} to Approval Center Ed25519, policy, 180s TTL, single-use receipt, and runtime request. Refuse caller-supplied keys or clocks.
+2. Bind canonical arguments {action,project,source_commit,manifest_commit,manifest_sha256} to Approval Center Ed25519, policy, 180s TTL, single-use receipt, and runtime request. Refuse caller-supplied keys or clocks.
 3. Read the immutable manifest blob from prhmonline/prhm-host-actions at source_commit and check the exact manifest SHA; independently attest the four live owner SHAs and every root-owned action asset. Reuse prhm-action-registry-gateway-v1.cjs, never an arbitrary shell/SQL endpoint.
 4. Reuse the project's existing atomic rollback-safe installer (for Honartik: honartik-config-center-atomic-registration-installer-v1.cjs). Do not add a second competing installer. Preflight must prove backup-root, existing state/dirty files, service health and byte-preserving rollback before requesting Level-4.
 5. Readiness phases: preinstall checks source, trusted route and rollback; authorized additionally requires fresh consumed signed approval; active additionally requires new tool discovery and complete live health verification. Requiring target tool discovery at PREINSTALL creates a circular deadlock.
@@ -18,3 +18,7 @@ For each project, review and commit a manifest and bounded handler to Git, run C
 
 ## Honartik checkpoint
 PR #190 contains the already-reviewed Honartik five assets/four Control Plane owner registration installer and Laravel/MariaDB tests. The shared module tests Honartik and a synthetic MoeinShow manifest; MoeinShow Production is untouched. Neither the shared route nor the Honartik enrollment action is installed yet. No fresh executable Level-4 request should be created until an independently reviewed trust-boundary bootstrap exists and passes preflight. Do not reuse consumed authorization.
+
+## Two-commit Git release identity (mandatory)
+
+Do not embed the SHA of a Git commit in a manifest inside that same commit: this creates an impossible self-reference. First commit and review application/handler source (source_commit). Then commit the manifest referencing source_commit in a later commit (manifest_commit). The trusted runner retrieves the manifest at manifest_commit, proves its bytes match manifest_sha256, and independently checks all staged source/asset hashes against source_commit. All five canonical arguments are bound into a fresh, signed, once-only Level-4 approval. Updating only the manifest commit or any one SHA invalidates the approval.
