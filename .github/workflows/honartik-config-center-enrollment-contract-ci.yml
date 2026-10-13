@@ -5,6 +5,8 @@ on:
     paths:
       - 'honartik-config-center-enrollment-action-v1.cjs'
       - 'test-honartik-config-center-enrollment-action-v1.cjs'
+      - 'honartik-config-center-registration-candidate-v1.cjs'
+      - 'test-honartik-config-center-registration-candidate-v1.cjs'
       - '.github/workflows/honartik-config-center-enrollment-contract-ci.yml'
   push:
     branches:
@@ -12,6 +14,8 @@ on:
     paths:
       - 'honartik-config-center-enrollment-action-v1.cjs'
       - 'test-honartik-config-center-enrollment-action-v1.cjs'
+      - 'honartik-config-center-registration-candidate-v1.cjs'
+      - 'test-honartik-config-center-registration-candidate-v1.cjs'
       - '.github/workflows/honartik-config-center-enrollment-contract-ci.yml'
 
 permissions:
@@ -23,10 +27,12 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - name: Validate action syntax and fail-closed transaction contract
+      - name: Validate syntax and offline fail-closed contracts
         shell: bash
         run: |
           set -euo pipefail
           node --check honartik-config-center-enrollment-action-v1.cjs
           node --check test-honartik-config-center-enrollment-action-v1.cjs
-          node --test test-honartik-config-center-enrollment-action-v1.cjs
+          node --check honartik-config-center-registration-candidate-v1.cjs
+          node --check test-honartik-config-center-registration-candidate-v1.cjs
+          node --test test-honartik-config-center-enrollment-action-v1.cjs test-honartik-config-center-registration-candidate-v1.cjs
