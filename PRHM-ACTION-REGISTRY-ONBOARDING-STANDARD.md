@@ -35,3 +35,32 @@ Live `/opt/prhm-agent-selfmaint/server.js` uses recursively key-sorted JSON:
 ## Production blocker independently verified
 
 Read-only Agent 3 preflight showed `installer_refresh_l4_state_file_sha_mismatch` on an unrelated historical repair helper (current file SHA `b3b99e33fccb9122bcb5155cce64e4a6e9c73ce2404860d43aaa0def2a12db1e`). Do not rebind or reuse its Level-4 action to install this shared gateway. The current preimage SHA values of the four control-plane owners match the Honartik contract. A trusted one-time **five-field-capable registrar bootstrap** with exact reviewed source SHA, rollback and fresh Level-4 consent is still required; source-only helper/CI cannot register live MCP tools.
+
+## 2026-10-13: Verified rollback and Honartik adapter source checkpoint
+
+The shared registry gateway now REQUIRES `trustedRollback` and
+`verifyOriginalState` before beginning any authorized registration.
+After installer, MCP discovery, or audit failures, success is forbidden:
+the executor must re-attest original owner and missing-asset state, invoke
+its reviewed project rollback when needed, and re-attest restoration.
+Unverifiable restoration yields a hard error, never a green status.
+Tests cover success, installer failure, discovery failure, audit failure,
+missing rollback callbacks and failed rollback in the mandatory main/PR CI.
+
+Honartik adds `executeAfterSharedRegistryApproval` to the pre-existing atomic
+installer, without new installer or CLI apply. This checks the actual consumed
+shared-registry Ed25519 receipt, its canonical five fields, the pinned source
+Git copy of the Honartik manifest, the complete original asset list, live
+owner preimage pins and generated owner postimage SHA values before using
+the reviewed atomic owner/asset transaction.
+
+### Remaining mandatory runtime proof before any Level-4 request
+
+A root-owned trusted Host Actions executor implementation must expose the
+five-field typed request, confirm and authorize-consume path; supply a
+dedicated out-of-process, persistent Honartik rollback capability plus
+independent owner/asset/service preimage verifier; provide SHA-pinned Git
+file readers; and install the shared and Honartik action in a single reviewed,
+rollback-safe bootstrap. Do not use an in-memory rollback closure across
+executor or MCP service restarts. Current code and CI DO NOT establish
+a durable crash-safe bootstrap, and no Production mutation is authorized.
