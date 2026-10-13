@@ -90,3 +90,20 @@ Latest [GitHub Actions run 38413410123](https://github.com/prhmonline/prhm-host-
 **Authoritative live state (13 October):** Agent 3 Host Actions registry does **not** list `honartik_config_center_readonly_enroll_v1`; Honartik `php console/yii config-center/check` still returns exit 1 `CONFIG_CENTER_READONLY_FAIL`. PR #190 remains Draft/unmerged. **NO-GO** for production enrollment or MoeinShow rollout.
 
 **Only remaining install-critical gate:** build/install the fixed source-to-target atomic registration bootstrap in a pre-authorized trust channel, run DB-backed rollback and race tests against an isolated real schema, secure separate explicit Level-4 approval, then execute read-only health and auditable rollback verification. Do not treat the mere presence of a synthetic approval-receipt-shaped JavaScript object as a fresh authorization; only the existing trusted server-side `authorize-consume` path is authoritative.
+
+## 2026-10-13 — Atomic source-only registration bootstrap candidate (57/57 PASS)
+
+Source:
+- `honartik-config-center-atomic-registration-installer-v1.cjs`: a **source-only** nine-target registration candidate. It constructs an exact plan from the already pinned four live file SHA256 preimages and five root-owned staged assets. The production entrypoint derives this plan internally, not from caller-provided paths or a caller-controlled filesystem.
+- `test-honartik-config-center-atomic-registration-installer-v1.cjs`: an in-memory simulated filesystem exercises success, early rejection, foreign preexisting asset, a failure *after* a rename, partial registration, service-health failure, unsafe backup directory, failed preimage backup and intentionally unverifiable rollback.
+
+Transaction contract:
+1. A **separately trusted** bootstrap mediator must verify a fresh, signed, single-use Level-4 approval scoped to `honartik_config_center_registration_install_v1` and the reviewed manifest/source Git SHA before it calls the installer. Boolean proof fields are only an internal post-mediation assertion, **not** a replacement for signature verification.
+2. The source staging path is fixed to `/opt/prhm-agent-selfmaint-exec/staged/honartik-config-center-v1`, and backup root is fixed to `/var/backups/prhm-honartik-config-center-registration-v1`. Stage must be independently prepared with matching source SHA and root ownership; the private backup root must preexist, root-owned and non-group-readable. **Neither prerequisite has been installed by this PR.**
+3. Every file preimage is SHA-checked immediately before mutation; backups are checked and fsynced before changing the first live file. Every target replacement is atomic per file, with a post-write SHA/owner/mode check. Only the specified five action assets and four Control Plane owners may change.
+4. Fixed services are restarted/health-checked after installation; any failure triggers reverse restoration and service recovery checks. An unverified rollback is a hard failure, not a success. This is a **compensating transaction across files**, not a globally atomic simultaneous cutover.
+5. There is **no standalone apply CLI** or registered MCP endpoint. This PR never issues a credential. A legitimate separate registration bootstrap must be implemented and authorized before the actual Honartik enrollment action becomes callable.
+
+**CI evidence:** [GitHub Actions run 38418866629](https://github.com/prhmonline/prhm-host-actions/actions/runs/38418866629) completed **SUCCESS: 57/57 Node tests, both PHP lint checks PASS, fixed source SHA checks PASS**. Synthetic tests do not count as a real Laravel DB-backed rollback/race test or an approved installation.
+
+**Still open:** real isolated DB-backed issuance/revocation/race tests; integration with a trustworthy signed L4 registration bootstrap and fixed independent install worker; staged source, backup-root and service restart preflights; new approval; real install plus `CONFIG_CENTER_READONLY_PASS tenant=honartik revision=1 source=remote`. Until then: **NO-GO Production, PR remains Draft**. No previous approval request may be replayed, and neither Honartik business data nor MoeinShow may be touched.
