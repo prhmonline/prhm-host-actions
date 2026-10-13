@@ -25,27 +25,44 @@ function patchBase(source){
   return once(source,BASE_ANCHOR,BASE_ANCHOR+BASE_LINE,'base');
 }
 function patchExecutor(source){
-  const SPEC_ANCHOR='const HOST_ACTION_V2_SPECS = Object.freeze({\n';
-  const SPEC_LINE="  "+ACTION+":{operation:'"+OPERATION+"',kind:'"+ACTION+"'},\n";
+  const SPEC_ANCHOR='const HOST_ACTION_V2_SPECS = Object.freeze({\\n';
+  const SPEC_LINE="  "+ACTION+":{operation:'"+OPERATION+"',kind:'"+ACTION+"'},\\n";
   let result=once(source,SPEC_ANCHOR,SPEC_ANCHOR+SPEC_LINE,'executor');
-  // Dispatch through a separate, hash-pinned trusted runner. The runner MUST
-  // be installed by an independently authorized SHA-bound transaction first.
-  // A missing runner fails closed (never provisions a credential).
   const DISPATCH='applyHostActionV2=async function(action){';
   if(result.split(DISPATCH).length!==2)fail('executor_dispatch_anchor_mismatch');
-  const RUNNER='/opt/prhm-agent-selfmaint-exec/actions/honartik-config-center-enrollment-runner-v1.cjs';
-  const GUARD=[
+  const RUNNER='/opt/prhm-agent-selfmaint-exec/actions/honartik-config-center-privileged-runner-v1.cjs';
+  const RUNTIME=Object.freeze({
+    [RUNNER]:'136bb3f5f72f1d46d8963a155a0471a9d6997d9c36a1986c84d9f6fa1bc61d07',
+    '/opt/prhm-agent-selfmaint-exec/actions/honartik-config-center-enrollment-action-v1.cjs':'d8d453d881890bf539291cbce025a08f30996f525c6bd93d2103cbe77e28ca23',
+    '/opt/prhm-agent-selfmaint-exec/actions/honartik-config-center-trusted-adapter-v1.cjs':'f0c0554546998f3638ec43013bcf4a6f255d9d6870140dcacc9261ea044e66a8'
+  });
+  const reader=[
     "if(action==='"+ACTION+"'){",
-    " const fs=require('node:fs');",
-    " const runner='"+RUNNER+"';",
-    " const stat=fs.lstatSync(runner);",
-    " if(!stat.isFile()||stat.isSymbolicLink()||stat.uid!==0||(stat.mode&0o022)!==0||stat.size<100||stat.size>1000000)throw new Error('honartik_runner_unsafe');",
-    " // A separate installer must pin and attest the exact runner bytes and source SHA.",
-    " if(!process.env.PRHM_HONARTIK_ENROLL_RUNNER_INSTALLED_SHA)throw new Error('honartik_runner_not_sha_bound');",
-    " throw new Error('honartik_enrollment_dispatch_not_yet_approved');",
+    " if(!receipt||receipt.action!=='"+ACTION+"'||receipt.operation!=='"+OPERATION+"'||receipt.level!==4||receipt.approvalConsumed!==true||receipt.scriptGitSha!=='"+CONTRACT.scriptGitSha+"')throw new Error('honartik_untrusted_dispatch');",
+    " const fs=require('node:fs'),crypto=require('node:crypto'),root='/opt/prhm-agent-selfmaint-exec/actions';",
+    " if(fs.realpathSync(root)!==root)throw new Error('honartik_action_dir_symlink');",
+    " const pins="+JSON.stringify(RUNTIME)+";",
+    " for(const [file,want] of Object.entries(pins)){",
+    "  const st=fs.lstatSync(file);",
+    "  if(!st.isFile()||st.isSymbolicLink()||st.uid!==0||(st.mode&0o022)!==0||st.size<100||st.size>1000000)throw new Error('honartik_module_unsafe');",
+    "  const fd=fs.openSync(file,fs.constants.O_RDONLY|fs.constants.O_NOFOLLOW);",
+    "  let got;try{const si=fs.fstatSync(fd);if(si.ino!==st.ino||si.dev!==st.dev||si.size!==st.size)throw new Error('honartik_module_race');got=crypto.createHash('sha256').update(fs.readFileSync(fd)).digest('hex')}finally{fs.closeSync(fd)}",
+    "  if(got!==want)throw new Error('honartik_module_sha_mismatch');",
+    " }",
+    " const runner=require('"+RUNNER+"');",
+    " if(typeof runner.runAfterTrustedApproval!=='function')throw new Error('honartik_runner_contract');",
+    " return runner.runAfterTrustedApproval(receipt);",
     "}"
   ].join('');
-  return result.replace(DISPATCH,DISPATCH+GUARD);
+  result=result.replace(DISPATCH,"applyHostActionV2=async function(action,receipt){"+reader);
+  const CALL='const result=await applyHostActionV2(action);';
+  if(result.split(CALL).length!==2)fail('executor_trusted_dispatch_call_anchor_mismatch');
+  const receipt="action==='"+ACTION+"'?Object.freeze({"+
+    "action,operation:'"+OPERATION+"',level,"+
+    "approvalConsumed:consumed===true,requestId,scriptGitSha:'"+CONTRACT.scriptGitSha+"'"+
+    "}):undefined";
+  result=result.replace(CALL,'const result=await applyHostActionV2(action,'+receipt+');');
+  return result;
 }
 function patchMcp(source){
   const enumEnd="'control_plane_current_owner_binding_refresh_v1']);";
