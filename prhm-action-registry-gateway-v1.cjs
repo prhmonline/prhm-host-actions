@@ -121,24 +121,89 @@ function attestRelease({manifestBytes, expectedManifestSha, sourceCommit, readOw
   return Object.freeze({manifest_sha256:expectedManifestSha,
     source_commit:sourceCommit, normalized});
 }
-function validateTrustedApproval(approval, args) {
-  // Ed25519/JWS verification AND one-time consumption must happen in the
-  // existing Approval Center *before* these evidence fields are constructed.
-  // These assertions are defense in depth, never an authorization substitute.
-  exactKeys(approval, ['action','operation','level','risk','request_id',
-    'principal','role','verified_signature','consumed_once',
-    'expires_at','arguments_sha256','manifest_sha256','source_commit'], 'approval_schema');
-  exactly(approval.action === ACTION && approval.operation === OPERATION &&
-    approval.level === 4 && approval.risk === 'critical' &&
-    approval.principal === 'mohammad' && approval.role === 'mcp-operator' &&
-    approval.verified_signature === true && approval.consumed_once === true &&
-    UUID.test(approval.request_id) && approval.manifest_sha256 === args.manifest_sha256 &&
-    approval.source_commit === args.source_commit &&
-    approval.arguments_sha256 === approvalBindingSha(args) &&
-    Number.isSafeInteger(approval.expires_at) &&
-    approval.expires_at > Math.floor(Date.now()/1000),
-    'approval_missing_invalid_expired_or_replayed');
-  return Object.freeze({...approval});
+/**
+ * Verify the *actual* Ed25519 JWS and the persisted once-only Approval Center
+ * ledger. A boolean 'approved' or a caller-provided receipt is never enough.
+ */
+const fs=require('node:fs'),path=require('node:path');
+const APPROVAL_PUBLIC_KEY='/var/lib/prhm-company-approval/ed25519-public.pem';
+const APPROVAL_CONSUMED_DIR='/var/lib/prhm-company-approval/consumed';
+const POLICY_VERSION='2026-10-13.3-prhm-shared-action-registry-v1';
+function decodeJws(token,publicKey){
+  exactly(typeof token==='string'&&token.length>=120&&token.length<=16384,'signed_token_missing');
+  const parts=token.split('.');
+  exactly(parts.length===3&&parts.every(x=>/^[A-Za-z0-9_-]+$/.test(x)),'signed_token_format');
+  let hdr,claims,signature;
+  try{
+    hdr=JSON.parse(Buffer.from(parts[0],'base64url').toString('utf8'));
+    claims=JSON.parse(Buffer.from(parts[1],'base64url').toString('utf8'));
+    signature=Buffer.from(parts[2],'base64url');
+  }catch{stop('signed_token_json');}
+  const key=crypto.createPublicKey(publicKey);
+  const kid=sha(key.export({type:'spki',format:'der'})).slice(0,16);
+  exactly(hdr&&hdr.alg==='EdDSA'&&hdr.typ==='PRHM-COMPANY-APPROVAL'&&
+    hdr.kid===kid&&key.asymmetricKeyType==='ed25519'&&signature.length===64&&
+    crypto.verify(null,Buffer.from(parts[0]+'.'+parts[1]),key,signature),'signed_token_invalid_signature');
+  exactly(claims&&typeof claims==='object'&&!Array.isArray(claims),'signed_claims_invalid');
+  return claims;
+}
+function verifyConsumedRegistrationApproval({token,publicKey,ledger,args,nowSec}){
+  exactly(Number.isSafeInteger(nowSec)&&nowSec>0,'trusted_clock_invalid');
+  const c=decodeJws(token,publicKey),digest=approvalBindingSha(args);
+  exactly(UUID.test(c.approval_id||'')&&UUID.test(c.request_id||'')&&
+    c.jti===c.approval_id&&c.iss==='prhm-company-approval'&&
+    c.action===ACTION&&c.operation===OPERATION&&c.project==='control_plane'&&
+    c.environment==='production'&&c.tool==='host_action_v2_apply'&&
+    c.principal_id==='mohammad'&&c.role==='mcp-operator'&&
+    c.level===4&&c.risk==='critical'&&c.decision==='accept'&&c.one_time_use===true&&
+    c.policy_version===POLICY_VERSION&&SHA256.test(c.policy_hash||'')&&
+    c.arguments_sha256===digest&&c.request_hash===digest&&
+    Number.isSafeInteger(c.nbf)&&Number.isSafeInteger(c.iat)&&Number.isSafeInteger(c.exp)&&
+    c.nbf<=nowSec&&c.iat<=nowSec&&c.exp>nowSec&&c.exp>c.iat,
+    'signed_l4_binding_expiry_or_policy_mismatch');
+  exactKeys(ledger,['schema_version','approval_id','request_id','work_order_id','project_id',
+    'operation','request_hash','consumed_at','consumer','consumption_hash'],
+    'consumption_ledger_schema');
+  exactly(ledger.schema_version==='prhm.approval-consumption.v1'&&
+    ledger.approval_id===c.approval_id&&ledger.request_id===c.request_id&&
+    ledger.operation===OPERATION&&ledger.request_hash===digest&&
+    ledger.consumer==='typed-executor'&&
+    typeof ledger.consumed_at==='string'&&
+    Number.isFinite(Date.parse(ledger.consumed_at))&&
+    Date.parse(ledger.consumed_at)/1000<=nowSec&&
+    SHA256.test(ledger.consumption_hash||'')&&
+    sha(Buffer.from(JSON.stringify({...ledger,consumption_hash:null})))===ledger.consumption_hash,
+    'consumption_ledger_invalid_or_replayed');
+  return Object.freeze({action:ACTION,operation:OPERATION,level:4,
+    risk:'critical',request_id:c.request_id,manifest_sha256:args.manifest_sha256,
+    source_commit:args.source_commit,arguments_sha256:digest});
+}
+function trustedRead(file, maxBytes){
+  const st=fs.lstatSync(file);
+  exactly(st.isFile()&&!st.isSymbolicLink()&&st.size>0&&st.size<=maxBytes&&
+    (st.mode&0o022)===0,'approval_file_not_trusted');
+  const fd=fs.openSync(file,fs.constants.O_RDONLY|fs.constants.O_NOFOLLOW);
+  try{
+    const ss=fs.fstatSync(fd);
+    exactly(ss.ino===st.ino&&ss.dev===st.dev&&ss.size===st.size&&ss.uid===st.uid,
+      'approval_file_race');
+    return fs.readFileSync(fd);
+  }finally{fs.closeSync(fd);}
+}
+function verifyLiveConsumedRegistrationApproval({token,args}){
+  exactly(process.getuid?.()===0,'trusted_root_required');
+  const dir=fs.lstatSync(APPROVAL_CONSUMED_DIR);
+  exactly(dir.isDirectory()&&!dir.isSymbolicLink()&&
+    fs.realpathSync(APPROVAL_CONSUMED_DIR)===APPROVAL_CONSUMED_DIR&&
+    (dir.mode&0o022)===0,'approval_consumption_dir_unsafe');
+  const publicKey=trustedRead(APPROVAL_PUBLIC_KEY,8192);
+  const claims=decodeJws(token,publicKey);
+  exactly(UUID.test(claims.approval_id||''),'approval_identifier_invalid');
+  const data=trustedRead(path.join(APPROVAL_CONSUMED_DIR,claims.approval_id+'.json'),16384);
+  let ledger;
+  try{ledger=JSON.parse(data.toString('utf8'));}catch{stop('consumption_ledger_json');}
+  return verifyConsumedRegistrationApproval({token,publicKey,ledger,args,
+    nowSec:Math.floor(Date.now()/1000)});
 }
 function readiness({release, approval, registrarInstalled, approvalRouteInstalled,
                     rollbackReady, servicesHealthy, registeredToolVisible}) {
@@ -152,14 +217,14 @@ function readiness({release, approval, registrarInstalled, approvalRouteInstalle
   if (registeredToolVisible !== true) gaps.push('TARGET_TOOL_NOT_REGISTERED');
   return Object.freeze({ready:gaps.length===0, gaps:Object.freeze(gaps)});
 }
-async function executeAfterTrustedAuthorization({release, approval, args, trustedInstaller,
+async function executeAfterTrustedAuthorization({release, signedApprovalToken, args, trustedInstaller,
     readInstalledTool, audit}) {
   // This method MUST be called only by the previously installed root-owned
   // trusted executor after independent signature verification and consumption.
   exactly(release && release.normalized && release.manifest_sha256 === args?.manifest_sha256 &&
     release.normalized.project === args?.project && release.source_commit === args?.source_commit,
     'unbound_release');
-  validateTrustedApproval(approval,args);
+  const approval=verifyLiveConsumedRegistrationApproval({token:signedApprovalToken,args});
   exactly(typeof trustedInstaller === 'function' &&
     typeof readInstalledTool === 'function' && typeof audit === 'function',
     'trusted_executor_capabilities_missing');
@@ -181,4 +246,5 @@ async function executeAfterTrustedAuthorization({release, approval, args, truste
 }
 module.exports=Object.freeze({ACTION,OPERATION,OWNER_PATHS,ASSET_ROOT,
   sha,canonicalArgs,approvalBindingSha,assertManifest,attestRelease,
-  validateTrustedApproval,readiness,executeAfterTrustedAuthorization});
+  POLICY_VERSION,decodeJws,verifyConsumedRegistrationApproval,verifyLiveConsumedRegistrationApproval,
+  readiness,executeAfterTrustedAuthorization});
