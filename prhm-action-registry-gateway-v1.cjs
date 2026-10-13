@@ -50,11 +50,14 @@ function canonicalArgs(a) {
 function approvalBindingSha(args) { return sha(Buffer.from(canonicalArgs(args))); }
 function assertManifest(manifest) {
   exactKeys(manifest, ['schema_version','project','action','source_commit','risk',
-    'approval_level','registry_owners','assets','rollback_required','health'], 'manifest_schema');
+    'approval_level','registry_owners','assets','rollback_required','health','git_path', 'manifest_schema');
   exactly(manifest.schema_version === 'prhm.action-registry.release.v1' &&
     PROJECT.test(manifest.project) && NAME.test(manifest.action) &&
     manifest.action !== ACTION && COMMIT.test(manifest.source_commit) &&
     manifest.risk === 'critical' && manifest.approval_level === 4 &&
+    typeof manifest.git_path === 'string' &&
+    /^(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_.-]+\.json$/.test(manifest.git_path) &&
+    !manifest.git_path.includes('..') &&
     manifest.rollback_required === true, 'manifest_security_contract');
   exactKeys(manifest.registry_owners, Object.keys(OWNER_PATHS), 'owner_set');
   const old = new Set(), next = new Set();
@@ -89,14 +92,14 @@ function assertManifest(manifest) {
     'health_or_registry_discovery_missing');
   return Object.freeze({
     project:manifest.project, action:manifest.action,
-    source_commit:manifest.source_commit,
+    source_commit:manifest.source_commit,git_path:manifest.git_path,
     owners:Object.freeze({...manifest.registry_owners}),
     assets:Object.freeze(manifest.assets.map(x=>Object.freeze({...x}))),
     health:Object.freeze({tool:manifest.health.tool,
       services:Object.freeze(manifest.health.services.slice())})
   });
 }
-function attestRelease({manifestBytes, expectedManifestSha, sourceCommit, readOwner, readAsset}) {
+function attestRelease({manifestBytes, expectedManifestSha, sourceCommit, readOwner, readAsset, readGitBlob}) {
   exactly(Buffer.isBuffer(manifestBytes) && manifestBytes.length > 100 &&
     manifestBytes.length < 160000 && SHA256.test(expectedManifestSha) &&
     sha(manifestBytes) === expectedManifestSha, 'manifest_sha_mismatch');
@@ -106,8 +109,13 @@ function attestRelease({manifestBytes, expectedManifestSha, sourceCommit, readOw
   const normalized=assertManifest(manifest);
   exactly(normalized.source_commit === sourceCommit && COMMIT.test(sourceCommit),
     'source_commit_mismatch');
-  exactly(typeof readOwner === 'function' && typeof readAsset === 'function',
-    'trusted_readers_missing');
+  exactly(typeof readOwner === 'function' && typeof readAsset === 'function' &&
+    typeof readGitBlob === 'function', 'trusted_readers_missing');
+  // Read the immutable Git object from the approved repository at the pinned
+  // source commit, not HEAD or an untrusted filesystem copy.
+  const gitBytes=readGitBlob(sourceCommit,manifest.git_path);
+  exactly(Buffer.isBuffer(gitBytes) && gitBytes.equals(manifestBytes),
+    'pinned_git_manifest_blob_mismatch');
   for (const [key, owner] of Object.entries(OWNER_PATHS)) {
     const bytes=readOwner(owner);
     exactly(Buffer.isBuffer(bytes) && sha(bytes) === manifest.registry_owners[key].before_sha256,
@@ -167,7 +175,7 @@ function verifyConsumedRegistrationApproval({token,publicKey,ledger,args,nowSec}
   exactly(ledger.schema_version==='prhm.approval-consumption.v1'&&
     ledger.approval_id===c.approval_id&&ledger.request_id===c.request_id&&
     ledger.operation===OPERATION&&ledger.request_hash===digest&&
-    ledger.consumer==='typed-executor'&&
+    ledger.consumer==='prhm-agent-selfmaint-exec-host-actions-v2'&&
     typeof ledger.consumed_at==='string'&&
     Number.isFinite(Date.parse(ledger.consumed_at))&&
     Date.parse(ledger.consumed_at)/1000<=nowSec&&
