@@ -74,10 +74,14 @@ function assertManifest(manifest) {
     manifest.assets.length <= 32, 'asset_count');
   const destinations = new Set();
   for (const entry of manifest.assets) {
-    exactKeys(entry, ['path','sha256'], 'asset_schema');
+    exactKeys(entry, ['path','source_path','sha256'], 'asset_schema');
     exactly(typeof entry.path === 'string' &&
       /^\/opt\/prhm-agent-selfmaint-exec\/actions\/[a-z0-9][a-z0-9_.-]{2,120}$/.test(entry.path) &&
       entry.path.startsWith(ASSET_ROOT) && !entry.path.includes('..') &&
+      typeof entry.source_path==='string' &&
+      /^(?:[a-zA-Z0-9_.-]+\/)*[a-zA-Z0-9_.-]+$/.test(entry.source_path) &&
+      !entry.source_path.split('/').includes('..') &&
+      !entry.source_path.split('/').includes('.') &&
       SHA256.test(entry.sha256) && !destinations.has(entry.path),
       'asset_untrusted_path_or_duplicate');
     destinations.add(entry.path);
@@ -99,7 +103,7 @@ function assertManifest(manifest) {
       services:Object.freeze(manifest.health.services.slice())})
   });
 }
-function attestRelease({manifestBytes, expectedManifestSha, sourceCommit, manifestCommit, readOwner, readAsset, readGitBlob}) {
+function attestRelease({manifestBytes, expectedManifestSha, sourceCommit, manifestCommit, readOwner, readAsset, readGitBlob, readGitSource}) {
   exactly(Buffer.isBuffer(manifestBytes) && manifestBytes.length > 100 &&
     manifestBytes.length < 160000 && SHA256.test(expectedManifestSha) &&
     sha(manifestBytes) === expectedManifestSha, 'manifest_sha_mismatch');
@@ -110,7 +114,8 @@ function attestRelease({manifestBytes, expectedManifestSha, sourceCommit, manife
   exactly(normalized.source_commit === sourceCommit && COMMIT.test(sourceCommit) &&
     COMMIT.test(manifestCommit), 'source_or_manifest_commit_mismatch');
   exactly(typeof readOwner === 'function' && typeof readAsset === 'function' &&
-    typeof readGitBlob === 'function', 'trusted_readers_missing');
+    typeof readGitBlob === 'function' && typeof readGitSource === 'function',
+    'trusted_readers_missing');
   // Read the immutable Git object from the approved repository at the pinned
   // source commit, not HEAD or an untrusted filesystem copy.
   const gitBytes=readGitBlob(manifestCommit,manifest.git_path);
@@ -123,8 +128,10 @@ function attestRelease({manifestBytes, expectedManifestSha, sourceCommit, manife
   }
   for (const file of manifest.assets) {
     const bytes=readAsset(file.path);
-    exactly(Buffer.isBuffer(bytes) && sha(bytes) === file.sha256,
-      'asset_sha_drift');
+    const gitSource=readGitSource(sourceCommit,file.source_path);
+    exactly(Buffer.isBuffer(bytes) && Buffer.isBuffer(gitSource) &&
+      sha(bytes) === file.sha256 && sha(gitSource) === file.sha256 &&
+      bytes.equals(gitSource), 'asset_sha_or_source_git_drift');
   }
   return Object.freeze({manifest_sha256:expectedManifestSha,
     source_commit:sourceCommit,manifest_commit:manifestCommit,normalized});
