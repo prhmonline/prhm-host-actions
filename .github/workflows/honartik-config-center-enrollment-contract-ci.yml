@@ -7,6 +7,7 @@ on:
       - 'test-honartik-config-center-enrollment-action-v1.cjs'
       - 'honartik-config-center-registration-candidate-v1.cjs'
       - 'honartik-config-center-trusted-adapter-v1.cjs'
+      - 'scripts/honartik-config-center-prod-enroll-20261012.php'
       - 'test-honartik-config-center-trusted-adapter-v1.cjs'
       - 'test-honartik-config-center-registration-candidate-v1.cjs'
       - '.github/workflows/honartik-config-center-enrollment-contract-ci.yml'
@@ -18,6 +19,7 @@ on:
       - 'test-honartik-config-center-enrollment-action-v1.cjs'
       - 'honartik-config-center-registration-candidate-v1.cjs'
       - 'honartik-config-center-trusted-adapter-v1.cjs'
+      - 'scripts/honartik-config-center-prod-enroll-20261012.php'
       - 'test-honartik-config-center-trusted-adapter-v1.cjs'
       - 'test-honartik-config-center-registration-candidate-v1.cjs'
       - '.github/workflows/honartik-config-center-enrollment-contract-ci.yml'
@@ -42,3 +44,5 @@ jobs:
           node --check honartik-config-center-trusted-adapter-v1.cjs
           node --check test-honartik-config-center-trusted-adapter-v1.cjs
           node --test test-honartik-config-center-enrollment-action-v1.cjs test-honartik-config-center-registration-candidate-v1.cjs test-honartik-config-center-trusted-adapter-v1.cjs
+          php -l scripts/honartik-config-center-prod-enroll-20261012.php
+          test "$(sha256sum scripts/honartik-config-center-prod-enroll-20261012.php | cut -d' ' -f1)" = "b9978bd782282ee385b487cc7d4614edc2b6f4f3b8c513797c657b32f0d50903"
