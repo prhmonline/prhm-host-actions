@@ -169,11 +169,13 @@ function recover(io,changed,backupDir,{restart,health}){
     throw e;
    }
    if(entry.before){
-    const saved=readRegular(io,path.join(backupDir,entry.before.key+'.bak'),
+    const key=KEYS.find(k=>registry.LIVE[k].path===entry.target);
+    exactly(!!key,'rollback_owner_not_pinned');
+    const saved=readRegular(io,path.join(backupDir,key+'.bak'),
       entry.before.sha256,0);
     const restore={...entry,bytes:saved.bytes,expected:entry.before.sha256,
       uid:entry.before.uid,gid:entry.before.gid,mode:entry.before.mode};
-    atomicReplace(io,restore,'rollback-'+entry.before.key);
+    atomicReplace(io,restore,'rollback-'+key);
     verifyCurrentInstalled(io,restore);
    }else{
     io.unlinkSync(entry.target);
@@ -189,7 +191,7 @@ function recover(io,changed,backupDir,{restart,health}){
  }
  return {verified:problems.length===0,errors:problems};
 }
-function executeAfterTrustedApproval(plan,{approval,manifestBytes,sourceSha,io=fs,restart,health}={}){
+function executeTransactionCore(plan,{approval,manifestBytes,sourceSha,io=fs,restart,health}={}){
  // No external /apply handler or command line. A separately authorized
  // registrar must verify the actual signed receipt and pass one-time proof.
  exactly(typeof restart==='function'&&typeof health==='function','service_callbacks_missing');
@@ -211,7 +213,6 @@ function executeAfterTrustedApproval(plan,{approval,manifestBytes,sourceSha,io=f
   for(const file of plan.changes.filter(x=>x.before)){
    const key=KEYS.find(k=>registry.LIVE[k].path===file.target);
    const data={...file.before,key};
-   file.before.key=key; // locally scoped plan snapshot; not manifest content
    const backup=path.join(backupDir,key+'.bak');
    io.writeFileSync(backup,data.bytes,{flag:'wx',mode:0o600});
    io.chownSync(backup,0,0);
@@ -242,6 +243,19 @@ function executeAfterTrustedApproval(plan,{approval,manifestBytes,sourceSha,io=f
   fail(restore.verified?'installation_failed_rolled_back':'installation_failed_rollback_unverified');
  }
 }
+function executeAfterTrustedApproval({approval,manifestBytes,sourceSha,restart,health}={}){
+ // Public installation entrypoint: derive the entire transaction from trusted
+ // live preimages + the fixed stage root. No caller-provided plan, target,
+ // source root, command or filesystem implementation can reach Production.
+ exactly(Buffer.isBuffer(manifestBytes),'manifest_attested_bytes_required');
+ validateApproval(approval,hex(manifestBytes));
+ exactly(sourceSha===approval.source_commit_sha,'manifest_source_sha_unbound');
+ exactly(typeof restart==='function'&&typeof health==='function','service_callbacks_missing');
+ const plan=planInstallation({io:fs,sourceRoot:STAGE_ROOT});
+ return executeTransactionCore(plan,{
+  approval,manifestBytes,sourceSha,io:fs,restart,health
+ });
+}
 function selftest(){
  validateManifest();
  return {ok:true,action:ACTION,applyAvailable:false,productionMutation:false,
@@ -255,4 +269,4 @@ if(require.main===module){
 module.exports=Object.freeze({ACTION,BACKUP_ROOT,STAGE_ROOT,SERVICES,KEYS,
  validateApproval,readRegular,validateManifest,planInstallation,
  assertStillOriginal,atomicReplace,verifyCurrentInstalled,recover,
- executeAfterTrustedApproval,selftest,hex});
+ executeTransactionCore,executeAfterTrustedApproval,selftest,hex});
