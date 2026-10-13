@@ -76,3 +76,17 @@ The reviewed replacement source is pinned to commit `a9da4735445dcd0833cd1ef5435
 [GitHub Actions run 38408937156](https://github.com/prhmonline/prhm-host-actions/actions/runs/38408937156): **SUCCESS**. 35/35 offline Node tests pass, PHP syntax passes, and the file SHA256 plus pinned Git source commit/blob checks pass.
 
 This resolves ONLY the previous source-integrity/CI blocker. Remaining **NO-GO** gates: full trusted privileged runner and server-side IO implementation, isolated DB-backed issuance/revocation validation, atomic registry/policy install with verified rollback, fresh explicit signed single-use Level-4 approval, and `CONFIG_CENTER_READONLY_PASS tenant=honartik revision=1 source=remote` observed on Honartik Production. No prior permission replay. Preserve dirty worktrees and untracked user business files.
+
+## 2026-10-13: privileged runner and post-consumption dispatch candidate — OFFLINE PASS
+
+**Implemented in Git, not installed**:
+- `honartik-config-center-privileged-runner-v1.cjs`: fixed command allowlist, root/owner checks, exact SHA verification for enrollment and status PHP, backend Git HEAD and tracked cleanliness check (untracked user exports preserved), exclusive lock, signed L4 one-time receipt context *only from trusted executor*, fixed PHP issuance/revoke invocations, exact consumer CLI, and metadata-only fsynced audit.
+- `scripts/honartik-config-center-readonly-status-v1.php`: separate read-only Laravel DB and credential-file verification with owner/mode, token-hash binding and HTTP 200 config / 403 secrets, no secret values or API bodies returned.
+- `honartik-config-center-registration-candidate-v1.cjs`: updated exact-SHA-pinned executor patch, passing `{action,operation,level,approvalConsumed,requestId,scriptGitSha}` only from the internal Host Actions v2 code *after* `authorize-consume`, plus checked module hashes before loading the runner.
+- `honartik-config-center-install-manifest-v1.json`: all five runtime artifacts pinned by SHA256 alongside the four exact current Control Plane file preimages and L4/rollback and live health gates. This is a source manifest, **not an installer that writes files**.
+
+Latest [GitHub Actions run 38413410123](https://github.com/prhmonline/prhm-host-actions/actions/runs/38413410123) **SUCCESS: 45/45 offline Node tests, 2/2 PHP lint PASS and source hashes checked**. This establishes source and synthetic contract readiness only. No live DB-backed issuance/revocation test has been performed, no atomic installer deployed, no fresh Level-4 grant issued or consumed, and no Production file changed.
+
+**Authoritative live state (13 October):** Agent 3 Host Actions registry does **not** list `honartik_config_center_readonly_enroll_v1`; Honartik `php console/yii config-center/check` still returns exit 1 `CONFIG_CENTER_READONLY_FAIL`. PR #190 remains Draft/unmerged. **NO-GO** for production enrollment or MoeinShow rollout.
+
+**Only remaining install-critical gate:** build/install the fixed source-to-target atomic registration bootstrap in a pre-authorized trust channel, run DB-backed rollback and race tests against an isolated real schema, secure separate explicit Level-4 approval, then execute read-only health and auditable rollback verification. Do not treat the mere presence of a synthetic approval-receipt-shaped JavaScript object as a fresh authorization; only the existing trusted server-side `authorize-consume` path is authoritative.
