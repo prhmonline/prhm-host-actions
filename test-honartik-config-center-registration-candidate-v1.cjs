@@ -67,3 +67,16 @@ test('policy remains default deny and allows no secret-reading or arbitrary proj
  assert.equal(scope.risk,'critical');assert.equal(scope.operation,reg.OPERATION);
  assert.equal(JSON.stringify(scope).includes('secrets:read'),false);
 });
+
+test('generated executor compiles and cannot bypass proof or module pins',()=>{
+ const out=reg.patchExecutor(executor);
+ assert.doesNotThrow(()=>new Function('return async function(){'+out+'}'));
+ assert.ok(out.includes("receipt.approvalConsumed!==true"));
+ assert.ok(out.includes("receipt.scriptGitSha"));
+ assert.ok(out.includes("Object.freeze({action,operation:"));
+ assert.ok(out.includes("fs.constants.O_NOFOLLOW"));
+ assert.ok(out.includes("honartik_module_sha_mismatch"));
+ assert.ok(out.includes("return runner.runAfterTrustedApproval(receipt)"));
+ const missing=executor.replace('const result=await applyHostActionV2(action);','');
+ assert.throws(()=>reg.patchExecutor(missing),/executor_trusted_dispatch_call_anchor_mismatch/);
+});
