@@ -177,6 +177,7 @@ test('request cannot invoke an installer without signed and consumed approval',a
  let called=0;
  await assert.rejects(g.executeAfterTrustedAuthorization({release:r,args,signedApprovalToken:'approved',
   trustedInstaller:async()=>{called++;return{ok:true}},
+  trustedRollback:async()=>({verified:true}),verifyOriginalState:async()=>true,
   readInstalledTool:async()=>true,audit:async()=>{}}),/trusted_root_required|signed_token/);
  assert.equal(called,0);
 });
