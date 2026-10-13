@@ -26,7 +26,8 @@ function fixture(project='honartik'){
    'prhm-agent-mcp-blue.service','prhm-agent-mcp-green.service'],tool:action}
  };
  const bytes=Buffer.from(JSON.stringify(manifest));
- const input={action:g.ACTION,project,source_commit:source,manifest_sha256:g.sha(bytes)};
+ const input={action:g.ACTION,project,source_commit:source,
+  manifest_commit:'b'.repeat(40),manifest_sha256:g.sha(bytes)};
  let calls={installer:0,audit:0};
  const trusted={
   readPinnedGitManifest:()=>({path:manifest.git_path,bytes}),
@@ -38,7 +39,7 @@ function fixture(project='honartik'){
  };
  return {input,manifest,trusted,calls};
 }
-test('typed registration requires exactly four immutable fields',()=>{
+test('typed registration requires exactly five immutable fields',()=>{
  let {input}=fixture();
  const out=bridge.strictRequest(input);
  assert.equal(out.arguments_sha256,g.approvalBindingSha(input));
@@ -55,6 +56,11 @@ test('Approval Center typed request contains entire project+Git+manifest binding
  assert.equal(p.operation,g.OPERATION);
  assert.equal(p.risk,'critical');
  assert.equal(p.rollback_reference.includes('verified-four-owner-restore'),true);
+});
+test('same source code release with a different manifest commit requires separate approval',()=>{
+ const a=fixture().input;
+ const b={...a,manifest_commit:'c'.repeat(40)};
+ assert.notEqual(g.approvalBindingSha(a),g.approvalBindingSha(b));
 });
 test('one project approval hash cannot be used for another',()=>{
  const a=bridge.typedApprovalRequest(fixture('honartik').input);
