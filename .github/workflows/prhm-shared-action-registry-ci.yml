@@ -24,7 +24,9 @@ jobs:
           node --check prhm-action-registry-host-actions-v2-bridge-v1.cjs
           node --check test-prhm-action-registry-host-actions-v2-bridge-v1.cjs
           node --check test-prhm-action-registry-postinstall-rollback-v1.cjs
-          node --test test-prhm-action-registry-gateway-v1.cjs test-prhm-action-registry-host-actions-v2-bridge-v1.cjs test-prhm-action-registry-postinstall-rollback-v1.cjs
+          node --check prhm-action-registry-durable-recovery-v1.cjs
+          node --check test-prhm-action-registry-durable-recovery-v1.cjs
+          node --test test-prhm-action-registry-gateway-v1.cjs test-prhm-action-registry-host-actions-v2-bridge-v1.cjs test-prhm-action-registry-postinstall-rollback-v1.cjs test-prhm-action-registry-durable-recovery-v1.cjs
       - name: Explicit Production not installed acknowledgment
         run: |
           # A successful source contract never means an MCP tool was installed.
