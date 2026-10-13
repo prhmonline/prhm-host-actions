@@ -44,6 +44,10 @@ namespace {
     $db->addConnection($config, 'secondary');
     $db->setAsGlobal();
     $db->bootEloquent();
+    // Standalone Capsule does not bootstrap Laravel Facades by itself.
+    $container = $db->getContainer();
+    $container->instance('db', $db->getDatabaseManager());
+    \Illuminate\Support\Facades\Facade::setFacadeApplication($container);
     class_alias(\Illuminate\Support\Facades\DB::class, 'DB');
     class_alias(\App\Models\Site::class, 'Site');
     class_alias(\App\Models\MachineCredential::class, 'MachineCredential');
