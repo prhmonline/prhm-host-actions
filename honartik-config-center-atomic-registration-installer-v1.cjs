@@ -88,6 +88,34 @@ function syncFile(io,file){
  const fd=io.openSync(file,fs.constants.O_RDONLY|fs.constants.O_NOFOLLOW);
  try{io.fsyncSync(fd)}finally{io.closeSync(fd)}
 }
+function syncDirectory(io,dir){
+ const fd=io.openSync(dir,fs.constants.O_RDONLY|fs.constants.O_DIRECTORY|fs.constants.O_NOFOLLOW);
+ try{
+  exactly(io.fstatSync(fd).isDirectory(),'backup_directory_not_directory');
+  io.fsyncSync(fd);
+ }finally{io.closeSync(fd)}
+}
+function recoveryJournal(plan,binding,proof,sourceSha){
+ if(binding===null)return null; // legacy project-specific consent has separate entrypoint.
+ const fields=['request_id','project','action','source_commit','manifest_commit','manifest_sha256'];
+ exactly(binding&&typeof binding==='object'&&!Array.isArray(binding)&&
+   Object.keys(binding).sort().join(',')===fields.sort().join(','),
+   'shared_recovery_binding_invalid');
+ exactly(binding.request_id===proof.request_id&&
+   binding.project==='honartik'&&binding.action===manifest.action&&
+   binding.source_commit===sourceSha&&
+   /^[0-9a-f]{40}$/.test(binding.manifest_commit)&&
+   /^[0-9a-f]{64}$/.test(binding.manifest_sha256),
+   'shared_recovery_release_mismatch');
+ const owners={};
+ for(const key of KEYS){
+  const entry=plan.changes.find(x=>x.target===registry.LIVE[key].path);
+  exactly(entry&&entry.before,'shared_recovery_owner_missing');
+  const prev=entry.before;
+  owners[key]={sha256:prev.sha256,uid:prev.uid,gid:prev.gid,mode:prev.mode};
+ }
+ return {schema:'prhm.registry.recovery.v1',...binding,owners};
+}
 function assertParent(io,file){
  const dir=path.dirname(file);
  exactly(io.realpathSync(dir)===dir,'target_parent_symlink');
@@ -202,7 +230,7 @@ function recover(io,changed,backupDir,{restart,health}){
  }
  return {verified:problems.length===0,errors:problems};
 }
-function executeTransactionCore(plan,{approval,manifestBytes,sourceSha,io=fs,restart,health}={}){
+function executeTransactionCore(plan,{approval,manifestBytes,sourceSha,recoveryBinding=null,io=fs,restart,health}={}){
  // No external /apply handler or command line. A separately authorized
  // registrar must verify the actual signed receipt and pass one-time proof.
  exactly(typeof restart==='function'&&typeof health==='function','service_callbacks_missing');
@@ -213,6 +241,7 @@ function executeTransactionCore(plan,{approval,manifestBytes,sourceSha,io=fs,res
  exactly(sourceSha===proof.source_commit_sha,'manifest_source_sha_unbound');
  exactly(plan&&plan.action===ACTION&&plan.proofOnly===true&&
   plan.productionMutation===false&&plan.changes?.length===9,'plan_invalid');
+ const journal=recoveryJournal(plan,recoveryBinding,proof,sourceSha);
  const backupDir=path.join(BACKUP_ROOT,proof.request_id);
  const changed=[];
  // Read-only recheck immediately before first mutation.
@@ -231,6 +260,18 @@ function executeTransactionCore(plan,{approval,manifestBytes,sourceSha,io=fs,res
    syncFile(io,backup);
    readRegular(io,backup,data.sha256,0);
   }
+  if(journal!==null){
+   const journalPath=path.join(backupDir,'recovery.json');
+   const contents=Buffer.from(JSON.stringify(journal)+'\n');
+   io.writeFileSync(journalPath,contents,{flag:'wx',mode:0o600});
+   io.chownSync(journalPath,0,0);io.chmodSync(journalPath,0o600);
+   syncFile(io,journalPath);
+   readRegular(io,journalPath,hex(contents),0);
+  }
+  // fsync BOTH directory entries: the new backup directory itself and all
+  // backup/journal filenames must survive process or host restart.
+  syncDirectory(io,backupDir);
+  syncDirectory(io,BACKUP_ROOT);
   for(let i=0;i<plan.changes.length;i++){
    const entry=plan.changes[i];
    assertStillOriginal(io,entry);
@@ -338,6 +379,9 @@ function executeAfterSharedRegistryApproval({approvalToken,args,release,readPinn
  }
  return executeTransactionCore(plan,{
    approval:scopedProof,manifestBytes:localBytes,sourceSha:args.source_commit,
+   recoveryBinding:Object.freeze({request_id:verified.request_id,project:'honartik',
+     action:release.normalized.action,source_commit:release.source_commit,
+     manifest_commit:release.manifest_commit,manifest_sha256:release.manifest_sha256}),
    io:fs,restart,health
  });
 }
@@ -352,7 +396,7 @@ if(require.main===module){
  }else process.stdout.write(JSON.stringify(selftest())+'\n');
 }
 module.exports=Object.freeze({ACTION,BACKUP_ROOT,STAGE_ROOT,SERVICES,KEYS,
- validateApproval,readRegular,validateManifest,planInstallation,
+ validateApproval,readRegular,validateManifest,planInstallation,recoveryJournal,
  assertStillOriginal,atomicReplace,verifyCurrentInstalled,recover,
  executeTransactionCore,executeAfterTrustedApproval,executeAfterSharedRegistryApproval,
  selftest,hex});
