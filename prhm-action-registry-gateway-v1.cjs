@@ -38,13 +38,13 @@ function exactKeys(value, keys, reason) {
     Object.keys(value).sort().join('|') === keys.slice().sort().join('|'), reason);
 }
 function canonicalArgs(a) {
-  exactKeys(a, ['action','project','source_commit','manifest_sha256'], 'args_schema');
+  exactKeys(a, ['action','project','source_commit','manifest_commit','manifest_sha256'], 'args_schema');
   exactly(a.action === ACTION && PROJECT.test(a.project) &&
-    COMMIT.test(a.source_commit) && SHA256.test(a.manifest_sha256), 'args_invalid');
+    COMMIT.test(a.source_commit) && COMMIT.test(a.manifest_commit) && SHA256.test(a.manifest_sha256), 'args_invalid');
   // Explicit insertion order matches the future typed Approval Center request.
   return JSON.stringify({
     action: ACTION, project: a.project, source_commit: a.source_commit,
-    manifest_sha256: a.manifest_sha256,
+    manifest_commit: a.manifest_commit, manifest_sha256: a.manifest_sha256,
   });
 }
 function approvalBindingSha(args) { return sha(Buffer.from(canonicalArgs(args))); }
@@ -99,7 +99,7 @@ function assertManifest(manifest) {
       services:Object.freeze(manifest.health.services.slice())})
   });
 }
-function attestRelease({manifestBytes, expectedManifestSha, sourceCommit, readOwner, readAsset, readGitBlob}) {
+function attestRelease({manifestBytes, expectedManifestSha, sourceCommit, manifestCommit, readOwner, readAsset, readGitBlob}) {
   exactly(Buffer.isBuffer(manifestBytes) && manifestBytes.length > 100 &&
     manifestBytes.length < 160000 && SHA256.test(expectedManifestSha) &&
     sha(manifestBytes) === expectedManifestSha, 'manifest_sha_mismatch');
@@ -107,13 +107,13 @@ function attestRelease({manifestBytes, expectedManifestSha, sourceCommit, readOw
   try { manifest = JSON.parse(manifestBytes.toString('utf8')); }
   catch { stop('manifest_json_invalid'); }
   const normalized=assertManifest(manifest);
-  exactly(normalized.source_commit === sourceCommit && COMMIT.test(sourceCommit),
-    'source_commit_mismatch');
+  exactly(normalized.source_commit === sourceCommit && COMMIT.test(sourceCommit) &&
+    COMMIT.test(manifestCommit), 'source_or_manifest_commit_mismatch');
   exactly(typeof readOwner === 'function' && typeof readAsset === 'function' &&
     typeof readGitBlob === 'function', 'trusted_readers_missing');
   // Read the immutable Git object from the approved repository at the pinned
   // source commit, not HEAD or an untrusted filesystem copy.
-  const gitBytes=readGitBlob(sourceCommit,manifest.git_path);
+  const gitBytes=readGitBlob(manifestCommit,manifest.git_path);
   exactly(Buffer.isBuffer(gitBytes) && gitBytes.equals(manifestBytes),
     'pinned_git_manifest_blob_mismatch');
   for (const [key, owner] of Object.entries(OWNER_PATHS)) {
@@ -127,7 +127,7 @@ function attestRelease({manifestBytes, expectedManifestSha, sourceCommit, readOw
       'asset_sha_drift');
   }
   return Object.freeze({manifest_sha256:expectedManifestSha,
-    source_commit:sourceCommit, normalized});
+    source_commit:sourceCommit,manifest_commit:manifestCommit,normalized});
 }
 /**
  * Verify the *actual* Ed25519 JWS and the persisted once-only Approval Center
@@ -237,7 +237,8 @@ async function executeAfterTrustedAuthorization({release, signedApprovalToken, a
   // This method MUST be called only by the previously installed root-owned
   // trusted executor after independent signature verification and consumption.
   exactly(release && release.normalized && release.manifest_sha256 === args?.manifest_sha256 &&
-    release.normalized.project === args?.project && release.source_commit === args?.source_commit,
+    release.normalized.project === args?.project && release.source_commit === args?.source_commit &&
+    release.manifest_commit === args?.manifest_commit,
     'unbound_release');
   const approval=verifyLiveConsumedRegistrationApproval({token:signedApprovalToken,args});
   exactly(typeof trustedInstaller === 'function' &&
@@ -253,7 +254,7 @@ async function executeAfterTrustedAuthorization({release, signedApprovalToken, a
   await audit(Object.freeze({
     request_id:approval.request_id, action:release.normalized.action,
     project:release.normalized.project, source_commit:release.source_commit,
-    manifest_sha256:release.manifest_sha256, result:'registered'
+    manifest_commit:release.manifest_commit,manifest_sha256:release.manifest_sha256, result:'registered'
   }));
   return Object.freeze({ok:true,project:release.normalized.project,
     action:release.normalized.action,source_commit:release.source_commit,
