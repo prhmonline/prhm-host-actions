@@ -56,9 +56,11 @@ function validateConsumedReceipt({token,publicKey,ledger,manifestSha,commitSha,n
  const id=claims.approval_id,request=claims.request_id;
  requireThat(UUID.test(id||'')&&UUID.test(request||'')&&claims.jti===id,
   'approval_identifiers_invalid');
- requireThat(claims.action===ACTION&&claims.operation===OPERATION&&
+ requireThat(claims.iss==='prhm-company-approval'&&
+  claims.action===ACTION&&claims.operation===OPERATION&&
   claims.project==='control_plane'&&claims.environment==='production'&&
-  claims.tool==='host_action_v2_apply'&&claims.level===4&&
+  claims.tool==='host_action_v2_apply'&&claims.principal_id==='mohammad'&&
+  claims.role==='mcp-operator'&&claims.level===4&&
   claims.risk==='critical'&&claims.decision==='accept'&&claims.one_time_use===true,
   'registration_approval_binding_mismatch');
  requireThat(claims.policy_version===expectedPolicyVersion&&
