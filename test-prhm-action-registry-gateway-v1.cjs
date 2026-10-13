@@ -31,6 +31,18 @@ function release(project,action) {
   readOwner:p=>A[Object.keys(g.OWNER_PATHS).find(x=>g.OWNER_PATHS[x]===p)],
   readAsset:p=>F[p],readGitBlob:()=>bytes,readGitSource:()=>F['/opt/prhm-agent-selfmaint-exec/actions/sample-action.cjs']});
 }
+test('canonical argument hash exactly matches live Agent 3 recursive JSON sort',()=>{
+ const args={action:g.ACTION,project:'honartik',source_commit:'a'.repeat(40),
+   manifest_commit:'b'.repeat(40),manifest_sha256:'1'.repeat(64)};
+ const expected='3ba6ec4fb870e6255228968e72a7d7876a389271f59a15e7f9b905d4ad87be9d';
+ assert.equal(g.approvalBindingSha(args),expected);
+ const altered={manifest_sha256:args.manifest_sha256,source_commit:args.source_commit,
+  project:args.project,manifest_commit:args.manifest_commit,action:args.action};
+ assert.equal(g.approvalBindingSha(altered),expected);
+ const nested={b:{z:1,a:2},a:[{y:3,x:4}]};
+ assert.equal(g.canonicalJson(nested),'{"a":[{"x":4,"y":3}],"b":{"a":2,"z":1}}');
+ assert.notEqual(g.sha(Buffer.from(JSON.stringify(args))),expected);
+});
 test('shared gateway supports independent Honartik and MoeinShow immutable manifests',()=>{
  const a=release('honartik','honartik_config_center_readonly_enroll_v1');
  const b=release('moeinshow','moeinshow_config_center_readonly_enroll_v1');
