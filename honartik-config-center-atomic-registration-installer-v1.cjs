@@ -255,14 +255,22 @@ function executeTransactionCore(plan,{approval,manifestBytes,sourceSha,io=fs,res
   fail(restore.verified?'installation_failed_rolled_back':'installation_failed_rollback_unverified');
  }
 }
-function executeAfterTrustedApproval({approval,manifestBytes,sourceSha,restart,health}={}){
- // Public installation entrypoint: derive the entire transaction from trusted
- // live preimages + the fixed stage root. No caller-provided plan, target,
- // source root, command or filesystem implementation can reach Production.
+function executeAfterTrustedApproval({approvalToken,manifestBytes,sourceSha,restart,health}={}){
+ // Public installer entrypoint: cryptographically verify real Approval Center
+ // Ed25519 proof *and* its persisted one-time consumption receipt. A caller-
+ // invented object with verified_by_trusted_mediator=true is not accepted.
+ // The fixed trusted bootstrap must perform the actual signed Level-4
+ // request/authorize-consume BEFORE calling this method.
  exactly(Buffer.isBuffer(manifestBytes),'manifest_attested_bytes_required');
- validateApproval(approval,hex(manifestBytes));
- exactly(sourceSha===approval.source_commit_sha,'manifest_source_sha_unbound');
+ exactly(typeof approvalToken==='string'&&approvalToken.length>120,'signed_approval_token_required');
+ exactly(typeof sourceSha==='string'&&/^[a-f0-9]{40}$/i.test(sourceSha),'reviewed_commit_sha_required');
  exactly(typeof restart==='function'&&typeof health==='function','service_callbacks_missing');
+ const {verifyAlreadyConsumedFromLive}=require('./honartik-config-center-signed-registration-approval-v1.cjs');
+ const approval=verifyAlreadyConsumedFromLive({
+  token:approvalToken,manifestSha:hex(manifestBytes),commitSha:sourceSha,
+  nowSec:Math.floor(Date.now()/1000)
+ });
+ // No caller-supplied file plan, filesystem, source root, key, clock or policy.
  const plan=planInstallation({io:fs,sourceRoot:STAGE_ROOT});
  return executeTransactionCore(plan,{
   approval,manifestBytes,sourceSha,io:fs,restart,health
