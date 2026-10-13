@@ -16,7 +16,7 @@ function exactFields(obj,fields) {
     Object.keys(obj).sort().join(':')!==fields.slice().sort().join(':'))fail('request_schema');
 }
 function strictRequest(input){
- exactFields(input,['action','project','source_commit','manifest_sha256']);
+ exactFields(input,['action','project','source_commit','manifest_commit','manifest_sha256']);
  if(input.action!==ACTION)fail('action_not_allowlisted');
  const json=g.canonicalArgs(input);
  if(json.length>360)fail('request_size');
@@ -59,7 +59,7 @@ function immutableManifest(input,bridge){
  const file=cap.readPinnedGitManifest({
    repo:'prhmonline/prhm-host-actions',
    source_commit:input.source_commit,
-   project:input.project,
+   manifest_commit:input.manifest_commit,project:input.project,
    max_bytes:MAX_SOURCE_BYTES,
  });
  if(!file||typeof file.path!=='string'||!Buffer.isBuffer(file.bytes)||
@@ -67,12 +67,12 @@ function immutableManifest(input,bridge){
    fail('git_manifest_missing');
  const out=g.attestRelease({
   manifestBytes:file.bytes,expectedManifestSha:input.manifest_sha256,
-  sourceCommit:input.source_commit,
+  sourceCommit:input.source_commit,manifestCommit:input.manifest_commit,
   readOwner:p=>cap.readLiveOwner(p),
   readAsset:p=>cap.readStagedAsset(p),
   readGitBlob:(commit,path)=>{
     // Enforce precisely the already pinned, previously retrieved Git object.
-    if(commit!==input.source_commit||path!==file.path)fail('git_blob_unbound');
+    if(commit!==input.manifest_commit||path!==file.path)fail('git_blob_unbound');
     return file.bytes;
   }
  });
