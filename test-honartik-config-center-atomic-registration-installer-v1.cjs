@@ -37,7 +37,7 @@ function fakeIO(){
  const io={
   lstatSync:stat,
   realpathSync(p){stat(p);return norm(p)},
-  openSync(p){const x=map.get(norm(p));if(!x||x.kind!=='file')throw Error('open_invalid');return {p:norm(p)}},
+  openSync(p){const x=map.get(norm(p));if(!x||!['file','directory'].includes(x.kind))throw Error('open_invalid');return {p:norm(p)}},
   fstatSync(fd){return stat(fd.p)},
   readFileSync(p){const x=map.get(norm(typeof p==='string'?p:p.p));if(!x||!x.buf)throw Error('read_invalid');return Buffer.from(x.buf)},
   closeSync(){},
@@ -234,4 +234,36 @@ test('shared registry compatibility entry rejects unsigned or wrong project bind
   readPinnedManifest:()=>Buffer.from('fake'),...old.services
  }),/shared_registration_binding_invalid/);
  assert.equal(old.v.renamed,0);
+});
+
+test('shared registry writes fsynced recovery journal BEFORE first owner change',()=>{
+ const f=fixture();
+ const binding={request_id:request,project:'honartik',
+  action:manifest.action,source_commit:sourceCommit,manifest_commit:'b'.repeat(40),
+  manifest_sha256:'c'.repeat(64)};
+ execute(f,{recoveryBinding:binding});
+ const file=path.join(i.BACKUP_ROOT,request,'recovery.json');
+ const value=f.v.map.get(file);
+ assert.ok(value,'journal must survive outside process memory');
+ assert.equal(value.mode&0o777,0o600);
+ assert.equal(value.uid,0);
+ const journal=JSON.parse(value.buf.toString('utf8'));
+ assert.equal(journal.schema,'prhm.registry.recovery.v1');
+ assert.equal(journal.request_id,request);
+ assert.equal(journal.manifest_commit,binding.manifest_commit);
+ for(const key of i.KEYS){
+  const entry=f.plan.changes.find(x=>x.before&&x.target===manifest.control_plane_preimages[key].path);
+  assert.equal(journal.owners[key].sha256,entry.before.sha256);
+  assert.equal(journal.owners[key].uid,entry.before.uid);
+  assert.equal(journal.owners[key].mode,entry.before.mode);
+ }
+});
+test('bad shared recovery binding rejects before backup and any file mutation',()=>{
+ const f=fixture();
+ const bad={request_id:request,project:'moeinshow',action:manifest.action,
+   source_commit:sourceCommit,manifest_commit:'b'.repeat(40),
+   manifest_sha256:'c'.repeat(64)};
+ assert.throws(()=>execute(f,{recoveryBinding:bad}),/shared_recovery_release_mismatch/);
+ assert.equal(f.v.renamed,0);
+ assert.equal(f.v.map.has(path.join(i.BACKUP_ROOT,request)),false);
 });
