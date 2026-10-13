@@ -135,13 +135,28 @@ test('expired, wrong project or unconsumed L4 receipt cannot register',()=>{
  assert.throws(()=>g.verifyConsumedRegistrationApproval({...valid,args:{...args,project:'moeinshow'}}),/signed_l4_binding/);
  assert.throws(()=>g.verifyConsumedRegistrationApproval({...valid,ledger:{...valid.ledger,consumer:'unconsumed'}}),/consumption_ledger_invalid/);
 });
-test('non-ready registrar clearly identifies missing trusted bootstrap',()=>{
- const r=g.readiness({release:release('honartik','honartik_config_center_readonly_enroll_v1'),
+test('preinstall does not circularly require a tool it has not registered yet',()=>{
+ const r=g.readiness({phase:'preinstall',release:release('honartik','honartik_config_center_readonly_enroll_v1'),
+  registrarInstalled:true,approvalRouteInstalled:true,rollbackReady:true,
+  servicesHealthy:true,registeredToolVisible:false});
+ assert.equal(r.ready,true);
+ assert.deepEqual(r.gaps,[]);
+});
+test('not-ready registrar names only actual missing preinstall gates',()=>{
+ const r=g.readiness({phase:'preinstall',release:release('honartik','honartik_config_center_readonly_enroll_v1'),
   registrarInstalled:false,approvalRouteInstalled:false,rollbackReady:false,
   servicesHealthy:true,registeredToolVisible:false});
  assert.equal(r.ready,false);
  assert.deepEqual(r.gaps,['TRUSTED_REGISTRAR_NOT_INSTALLED','APPROVAL_ROUTE_NOT_REGISTERED',
-  'ROLLBACK_NOT_VERIFIED','SIGNED_L4_RECEIPT_NOT_CONSUMED','TARGET_TOOL_NOT_REGISTERED']);
+  'ROLLBACK_NOT_VERIFIED']);
+});
+test('authorized gate requires consumed L4; active gate additionally requires tool discovery',()=>{
+ const opts={release:release('honartik','honartik_config_center_readonly_enroll_v1'),
+  registrarInstalled:true,approvalRouteInstalled:true,rollbackReady:true,
+  servicesHealthy:true,registeredToolVisible:false};
+ assert.deepEqual(g.readiness({...opts,phase:'authorized'}).gaps,['SIGNED_L4_RECEIPT_NOT_CONSUMED']);
+ assert.deepEqual(g.readiness({...opts,phase:'active',approval:{verified:true}}).gaps,
+   ['TARGET_TOOL_NOT_REGISTERED']);
 });
 test('request cannot invoke an installer without signed and consumed approval',async()=>{
  const r=release('honartik','honartik_config_center_readonly_enroll_v1');
