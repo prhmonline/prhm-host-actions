@@ -171,7 +171,7 @@ test('pre-approval validation failures cause zero filesystem writes',()=>{
 test('refuses a forged source root and invalid manifest plan',()=>{
  const f=fixture();
  assert.throws(()=>i.planInstallation({io:f.v.io,sourceRoot:'/tmp'}),/untrusted_stage_root/);
- assert.throws(()=>i.executeAfterTrustedApproval({...f.plan,changes:[f.plan.changes[0]]},{
+ assert.throws(()=>i.executeTransactionCore({...f.plan,changes:[f.plan.changes[0]]},{
   approval:proof(),manifestBytes,sourceSha:sourceCommit,io:f.v.io,...f.services
  }),/plan_invalid/);
 });
