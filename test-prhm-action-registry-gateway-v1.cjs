@@ -27,7 +27,7 @@ function manifest(project='honartik',action='honartik_config_center_readonly_enr
 function release(project,action) {
  const m=manifest(project,action),bytes=Buffer.from(JSON.stringify(m));
  return g.attestRelease({manifestBytes:bytes,expectedManifestSha:g.sha(bytes),
-  sourceCommit:m.source_commit,
+  sourceCommit:m.source_commit,manifestCommit:'b'.repeat(40),
   readOwner:p=>A[Object.keys(g.OWNER_PATHS).find(x=>g.OWNER_PATHS[x]===p)],
   readAsset:p=>F[p],readGitBlob:()=>bytes});
 }
@@ -40,22 +40,22 @@ test('shared gateway supports independent Honartik and MoeinShow immutable manif
 test('wrong source commit fails closed',()=>{
  const m=manifest(),buf=Buffer.from(JSON.stringify(m));
  assert.throws(()=>g.attestRelease({manifestBytes:buf,expectedManifestSha:g.sha(buf),
-  sourceCommit:'b'.repeat(40),readOwner:()=>null,readAsset:()=>null,readGitBlob:()=>buf}),/source_commit_mismatch/);
+  sourceCommit:'b'.repeat(40),manifestCommit:'c'.repeat(40),readOwner:()=>null,readAsset:()=>null,readGitBlob:()=>buf}),/source_or_manifest_commit_mismatch/);
 });
 test('unverified/mismatched git bytes fail closed',()=>{
  const m=manifest(),buf=Buffer.from(JSON.stringify(m));
  assert.throws(()=>g.attestRelease({manifestBytes:buf,expectedManifestSha:'f'.repeat(64),
-  sourceCommit:m.source_commit,readOwner:()=>null,readAsset:()=>null,readGitBlob:()=>buf}),/manifest_sha_mismatch/);
+  sourceCommit:m.source_commit,manifestCommit:'b'.repeat(40),readOwner:()=>null,readAsset:()=>null,readGitBlob:()=>buf}),/manifest_sha_mismatch/);
 });
 test('owner drift blocks registration before mutation',()=>{
  const m=manifest(),buf=Buffer.from(JSON.stringify(m));
  assert.throws(()=>g.attestRelease({manifestBytes:buf,expectedManifestSha:g.sha(buf),
-  sourceCommit:m.source_commit,readOwner:()=>Buffer.from('drift'),readAsset:()=>null,readGitBlob:()=>buf}),/owner_sha_drift/);
+  sourceCommit:m.source_commit,manifestCommit:'b'.repeat(40),readOwner:()=>Buffer.from('drift'),readAsset:()=>null,readGitBlob:()=>buf}),/owner_sha_drift/);
 });
 test('asset digest drift blocks registration',()=>{
  const m=manifest(),buf=Buffer.from(JSON.stringify(m));
  assert.throws(()=>g.attestRelease({manifestBytes:buf,expectedManifestSha:g.sha(buf),
-  sourceCommit:m.source_commit,
+  sourceCommit:m.source_commit,manifestCommit:'b'.repeat(40),
   readOwner:p=>A[Object.keys(g.OWNER_PATHS).find(x=>g.OWNER_PATHS[x]===p)],
   readAsset:()=>Buffer.from('bad'),readGitBlob:()=>buf}),/asset_sha_drift/);
 });
@@ -84,7 +84,7 @@ test('missing either MCP replica health condition fails closed',()=>{
  const m=manifest();m.health.services.pop();assert.throws(()=>g.assertManifest(m),/health_or_registry_discovery_missing/);
 });
 test('future approval argument hash binds project, release SHA and action',()=>{
- const a={action:g.ACTION,project:'honartik',source_commit:'a'.repeat(40),manifest_sha256:'1'.repeat(64)};
+ const a={action:g.ACTION,project:'honartik',source_commit:'a'.repeat(40),manifest_commit:'b'.repeat(40),manifest_sha256:'1'.repeat(64)};
  const b={...a,project:'moeinshow'};
  assert.notEqual(g.approvalBindingSha(a),g.approvalBindingSha(b));
  assert.notEqual(g.approvalBindingSha(a),g.approvalBindingSha({...a,manifest_sha256:'2'.repeat(64)}));
@@ -115,12 +115,12 @@ function signedFixture(args,overrides={}) {
  return {token:prefix+'.'+signature,publicKey:pub,ledger,args,nowSec:now};
 }
 test('signed one-time Ed25519 registration binding verifies cryptographically',()=>{
- const args={action:g.ACTION,project:'honartik',source_commit:'a'.repeat(40),manifest_sha256:'1'.repeat(64)};
+ const args={action:g.ACTION,project:'honartik',source_commit:'a'.repeat(40),manifest_commit:'b'.repeat(40),manifest_sha256:'1'.repeat(64)};
  const fixture=signedFixture(args);
  assert.equal(g.verifyConsumedRegistrationApproval(fixture).request_id,fixture.ledger.request_id);
 });
 test('forged approval boolean, altered signature and wrong consumption hash rejected',()=>{
- const args={action:g.ACTION,project:'honartik',source_commit:'a'.repeat(40),manifest_sha256:'1'.repeat(64)};
+ const args={action:g.ACTION,project:'honartik',source_commit:'a'.repeat(40),manifest_commit:'b'.repeat(40),manifest_sha256:'1'.repeat(64)};
  const f=signedFixture(args);
  assert.throws(()=>g.verifyConsumedRegistrationApproval({...f,token:'approved'}),/signed_token/);
  const parts=f.token.split('.');parts[1]=Buffer.from(JSON.stringify({fraud:true})).toString('base64url');
@@ -128,7 +128,7 @@ test('forged approval boolean, altered signature and wrong consumption hash reje
  assert.throws(()=>g.verifyConsumedRegistrationApproval({...f,ledger:{...f.ledger,consumption_hash:'0'.repeat(64)}}),/consumption_ledger_invalid/);
 });
 test('expired, wrong project or unconsumed L4 receipt cannot register',()=>{
- const args={action:g.ACTION,project:'honartik',source_commit:'a'.repeat(40),manifest_sha256:'1'.repeat(64)};
+ const args={action:g.ACTION,project:'honartik',source_commit:'a'.repeat(40),manifest_commit:'b'.repeat(40),manifest_sha256:'1'.repeat(64)};
  const expired=signedFixture(args,{exp:Math.floor(Date.now()/1000)-2});
  assert.throws(()=>g.verifyConsumedRegistrationApproval(expired),/signed_l4_binding/);
  const valid=signedFixture(args);
