@@ -59,8 +59,9 @@ jobs:
           node --test test-honartik-config-center-enrollment-action-v1.cjs test-honartik-config-center-registration-candidate-v1.cjs test-honartik-config-center-trusted-adapter-v1.cjs test-honartik-config-center-php-revocation-v1.cjs test-honartik-config-center-privileged-runner-v1.cjs
           php -l scripts/honartik-config-center-prod-enroll-20261012.php
           php -l scripts/honartik-config-center-readonly-status-v1.php
-          sha256sum scripts/honartik-config-center-readonly-status-v1.php honartik-config-center-privileged-runner-v1.cjs
+          sha256sum scripts/honartik-config-center-readonly-status-v1.php honartik-config-center-privileged-runner-v1.cjs honartik-config-center-enrollment-action-v1.cjs honartik-config-center-trusted-adapter-v1.cjs
           sha256sum scripts/honartik-config-center-prod-enroll-20261012.php
           test "$(sha256sum scripts/honartik-config-center-prod-enroll-20261012.php | cut -d' ' -f1)" = "9ccbcbdba457691e1d140d6e32ad379cbe6d98d5448c13970220c72ba2e8278c"
           test "$(git rev-parse a9da4735445dcd0833cd1ef5435c77884cb74e64:scripts/honartik-config-center-prod-enroll-20261012.php)" = "97de1aab42d2a7f67aeef66ead4a8a2bc1da9f1f"
           test "$(git show a9da4735445dcd0833cd1ef5435c77884cb74e64:scripts/honartik-config-center-prod-enroll-20261012.php | sha256sum | cut -d' ' -f1)" = "9ccbcbdba457691e1d140d6e32ad379cbe6d98d5448c13970220c72ba2e8278c"
+          test "$(sha256sum scripts/honartik-config-center-readonly-status-v1.php | cut -d' ' -f1)" = "83a7491e86b9304ca27fbdbf292944d07071a1880cd9beda84c87ad706379624"
