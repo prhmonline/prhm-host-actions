@@ -184,3 +184,26 @@ test('Production installer cannot accept caller-controlled plan or filesystem',(
  }),/manifest_attested_bytes_required/);
  assert.equal(f.v.renamed,0);
 });
+
+test('unsafe or attacker-owned backup root blocks installation before first write',()=>{
+ const f=fixture();
+ f.v.map.get(i.BACKUP_ROOT).uid=1000;
+ assert.throws(()=>execute(f),/backup_root_unsafe/);
+ assert.equal(f.v.renamed,0);
+});
+test('backup write failure blocks production mutations before first file edit',()=>{
+ const f=fixture();f.v.failWriteAt(1);
+ assert.throws(()=>execute(f),/installation_failed_rolled_back/);
+ assert.equal(f.v.renamed,0);
+ assertRestored(f);
+});
+test('unverifiable restoration reports a hard rollback failure, not success',()=>{
+ const f=fixture();f.v.failRenameAt(1);
+ const unlink=f.v.io.unlinkSync;
+ f.v.io.unlinkSync=(p)=>{
+  if(p===f.plan.changes[0].target)throw Error('synthetic_rollback_denied');
+  return unlink(p);
+ };
+ assert.throws(()=>execute(f),/installation_failed_rollback_unverified/);
+ assert.ok(f.v.map.has(f.plan.changes[0].target));
+});
