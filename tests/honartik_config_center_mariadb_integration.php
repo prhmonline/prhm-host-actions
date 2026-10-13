@@ -29,6 +29,9 @@ namespace {
     use App\Models\Site;
     use App\Models\MachineCredential;
     use App\Models\AuditLog;
+    // In a complete Laravel app now() is provided by the framework helpers.
+    // The slim Eloquent-only CI runtime supplies the identical Carbon helper.
+    function now(): \Illuminate\Support\Carbon { return \Illuminate\Support\Carbon::now(); }
     function insist(bool $ok, string $why): void {
         if (!$ok) throw new \RuntimeException('INTEGRATION_FAILED:' . $why);
     }
