@@ -25,8 +25,8 @@ function patchBase(source){
   return once(source,BASE_ANCHOR,BASE_ANCHOR+BASE_LINE,'base');
 }
 function patchExecutor(source){
-  const SPEC_ANCHOR='const HOST_ACTION_V2_SPECS = Object.freeze({\\n';
-  const SPEC_LINE="  "+ACTION+":{operation:'"+OPERATION+"',kind:'"+ACTION+"'},\\n";
+  const SPEC_ANCHOR='const HOST_ACTION_V2_SPECS = Object.freeze({\n';
+  const SPEC_LINE="  "+ACTION+":{operation:'"+OPERATION+"',kind:'"+ACTION+"'},\n";
   let result=once(source,SPEC_ANCHOR,SPEC_ANCHOR+SPEC_LINE,'executor');
   const DISPATCH='applyHostActionV2=async function(action){';
   if(result.split(DISPATCH).length!==2)fail('executor_dispatch_anchor_mismatch');
