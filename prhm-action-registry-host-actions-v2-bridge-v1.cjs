@@ -48,7 +48,7 @@ function validateReceipt(request,confirmation,issued){
 function attestExistingRoute(bridge){
  // Externally injected capabilities are owned exclusively by the existing
  // root executor, never constructed from client-provided path/code.
- const functions=['readPinnedGitManifest','readLiveOwner','readStagedAsset',
+ const functions=['readPinnedGitManifest','readPinnedGitSource','readLiveOwner','readStagedAsset',
     'getInstaller','getToolDiscovery','writeMetadataAudit'];
  for(const f of functions)if(!bridge||typeof bridge[f]!=='function')fail('trusted_capability_missing_'+f);
  return bridge;
@@ -74,6 +74,13 @@ function immutableManifest(input,bridge){
     // Enforce precisely the already pinned, previously retrieved Git object.
     if(commit!==input.manifest_commit||path!==file.path)fail('git_blob_unbound');
     return file.bytes;
+  },
+  readGitSource:(commit,path)=>{
+    if(commit!==input.source_commit)fail('source_git_commit_unbound');
+    const bytes=cap.readPinnedGitSource({repo:'prhmonline/prhm-host-actions',
+      source_commit:commit,source_path:path,max_bytes:4000000});
+    if(!Buffer.isBuffer(bytes))fail('source_git_blob_missing');
+    return bytes;
   }
  });
  if(out.normalized.project!==input.project||out.normalized.git_path!==file.path)
