@@ -23,10 +23,16 @@ function token(claimOverrides={},key=privateKey,headerOverrides={}){
  return input+'.'+crypto.sign(null,Buffer.from(input),key).toString('base64url');
 }
 function ledger(patches={}){
- return {schema_version:'prhm.approval-consumption.v1',approval_id:ID,
-  request_id:REQ,operation:verify.OPERATION,request_hash:hash,
+ const record={schema_version:'prhm.approval-consumption.v1',approval_id:ID,
+  request_id:REQ,work_order_id:null,project_id:'control_plane',
+  operation:verify.OPERATION,request_hash:hash,
   consumed_at:new Date((NOW-10)*1000).toISOString(),consumer:'typed-executor',
-  consumption_hash:'e'.repeat(64),...patches};
+  consumption_hash:null,...patches};
+ if(record.consumption_hash===null)
+  record.consumption_hash=crypto.createHash('sha256').update(
+   JSON.stringify({...record,consumption_hash:null})
+  ).digest('hex');
+ return record;
 }
 function verifyCase(jwt=token(),l=ledger(),manifest=MANIFEST,source=SOURCE,now=NOW,policy=POLICY){
  return verify.validateConsumedReceipt({
@@ -60,7 +66,7 @@ test('incorrect one-time consumed ledger or missing evidence never authorizes',(
   ledger({consumer:'untrusted'}),
   ledger({consumed_at:'no date'}),
   ledger({consumption_hash:'not-a-hash'}),
-  ledger({schema_version:'v0'})
+  ledger({schema_version:'v0'}),ledger({consumption_hash:'e'.repeat(64)})
  ])assert.throws(()=>verifyCase(token(),item));
 });
 test('changed manifest, commit, policy or signing arguments always block',()=>{
