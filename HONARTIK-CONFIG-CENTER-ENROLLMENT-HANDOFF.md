@@ -48,3 +48,13 @@ Go-live is only complete after a separately approved adapter/policy registration
 - Honartik production backend verified at `7ae8b99677ec13b3498b4a5425267a49fc87806e`, but the live read-only check still returns `CONFIG_CENTER_READONLY_FAIL`. The read-only consumer is opt-in diagnostic only.
 - **Remaining before approved install:** implement actual fixed privileged host IO and reviewed runner, prove exact script and Config Center release identity, add atomic protected installation/restart/rollback for registration, reconcile any dirty production worktrees without deleting untracked business data, then request a new signed Level-4 authorization. Do not consume an old approval request. After authorized install, execute real postconditions and audit.
 - **Current state:** PR remains draft; Source/CI PASS, runtime registration NOT installed, credential NOT issued, live enrollment NO-GO, no changes to application payments/SMS/reservations.
+
+## 2026-10-13 source provenance discrepancy — HARD BLOCK
+
+The prior historical local commit `740827bc445d028bca285e20b13b8765c4d75f28` contains `infra/honartik-config-center-prod-enroll-20261012.php`, but that file is **absent from the current Config Center Git HEAD** `74aef2992969d5c3f3755b3898b2c3107a0b62a3`. The historical bytes have been preserved verbatim as `scripts/honartik-config-center-prod-enroll-20261012.php` on this PR branch, with identical 11,192-character content verified via an independent GitHub read.
+
+**CI run 38404821529:** all 29 synthetic Node tests PASS; PHP lint PASS; pinned script integrity FAIL:
+- Actual SHA256 of archived historical source: `98babd140de45e4ea0c2bbedb4195d9248b6213a6d5ebed584ccc8b10ac15785`.
+- Required SHA256 in existing enrollment contract: `b9978bd782282ee385b487cc7d4614edc2b6f4f3b8c513797c657b32f0d50903`.
+
+Do **not** auto-rebind the contract to the recovered historical blob: the source of the earlier pinned SHA has not been independently located or verified. No enrollment, registration installation, user-facing rollout, Git merge or Level-4 approval should proceed until a trusted read-only audit recovers the exact source that produced the required SHA (or performs a new approved source review/rebind and updates all pins). The SHA gate intentionally stays RED. This is a genuine release blocker, not an optional CI check.
