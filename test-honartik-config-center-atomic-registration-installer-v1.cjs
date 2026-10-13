@@ -207,3 +207,11 @@ test('unverifiable restoration reports a hard rollback failure, not success',()=
  assert.throws(()=>execute(f),/installation_failed_rollback_unverified/);
  assert.ok(f.v.map.has(f.plan.changes[0].target));
 });
+
+test('public live installer rejects caller-invented approval booleans before any file read',()=>{
+ const f=fixture();
+ assert.throws(()=>i.executeAfterTrustedApproval({
+  approval:proof(),manifestBytes,sourceSha:sourceCommit,...f.services
+ }),/signed_approval_token_required/);
+ assert.equal(f.v.renamed,0);
+});
