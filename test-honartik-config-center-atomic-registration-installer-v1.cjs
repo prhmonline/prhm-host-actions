@@ -92,7 +92,7 @@ function fixture(){
  return {v,plan,previous,services,restarts,healths};
 }
 function execute(f,more={}){
- return i.executeAfterTrustedApproval(f.plan,{
+ return i.executeTransactionCore(f.plan,{
   approval:proof(),manifestBytes,sourceSha:sourceCommit,
   io:f.v.io,...f.services,...more
  });
@@ -162,7 +162,7 @@ test('failing service health after full installation rolls back and rechecks ser
 });
 test('pre-approval validation failures cause zero filesystem writes',()=>{
  const f=fixture();
- assert.throws(()=>i.executeAfterTrustedApproval(f.plan,{
+ assert.throws(()=>i.executeTransactionCore(f.plan,{
   approval:{...proof(),second_confirmation_valid:false},
   manifestBytes,sourceSha:sourceCommit,io:f.v.io,...f.services
  }),/trusted_l4_proof_invalid/);
@@ -174,4 +174,12 @@ test('refuses a forged source root and invalid manifest plan',()=>{
  assert.throws(()=>i.executeAfterTrustedApproval({...f.plan,changes:[f.plan.changes[0]]},{
   approval:proof(),manifestBytes,sourceSha:sourceCommit,io:f.v.io,...f.services
  }),/plan_invalid/);
+});
+
+test('Production installer cannot accept caller-controlled plan or filesystem',()=>{
+ const f=fixture();
+ assert.throws(()=>i.executeAfterTrustedApproval(f.plan,{
+  approval:proof(),manifestBytes,sourceSha:sourceCommit,io:f.v.io,...f.services
+ }),/manifest_attested_bytes_required/);
+ assert.equal(f.v.renamed,0);
 });
