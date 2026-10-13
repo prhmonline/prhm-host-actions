@@ -21,7 +21,7 @@ function fixture(project='honartik'){
   rollback_required:true,
   registry_owners:Object.fromEntries(Object.keys(g.OWNER_PATHS).map(x=>
    [x,{path:g.OWNER_PATHS[x],before_sha256:g.sha(PRE[x]),after_sha256:g.sha(POST[x])}])),
-  assets:[{path:ASSET,sha256:g.sha(ASSET_BYTES)}],
+  assets:[{path:ASSET,source_path:'sample-action-v1.cjs',sha256:g.sha(ASSET_BYTES)}],
   health:{services:['prhm-agent-selfmaint.service','prhm-agent-selfmaint-exec.service',
    'prhm-agent-mcp-blue.service','prhm-agent-mcp-green.service'],tool:action}
  };
@@ -33,6 +33,8 @@ function fixture(project='honartik'){
   readPinnedGitManifest:()=>({path:manifest.git_path,bytes}),
   readLiveOwner:p=>PRE[Object.keys(g.OWNER_PATHS).find(x=>g.OWNER_PATHS[x]===p)],
   readStagedAsset:p=>p===ASSET?ASSET_BYTES:null,
+  readPinnedGitSource:({source_commit,source_path})=>
+    source_commit===source&&source_path==='sample-action-v1.cjs'?ASSET_BYTES:null,
   getInstaller:()=>async()=>{calls.installer++;return{ok:true,rollback:'not_needed',installedAssets:1,updatedOwners:4}},
   getToolDiscovery:async()=>true,
   writeMetadataAudit:async()=>{calls.audit++}
@@ -95,7 +97,7 @@ test('preflight rejects source path drift, modified or missing asset',()=>{
   ...a.trusted,readPinnedGitManifest:()=>({path:'manifests/foreign-registration.json',
   bytes:Buffer.from(JSON.stringify(a.manifest))})}),/git_blob_unbound/);
  assert.throws(()=>bridge.immutableManifest(a.input,{
-  ...a.trusted,readStagedAsset:()=>Buffer.from('unexpected')}),/asset_sha_drift/);
+  ...a.trusted,readStagedAsset:()=>Buffer.from('unexpected')}),/asset_sha_or_source_git_drift/);
 });
 test('client cannot supply arbitrary installer path or executable capability',()=>{
  const f=fixture();
