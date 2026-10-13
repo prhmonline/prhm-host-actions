@@ -215,3 +215,23 @@ test('public live installer rejects caller-invented approval booleans before any
  }),/signed_approval_token_required/);
  assert.equal(f.v.renamed,0);
 });
+
+test('shared registry compatibility entry rejects unsigned or wrong project binding',()=>{
+ const old=fixture(),release={normalized:{
+  project:'honartik',action:'honartik_config_center_readonly_enroll_v1',
+  assets:[],owners:{}},source_commit:'a'.repeat(40),
+  manifest_commit:'b'.repeat(40),manifest_sha256:'1'.repeat(64)};
+ const args={action:'prhm_action_registry_install_v1',
+  project:'honartik',source_commit:release.source_commit,
+  manifest_commit:release.manifest_commit,manifest_sha256:release.manifest_sha256};
+ assert.equal(typeof i.executeAfterSharedRegistryApproval,'function');
+ assert.throws(()=>i.executeAfterSharedRegistryApproval({
+  approvalToken:'approved',args,release,
+  readPinnedManifest:()=>Buffer.from('fake'),...old.services
+ }),/shared_signed_token_required/);
+ assert.throws(()=>i.executeAfterSharedRegistryApproval({
+  approvalToken:'x'.repeat(121),args:{...args,project:'moeinshow'},release,
+  readPinnedManifest:()=>Buffer.from('fake'),...old.services
+ }),/shared_registration_binding_invalid/);
+ assert.equal(old.v.renamed,0);
+});
