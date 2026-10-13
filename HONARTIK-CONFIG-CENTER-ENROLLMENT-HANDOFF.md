@@ -107,3 +107,21 @@ Transaction contract:
 **CI evidence:** [GitHub Actions run 38418866629](https://github.com/prhmonline/prhm-host-actions/actions/runs/38418866629) completed **SUCCESS: 57/57 Node tests, both PHP lint checks PASS, fixed source SHA checks PASS**. Synthetic tests do not count as a real Laravel DB-backed rollback/race test or an approved installation.
 
 **Still open:** real isolated DB-backed issuance/revocation/race tests; integration with a trustworthy signed L4 registration bootstrap and fixed independent install worker; staged source, backup-root and service restart preflights; new approval; real install plus `CONFIG_CENTER_READONLY_PASS tenant=honartik revision=1 source=remote`. Until then: **NO-GO Production, PR remains Draft**. No previous approval request may be replayed, and neither Honartik business data nor MoeinShow may be touched.
+
+## 2026-10-13 — isolated SQLite and cryptographic signed-L4 gate
+
+**Real isolated relational test (not a production database):**
+- Added `tests/honartik_config_center_sqlite_contract_test.py`, using real temporary SQLite files and two independent connections, not mocks.
+- Exercises tenant/revision constraints, one config:read credential only, hash-only token persistence, duplicate-issuance refusal, foreign-token preservation, exact-token revocation and idempotence, broader-scope revocation refusal, transactional audit failure rollback, and a concurrent connection lock conflict.
+- Additional source-anchor checks correlate the SQLite SQL contract with the actual reviewed PHP source's `revokeBoundToken`, token hash, tenant and Site `lockForUpdate` operations.
+- **Limit:** this verifies SQLite transactional predicates, not actual Laravel Eloquent + MariaDB/MySQL row-lock behavior. The original `php scripts/honartik-config-center-prod-enroll-20261012.php` was NOT invoked; doing so against Production would issue credentials.
+
+**Cryptographic authorization gate (Git only, no approval requested):**
+- Added `honartik-config-center-signed-registration-approval-v1.cjs` and Ed25519 test coverage. This follows the actual Approval Center `EdDSA` JWS header format, pinned issuer `prhm-company-approval`, signed action/operation, approved operator and role, exact SHA256 canonical registration arguments, Git source commit, unexpired Level-4, policy version, and a persisted typed-executor consumption ledger with its own recorded SHA256 integrity value.
+- The **public production installation entrypoint** `executeAfterTrustedApproval` now rejects plain `{approved:true}` or fabricated proof objects and instead requires a cryptographically signed token plus *independently present* consumed-record proof, internally read from the fixed Approval Center public key/consumed-ledger paths; no caller-supplied path, clock, public key or policy is accepted.
+- Future registration policy version `2026-10-13.2-honartik-config-center-registration-bootstrap-v1` is deliberately pinned and **not installed**. This gate is currently **NO-GO** until the independently reviewed trusted registration bootstrap creates that policy and server-side request, performs signed once-only authorization, and stages SHA-verified files.
+- No production signature/private keys, tokens, credentials, customer or booking data were read or written in this development phase.
+
+[GitHub Actions run 38420440553](https://github.com/prhmonline/prhm-host-actions/actions/runs/38420440553) completed SUCCESS at the source+consumption-integrity revision: **65/65 Node checks, 9/9 SQLite transactional checks, both PHP lint checks PASS**. Follow-on issuer/role hardening is separately tested on the newer PR head and must be verified GREEN before any further rollout.
+
+**Remaining independent blockers:** actual Laravel/MariaDB isolated DB-backed integration; separate *installed*, signed Level-4 policy/registration bootstrap and source staging; health checks and success attestation on the actual Honartik production consumer. Neither the registration installer nor the enrollment action is installed. Do not merge or deploy this Draft PR as a shortcut.
