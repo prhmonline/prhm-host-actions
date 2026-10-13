@@ -213,17 +213,24 @@ function verifyLiveConsumedRegistrationApproval({token,args}){
   return verifyConsumedRegistrationApproval({token,publicKey,ledger,args,
     nowSec:Math.floor(Date.now()/1000)});
 }
-function readiness({release, approval, registrarInstalled, approvalRouteInstalled,
-                    rollbackReady, servicesHealthy, registeredToolVisible}) {
+/**
+ * Use explicit phases. Requiring the new target tool during PREINSTALL would
+ * create the exact circular bootstrap dependency this gateway solves.
+ */
+function readiness({phase='preinstall',release,approval,registrarInstalled,
+                    approvalRouteInstalled,rollbackReady,servicesHealthy,
+                    registeredToolVisible}) {
+  exactly(['preinstall','authorized','active'].includes(phase),'invalid_readiness_phase');
   const gaps=[];
   if (!release) gaps.push('GIT_RELEASE_NOT_ATTESTED');
   if (registrarInstalled !== true) gaps.push('TRUSTED_REGISTRAR_NOT_INSTALLED');
   if (approvalRouteInstalled !== true) gaps.push('APPROVAL_ROUTE_NOT_REGISTERED');
   if (rollbackReady !== true) gaps.push('ROLLBACK_NOT_VERIFIED');
   if (servicesHealthy !== true) gaps.push('SERVICE_HEALTH_UNVERIFIED');
-  if (!approval) gaps.push('SIGNED_L4_RECEIPT_NOT_CONSUMED');
-  if (registeredToolVisible !== true) gaps.push('TARGET_TOOL_NOT_REGISTERED');
-  return Object.freeze({ready:gaps.length===0, gaps:Object.freeze(gaps)});
+  if (phase!=='preinstall'&&!approval) gaps.push('SIGNED_L4_RECEIPT_NOT_CONSUMED');
+  if (phase==='active'&&registeredToolVisible !== true)
+    gaps.push('TARGET_TOOL_NOT_REGISTERED');
+  return Object.freeze({phase,ready:gaps.length===0,gaps:Object.freeze(gaps)});
 }
 async function executeAfterTrustedAuthorization({release, signedApprovalToken, args, trustedInstaller,
     readInstalledTool, audit}) {
