@@ -13,6 +13,8 @@ on:
       - 'test-honartik-config-center-atomic-registration-installer-v1.cjs'
       - 'tests/honartik_config_center_sqlite_contract_test.py'
       - 'tests/honartik_config_center_mariadb_integration.php'
+      - 'prhm-action-registry-gateway-v1.cjs'
+      - 'test-prhm-action-registry-gateway-v1.cjs'
       - 'honartik-config-center-signed-registration-approval-v1.cjs'
       - 'test-honartik-config-center-signed-registration-approval-v1.cjs'
       - 'test-honartik-config-center-install-manifest-v1.cjs'
@@ -37,6 +39,8 @@ on:
       - 'test-honartik-config-center-atomic-registration-installer-v1.cjs'
       - 'tests/honartik_config_center_sqlite_contract_test.py'
       - 'tests/honartik_config_center_mariadb_integration.php'
+      - 'prhm-action-registry-gateway-v1.cjs'
+      - 'test-prhm-action-registry-gateway-v1.cjs'
       - 'honartik-config-center-signed-registration-approval-v1.cjs'
       - 'test-honartik-config-center-signed-registration-approval-v1.cjs'
       - 'test-honartik-config-center-install-manifest-v1.cjs'
@@ -64,6 +68,9 @@ jobs:
         run: |
           set -euo pipefail
           node --check honartik-config-center-enrollment-action-v1.cjs
+          node --check prhm-action-registry-gateway-v1.cjs
+          node --check test-prhm-action-registry-gateway-v1.cjs
+          node --test test-prhm-action-registry-gateway-v1.cjs
           node --check test-honartik-config-center-enrollment-action-v1.cjs
           node --check honartik-config-center-registration-candidate-v1.cjs
           node --check test-honartik-config-center-registration-candidate-v1.cjs
