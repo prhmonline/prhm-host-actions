@@ -161,7 +161,7 @@ test('authorized gate requires consumed L4; active gate additionally requires to
 test('request cannot invoke an installer without signed and consumed approval',async()=>{
  const r=release('honartik','honartik_config_center_readonly_enroll_v1');
  const args={action:g.ACTION,project:r.normalized.project,source_commit:r.source_commit,
-  manifest_sha256:r.manifest_sha256};
+  manifest_commit:r.manifest_commit,manifest_sha256:r.manifest_sha256};
  let called=0;
  await assert.rejects(g.executeAfterTrustedAuthorization({release:r,args,signedApprovalToken:'approved',
   trustedInstaller:async()=>{called++;return{ok:true}},
