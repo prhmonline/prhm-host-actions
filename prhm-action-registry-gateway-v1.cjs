@@ -264,21 +264,53 @@ async function executeAfterTrustedAuthorization({release, signedApprovalToken, a
   exactly(typeof trustedInstaller === 'function' &&
     typeof readInstalledTool === 'function' && typeof audit === 'function',
     'trusted_executor_capabilities_missing');
-  // Existing SHA-bound atomic installer owns backups, restart and rollback.
-  const result = await trustedInstaller({release,approval});
-  exactly(result && result.ok === true && result.rollback === 'not_needed' &&
-    result.installedAssets === release.normalized.assets.length &&
-    result.updatedOwners === 4, 'installer_postcondition_missing');
-  exactly(await readInstalledTool(release.normalized.action) === true,
-    'registry_discovery_missing');
-  await audit(Object.freeze({
-    request_id:approval.request_id, action:release.normalized.action,
-    project:release.normalized.project, source_commit:release.source_commit,
-    manifest_commit:release.manifest_commit,manifest_sha256:release.manifest_sha256, result:'registered'
-  }));
-  return Object.freeze({ok:true,project:release.normalized.project,
-    action:release.normalized.action,source_commit:release.source_commit,
-    rollback:'not_needed',registry_visible:true});
+  // One signed one-time approval authorizes one bounded transaction only.
+  // Rollback never creates a second approval or retries installation.
+  let result, failure=null;
+  try {
+    result=await trustedInstaller({release,approval});
+    exactly(result && result.ok===true && result.rollback==='not_needed' &&
+      result.installedAssets===release.normalized.assets.length &&
+      result.updatedOwners===4, 'installer_postcondition_missing');
+    exactly(await readInstalledTool(release.normalized.action)===true,
+      'registry_discovery_missing');
+    await audit(Object.freeze({
+      request_id:approval.request_id,action:release.normalized.action,
+      project:release.normalized.project,source_commit:release.source_commit,
+      manifest_commit:release.manifest_commit,manifest_sha256:release.manifest_sha256,
+      result:'registered',rollback:'not_needed'
+    }));
+    return Object.freeze({ok:true,project:release.normalized.project,
+      action:release.normalized.action,source_commit:release.source_commit,
+      manifest_commit:release.manifest_commit,rollback:'not_needed',
+      registry_visible:true});
+  } catch(e) {
+    failure=String(e?.message||e).slice(0,160);
+  }
+  let restored=false;
+  try { restored=await verifyOriginalState(release)===true; } catch {}
+  if(!restored) {
+    let rb;
+    try {
+      rb=await trustedRollback({release,approval,installed:result,
+        reason:'failed_install_or_postcondition'});
+    } catch {}
+    if(rb?.verified===true) {
+      try { restored=await verifyOriginalState(release)===true; } catch {}
+    }
+  }
+  if(!restored) throw new Error('registry_gateway_rollback_unverified');
+  try {
+    await audit(Object.freeze({
+      request_id:approval.request_id,action:release.normalized.action,
+      project:release.normalized.project,source_commit:release.source_commit,
+      manifest_commit:release.manifest_commit,manifest_sha256:release.manifest_sha256,
+      result:'failed',rollback:'verified',failure_code:failure
+    }));
+  } catch {
+    throw new Error('registry_gateway_rollback_verified_audit_unavailable');
+  }
+  throw new Error('registry_gateway_failed_rollback_verified');
 }
 module.exports=Object.freeze({ACTION,OPERATION,OWNER_PATHS,ASSET_ROOT,
   sha,canonicalJson,canonicalArgs,approvalBindingSha,assertManifest,attestRelease,
