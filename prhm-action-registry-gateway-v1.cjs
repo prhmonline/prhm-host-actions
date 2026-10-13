@@ -249,13 +249,17 @@ function readiness({phase='preinstall',release,approval,registrarInstalled,
   return Object.freeze({phase,ready:gaps.length===0,gaps:Object.freeze(gaps)});
 }
 async function executeAfterTrustedAuthorization({release, signedApprovalToken, args, trustedInstaller,
-    readInstalledTool, audit}) {
+    trustedRollback, verifyOriginalState, readInstalledTool, audit}) {
   // This method MUST be called only by the previously installed root-owned
   // trusted executor after independent signature verification and consumption.
   exactly(release && release.normalized && release.manifest_sha256 === args?.manifest_sha256 &&
     release.normalized.project === args?.project && release.source_commit === args?.source_commit &&
     release.manifest_commit === args?.manifest_commit,
     'unbound_release');
+  // Rollback capabilities are required before any signed approval is consumed.
+  exactly(typeof trustedInstaller==='function' && typeof trustedRollback==='function' &&
+    typeof verifyOriginalState==='function' && typeof readInstalledTool==='function' &&
+    typeof audit==='function', 'trusted_rollback_capabilities_missing');
   const approval=verifyLiveConsumedRegistrationApproval({token:signedApprovalToken,args});
   exactly(typeof trustedInstaller === 'function' &&
     typeof readInstalledTool === 'function' && typeof audit === 'function',
