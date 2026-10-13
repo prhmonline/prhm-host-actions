@@ -50,7 +50,7 @@ function canonicalArgs(a) {
 function approvalBindingSha(args) { return sha(Buffer.from(canonicalArgs(args))); }
 function assertManifest(manifest) {
   exactKeys(manifest, ['schema_version','project','action','source_commit','risk',
-    'approval_level','registry_owners','assets','rollback_required','health','git_path', 'manifest_schema');
+    'approval_level','registry_owners','assets','rollback_required','health','git_path'], 'manifest_schema');
   exactly(manifest.schema_version === 'prhm.action-registry.release.v1' &&
     PROJECT.test(manifest.project) && NAME.test(manifest.action) &&
     manifest.action !== ACTION && COMMIT.test(manifest.source_commit) &&
