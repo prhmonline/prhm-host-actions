@@ -23,7 +23,7 @@ const LOCK='/run/prhm-honartik-config-center-enroll-v1.lock';
 const AUDIT_DIR='/var/lib/prhm-agent-selfmaint-exec/honartik-config-center-enrollment-v1';
 const AUDIT=AUDIT_DIR+'/audit.jsonl';
 const PHP='/usr/bin/php',GIT='/usr/bin/git',RUNUSER='/usr/sbin/runuser';
-const EXPECTED_PHP=Object.freeze({source:CONTRACT.scriptSha256,verifier:'__VERIFY_SHA_PENDING__'});
+const EXPECTED_PHP=Object.freeze({source:CONTRACT.scriptSha256,verifier:'83a7491e86b9304ca27fbdbf292944d07071a1880cd9beda84c87ad706379624'});
 const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
 function fail(code){throw new Error(code)}
 function validateTrustedContext(context){
