@@ -2,20 +2,10 @@ name: PRHM Shared Agent 3 Registration Gate
 
 on:
   pull_request:
-    paths:
-      - '**/*registration*'
-      - '**/*action-registry*'
-      - '**/*enrollment*'
-      - '.github/workflows/prhm-shared-action-registry-ci.yml'
   push:
     branches:
+      - main
       - integration/honartik-config-center-enrollment-action-v1-20261012
-    paths:
-      - 'prhm-action-registry-gateway-v1.cjs'
-      - 'test-prhm-action-registry-gateway-v1.cjs'
-      - 'prhm-action-registry-host-actions-v2-bridge-v1.cjs'
-      - 'test-prhm-action-registry-host-actions-v2-bridge-v1.cjs'
-      - '.github/workflows/prhm-shared-action-registry-ci.yml'
 
 permissions:
   contents: read
