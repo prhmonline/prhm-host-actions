@@ -37,14 +37,23 @@ function exactKeys(value, keys, reason) {
   exactly(value && typeof value === 'object' && !Array.isArray(value) &&
     Object.keys(value).sort().join('|') === keys.slice().sort().join('|'), reason);
 }
+// Match the LIVE /opt/prhm-agent-selfmaint/server.js canonicalJson byte-for-byte.
+// Approval Center validates this hash. JSON.stringify(insertion order) is UNSAFE.
+function canonicalJson(value) {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return '['+value.map(canonicalJson).join(',')+']';
+  return '{'+Object.keys(value).sort().map(
+    k=>JSON.stringify(k)+':'+canonicalJson(value[k])
+  ).join(',')+'}';
+}
 function canonicalArgs(a) {
   exactKeys(a, ['action','project','source_commit','manifest_commit','manifest_sha256'], 'args_schema');
   exactly(a.action === ACTION && PROJECT.test(a.project) &&
-    COMMIT.test(a.source_commit) && COMMIT.test(a.manifest_commit) && SHA256.test(a.manifest_sha256), 'args_invalid');
-  // Explicit insertion order matches the future typed Approval Center request.
-  return JSON.stringify({
-    action: ACTION, project: a.project, source_commit: a.source_commit,
-    manifest_commit: a.manifest_commit, manifest_sha256: a.manifest_sha256,
+    COMMIT.test(a.source_commit) && COMMIT.test(a.manifest_commit) &&
+    SHA256.test(a.manifest_sha256), 'args_invalid');
+  return canonicalJson({
+    action:ACTION, project:a.project, source_commit:a.source_commit,
+    manifest_commit:a.manifest_commit, manifest_sha256:a.manifest_sha256
   });
 }
 function approvalBindingSha(args) { return sha(Buffer.from(canonicalArgs(args))); }
@@ -268,6 +277,6 @@ async function executeAfterTrustedAuthorization({release, signedApprovalToken, a
     rollback:'not_needed',registry_visible:true});
 }
 module.exports=Object.freeze({ACTION,OPERATION,OWNER_PATHS,ASSET_ROOT,
-  sha,canonicalArgs,approvalBindingSha,assertManifest,attestRelease,
+  sha,canonicalJson,canonicalArgs,approvalBindingSha,assertManifest,attestRelease,
   POLICY_VERSION,decodeJws,verifyConsumedRegistrationApproval,verifyLiveConsumedRegistrationApproval,
   readiness,executeAfterTrustedAuthorization});
