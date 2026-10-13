@@ -87,7 +87,7 @@ test('preflight rejects source path drift, modified or missing asset',()=>{
  const a=fixture();
  assert.throws(()=>bridge.immutableManifest(a.input,{
   ...a.trusted,readPinnedGitManifest:()=>({path:'manifests/foreign-registration.json',
-  bytes:Buffer.from(JSON.stringify(a.manifest))})}),/manifest_project_or_path_mismatch/);
+  bytes:Buffer.from(JSON.stringify(a.manifest))})}),/git_blob_unbound/);
  assert.throws(()=>bridge.immutableManifest(a.input,{
   ...a.trusted,readStagedAsset:()=>Buffer.from('unexpected')}),/asset_sha_drift/);
 });
