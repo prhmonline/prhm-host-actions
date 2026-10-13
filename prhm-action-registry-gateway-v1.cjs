@@ -248,22 +248,15 @@ function readiness({phase='preinstall',release,approval,registrarInstalled,
     gaps.push('TARGET_TOOL_NOT_REGISTERED');
   return Object.freeze({phase,ready:gaps.length===0,gaps:Object.freeze(gaps)});
 }
-async function executeAfterTrustedAuthorization({release, signedApprovalToken, args, trustedInstaller,
-    trustedRollback, verifyOriginalState, readInstalledTool, audit}) {
-  // This method MUST be called only by the previously installed root-owned
-  // trusted executor after independent signature verification and consumption.
-  exactly(release && release.normalized && release.manifest_sha256 === args?.manifest_sha256 &&
-    release.normalized.project === args?.project && release.source_commit === args?.source_commit &&
-    release.manifest_commit === args?.manifest_commit,
-    'unbound_release');
-  // Rollback capabilities are required before any signed approval is consumed.
+async function finalizeVerifiedInstall({release,approval,trustedInstaller,trustedRollback,
+  verifyOriginalState,readInstalledTool,audit}) {
+  // Pure callback transaction for isolated regression tests; it is never an
+  // approval authority or a stand-alone installer.
+  exactly(approval && approval.level===4 && approval.risk==='critical' &&
+    typeof approval.request_id==='string','verified_approval_context_required');
   exactly(typeof trustedInstaller==='function' && typeof trustedRollback==='function' &&
     typeof verifyOriginalState==='function' && typeof readInstalledTool==='function' &&
-    typeof audit==='function', 'trusted_rollback_capabilities_missing');
-  const approval=verifyLiveConsumedRegistrationApproval({token:signedApprovalToken,args});
-  exactly(typeof trustedInstaller === 'function' &&
-    typeof readInstalledTool === 'function' && typeof audit === 'function',
-    'trusted_executor_capabilities_missing');
+    typeof audit==='function','trusted_rollback_capabilities_missing');
   // One signed one-time approval authorizes one bounded transaction only.
   // Rollback never creates a second approval or retries installation.
   let result, failure=null;
@@ -312,7 +305,26 @@ async function executeAfterTrustedAuthorization({release, signedApprovalToken, a
   }
   throw new Error('registry_gateway_failed_rollback_verified');
 }
+async function executeAfterTrustedAuthorization({release, signedApprovalToken, args, trustedInstaller,
+    trustedRollback, verifyOriginalState, readInstalledTool, audit}) {
+  // This method MUST be called only by the previously installed root-owned
+  // trusted executor after independent signature verification and consumption.
+  exactly(release && release.normalized && release.manifest_sha256 === args?.manifest_sha256 &&
+    release.normalized.project === args?.project && release.source_commit === args?.source_commit &&
+    release.manifest_commit === args?.manifest_commit,
+    'unbound_release');
+  // Rollback capabilities are required before any signed approval is consumed.
+  exactly(typeof trustedInstaller==='function' && typeof trustedRollback==='function' &&
+    typeof verifyOriginalState==='function' && typeof readInstalledTool==='function' &&
+    typeof audit==='function', 'trusted_rollback_capabilities_missing');
+  const approval=verifyLiveConsumedRegistrationApproval({token:signedApprovalToken,args});
+  exactly(typeof trustedInstaller === 'function' &&
+    typeof readInstalledTool === 'function' && typeof audit === 'function',
+    'trusted_executor_capabilities_missing');
+  return finalizeVerifiedInstall({release,approval,trustedInstaller,trustedRollback,
+    verifyOriginalState,readInstalledTool,audit});
+}
 module.exports=Object.freeze({ACTION,OPERATION,OWNER_PATHS,ASSET_ROOT,
   sha,canonicalJson,canonicalArgs,approvalBindingSha,assertManifest,attestRelease,
   POLICY_VERSION,decodeJws,verifyConsumedRegistrationApproval,verifyLiveConsumedRegistrationApproval,
-  readiness,executeAfterTrustedAuthorization});
+  readiness,finalizeVerifiedInstall,executeAfterTrustedAuthorization});
