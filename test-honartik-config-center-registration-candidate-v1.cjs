@@ -3,7 +3,7 @@ const test=require('node:test'),assert=require('node:assert/strict');
 const reg=require('./honartik-config-center-registration-candidate-v1.cjs');
 const {CONTRACT}=require('./honartik-config-center-enrollment-action-v1.cjs');
 const base='const HOST_ACTION_V2_SPECS = Object.freeze({\n  example: { operation: \'host_action.example\' },\n});';
-const executor='const HOST_ACTION_V2_SPECS = Object.freeze({\n  example:{operation:\'host_action.example\',kind:\'example\'},\n});\napplyHostActionV2=async function(action){return action;}';
+const executor='const HOST_ACTION_V2_SPECS = Object.freeze({\n  example:{operation:\'host_action.example\',kind:\'example\'},\n});\napplyHostActionV2=async function(action){return action;}\nconst result=await applyHostActionV2(action);';
 const mcp="const HostActionV2=z.enum(['control_plane_current_owner_binding_refresh_v1']);";
 const policy=JSON.stringify({schema_version:'prhm.approval-policy.v1',version:reg.BASE_POLICY_VERSION,
  default_deny:true,operations:{'host_action.example':{level:3}},typed_scopes:[{action:'example'}]});
@@ -24,9 +24,12 @@ test('adds exactly one site-bound action in all registration planes',()=>{
 });
 test('code cannot accidentally enroll without separately attested runner and installer',()=>{
  const out=reg.patchExecutor(executor);
- assert.ok(out.includes('honartik_enrollment_dispatch_not_yet_approved'));
- assert.ok(out.includes('honartik_runner_not_sha_bound'));
- assert.ok(out.includes('lstatSync(runner)'));
+ assert.ok(out.includes('honartik_untrusted_dispatch'));
+ assert.ok(out.includes('honartik_module_sha_mismatch'));
+ assert.ok(out.includes('sha256'));
+ assert.ok(out.includes('approvalConsumed:consumed===true'));
+ assert.ok(out.includes('scriptGitSha'));
+ assert.ok(out.includes('runAfterTrustedApproval(receipt)'));
  for(const forbidden of ['chmodSync(', 'writeFileSync(', 'spawnSync(', 'execSync(', 'curl '])assert.equal(out.includes(forbidden),false);
 });
 test('second insertion is refused at every plane',()=>{
