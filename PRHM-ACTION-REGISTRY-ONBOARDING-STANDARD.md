@@ -22,3 +22,7 @@ PR #190 contains the already-reviewed Honartik five assets/four Control Plane ow
 ## Two-commit Git release identity (mandatory)
 
 Do not embed the SHA of a Git commit in a manifest inside that same commit: this creates an impossible self-reference. First commit and review application/handler source (source_commit). Then commit the manifest referencing source_commit in a later commit (manifest_commit). The trusted runner retrieves the manifest at manifest_commit, proves its bytes match manifest_sha256, and independently checks all staged source/asset hashes against source_commit. All five canonical arguments are bound into a fresh, signed, once-only Level-4 approval. Updating only the manifest commit or any one SHA invalidates the approval.
+
+## Asset provenance gate
+
+Each manifest asset has an immutable source_path in the reviewed source_commit. The trusted executor must independently retrieve those Git bytes, compare to the staged root-owned asset bytes and the asset sha256, and reject mismatch BEFORE obtaining or consuming any Level-4 approval. Staged files alone are insufficient proof of source identity.
