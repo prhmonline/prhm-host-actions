@@ -78,6 +78,16 @@ function validateManifest(){
  }
  return true;
 }
+function assertBackupRoot(io){
+ const st=io.lstatSync(BACKUP_ROOT);
+ exactly(st.isDirectory()&&!st.isSymbolicLink()&&io.realpathSync(BACKUP_ROOT)===BACKUP_ROOT&&
+  st.uid===0&&(st.mode&0o077)===0,'backup_root_unsafe');
+}
+function syncFile(io,file){
+ exactly(typeof io.fsyncSync==='function','fsync_interface_missing');
+ const fd=io.openSync(file,fs.constants.O_RDONLY|fs.constants.O_NOFOLLOW);
+ try{io.fsyncSync(fd)}finally{io.closeSync(fd)}
+}
 function assertParent(io,file){
  const dir=path.dirname(file);
  exactly(io.realpathSync(dir)===dir,'target_parent_symlink');
@@ -141,6 +151,7 @@ function atomicReplace(io,entry,nonce){
   io.writeFileSync(tmp,entry.bytes,{flag:'wx',mode:entry.mode});created=true;
   io.chownSync(tmp,entry.uid,entry.gid);
   io.chmodSync(tmp,entry.mode);
+  syncFile(io,tmp);
   io.renameSync(tmp,entry.target);created=false;
  }finally{
   if(created)try{io.unlinkSync(tmp)}catch{}
@@ -206,7 +217,7 @@ function executeTransactionCore(plan,{approval,manifestBytes,sourceSha,io=fs,res
  const changed=[];
  // Read-only recheck immediately before first mutation.
  for(const f of plan.changes)assertStillOriginal(io,f);
- assertParent(io,BACKUP_ROOT); // base directory must exist, be root-owned
+ assertBackupRoot(io); // pre-provisioned private root-owned backup root
  io.mkdirSync(backupDir,{recursive:false,mode:0o700});
  try{
   // All four original bytes preserved before touching *any* target.
@@ -217,6 +228,7 @@ function executeTransactionCore(plan,{approval,manifestBytes,sourceSha,io=fs,res
    io.writeFileSync(backup,data.bytes,{flag:'wx',mode:0o600});
    io.chownSync(backup,0,0);
    io.chmodSync(backup,0o600);
+   syncFile(io,backup);
    readRegular(io,backup,data.sha256,0);
   }
   for(let i=0;i<plan.changes.length;i++){
