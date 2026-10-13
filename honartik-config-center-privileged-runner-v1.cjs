@@ -86,9 +86,7 @@ function attestedFiles(){
 function isSymlink(file){
  try{return fs.lstatSync(file).isSymbolicLink()}catch(e){if(e.code==='ENOENT')return false;throw e}
 }
-function metadataStatus(){
- safeRootFile(STATUS,EXPECTED_PHP.verifier);
- const stdout=safeRun(PHP,[STATUS,'status'],ROOT);
+function parseStatus(stdout){
  let parsed;try{parsed=JSON.parse(stdout)}catch{fail('status_json_invalid')}
  if(!parsed||typeof parsed!=='object'||Array.isArray(parsed))fail('status_schema_invalid');
  const fields=['site','revision','activeCredentialCount','credentialFileExists','fileMode','fileOwner',
@@ -100,6 +98,10 @@ function metadataStatus(){
    typeof parsed.credentialFileExists!=='boolean'||!Array.isArray(parsed.scopes))
    fail('status_value_invalid');
  return parsed;
+}
+function metadataStatus(){
+ safeRootFile(STATUS,EXPECTED_PHP.verifier);
+ return parseStatus(safeRun(PHP,[STATUS,'status'],ROOT));
 }
 function assertScope(scope){
  if(!scope||scope.action!==CONTRACT.action||scope.site!=='honartik'||
@@ -200,4 +202,4 @@ async function runAfterTrustedApproval(context){
  return createTrustedRunner(host).apply({requestId:context.requestId});
 }
 module.exports=Object.freeze({runAfterTrustedApproval,createPrivilegedHost,
- validateTrustedContext,metadataStatus,EXPECTED_PHP});
+ validateTrustedContext,parseStatus,metadataStatus,EXPECTED_PHP});
