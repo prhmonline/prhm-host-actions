@@ -10,8 +10,8 @@ This branch is a **fixed-scope transaction contract and offline tests**, NOT an 
 - Tenant: honartik; config revision: 1; scope: config:read only
 - Backend SHA: 7ae8b99677ec13b3498b4a5425267a49fc87806e
 - Config Center release: git-9b41e4534382
-- Enrollment script local Git commit: 740827bc445d028bca285e20b13b8765c4d75f28
-- Enrollment script SHA256: b9978bd782282ee385b487cc7d4614edc2b6f4f3b8c513797c657b32f0d50903
+- Reviewed enrollment source commit (prhmonline/prhm-host-actions): a9da4735445dcd0833cd1ef5435c77884cb74e64
+- Reviewed enrollment source SHA256: 9ccbcbdba457691e1d140d6e32ad379cbe6d98d5448c13970220c72ba2e8278c (Git blob 97de1aab42d2a7f67aeef66ead4a8a2bc1da9f1f)
 - Secure private token file: /home/honartik/.config/prhm/config-center/readonly-machine-token, owner honartik, mode 0600
 - Consumer validation: php yii config-center/check, run as OS user honartik
 
@@ -58,3 +58,13 @@ The prior historical local commit `740827bc445d028bca285e20b13b8765c4d75f28` con
 - Required SHA256 in existing enrollment contract: `b9978bd782282ee385b487cc7d4614edc2b6f4f3b8c513797c657b32f0d50903`.
 
 Do **not** auto-rebind the contract to the recovered historical blob: the source of the earlier pinned SHA has not been independently located or verified. No enrollment, registration installation, user-facing rollout, Git merge or Level-4 approval should proceed until a trusted read-only audit recovers the exact source that produced the required SHA (or performs a new approved source review/rebind and updates all pins). The SHA gate intentionally stays RED. This is a genuine release blocker, not an optional CI check.
+
+## 2026-10-13 replacement candidate and source-review resolution (Git only)
+
+The previously pinned digest `b9978bd782282ee385b487cc7d4614edc2b6f4f3b8c513797c657b32f0d50903` could not be matched to the historical local source. The local source history contains two commits: `d2a5726791af49ff8193ba5daa30ad9080c473eb` (initial credential-issuance file) and `740827bc445d028bca285e20b13b8765c4d75f28` (foreign-token removal safeguard). The historical latter file digest is `98babd140de45e4ea0c2bbedb4195d9248b6213a6d5ebed584ccc8b10ac15785`.
+
+Security review identified an additional issue: the historical rollback revoked *all* active credentials sharing the enrollment name, regardless of exact token identity. In the **new Git-only candidate**, `revokeBoundToken` instead selects by tenant, credential name, and `sha256(token)` while holding a row lock, and rollback refuses a missing-token-file state when an active named credential exists. `removeSecretOwned` already validates equality before removal. Exception cleanup also uses exact-token revocation. Six additional source-regression tests and PHP lint were added, alongside the original 29 Node contract tests.
+
+The reviewed replacement source is immutable in `prhmonline/prhm-host-actions` commit `a9da4735445dcd0833cd1ef5435c77884cb74e64`, file `scripts/honartik-config-center-prod-enroll-20261012.php`, Git blob `97de1aab42d2a7f67aeef66ead4a8a2bc1da9f1f`, SHA256 `9ccbcbdba457691e1d140d6e32ad379cbe6d98d5448c13970220c72ba2e8278c`. Contract and CI are intentionally repinned to this **new reviewed replacement source**, not misrepresenting the original unmatched digest as valid. CI verifies commit object, file blob, SHA256, PHP syntax and Node contracts. The old mismatch evidence remains preserved above for audit; new source is not yet installed.
+
+**Important:** Passing offline tests does **not** establish live DB correctness of issuance/revocation. Before any Production install, complete isolated DB-backed rollback/race tests and a concrete trusted-runner adapter, exact-source release/rollback installer, and signed single-use L4 approval. The candidate executor still intentionally throws `honartik_enrollment_dispatch_not_yet_approved`. Merge/deploy are explicitly NO-GO until all are satisfied.
