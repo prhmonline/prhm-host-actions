@@ -88,15 +88,51 @@ test('future approval argument hash binds project, release SHA and action',()=>{
  assert.notEqual(g.approvalBindingSha(a),g.approvalBindingSha(b));
  assert.notEqual(g.approvalBindingSha(a),g.approvalBindingSha({...a,manifest_sha256:'2'.repeat(64)}));
 });
-test('approval cannot be claimed by boolean or stale record',()=>{
- const a={action:g.ACTION,project:'honartik',source_commit:'a'.repeat(40),manifest_sha256:'1'.repeat(64)};
- assert.throws(()=>g.validateTrustedApproval({approved:true},a),/approval_schema/);
- const proof={action:g.ACTION,operation:g.OPERATION,level:4,risk:'critical',
-  request_id:'11111111-1111-4111-8111-111111111111',principal:'mohammad',
-  role:'mcp-operator',verified_signature:true,consumed_once:true,
-  expires_at:Math.floor(Date.now()/1000)-1,arguments_sha256:g.approvalBindingSha(a),
-  manifest_sha256:a.manifest_sha256,source_commit:a.source_commit};
- assert.throws(()=>g.validateTrustedApproval(proof,a),/approval_missing_invalid_expired_or_replayed/);
+function signedFixture(args,overrides={}) {
+ const {privateKey,publicKey}=crypto.generateKeyPairSync('ed25519');
+ const pub=publicKey.export({type:'spki',format:'pem'});
+ const kid=g.sha(publicKey.export({type:'spki',format:'der'})).slice(0,16);
+ const now=Math.floor(Date.now()/1000);
+ const id='11111111-1111-4111-8111-111111111111';
+ const request='22222222-2222-4222-8222-222222222222';
+ const hash=g.approvalBindingSha(args);
+ const claims={approval_id:id,request_id:request,jti:id,
+  iss:'prhm-company-approval',action:g.ACTION,operation:g.OPERATION,
+  project:'control_plane',environment:'production',tool:'host_action_v2_apply',
+  principal_id:'mohammad',role:'mcp-operator',level:4,risk:'critical',
+  decision:'accept',one_time_use:true,policy_version:g.POLICY_VERSION,
+  policy_hash:'b'.repeat(64),arguments_sha256:hash,request_hash:hash,
+  nbf:now-20,iat:now-20,exp:now+90,...overrides};
+ const header={alg:'EdDSA',typ:'PRHM-COMPANY-APPROVAL',kid};
+ const prefix=[header,claims].map(x=>Buffer.from(JSON.stringify(x)).toString('base64url')).join('.');
+ const signature=crypto.sign(null,Buffer.from(prefix),privateKey).toString('base64url');
+ const ledger={schema_version:'prhm.approval-consumption.v1',
+  approval_id:id,request_id:request,work_order_id:null,project_id:'control_plane',
+  operation:g.OPERATION,request_hash:hash,consumed_at:new Date((now-5)*1000).toISOString(),
+  consumer:'typed-executor',consumption_hash:null};
+ ledger.consumption_hash=g.sha(Buffer.from(JSON.stringify(ledger)));
+ return {token:prefix+'.'+signature,publicKey:pub,ledger,args,nowSec:now};
+}
+test('signed one-time Ed25519 registration binding verifies cryptographically',()=>{
+ const args={action:g.ACTION,project:'honartik',source_commit:'a'.repeat(40),manifest_sha256:'1'.repeat(64)};
+ const fixture=signedFixture(args);
+ assert.equal(g.verifyConsumedRegistrationApproval(fixture).request_id,fixture.ledger.request_id);
+});
+test('forged approval boolean, altered signature and wrong consumption hash rejected',()=>{
+ const args={action:g.ACTION,project:'honartik',source_commit:'a'.repeat(40),manifest_sha256:'1'.repeat(64)};
+ const f=signedFixture(args);
+ assert.throws(()=>g.verifyConsumedRegistrationApproval({...f,token:'approved'}),/signed_token/);
+ const parts=f.token.split('.');parts[1]=Buffer.from(JSON.stringify({fraud:true})).toString('base64url');
+ assert.throws(()=>g.verifyConsumedRegistrationApproval({...f,token:parts.join('.')}),/signed_token_invalid_signature/);
+ assert.throws(()=>g.verifyConsumedRegistrationApproval({...f,ledger:{...f.ledger,consumption_hash:'0'.repeat(64)}}),/consumption_ledger_invalid/);
+});
+test('expired, wrong project or unconsumed L4 receipt cannot register',()=>{
+ const args={action:g.ACTION,project:'honartik',source_commit:'a'.repeat(40),manifest_sha256:'1'.repeat(64)};
+ const expired=signedFixture(args,{exp:Math.floor(Date.now()/1000)-2});
+ assert.throws(()=>g.verifyConsumedRegistrationApproval(expired),/signed_l4_binding/);
+ const valid=signedFixture(args);
+ assert.throws(()=>g.verifyConsumedRegistrationApproval({...valid,args:{...args,project:'moeinshow'}}),/signed_l4_binding/);
+ assert.throws(()=>g.verifyConsumedRegistrationApproval({...valid,ledger:{...valid.ledger,consumer:'unconsumed'}}),/consumption_ledger_invalid/);
 });
 test('non-ready registrar clearly identifies missing trusted bootstrap',()=>{
  const r=g.readiness({release:release('honartik','honartik_config_center_readonly_enroll_v1'),
@@ -111,9 +147,9 @@ test('request cannot invoke an installer without signed and consumed approval',a
  const args={action:g.ACTION,project:r.normalized.project,source_commit:r.source_commit,
   manifest_sha256:r.manifest_sha256};
  let called=0;
- await assert.rejects(g.executeAfterTrustedAuthorization({release:r,args,approval:{approved:true},
+ await assert.rejects(g.executeAfterTrustedAuthorization({release:r,args,signedApprovalToken:'approved',
   trustedInstaller:async()=>{called++;return{ok:true}},
-  readInstalledTool:async()=>true,audit:async()=>{}}),/approval_schema/);
+  readInstalledTool:async()=>true,audit:async()=>{}}),/trusted_root_required|signed_token/);
  assert.equal(called,0);
 });
 test('shared gateway has no CLI install or caller-controlled command',()=>{
