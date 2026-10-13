@@ -6,6 +6,8 @@ on:
       - 'honartik-config-center-enrollment-action-v1.cjs'
       - 'test-honartik-config-center-enrollment-action-v1.cjs'
       - 'honartik-config-center-registration-candidate-v1.cjs'
+      - 'honartik-config-center-trusted-adapter-v1.cjs'
+      - 'test-honartik-config-center-trusted-adapter-v1.cjs'
       - 'test-honartik-config-center-registration-candidate-v1.cjs'
       - '.github/workflows/honartik-config-center-enrollment-contract-ci.yml'
   push:
@@ -15,6 +17,8 @@ on:
       - 'honartik-config-center-enrollment-action-v1.cjs'
       - 'test-honartik-config-center-enrollment-action-v1.cjs'
       - 'honartik-config-center-registration-candidate-v1.cjs'
+      - 'honartik-config-center-trusted-adapter-v1.cjs'
+      - 'test-honartik-config-center-trusted-adapter-v1.cjs'
       - 'test-honartik-config-center-registration-candidate-v1.cjs'
       - '.github/workflows/honartik-config-center-enrollment-contract-ci.yml'
 
@@ -35,4 +39,6 @@ jobs:
           node --check test-honartik-config-center-enrollment-action-v1.cjs
           node --check honartik-config-center-registration-candidate-v1.cjs
           node --check test-honartik-config-center-registration-candidate-v1.cjs
-          node --test test-honartik-config-center-enrollment-action-v1.cjs test-honartik-config-center-registration-candidate-v1.cjs
+          node --check honartik-config-center-trusted-adapter-v1.cjs
+          node --check test-honartik-config-center-trusted-adapter-v1.cjs
+          node --test test-honartik-config-center-enrollment-action-v1.cjs test-honartik-config-center-registration-candidate-v1.cjs test-honartik-config-center-trusted-adapter-v1.cjs
