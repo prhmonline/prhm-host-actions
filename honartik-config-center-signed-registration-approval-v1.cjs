@@ -38,7 +38,7 @@ function parseSignedApproval(token,publicKey){
  }catch{throw new Error('approval_jws_json_invalid')}
  requireThat(header&&claims&&typeof header==='object'&&typeof claims==='object'&&
    !Array.isArray(header)&&!Array.isArray(claims),'approval_jws_shape_invalid');
- const key=crypto.createPublicKey(publicKey);
+ const key=publicKey?.type==='public'?publicKey:crypto.createPublicKey(publicKey);
  const der=key.export({type:'spki',format:'der'});
  const kid=sha(der).slice(0,16);
  requireThat(key.asymmetricKeyType==='ed25519'&&header.alg==='EdDSA'&&
