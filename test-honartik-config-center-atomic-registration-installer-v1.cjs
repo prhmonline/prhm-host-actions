@@ -267,3 +267,70 @@ test('bad shared recovery binding rejects before backup and any file mutation',(
  assert.equal(f.v.renamed,0);
  assert.equal(f.v.map.has(path.join(i.BACKUP_ROOT,request)),false);
 });
+
+test('end-to-end: persisted real installer journal restores nine files after simulated restart',async()=>{
+ const recovery=require('./prhm-action-registry-durable-recovery-v1.cjs');
+ const f=fixture();
+ const binding={request_id:request,project:'honartik',action:manifest.action,
+   source_commit:sourceCommit,manifest_commit:'b'.repeat(40),
+   manifest_sha256:'c'.repeat(64)};
+ execute(f,{recoveryBinding:binding});
+ const root=path.join(i.BACKUP_ROOT,request);
+ // Simulate loss of the installer process: reconstruct from disk bytes only.
+ const snap=JSON.parse(f.v.io.readFileSync(path.join(root,'recovery.json')).toString('utf8'));
+ const ownerPins={},assets=[];
+ for(const [key,pin] of Object.entries(manifest.control_plane_preimages)){
+  const entry=f.plan.changes.find(x=>x.target===pin.path);
+  ownerPins[key]={path:pin.path,before_sha256:entry.before.sha256,
+    after_sha256:entry.expected};
+ }
+ for(const entry of f.plan.changes.filter(x=>!x.before))
+  assets.push({path:entry.target,source_path:path.basename(entry.target),
+    sha256:entry.expected});
+ const release={normalized:{project:'honartik',action:manifest.action,
+   owners:ownerPins,assets},source_commit:sourceCommit,
+   manifest_commit:binding.manifest_commit,
+   manifest_sha256:binding.manifest_sha256};
+ const state=()=>{
+  const owners={},assets={};
+  for(const [key,pin] of Object.entries(ownerPins)){
+   const s=f.v.io.lstatSync(pin.path);
+   owners[key]={exists:true,regular:s.isFile(),symlink:s.isSymbolicLink(),
+    sha256:digest(f.v.io.readFileSync(pin.path)),
+    uid:s.uid,gid:s.gid,mode:s.mode&0o777};
+  }
+  for(const asset of release.normalized.assets){
+   const x=f.v.map.get(asset.path);
+   assets[asset.path]=x?{exists:true,regular:true,symlink:false,
+     sha256:digest(x.buf),uid:x.uid,gid:x.gid,mode:x.mode&0o777}:
+     {exists:false,regular:false,symlink:false,sha256:null,uid:null,gid:null,mode:null};
+  }
+  return {owners,assets};
+ };
+ const backupRead=key=>f.v.io.readFileSync(path.join(root,key+'.bak'));
+ let audits=0,unlocks=0;
+ const callbacks={release,snapshot:snap,readBackup:backupRead,readLive:async()=>state(),
+  authorizeRecovery:async q=>q.request_id===request&&q.action==='prhm_action_registry_install_v1',
+  exclusiveLock:async()=>()=>{unlocks++},
+  restoreOwner:async step=>{
+   const file=f.v.map.get(step.path);
+   file.buf=Buffer.from(step.bytes);
+   file.mode=(file.mode&0o170000)|step.mode;
+   file.uid=step.uid;file.gid=step.gid;
+  },
+  removeAsset:async step=>{f.v.map.delete(step.path)},
+  verifyOriginalState:async()=>{
+   const now=state();
+   return i.KEYS.every(k=>now.owners[k].sha256===ownerPins[k].before_sha256)&&
+    Object.values(now.assets).every(a=>!a.exists);
+  },
+  verifyServices:async()=>true,
+  audit:async()=>{audits++}
+ };
+ const done=await recovery.reconcileFromDurableJournal(callbacks);
+ assert.equal(done.verified,true);assert.equal(done.steps,9);
+ assertRestored(f);assert.equal(audits,1);assert.equal(unlocks,1);
+ // Exactly the same journal is harmless if replayed after a restart.
+ const again=await recovery.reconcileFromDurableJournal(callbacks);
+ assert.equal(again.steps,0);assert.equal(unlocks,2);
+});
