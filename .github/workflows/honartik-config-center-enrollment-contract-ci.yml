@@ -8,6 +8,8 @@ on:
       - 'honartik-config-center-registration-candidate-v1.cjs'
       - 'honartik-config-center-trusted-adapter-v1.cjs'
       - 'honartik-config-center-privileged-runner-v1.cjs'
+      - 'honartik-config-center-install-manifest-v1.json'
+      - 'test-honartik-config-center-install-manifest-v1.cjs'
       - 'test-honartik-config-center-privileged-runner-v1.cjs'
       - 'scripts/honartik-config-center-readonly-status-v1.php'
       - 'scripts/honartik-config-center-prod-enroll-20261012.php'
@@ -24,6 +26,8 @@ on:
       - 'honartik-config-center-registration-candidate-v1.cjs'
       - 'honartik-config-center-trusted-adapter-v1.cjs'
       - 'honartik-config-center-privileged-runner-v1.cjs'
+      - 'honartik-config-center-install-manifest-v1.json'
+      - 'test-honartik-config-center-install-manifest-v1.cjs'
       - 'test-honartik-config-center-privileged-runner-v1.cjs'
       - 'scripts/honartik-config-center-readonly-status-v1.php'
       - 'scripts/honartik-config-center-prod-enroll-20261012.php'
@@ -55,8 +59,9 @@ jobs:
           node --check test-honartik-config-center-trusted-adapter-v1.cjs
           node --check honartik-config-center-privileged-runner-v1.cjs
           node --check test-honartik-config-center-privileged-runner-v1.cjs
+          node --check test-honartik-config-center-install-manifest-v1.cjs
           node --check test-honartik-config-center-php-revocation-v1.cjs
-          node --test test-honartik-config-center-enrollment-action-v1.cjs test-honartik-config-center-registration-candidate-v1.cjs test-honartik-config-center-trusted-adapter-v1.cjs test-honartik-config-center-php-revocation-v1.cjs test-honartik-config-center-privileged-runner-v1.cjs
+          node --test test-honartik-config-center-enrollment-action-v1.cjs test-honartik-config-center-registration-candidate-v1.cjs test-honartik-config-center-trusted-adapter-v1.cjs test-honartik-config-center-php-revocation-v1.cjs test-honartik-config-center-privileged-runner-v1.cjs test-honartik-config-center-install-manifest-v1.cjs
           php -l scripts/honartik-config-center-prod-enroll-20261012.php
           php -l scripts/honartik-config-center-readonly-status-v1.php
           sha256sum scripts/honartik-config-center-readonly-status-v1.php honartik-config-center-privileged-runner-v1.cjs honartik-config-center-enrollment-action-v1.cjs honartik-config-center-trusted-adapter-v1.cjs
