@@ -113,20 +113,24 @@ function auditAction(Site $site, MachineCredential $credential, string $action):
         'created_at' => now(),
     ]);
 }
-function revokeByName(Site $site): int
+function revokeBoundToken(Site $site, string $token): int
 {
-    return DB::transaction(static function () use ($site): int {
-        $items = MachineCredential::query()->where('site_id', $site->id)
-            ->where('name', CREDENTIAL_NAME)->whereNull('revoked_at')
-            ->lockForUpdate()->get();
-        foreach ($items as $item) {
-            if ($item->scopes !== ['config:read']) {
-                throw new RuntimeException('unexpected_scopes');
-            }
-            $item->forceFill(['revoked_at' => now()])->save();
-            auditAction($site, $item, 'machine_credential.revoked');
+    // Revoke only the specific credential proven by the private token.
+    // Never revoke a different token merely because it shares the name.
+    return DB::transaction(static function () use ($site, $token): int {
+        $item = MachineCredential::query()->where('site_id', $site->id)
+            ->where('name', CREDENTIAL_NAME)
+            ->where('token_hash', hash('sha256', $token))
+            ->whereNull('revoked_at')->lockForUpdate()->first();
+        if ($item === null) {
+            return 0;
         }
-        return count($items);
+        if ($item->scopes !== ['config:read']) {
+            throw new RuntimeException('unexpected_scopes');
+        }
+        $item->forceFill(['revoked_at' => now()])->save();
+        auditAction($site, $item, 'machine_credential.revoked');
+        return 1;
     }, 3);
 }
 function checkHttp(string $path, string $token): array
@@ -245,10 +249,21 @@ try {
     }
     if ($mode === 'rollback') {
         $boundToken = boundRollbackToken($site);
-        $revoked = revokeByName($site);
-        if ($boundToken !== null) {
-            removeSecretOwned($boundToken);
+        if ($boundToken === null) {
+            // Missing file may indicate a rotated/lost credential.
+            // Refuse to revoke any unbound record.
+            if (MachineCredential::query()->where('site_id', $site->id)
+                ->where('name', CREDENTIAL_NAME)->whereNull('revoked_at')->exists()) {
+                throw new RuntimeException('unbound_live_credential');
+            }
+            echo "ROLLBACK_PASS=YES REVOKED=0\n";
+            exit(0);
         }
+        $revoked = revokeBoundToken($site, $boundToken);
+        if ($revoked !== 1) {
+            throw new RuntimeException('bound_credential_not_revoked');
+        }
+        removeSecretOwned($boundToken);
         $boundToken = null;
         echo 'ROLLBACK_PASS=YES REVOKED=' . $revoked . "\n";
         exit(0);
@@ -290,8 +305,8 @@ try {
     echo "CREDENTIAL_ISSUED=YES SITE=honartik SCOPES=config:read\n";
     echo "CONFIG_HTTP=200 SECRETS_HTTP=403 REVISION=1 FILE_SECURE=YES\n";
 } catch (Throwable $e) {
-    if ($created && $site !== null) {
-        try { revokeByName($site); } catch (Throwable $ignored) { }
+    if ($created && $site !== null && is_string($token)) {
+        try { revokeBoundToken($site, $token); } catch (Throwable $ignored) { }
     }
     if ($mode === 'apply' && $fileCreated && is_string($token)) {
         try { removeSecretOwned($token); } catch (Throwable $ignored) { }
