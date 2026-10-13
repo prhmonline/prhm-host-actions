@@ -13,7 +13,7 @@ function token(claimOverrides={},key=privateKey,headerOverrides={}){
  const claims={
   iss:'prhm-company-approval',approval_id:ID,jti:ID,request_id:REQ,
   action:verify.ACTION,operation:verify.OPERATION,tool:'host_action_v2_apply',
-  project:'control_plane',environment:'production',level:4,risk:'critical',
+  project:'control_plane',environment:'production',principal_id:'mohammad',role:'mcp-operator',level:4,risk:'critical',
   decision:'accept',one_time_use:true,policy_version:POLICY,policy_hash:'c'.repeat(64),
   arguments_sha256:hash,request_hash:hash,
   iat:NOW-30,nbf:NOW-30,exp:NOW+120,...claimOverrides
@@ -84,6 +84,7 @@ test('wrong action, elevated scope, non-production or level 3 are denied',()=>{
   {action:'honartik_other'},
   {operation:'host_action.imotion'},
   {tool:'other_tool'},{project:'moeinshow'},{environment:'staging'},
+  {iss:'another-issuer'},{principal_id:'another'},{role:'guest'},
   {level:3},{risk:'high'},{decision:'decline'},{one_time_use:false}
  ])assert.throws(()=>verifyCase(token(c)));
 });
