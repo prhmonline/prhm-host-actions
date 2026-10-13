@@ -41,6 +41,7 @@ function fakeIO(){
   fstatSync(fd){return stat(fd.p)},
   readFileSync(p){const x=map.get(norm(typeof p==='string'?p:p.p));if(!x||!x.buf)throw Error('read_invalid');return Buffer.from(x.buf)},
   closeSync(){},
+  fsyncSync(){},
   writeFileSync(p,buf,opt={}){
    const name=norm(p);if(opt.flag==='wx'&&map.has(name))throw Error('EEXIST');
    const parent=map.get(path.posix.dirname(name));if(!parent||parent.kind!=='directory')throw Error('ENOTDIR');
