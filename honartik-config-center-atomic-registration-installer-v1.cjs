@@ -276,6 +276,71 @@ function executeAfterTrustedApproval({approvalToken,manifestBytes,sourceSha,rest
   approval,manifestBytes,sourceSha,io:fs,restart,health
  });
 }
+/**
+ * Compatibility entry for a separately attested and installed shared-registry
+ * executor. Never accepts boolean approval or caller-provided authorization.
+ * A real Ed25519+consumed five-field registry receipt is independently checked.
+ */
+function executeAfterSharedRegistryApproval({approvalToken,args,release,readPinnedManifest,
+    restart,health}={}) {
+ const shared=require('./prhm-action-registry-gateway-v1.cjs');
+ exactly(typeof approvalToken==='string'&&approvalToken.length>120,
+   'shared_signed_token_required');
+ exactly(args&&release&&release.normalized&&
+   args.action===shared.ACTION&&args.project==='honartik'&&
+   release.normalized.project==='honartik'&&
+   release.normalized.action===registry.ACTION&&
+   release.source_commit===args.source_commit&&
+   release.manifest_commit===args.manifest_commit&&
+   release.manifest_sha256===args.manifest_sha256&&
+   typeof restart==='function'&&typeof health==='function'&&
+   typeof readPinnedManifest==='function','shared_registration_binding_invalid');
+ // Require the Git commit's original reviewed project manifest, not an
+ // untrusted manifest supplied in the API request.
+ const localBytes=Buffer.from(JSON.stringify(manifest,null,2)+'\n');
+ const gitBytes=readPinnedManifest(args.source_commit,
+   'honartik-config-center-install-manifest-v1.json');
+ exactly(Buffer.isBuffer(gitBytes)&&gitBytes.equals(localBytes),
+   'project_manifest_git_source_mismatch');
+ exactly(release.normalized.assets.length===manifest.assets.length,
+   'shared_asset_set_mismatch');
+ for(const a of manifest.assets){
+   const hit=release.normalized.assets.filter(x=>x.path===a.target);
+   exactly(hit.length===1&&hit[0].source_path===a.source&&
+     hit[0].sha256===a.sha256,'shared_asset_pin_mismatch');
+ }
+ for(const key of KEYS){
+   const prior=release.normalized.owners[key];
+   exactly(prior.path===manifest.control_plane_preimages[key].path&&
+     prior.before_sha256===manifest.control_plane_preimages[key].sha256,
+     'shared_owner_pin_mismatch');
+ }
+ const verified=shared.verifyLiveConsumedRegistrationApproval({token:approvalToken,args});
+ exactly(verified.action===shared.ACTION&&verified.operation===shared.OPERATION&&
+   verified.source_commit===args.source_commit&&
+   verified.manifest_sha256===args.manifest_sha256&&
+   verified.arguments_sha256===shared.approvalBindingSha(args),
+   'shared_cryptographic_proof_mismatch');
+ // Derivation only AFTER the real shared receipt was cryptographically proven.
+ // This deliberately adapts to the existing fixed installer contract; it does
+ // not mint an Approval Center signature or consume a second authorization.
+ const scopedProof=Object.freeze({
+   action:ACTION,risk:'critical',level:4,
+   verified_by_trusted_mediator:true,one_time_token_consumed:true,
+   second_confirmation_valid:true,request_id:verified.request_id,
+   manifest_sha256:hex(localBytes),source_commit_sha:args.source_commit
+ });
+ const plan=planInstallation({io:fs,sourceRoot:STAGE_ROOT});
+ for(const key of KEYS){
+   const entry=plan.changes.find(x=>x.target===registry.LIVE[key].path);
+   exactly(entry&&hex(entry.bytes)===release.normalized.owners[key].after_sha256,
+     'shared_generated_owner_sha_mismatch');
+ }
+ return executeTransactionCore(plan,{
+   approval:scopedProof,manifestBytes:localBytes,sourceSha:args.source_commit,
+   io:fs,restart,health
+ });
+}
 function selftest(){
  validateManifest();
  return {ok:true,action:ACTION,applyAvailable:false,productionMutation:false,
@@ -289,4 +354,5 @@ if(require.main===module){
 module.exports=Object.freeze({ACTION,BACKUP_ROOT,STAGE_ROOT,SERVICES,KEYS,
  validateApproval,readRegular,validateManifest,planInstallation,
  assertStillOriginal,atomicReplace,verifyCurrentInstalled,recover,
- executeTransactionCore,executeAfterTrustedApproval,selftest,hex});
+ executeTransactionCore,executeAfterTrustedApproval,executeAfterSharedRegistryApproval,
+ selftest,hex});
