@@ -18,7 +18,7 @@ function manifest(project='honartik',action='honartik_config_center_readonly_enr
   registry_owners:Object.fromEntries(Object.keys(g.OWNER_PATHS).map(k=>[
    k,{path:g.OWNER_PATHS[k],before_sha256:g.sha(A[k]),after_sha256:g.sha(B[k])}
   ])),
-  assets:Object.entries(F).map(([path,bytes])=>({path,sha256:g.sha(bytes)})),
+  assets:Object.entries(F).map(([path,bytes])=>({path,source_path:'sample-action.cjs',sha256:g.sha(bytes)})),
   health:{services:['prhm-agent-selfmaint.service',
    'prhm-agent-selfmaint-exec.service',
    'prhm-agent-mcp-blue.service','prhm-agent-mcp-green.service'],tool:action}
@@ -29,7 +29,7 @@ function release(project,action) {
  return g.attestRelease({manifestBytes:bytes,expectedManifestSha:g.sha(bytes),
   sourceCommit:m.source_commit,manifestCommit:'b'.repeat(40),
   readOwner:p=>A[Object.keys(g.OWNER_PATHS).find(x=>g.OWNER_PATHS[x]===p)],
-  readAsset:p=>F[p],readGitBlob:()=>bytes});
+  readAsset:p=>F[p],readGitBlob:()=>bytes,readGitSource:()=>F['/opt/prhm-agent-selfmaint-exec/actions/sample-action.cjs']});
 }
 test('shared gateway supports independent Honartik and MoeinShow immutable manifests',()=>{
  const a=release('honartik','honartik_config_center_readonly_enroll_v1');
@@ -40,24 +40,24 @@ test('shared gateway supports independent Honartik and MoeinShow immutable manif
 test('wrong source commit fails closed',()=>{
  const m=manifest(),buf=Buffer.from(JSON.stringify(m));
  assert.throws(()=>g.attestRelease({manifestBytes:buf,expectedManifestSha:g.sha(buf),
-  sourceCommit:'b'.repeat(40),manifestCommit:'c'.repeat(40),readOwner:()=>null,readAsset:()=>null,readGitBlob:()=>buf}),/source_or_manifest_commit_mismatch/);
+  sourceCommit:'b'.repeat(40),manifestCommit:'c'.repeat(40),readOwner:()=>null,readAsset:()=>null,readGitBlob:()=>buf,readGitSource:()=>F['/opt/prhm-agent-selfmaint-exec/actions/sample-action.cjs']}),/source_or_manifest_commit_mismatch/);
 });
 test('unverified/mismatched git bytes fail closed',()=>{
  const m=manifest(),buf=Buffer.from(JSON.stringify(m));
  assert.throws(()=>g.attestRelease({manifestBytes:buf,expectedManifestSha:'f'.repeat(64),
-  sourceCommit:m.source_commit,manifestCommit:'b'.repeat(40),readOwner:()=>null,readAsset:()=>null,readGitBlob:()=>buf}),/manifest_sha_mismatch/);
+  sourceCommit:m.source_commit,manifestCommit:'b'.repeat(40),readOwner:()=>null,readAsset:()=>null,readGitBlob:()=>buf,readGitSource:()=>F['/opt/prhm-agent-selfmaint-exec/actions/sample-action.cjs']}),/manifest_sha_mismatch/);
 });
 test('owner drift blocks registration before mutation',()=>{
  const m=manifest(),buf=Buffer.from(JSON.stringify(m));
  assert.throws(()=>g.attestRelease({manifestBytes:buf,expectedManifestSha:g.sha(buf),
-  sourceCommit:m.source_commit,manifestCommit:'b'.repeat(40),readOwner:()=>Buffer.from('drift'),readAsset:()=>null,readGitBlob:()=>buf}),/owner_sha_drift/);
+  sourceCommit:m.source_commit,manifestCommit:'b'.repeat(40),readOwner:()=>Buffer.from('drift'),readAsset:()=>null,readGitBlob:()=>buf,readGitSource:()=>F['/opt/prhm-agent-selfmaint-exec/actions/sample-action.cjs']}),/owner_sha_drift/);
 });
 test('asset digest drift blocks registration',()=>{
  const m=manifest(),buf=Buffer.from(JSON.stringify(m));
  assert.throws(()=>g.attestRelease({manifestBytes:buf,expectedManifestSha:g.sha(buf),
   sourceCommit:m.source_commit,manifestCommit:'b'.repeat(40),
   readOwner:p=>A[Object.keys(g.OWNER_PATHS).find(x=>g.OWNER_PATHS[x]===p)],
-  readAsset:()=>Buffer.from('bad'),readGitBlob:()=>buf}),/asset_sha_drift/);
+  readAsset:()=>Buffer.from('bad'),readGitBlob:()=>buf,readGitSource:()=>F['/opt/prhm-agent-selfmaint-exec/actions/sample-action.cjs']}),/asset_sha_or_source_git_drift/);
 });
 test('project slug can not escape source or path',()=>{
  const m=manifest();m.project='../root';
