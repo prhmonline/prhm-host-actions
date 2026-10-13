@@ -76,6 +76,15 @@ function validateConsumedReceipt({token,publicKey,ledger,manifestSha,commitSha,n
   Date.parse(ledger.consumed_at)/1000<=nowSec&&
   ledger.consumer==='typed-executor'&&HASH.test(ledger.consumption_hash||''),
   'approval_consumption_ledger_mismatch');
+ const allowedLedger=['schema_version','approval_id','request_id','work_order_id',
+  'project_id','operation','request_hash','consumed_at','consumer','consumption_hash'];
+ requireThat(Object.keys(ledger).sort().join(',')===allowedLedger.sort().join(','),
+  'approval_consumption_fields_unexpected');
+ // Actual Approval Center writes consumption_hash = SHA256(JSON.stringify(
+ // { ...consumed, consumption_hash: null })) before persisting the record.
+ const canonical={...ledger,consumption_hash:null};
+ requireThat(sha(Buffer.from(JSON.stringify(canonical)))===ledger.consumption_hash,
+  'approval_consumption_integrity_mismatch');
  return Object.freeze({
   action:ACTION,risk:'critical',level:4,verified_by_trusted_mediator:true,
   one_time_token_consumed:true,second_confirmation_valid:true,
