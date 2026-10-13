@@ -64,3 +64,32 @@ file readers; and install the shared and Honartik action in a single reviewed,
 rollback-safe bootstrap. Do not use an in-memory rollback closure across
 executor or MCP service restarts. Current code and CI DO NOT establish
 a durable crash-safe bootstrap, and no Production mutation is authorized.
+
+## Durable recovery milestone (2026-10-14 Git-only)
+
+Reviewed source in PR #190 now includes `prhm-action-registry-durable-recovery-v1.cjs`
+and `test-prhm-action-registry-durable-recovery-v1.cjs`. This is an isolated
+recovery contract, not a live executor endpoint. An independent process can
+recreate an exact recovery plan using a root-owned persistent `recovery.json`
+plus four SHA-verified original backup blobs. All four owner locations, original
+and reviewed post-image SHAs, owners/group/mode, and every new asset must match
+the immutable attested release. It checks all nine paths BEFORE mutation,
+refuses tampered backups, links, drift, another project's release/manifest
+or a missing original consumed-approval binding. It verifies restored
+state and service health before reporting success; restart-replay is idempotent.
+
+The Honartik atomic installer now writes `recovery.json` with source/manifest
+commits and SHA, request ID, four original SHA/owner/group/modes, before its
+first mutation when invoked through the shared signed approval adapter.
+Original *.bak files and the journal are individually fsynced; both the
+transaction backup directory and its parent are fsynced for durable entries.
+
+**Production hard stop remains:** No installed root-owned registrar exposes
+the typed five-field Approval Center protocol. The recovery contract uses
+injected trusted IO and a previously consumed receipt-bound callback; a
+real executor must implement durable backup reads, host-action lock,
+allowlisted restore operations, audit and service validation across restart.
+Synthetic restart tests are NOT live crash/restart fault injection.
+Before requesting Level 4, stage exact Git blobs; verify recovery with an
+offline root-owned fixture and prove rollback after a real service failure.
+Do not turn this module into a caller-controlled arbitrary file writer.
