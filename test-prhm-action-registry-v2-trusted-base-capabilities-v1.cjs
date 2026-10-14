@@ -28,6 +28,7 @@ test('provider interface matches exactly nine existing HTTP adapter capabilities
  assert.equal(r.can_register,false);
  assert.equal(r.production_installed,false);
  assert.equal(r.all_nine_http_functions_present,true);
+ assert.equal(r.consumed_ledger_reader_implemented_in_source,true);
  assert.equal(r.blockers.length,6);
  assert.ok(Object.isFrozen(r));
 });
