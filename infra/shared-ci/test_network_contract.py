@@ -1,6 +1,7 @@
 """Offline review gates: review artifacts never mutate libvirt/firewalld."""
 import ipaddress
 import pathlib
+import re
 import unittest
 import xml.etree.ElementTree as ET
 
@@ -44,6 +45,19 @@ class SharedCINetworkContractTests(unittest.TestCase):
                         text.index('meta nfproto ipv4 tcp dport 443 accept'))
         self.assertIn('iifname "virbr-ci" drop', text)
         self.assertIn('oifname "virbr-ci" drop', text)
+
+    def test_blocked_destination_examples_against_real_cidrs(self):
+        text = (ROOT / "ci-isolation.nft.review").read_text()
+        list_region = text.split("elements = {", 1)[1].split("}", 1)[0]
+        blocked = [ipaddress.ip_network(x) for x in
+                   re.findall(r"\\b(?:\\d{1,3}\\.){3}\\d{1,3}/\\d{1,2}\\b", list_region)]
+        def denied(ip):
+            return any(ipaddress.ip_address(ip) in network for network in blocked)
+        for addr in ("10.71.0.118", "10.71.0.1", "185.191.76.138", "127.0.0.1",
+                     "169.254.169.254", "172.16.1.1", "192.168.1.1", "100.64.0.1"):
+            self.assertTrue(denied(addr), addr)
+        for addr in ("8.8.8.8", "1.1.1.1", "140.82.113.3"):
+            self.assertFalse(denied(addr), addr)
 
     def test_no_ipv6_escape_and_no_host_ssh(self):
         text = (ROOT / "ci-isolation.nft.review").read_text()
