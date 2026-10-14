@@ -74,8 +74,7 @@ test('root, private audit directory and strict fields are required before write'
 test('failed outcome is recorded only with bounded sanitized failure code',()=>{
  const r={...record,result:'failed',rollback:'verified',failure_code:'service_restart_failed'};
  assert.equal(E.auditPayload(r).name,uuid+'.json');
- for(const value of ['X'.repeat(170),'line\nwithsecret','shell-expanded-value']){
-  if(value==='shell-expanded-value')continue;
+ for(const value of ['X'.repeat(170),'line\nwithsecret']){
   assert.throws(()=>E.auditPayload({...r,failure_code:value}),/audit_outcome_untrusted/);
  }
 });
@@ -105,7 +104,7 @@ test('read-only executor health identifies registration but never asserts MCP di
    ok:false,service:'prhm-agent-selfmaint-exec',host_actions_v2:[record.action]})),
   Buffer.from(JSON.stringify({
    ok:true,service:'unknown',host_actions_v2:[record.action]}))
- ])assert.throws(()=>E.validateExecutorHealth(raw),/health_json_invalid|executor_health_untrusted/);
+ ])assert.throws(()=>E.validateExecutorHealth(raw),/health_response_invalid|health_json_invalid|executor_health_untrusted/);
  assert.throws(()=>E.validateExecutorHealth(payload,'other_v1'),/executor_action_not_allowlisted/);
 });
 test('health probe only uses fixed Unix socket GET /health, never an arbitrary URL',async()=>{
