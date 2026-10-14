@@ -53,9 +53,23 @@ function decode(bytes,contentType){
  // JSON only until the separately reviewed host server confirms an
  // authenticated streamable-HTTP session implementation. SSE never counts
  // as an authenticated successful tools/list result here.
- check(typeof contentType==='string'&&/^application\/json(?:;|$)/i.test(contentType),
+ check(typeof contentType==='string','unsupported_rpc_content_type');
+ let raw=bytes.toString('utf8');
+ if(/^text\/event-stream(?:;|$)/i.test(contentType)){
+  const replies=[];
+  for(const frame of raw.split(/\r?\n\r?\n/)){
+   const data=frame.split(/\r?\n/).filter(x=>x.startsWith('data:'))
+    .map(x=>x.slice(5).trim()).join('\n');
+   if(!data)continue;
+   let message;try{message=JSON.parse(data)}catch{deny('rpc_sse_json_invalid')}
+   if(message?.id===2)replies.push(message);
+   else check(message?.id===undefined,'unexpected_rpc_sse_response');
+  }
+  check(replies.length===1,'rpc_sse_terminal_response_missing');
+  raw=JSON.stringify(replies[0]);
+ }else check(/^application\/json(?:;|$)/i.test(contentType),
   'unsupported_rpc_content_type');
- let obj;try{obj=JSON.parse(bytes.toString('utf8'))}catch{deny('rpc_json_invalid')}
+ let obj;try{obj=JSON.parse(raw)}catch{deny('rpc_json_invalid')}
  check(obj?.jsonrpc==='2.0'&&obj.id===2&&obj.error===undefined&&
    obj.result&&typeof obj.result==='object'&&
    Array.isArray(obj.result.tools)&&obj.result.tools.length<=256,
@@ -74,14 +88,23 @@ function transport({request=http.request}={}){
   check(Object.hasOwn(PORTS,service),'service_not_allowlisted');
   check(typeof bearer==='string'&&bearer.length>=32,'bearer_absent');
   const payload=Buffer.from(JSON.stringify({
-   jsonrpc:'2.0',id:2,method:'tools/list',params:{}
+   jsonrpc:'2.0',id:2,method:'tools/list',
+   params:{_meta:{
+    'io.modelcontextprotocol/protocolVersion':'2026-07-28',
+    'io.modelcontextprotocol/clientInfo':{
+     name:'prhm-honartik-root-registry',version:'2.0.0'
+    },
+    'io.modelcontextprotocol/clientCapabilities':{}
+   }}
   }));
   const body=await new Promise((resolve,reject)=>{
    const r=request({
     hostname:'127.0.0.1',port:PORTS[service],path:PATH,method:'POST',
     timeout:4000,
     headers:{authorization:'Bearer '+bearer,'content-type':'application/json',
-     accept:'application/json','content-length':String(payload.length)}
+     accept:'application/json, text/event-stream',
+     'mcp-protocol-version':'2026-07-28',
+     'mcp-method':'tools/list','content-length':String(payload.length)}
    },res=>{
     if(res.statusCode!==200){
      res.resume();reject(Error('registry_v2_live_mcp_http_auth_or_status'));return;
