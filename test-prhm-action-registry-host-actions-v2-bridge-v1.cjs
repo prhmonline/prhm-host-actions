@@ -39,6 +39,8 @@ function fixture(project='honartik'){
   getRollback:()=>async()=>({verified:true}),
   claimOnce:async()=>({request_id:'x',arguments_sha256:'0'.repeat(64),exclusive:true,durable:true}),
   verifyOriginalState:async()=>true,
+  restartService:()=>true,
+  checkServiceHealth:()=>true,
   getToolDiscovery:async()=>true,
   writeMetadataAudit:async()=>{calls.audit++}
  };
@@ -115,4 +117,41 @@ test('missing or fabricated signed token never invokes installer',async()=>{
   input:f.input,approvalToken:'approved',capabilities:f.trusted
  }),/signed_l4_token_missing/);
  assert.equal(f.calls.installer,0);
+});
+
+test('reviewed Honartik handoff carries the original token and immutable Git manifest',()=>{
+ const f=fixture();const token='x'.repeat(160);let captured;
+ const result=bridge.invokeHonartikReviewedInstaller({
+  input:f.input,release:bridge.immutableManifest(f.input,f.trusted),
+  approvalToken:token,cap:f.trusted,
+  installer:params=>{captured=params;return {delivered:true}}
+ });
+ assert.equal(result.delivered,true);
+ assert.equal(captured.approvalToken,token);
+ assert.deepEqual(captured.args,f.input);
+ assert.equal(captured.readPinnedManifest(f.input.source_commit,
+   'honartik-config-center-install-manifest-v1.json'),null);
+ assert.equal(captured.restart('prhm-agent-selfmaint.service'),true);
+ assert.equal(captured.health('prhm-agent-mcp-green.service'),true);
+ assert.throws(()=>captured.restart('ssh.service'),/service_not_allowlisted/);
+ assert.throws(()=>captured.readPinnedManifest(f.input.source_commit,
+   '../etc/passwd'),/honartik_source_manifest_unbound/);
+});
+test('cross-project attempt and missing systemd verification fail closed',()=>{
+ const f=fixture(),other=fixture('moeinshow'),token='x'.repeat(160);
+ const getOpts=(src,cap=f.trusted)=>({
+  input:src.input,release:bridge.immutableManifest(src.input,src.trusted),
+  approvalToken:token,installer:()=>({installed:true}),cap
+ });
+ assert.throws(()=>bridge.invokeHonartikReviewedInstaller(getOpts(other)),
+   /honartik_adapter_binding/);
+ let called=0;
+ const params=getOpts(f,{...f.trusted,checkServiceHealth:()=>false});
+ params.installer=arg=>{called++;arg.health('prhm-agent-mcp-green.service')};
+ assert.throws(()=>bridge.invokeHonartikReviewedInstaller(params),
+   /service_health_verification_failed/);
+ assert.equal(called,1);
+ assert.throws(()=>bridge.invokeHonartikReviewedInstaller({
+   ...getOpts(f),approvalToken:'approved'
+ }),/honartik_adapter_binding/);
 });
