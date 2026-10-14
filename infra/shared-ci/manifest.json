@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "project": "prhm-shared-ci",
+  "status": "REVIEW_ONLY",
+  "host": "server1.prhm.ir",
+  "virtualization": "libvirt",
+  "network": {
+    "name": "ci-net",
+    "bridge": "virbr-ci",
+    "subnet": "10.72.0.0/24",
+    "egress": "REQUIRES_EXPLICIT_HOST_FIREWALL_POLICY",
+    "forbidden_destinations": [
+      "10.71.0.0/24",
+      "127.0.0.0/8",
+      "169.254.0.0/16",
+      "172.16.0.0/12",
+      "192.168.0.0/16",
+      "10.0.0.0/8"
+    ],
+    "ipv6": "DISABLED_UNTIL_EXPLICITLY_ISOLATED"
+  },
+  "vm": {
+    "name": "prhm-shared-ci",
+    "vcpus": 4,
+    "memory_mib": 8192,
+    "disk_gib": 80,
+    "concurrent_jobs": 1
+  },
+  "image": {
+    "path": "/var/lib/libvirt/images/base/noble-server-cloudimg-amd64.img",
+    "sha256": "ffe6203da54deeb6db5d2a98a83f9ec8e55f149d3f7ba622e1abe5fa966ee3d6",
+    "sums": "/var/lib/libvirt/images/base/ubuntu-noble-SHA256SUMS",
+    "sig": "/var/lib/libvirt/images/base/ubuntu-noble-SHA256SUMS.gpg",
+    "vendor_keyring": null,
+    "expected_signer_fingerprint": null
+  },
+  "runners": {
+    "mode": "per-repository-ephemeral",
+    "lifetime": "single-job-then-destroy-worker",
+    "privilege": "unprivileged",
+    "default_secrets": false,
+    "production_deploy": false
+  },
+  "authorization": {
+    "git_first": true,
+    "review_and_approval_required": true,
+    "production_operations": false
+  }
+}
