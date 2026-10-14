@@ -27,7 +27,7 @@ const CENTRAL=Object.freeze({
  repo:'prhmonline/deploy-control',path:'.github/workflows/deploy.yml',
  main_commit:'1910377815b3ed3c3c5da009dbcd12f52ec12629',
  main_blob:'f74c81bda229bdc341a53066b7fecada41dd0391',
- draft_commit:'e9d4b435a8bb73a507b2a7dd4affc4caa455d524',
+ draft_commit:'1e16bbb633a2d7b62d1322fe4c93bf9df346a748',
  draft_blob:'89fe183a7fcd24f26b083f51fa88a7c8548807da'
 });
 const fail=c=>{throw Error('cross_repo_deploy_route_'+c)};
