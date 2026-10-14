@@ -173,8 +173,13 @@ def live_baseline(reviewed_sha=None):
     live_prod_xml = hashlib.sha256(production_xml.encode("utf-8")).hexdigest()
     if reviewed_sha is not None:
         authorization = json.loads(MANIFEST.read_text())["authorization"]
-        if authorization.get("node1_preimage_reviewed_commit") != reviewed_sha:
-            raise Stop("reviewed SHA not independently pinned to baseline")
+        attested_commit = authorization.get("node1_preimage_reviewed_commit")
+        if not isinstance(attested_commit, str) or not RELEASE_RE.fullmatch(attested_commit):
+            raise Stop("Node1 preimage attestation commit missing")
+        # Attested baseline must be in the immutable history of the exact
+        # reviewed apply commit. Cannot pin a commit SHA to itself inside it.
+        run("git", "-C", str(ROOT.parent.parent), "merge-base", "--is-ancestor",
+            attested_commit, reviewed_sha)
         if authorization.get("node1_host_mutation_level4_approved") is not True:
             raise Stop("explicit Level-4 review gate is not recorded")
         if authorization.get("node1_nft_preimage_sha256") != live_nft:
