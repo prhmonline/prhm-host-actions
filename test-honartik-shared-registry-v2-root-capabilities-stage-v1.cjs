@@ -20,6 +20,8 @@ require('./test-prhm-action-registry-v2-root-accountability-v1.cjs');
 require('./test-prhm-action-registry-v2-root-complete-capabilities-v1.cjs');
 require('./test-prhm-action-registry-v2-root-live-mcp-v1.cjs');
 require('./test-honartik-shared-registry-v2-root-12-review-v1.cjs');
+// Lock remains durably held on partial rollback, failed live discovery, audit error, or drift.
+require('./test-prhm-action-registry-v2-durable-recovery-locksafe-v1.cjs');
 require('./test-honartik-shared-registry-v2-root-runner-bound-seven-stage-v1.cjs');
 const ROOT='/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2';
 function git(args){
