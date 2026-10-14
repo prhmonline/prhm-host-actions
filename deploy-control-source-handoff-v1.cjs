@@ -48,15 +48,31 @@ const fail=c=>{throw new Error('source_handoff_'+c)};
 const eq=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
 const ownKeys=(o,keys)=>!!o&&typeof o==='object'&&!Array.isArray(o)&&
   Object.keys(o).sort().join('|')===keys.slice().sort().join('|');
-function verify({manifestBytes,manifestSha256,sourceCommit,manifestCommit,readManifestAtCommit,readSourceAtCommit}){
+function verify({manifestBytes,manifestSha256,sourceCommit,manifestCommit,
+  readManifestAtCommit,readSourceAtCommit,readGitComparison}){
   if(!SHA64.test(manifestSha256||'')||!Buffer.isBuffer(manifestBytes)||
      manifestBytes.length<500||manifestBytes.length>25000||
      hex256(manifestBytes)!==manifestSha256)
     fail('manifest_sha_drift');
   if(!SHA40.test(sourceCommit||'')||!SHA40.test(manifestCommit||'')||
      sourceCommit===manifestCommit)fail('two_commit_identity_required');
-  if(typeof readManifestAtCommit!=='function'||typeof readSourceAtCommit!=='function')
+  if(typeof readManifestAtCommit!=='function'||typeof readSourceAtCommit!=='function'||
+     typeof readGitComparison!=='function')
     fail('trusted_git_readers_required');
+  // Merely having two different 40-character IDs never proves chronological
+  // ancestry or a manifest-only second commit. A trusted read-only Git compare
+  // adapter must attest that the source is the exact parent of the manifest.
+  const comparison=readGitComparison(REPO,sourceCommit,manifestCommit);
+  if(!comparison||comparison.status!=='ahead'||comparison.ahead_by!==1||
+     comparison.behind_by!==0||comparison.total_commits!==1||
+     comparison.base_commit?.sha!==sourceCommit||
+     comparison.merge_base_commit?.sha!==sourceCommit||
+     !Array.isArray(comparison.commits)||comparison.commits.length!==1||
+     comparison.commits[0]?.sha!==manifestCommit||
+     !Array.isArray(comparison.files)||comparison.files.length!==1||
+     comparison.files[0]?.filename!==MANIFEST_PATH||
+     comparison.files[0]?.status!=='added')
+    fail('git_ancestry_or_manifest_only_commit_not_proven');
   const exact=readManifestAtCommit(manifestCommit,REPO,MANIFEST_PATH);
   if(!Buffer.isBuffer(exact)||!exact.equals(manifestBytes))fail('manifest_git_commit_mismatch');
   let m;
@@ -88,7 +104,8 @@ function verify({manifestBytes,manifestSha256,sourceCommit,manifestCommit,readMa
   }
   return Object.freeze({
     ok:true,kind:'source_review_evidence_only',source_commit:sourceCommit,
-    manifest_commit:manifestCommit,verified_source_blobs:SOURCES.length,
+    manifest_commit:manifestCommit,git_manifest_commit_distance:1,
+    verified_source_blobs:SOURCES.length,
     verified_owner_preimage_pins:Object.keys(OWNERS).length,
     can_register:false,can_install:false,can_request_level4:false,
     can_consume_level4:false,production_modified:false,
