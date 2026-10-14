@@ -10,7 +10,7 @@ This is an infrastructure design for **all** `prhmonline` repositories, not a Dr
 - Existing `prod-net` is active NAT on `virbr-prod`, subnet `10.71.0.0/24`; existing Production fixed lease `10.71.0.118`. NEVER attach a CI guest to `prod-net`.
 - `virt-install`, `qemu-img`, `genisoimage`, `mkisofs` present; `cloud-localds` absent.
 - Image SHA256 **locally matches** SHA256SUMS entry: `ffe6203da54deeb6db5d2a98a83f9ec8e55f149d3f7ba622e1abe5fa966ee3d6`.
-- Local hash parity **does NOT establish authenticity**. Ubuntu publisher signature is not yet verified; `manifest.json` intentionally has null trusted signer/keyring and fail-closes.
+- Local hash parity **does NOT establish authenticity**. The Ubuntu publisher signing fingerprint is pinned from Canonical documentation, but no validated root-owned keyring or matching `SHA256SUMS.gpg` is installed/verified on Node1; the signature gate **fails closed**.
 - Existing firewalld zones: `public` on `eno1`, `libvirt` on `virbr-prod`. No evidence of an independent, isolated `ci-net` yet.
 
 ## Architecture
