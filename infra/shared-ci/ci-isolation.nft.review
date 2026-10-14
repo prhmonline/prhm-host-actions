@@ -31,8 +31,9 @@ table inet prhm_ci_isolation {
     chain ci_host_input {
         type filter hook input priority -195; policy accept;
         iifname "virbr-ci" meta nfproto ipv6 drop
+        # DHCPDISCOVER uses 0.0.0.0 -> 255.255.255.255 before lease.
+        iifname "virbr-ci" udp sport 68 udp dport 67 accept
         iifname "virbr-ci" ip saddr != 10.72.0.0/24 drop
-        iifname "virbr-ci" ip daddr 10.72.0.1 udp sport 68 udp dport 67 accept
         iifname "virbr-ci" ip daddr 10.72.0.1 udp dport 53 accept
         iifname "virbr-ci" ip daddr 10.72.0.1 tcp dport 53 accept
         iifname "virbr-ci" drop
