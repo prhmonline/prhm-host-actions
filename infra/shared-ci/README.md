@@ -71,3 +71,25 @@ Manual GPG/key import, root filesystem writes, firewall edits, Runner registrati
 
 This evidence should not be summarized as a live Production/network guard being deployed. The signed hash, network file, root-owned keyring, policy and host identity must be rechecked immediately before any authorized apply.
 
+
+## Node1 live baseline gate (added 2026-10-14)
+
+The fixed `node1-network-snapshot.py` is **read-only** and emits only active nftables base-chain hooks, rule counts, normalized hashes, active firewalld zones, current bridge names and explicit collision checks. It does not print entire potentially sensitive firewall rules. It fails closed if the existing production bridge/route, nft forwarding hooks, network name or expected VM identity differ.
+
+Offline, `test_node1_network_snapshot.py` mocks those reads and asserts existing-production integrity checks, collision rejection, counter/handle-normalized digest, no write commands, and forced stop on missing nft forward hooks or Production route.
+
+**Execution gate:** check out the exact reviewed commit in an authorized *private* repository worktree on Node1, independently verify the SHA, then invoke `python3 infra/shared-ci/node1-network-snapshot.py` under an approved read-only operator session. The source is in a private GitHub repository; do NOT put a GitHub PAT in a pasted shell command, command-line argument, environment disclosure, or URL. Never curl an unpinned branch's shell/python from a public URL into a privileged interpreter. Capturing this snapshot does not grant permission to install `ci-net`, change nftables, install a Runner or create a VM.
+
+If the reviewed file is not yet accessible on Node1, the minimal **read-only** human-visible baseline is:
+
+```bash
+echo "=== FIREWALL HOOKS ==="
+nft -a list ruleset 2>/dev/null | awk '/^table / || /type (filter|nat) hook/ {print}' | head -n 100
+echo "=== ACTIVE ZONES ==="
+firewall-cmd --get-active-zones
+echo "=== POLICIES ==="
+firewall-cmd --get-policies 2>/dev/null || true
+```
+
+This limited baseline does not replace a full normalized hash snapshot, but can disclose whether the proposed pre-forward hook priority is compatible with current firewalld/libvirt chains. **Do not apply any firewall rule based only on this output.**
+
