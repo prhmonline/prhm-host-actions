@@ -20,6 +20,8 @@ const PREFIX='prhm-shared-registry-bootstrap-v1-';
 const CREDENTIAL='registry-approval.json';
 const INPUT_FIELDS=Object.freeze(['action','project','source_commit',
  'manifest_commit','manifest_sha256','approval_token']);
+// Only objects produced by the protected credential reader in this process may enter execution.
+const VERIFIED_CREDENTIAL_OBJECTS=new WeakSet();
 function stop(code){throw Error('registry_independent_entry_'+code)}
 function requireThat(ok,code){if(!ok)stop(code)}
 function resolveCredentialPath({env,unit}){
@@ -82,20 +84,29 @@ function secureCredential({io=fs,env=process.env,
   'signed_approval_token_format');
  // Only a JWS-shaped secret is accepted here; the underlying gateway
  // independently cryptographically verifies Ed25519 and consumed ledger.
- return Object.freeze({input,approvalToken:data.approval_token,
+ const credential=Object.freeze({input,approvalToken:data.approval_token,
   unit,secret_source:'systemd-sealed-credential'});
+ VERIFIED_CREDENTIAL_OBJECTS.add(credential);
+ return credential;
 }
-async function runWithCapabilities({credential,capabilities,
- apply=bridge.applyAfterConsumption}={}){
- requireThat(credential&&credential.secret_source==='systemd-sealed-credential'&&
-   typeof apply==='function','trusted_invocation_required');
+async function runWithCapabilities(params={}){
+ // Reject additional callbacks including any substitute authorization executor.
+ requireThat(params&&typeof params==='object'&&!Array.isArray(params)&&
+   Object.keys(params).sort().join('|')==='capabilities|credential',
+   'trusted_invocation_contract_invalid');
+ const {credential,capabilities}=params;
+ requireThat(credential&&VERIFIED_CREDENTIAL_OBJECTS.has(credential)&&
+   credential.secret_source==='systemd-sealed-credential',
+   'trusted_invocation_required');
  const check=bridge.strictRequest(credential.input);
  requireThat(check.arguments_sha256===runner.sandboxPlan().approval_arguments_sha256,
    'request_binding_drift');
  // No fallback to a dummy or untrusted callback: the existing bridge
  // validates ALL trusted capability functions before side effects.
  bridge.attestExistingRoute(capabilities);
- const result=await apply({
+ // A fake callback or a caller-provided success result cannot replace the
+ // immutable bridge that verifies Ed25519, consumed ledger and one-time claim.
+ const result=await bridge.applyAfterConsumption({
   input:credential.input,approvalToken:credential.approvalToken,
   capabilities
  });
