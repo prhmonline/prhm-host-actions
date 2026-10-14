@@ -16,8 +16,8 @@
     },
     {
       "path": "prhm-action-registry-v2-root-live-mcp-v1.cjs",
-      "source_commit": "81fad690088b73bb7a3e69a318456df7e82ed325",
-      "git_blob_sha1": "733050bc3586d5b975696af19c8f0a0de8e394f4"
+      "source_commit": "14c6a77c47be8bc081a0dccef977fa989d0fb820",
+      "git_blob_sha1": "a8135d30353f3fe2b27d907a7d90721fa462b336"
     },
     {
       "path": "prhm-action-registry-v2-root-recovery-io-v1.cjs",
