@@ -41,7 +41,10 @@ test('all 8 directories are fixed root-only 0700 and within exactly nine narrow 
  assert.deepEqual(p.required_dirs.map(x=>x.path),EXPECTED);
  assert.equal(new Set(EXPECTED).size,8);
  assert.ok(p.required_dirs.every(x=>x.uid===0&&x.gid===0&&x.mode===0o700));
- assert.equal(runner.sandboxPlan().systemd_properties.ReadWritePaths.split(' ').length,9);
+ const writable=runner.sandboxPlan().systemd_properties.ReadWritePaths.split(' ');
+ assert.equal(writable.length,9);
+ assert.equal(writable.includes('/opt/prhm-agent-selfmaint-exec/staged'),false);
+ assert.equal(writable.includes('/opt/prhm-agent-selfmaint-exec/staged/honartik-config-center-v1'),true);
 });
 test('actual observed missing-directory arrangement is GO=FALSE and distinguishes parent dependency',()=>{
  const f=fixture(false);const r=f.check();
