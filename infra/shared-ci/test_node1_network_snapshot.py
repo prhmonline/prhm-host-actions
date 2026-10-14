@@ -27,7 +27,7 @@ def fixture():
         "production_xml": '<network><name>prod-net</name><forward mode="nat"/><bridge name="virbr-prod"/><ip address="10.71.0.1"/></network>',
         "networks": "prod-net\n",
         "vms": "prhm-production\nimotion-directadmin\n",
-        "routes": json.dumps([{"dst": "default"}, {"dst": "10.71.0.0/24"}]),
+        "routes": json.dumps([{"dst": "default"}, {"dst": "10.71.0.0/24", "dev": "virbr-prod"}]),
         "bridges": json.dumps([{"ifname": "virbr-prod"}]),
     }
 
