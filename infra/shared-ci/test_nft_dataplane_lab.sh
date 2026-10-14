@@ -38,8 +38,7 @@ ip netns add cir47
 ip netns add ciw47
 ip netns add cip47
 ip netns add ciu47
-ip link add virbr-ci type bridge
-ip link set virbr-ci netns cir47
+ip -n cir47 link add virbr-ci type bridge
 ip -n cir47 address add 10.72.0.1/24 dev virbr-ci
 ip -n cir47 link set lo up
 ip -n cir47 link set virbr-ci up
