@@ -1,0 +1,25 @@
+{
+  "schema": "prhm.registry-v2.bootstrap-session-guard-stage.v1",
+  "repo": "prhmonline/prhm-host-actions",
+  "project": "honartik",
+  "status": "NOT_STAGED",
+  "source_only": true,
+  "source": {
+    "path": "prhm-action-registry-v2-bootstrap-session-guard-v1.cjs",
+    "commit": "e3b0fb780600cc0786e0eab027ba7584ba39bb20",
+    "git_blob_sha1": "982fe58b3969adc119ff70e067ebd592f54d3000"
+  },
+  "test": {
+    "path": "test-prhm-action-registry-v2-bootstrap-session-guard-v1.cjs",
+    "commit": "8c1260f4404d6b2bbfb5284fb07779d09ffadbe5",
+    "git_blob_sha1": "1b52d53ee2b6813b54e42748ce04b667a0a33277"
+  },
+  "order": [
+    "EXCLUSIVE_LOCK_FSYNC",
+    "JOURNAL_HEADER_FSYNC"
+  ],
+  "operation_execution_installed": false,
+  "signed_root_launcher_installed": false,
+  "production_mutation": false,
+  "approval_consumed": false
+}
