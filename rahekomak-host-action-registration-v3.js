@@ -25,7 +25,7 @@ const PREIMAGE=Object.freeze({
 });
 const ARTIFACTS=Object.freeze({
   'rahekomak-host-action-stage-v3.js':'85636367da0511357100c30348f5b43db2015ce1',
-  'rahekomak-host-action-repair-installer-v3.js':'304258fadb97538ba87de70eca15e1a76388c021',
+  'rahekomak-host-action-repair-installer-v3.js':'f513845cf857a4a9423405384915b39d7a07ee22',
   'rahekomak-host-action-activation-v3.js':'391271375e2e8834ea61aea5074db52152b35dff',
   'rahekomak-host-action-executor-patch-v3.js':'c19025dd677f1c77104f34ecec5b6793594c90ef',
   'rahekomak-production-deploy-worker-v3.js':'82b6c57488ac4b1af38aed3a569373ac9ffb633d'
