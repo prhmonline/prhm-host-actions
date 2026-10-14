@@ -1,0 +1,37 @@
+{
+  "schema": "prhm.honartik.shared-registry-v2.sidecar-unit-stage.v1",
+  "repo": "prhmonline/prhm-host-actions",
+  "project": "honartik",
+  "status": "NOT_STAGED",
+  "dedicated_unit": "prhm-shared-registry-approval-v2.service",
+  "destination": "/etc/systemd/system/prhm-shared-registry-approval-v2.service",
+  "source_units": [
+    {
+      "source_path": "systemd/prhm-shared-registry-approval-v2.service",
+      "source_commit": "cb0b0aef1ce3c9556cb60cab6b48c3fb175af40c",
+      "git_blob_sha1": "dc87ad2937b63ab965944cef081f55a6a0984cdd"
+    },
+    {
+      "source_path": "prhm-action-registry-v2-sidecar-unit-review-v1.cjs",
+      "source_commit": "27710b95e1e6b62fc986338adf185f4dfd593ded",
+      "git_blob_sha1": "5244533f1562a3f5042e09b066746bcff079a1e1"
+    },
+    {
+      "source_path": "test-prhm-action-registry-v2-sidecar-unit-review-v1.cjs",
+      "source_commit": "e0a72e789fec6f4b520e75f0015e7e9afd4463c4",
+      "git_blob_sha1": "d0bdaf6e349a98737961e6dfa0df03235e4b2eb1"
+    }
+  ],
+  "reviewed_runtime_closure_count": 27,
+  "non_installable_without_signed_five_field_bootstrap": true,
+  "installed": false,
+  "enabled": false,
+  "service_started": false,
+  "production_mutation": false,
+  "l4_requested": false,
+  "l4_consumed": false,
+  "operational_private_receipt_access_attested": false,
+  "authenticated_blue_green_discovery_attested": false,
+  "independent_runner_12_capability_installed": false,
+  "review_status": "GIT_AND_CI_ONLY"
+}
