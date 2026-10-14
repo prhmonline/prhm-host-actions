@@ -269,3 +269,41 @@ health. Every action requires its own legitimate approval boundary.
 Do not mistake CI (mocked service restarts, original Git blobs and file
 readers) for a real service restart or live registration. No Level-4 token
 was requested or consumed for these source-only commits.
+
+## 2026-10-14: Independent executable entrypoint — sealed credential boundary
+
+New `prhm-action-registry-independent-runner-entry-v1.cjs` is a real
+Node entrypoint whose strict input parser requires exactly one root-owned
+regular 0400/0600-style systemd credential file named `registry-approval.json`
+under `/run/credentials/<prhm-shared-registry-bootstrap-v1-*.service>/`.
+It verifies that the process is root and belongs to the matching
+independent systemd unit cgroup, checks the credential directory and file
+for symlinks/unsafe permissions, uses `O_NOFOLLOW`, compares stat/fstat
+metadata, and accepts ONLY the pinned action, project, SOURCE_COMMIT,
+MANIFEST_COMMIT and manifest SHA. The signed JWS passes unchanged to
+`prhm-action-registry-host-actions-v2-bridge-v1.cjs`, which alone
+cryptographically checks Ed25519, consumed ledger and durable one-time
+reservation after independently attested trusted capability wiring.
+
+Executable byte identity is now bound to a fixed Git commit in
+`manifests/honartik-shared-registry-independent-runner-entry-stage-v1.json`.
+The imported modules are checked against the two existing reviewed
+dependency staging plans. The new runner's CLI intentionally fails
+closed (exit 78) without an independently reviewed root launcher and
+trusted rollback/discovery/audit capabilities. No externally passed
+CLI argument or approval token can activate it. This is NOT a working
+stand-alone production installer, and must not be described as one.
+
+CI now covers trusted systemd credential path, root/unit isolation,
+malformed or stale SHA binding, symlink/permission/inode tampering,
+absence of the complete 12-function trusted executor interface,
+postcondition rejection and fail-closed standalone process launch.
+CI fixtures use mock approval tokens ONLY to exercise parsing, never
+to authenticate a real Approval Center request or perform installation.
+
+**Unresolved hard gates:** reviewed and installed five-field signed
+Approval Center route; complete root bridge with durable rollback,
+discovery and audit adapters; safe source-to-stage transport; actual
+independent systemd runner attestation; fresh Level-4 authorization.
+These may not be bypassed via `--apply`, arbitrary files, a fake
+`approved=true` receipt or replay of any prior request.
