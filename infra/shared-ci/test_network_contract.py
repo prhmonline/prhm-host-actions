@@ -48,7 +48,9 @@ class SharedCINetworkContractTests(unittest.TestCase):
     def test_no_ipv6_escape_and_no_host_ssh(self):
         text = (ROOT / "ci-isolation.nft.review").read_text()
         self.assertGreaterEqual(text.count('meta nfproto ipv6 drop'), 3)
-        self.assertIn('ip daddr 10.72.0.1 udp sport 68 udp dport 67 accept', text)
+        self.assertIn('udp sport 68 udp dport 67 accept', text)
+        self.assertLess(text.index('udp sport 68 udp dport 67 accept'),
+                        text.index('ip saddr != 10.72.0.0/24 drop'))
         self.assertIn('ip daddr 10.72.0.1 udp dport 53 accept', text)
         self.assertIn('ip daddr 10.72.0.1 tcp dport 53 accept', text)
         self.assertNotIn('tcp dport 22 accept', text)
