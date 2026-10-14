@@ -1,0 +1,54 @@
+name: PRHM Shared CI Offline Contracts
+
+on:
+  pull_request:
+    paths:
+      - "infra/shared-ci/**"
+      - ".github/workflows/prhm-shared-ci-offline.yml"
+  push:
+    branches:
+      - "infra/prhm-shared-ci-gitfirst-preflight-20261014"
+    paths:
+      - "infra/shared-ci/**"
+      - ".github/workflows/prhm-shared-ci-offline.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: shared-ci-contract-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  offline-safety-contracts:
+    name: Read-only offline contracts (no environment/secrets)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Checkout untrusted PR source only
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Python syntax and offline contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m compileall -q infra/shared-ci
+          python3 -m unittest discover -s infra/shared-ci -p 'test_*.py' -v
+      - name: Ensure vendor verification fails closed with no keyring
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          python3 infra/shared-ci/image-signature.py > /tmp/prhm-shared-ci-image-report.json
+          result=$?
+          set -e
+          cat /tmp/prhm-shared-ci-image-report.json
+          if [ "$result" -ne 2 ]; then
+            echo "::error::Unsigned image unexpectedly trusted or script failed unusually."
+            exit 1
+          fi
+          python3 -c 'import json; r=json.load(open("/tmp/prhm-shared-ci-image-report.json")); assert r["authentic_signature"] is False'
+
+# This workflow does NOT run Node1 host probes, configure nftables,
+# enroll self-hosted runners, connect to Production or access environment secrets.
