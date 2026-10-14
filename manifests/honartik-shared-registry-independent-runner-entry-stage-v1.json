@@ -1,10 +1,10 @@
 {
   "schema": "prhm.shared-registry.independent-runner-entry-stage.v1",
   "repo": "prhmonline/prhm-host-actions",
-  "source_commit": "1fe90198db34c9fbfe70cffbe778dde61d03894e",
+  "source_commit": "0449749490a6a6594ad71cf7c0e5535e4d7ad69f",
   "entrypoint": {
     "source_path": "prhm-action-registry-independent-runner-entry-v1.cjs",
-    "git_blob_sha1": "8a89438438fb046785693bb8cad0b80cb1a6b088",
+    "git_blob_sha1": "b1d8edfbfafa30a3e9c7466b867c2fa02fe5b148",
     "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v1/prhm-action-registry-independent-runner-entry-v1.cjs"
   },
   "dependency_manifests": [
@@ -17,5 +17,6 @@
   "trusted_rollback_and_discovery_binding": "NOT_IMPLEMENTED",
   "stage_status": "NOT_STAGED",
   "production_mutation": false,
-  "requires_fresh_l4": true
+  "requires_fresh_l4": true,
+  "security_fix": "fixed_signed_bridge_only_reader_credential_identity"
 }
