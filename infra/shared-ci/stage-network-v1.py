@@ -296,6 +296,12 @@ def verify_and_consume_level4(sha, baseline):
         handle.write(sha + "\n")
         handle.flush()
         os.fsync(handle.fileno())
+    # Persist the one-time-use record across a crash/reboot BEFORE host writes.
+    dir_fd = os.open(CONSUMED_APPROVALS, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        os.fsync(dir_fd)
+    finally:
+        os.close(dir_fd)
     # Deliberately never delete marker, even if staged apply fails.
     return request_id
 
