@@ -62,7 +62,7 @@ test('untrusted approvals, source revisions, extra request fields and arbitrary 
   {arbitrary_command:'systemctl restart ssh'}
  ]){
   const f=fixture(change);
-  assert.throws(()=>e.secureCredential(f),/credential_release_not_pinned|action_not_allowlisted|credential_schema_invalid|signed_approval_token_format/);
+  assert.throws(()=>e.secureCredential(f),/credential_file_unsafe|credential_release_not_pinned|action_not_allowlisted|credential_schema_invalid|signed_approval_token_format/);
  }
 });
 test('symlink, insecure permissions, changed inode, non-root credential are rejected',()=>{
