@@ -6,6 +6,7 @@ import importlib.util
 import io
 import pathlib
 import sys
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
@@ -39,8 +40,7 @@ class StageNetworkTests(unittest.TestCase):
             return ""
         with patch.object(stage, "check_design", return_value={"xml_sha256": "a", "nft_sha256": "b"}), \
              patch.object(stage, "live_baseline", return_value={"ci_resources_absent": True}), \
-             patch.object(stage.STATE, "exists", return_value=False), \
-             patch.object(stage.STATE, "is_symlink", return_value=False), \
+             patch.object(stage, "STATE", SimpleNamespace(exists=lambda: False, is_symlink=lambda: False)), \
              patch.object(stage, "run", side_effect=fake_run), \
              patch.object(stage, "guard_exists", return_value=True), \
              patch.object(stage, "verify_inactive", side_effect=lambda: commands.append(("verified_inactive",))), \
@@ -58,7 +58,7 @@ class StageNetworkTests(unittest.TestCase):
     def test_stage_refuses_journal_replay_before_mutation(self):
         with patch.object(stage, "check_design", return_value={}), \
              patch.object(stage, "live_baseline", return_value={}), \
-             patch.object(stage.STATE, "exists", return_value=True), \
+             patch.object(stage, "STATE", SimpleNamespace(exists=lambda: True, is_symlink=lambda: False)), \
              patch.object(stage, "run") as command:
             with self.assertRaises(stage.Stop):
                 stage.staged_apply("a" * 40)
@@ -73,7 +73,7 @@ class StageNetworkTests(unittest.TestCase):
             return ""
         with patch.object(stage, "check_design", return_value={}), \
              patch.object(stage, "live_baseline", return_value={}), \
-             patch.object(stage.STATE, "exists", return_value=False), \
+             patch.object(stage, "STATE", SimpleNamespace(exists=lambda: False, is_symlink=lambda: False)), \
              patch.object(stage, "run", side_effect=commands) as command, \
              patch.object(stage, "guard_exists", return_value=True), \
              patch.object(stage, "verify_inactive", side_effect=stage.Stop("active")):
@@ -106,7 +106,7 @@ class StageNetworkTests(unittest.TestCase):
              patch.object(stage, "verify_inactive", side_effect=lambda: calls.append(("verified_inactive",))), \
              patch.object(stage, "run", side_effect=command), \
              patch.object(stage, "guard_exists", return_value=False), \
-             patch.object(stage.STATE, "unlink", side_effect=lambda: calls.append(("journal_deleted",))):
+             patch.object(stage, "STATE", SimpleNamespace(unlink=lambda: calls.append(("journal_deleted",)))):
             result = stage.rollback("a" * 40)
         self.assertEqual(calls, [
             ("verified_inactive",),
