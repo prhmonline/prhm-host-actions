@@ -45,7 +45,7 @@ def verify_external_level4(*, operation, revision, nft_digest, prod_xml_digest,
                (nft_digest, prod_xml_digest, pinned_public_key_sha256)):
         raise ApprovalRefused("preimage or independent key fingerprint missing")
     # Root must independently provision and pin this verification key.
-    for p in (Path("/etc/prhm-ci"), Path("/etc/prhm-ci/trust"), BASE):
+    for p in (Path("/etc/prhm-ci"), Path("/etc/prhm-ci/trust"), Path("/run/prhm-approved"), BASE):
         check_permissions(p, directory=True)
     for p in (DOC, SIG, PUB):
         check_permissions(p)
@@ -61,7 +61,7 @@ def verify_external_level4(*, operation, revision, nft_digest, prod_xml_digest,
     expected_keys = {"schema", "operation", "host", "git_commit", "nft_preimage_sha256",
                      "prod_xml_preimage_sha256", "issued_at", "expires_at",
                      "request_id", "approval_level"}
-    if set(doc) != expected_keys:
+    if not isinstance(doc, dict) or set(doc) != expected_keys:
         raise ApprovalRefused("approval statement has missing or additional claims")
     if (doc["schema"] != 1 or doc["operation"] != operation
         or doc["host"] != "server1.prhm.ir"
