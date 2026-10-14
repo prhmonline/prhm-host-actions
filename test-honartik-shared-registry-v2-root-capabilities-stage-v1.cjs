@@ -10,6 +10,9 @@ const C=require('./prhm-action-registry-v2-trusted-base-capabilities-v1.cjs');
 const B=require('./prhm-action-registry-v2-approval-http-adapter-v1.cjs');
 // Exercise the signed consumption receipt regressions in the existing CI stage suite.
 require('./test-prhm-action-registry-v2-root-consumed-receipt-v1.cjs');
+// Required immutable systemd review, unit-source signature and host-scope tests.
+require('./test-prhm-action-registry-v2-sidecar-unit-review-v1.cjs');
+require('./test-honartik-shared-registry-v2-sidecar-unit-stage-v1.cjs');
 const ROOT='/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2';
 function git(args){
  const r=cp.spawnSync('git',args,{cwd:__dirname,timeout:20000,maxBuffer:6000000});
