@@ -7,10 +7,10 @@
  * real root-bound Approval Center request/decision/validate/consume and
  * sealed JWS-vault functions are wired without caller-injected transports.
  *
- * CRITICAL: no trusted consumed-ledger adapter, durable recovery service,
- * signed SHA-pinned root launcher or authenticated dual-worker discovery
- * exists in the reviewed installation closure yet. They MUST NOT be
- * represented by injected callbacks or invented affirmative evidence.
+ * CRITICAL: the real consumed-ledger reader is now implemented in source,
+ * but its root-owned service access is not installed or verified on host.
+ * Durable recovery, signed SHA-pinned root launcher and authenticated dual-
+ * worker discovery also remain unavailable. No invented affirmative proof.
  * Therefore the nine-function HTTP adapter surface is complete, but all
  * approval-creation requests FAIL CLOSED at preflight. Execution is impossible.
  *
@@ -21,6 +21,7 @@
 const fs=require('node:fs');
 const transport=require('./prhm-action-registry-v2-root-approval-transport-v1.cjs');
 const vault=require('./prhm-action-registry-v2-root-sealed-token-vault-v1.cjs');
+const consumed=require('./prhm-action-registry-v2-root-consumed-receipt-v1.cjs');
 const attestation=require('./prhm-action-registry-v2-root-attestation-v1.cjs');
 const adapter=require('./prhm-action-registry-v2-approval-http-adapter-v1.cjs');
 const socket=require('./prhm-action-registry-v2-isolated-socket-v1.cjs');
@@ -85,6 +86,7 @@ function createRootCapabilities(){
   gate.ARGUMENTS_SHA.length===64,'release_identity_untrusted');
  const t=transport.createTransport();
  const v=vault.createVault();
+ const receipt=consumed.createReader({loadSealedApprovedToken:v.loadSealedApprovedToken});
  const capabilities=Object.freeze({
   approvalHttp:t.approvalHttp,
   approvalBridge:t.approvalBridge,
@@ -99,8 +101,9 @@ function createRootCapabilities(){
    const proof=attestation.inspect();
    return incompletePreflight(proof);
   },
-  readConsumedEvidence:async()=>{
-   fail('trusted_consumed_ledger_reader_missing_no_execution');
+  readConsumedEvidence:async id=>{
+   assertSidecarProcess();
+   return receipt.readConsumedEvidence(id);
   },
   launchPinnedRootRunner:async()=>{
    fail('approved_root_launcher_missing_no_execution');
@@ -116,6 +119,7 @@ function readiness(){
   project:'honartik',schema:'prhm.registry-v2.root-capability-readiness.v1',
   transport_implemented_in_source:true,
   sealed_token_vault_implemented_in_source:true,
+  consumed_ledger_reader_implemented_in_source:true,
   all_nine_http_functions_present:true,
   operational:false,approval_enabled:false,
   production_installed:false,can_register:false,
