@@ -5,13 +5,19 @@ const manifestFile=process.env.PRHM_HANDOFF_MANIFEST_FIXTURE;
 const sourceCommit=process.env.PRHM_HANDOFF_SOURCE_COMMIT;
 const manifestCommit=process.env.PRHM_HANDOFF_MANIFEST_COMMIT;
 const sourceRoot=process.env.PRHM_HANDOFF_SOURCE_ROOT;
-const clone=x=>structuredClone(x);
+const compareFile=process.env.PRHM_HANDOFF_COMPARE_FIXTURE;
 function inputs(){
   const bytes=fs.readFileSync(manifestFile);
   return {
     manifestBytes:bytes,
     manifestSha256:require('node:crypto').createHash('sha256').update(bytes).digest('hex'),
     sourceCommit,manifestCommit,
+    readGitComparison:(repo,base,head)=>{
+      assert.equal(repo,h.REPO);
+      assert.equal(base,sourceCommit);
+      assert.equal(head,manifestCommit);
+      return JSON.parse(fs.readFileSync(compareFile,'utf8'));
+    },
     readManifestAtCommit:(sha,repo,path)=>{
       assert.equal(sha,manifestCommit);
       assert.equal(repo,h.REPO);assert.equal(path,h.MANIFEST_PATH);
@@ -38,23 +44,60 @@ test('missing signed release identity and blob readers fail closed',()=>{
   assert.throws(()=>h.verify({manifestBytes:Buffer.alloc(1000),
     manifestSha256:'a'.repeat(64)}),/manifest_sha_drift/);
 });
-if(![manifestFile,sourceCommit,manifestCommit,sourceRoot].every(Boolean)){
+if(![manifestFile,sourceCommit,manifestCommit,sourceRoot,compareFile].every(Boolean)){
   test('real two-commit Git manifest and source fixtures required',
-    {skip:'fetch from exact GitHub source and manifest commits and provide four env vars'},()=>{});
+    {skip:'fetch exact GitHub source/manifest commits and trusted comparison evidence; provide five env vars'},()=>{});
 }else{
   test('actual two-commit manifest and five immutable source blobs authenticate',()=>{
     const r=h.verify(inputs());
     assert.equal(r.ok,true);assert.equal(r.kind,'source_review_evidence_only');
+    assert.equal(r.git_manifest_commit_distance,1);
     assert.equal(r.verified_source_blobs,5);
     assert.equal(r.verified_owner_preimage_pins,4);
     for(const k of ['can_register','can_install','can_request_level4',
       'can_consume_level4','production_modified'])assert.equal(r[k],false);
     assert.deepEqual(r.missing_runtime_gates,[...h.BLOCKERS]);
   });
-  test('manifest must reference source commit strictly before manifest commit',()=>{
+  test('manifest with equal source and manifest commit is rejected',()=>{
     const x=inputs();
     x.sourceCommit=x.manifestCommit;
     assert.throws(()=>h.verify(x),/two_commit_identity_required/);
+  });
+  test('different SHA values without trusted Git ancestry never count as a two-commit release',()=>{
+    const x=inputs();
+    delete x.readGitComparison;
+    assert.throws(()=>h.verify(x),/trusted_git_readers_required/);
+    const y=inputs();
+    y.readGitComparison=()=>null;
+    assert.throws(()=>h.verify(y),/git_ancestry_or_manifest_only_commit_not_proven/);
+  });
+  test('diverged, reversed or unrelated commit histories fail despite valid source bytes',()=>{
+    for(const mutate of [
+      x=>{x.status='diverged';x.ahead_by=0;x.behind_by=1;},
+      x=>{x.merge_base_commit.sha='a'.repeat(40);},
+      x=>{x.base_commit.sha='b'.repeat(40);},
+      x=>{x.commits[0].sha='c'.repeat(40);},
+      x=>{x.commits=[];},
+      x=>{x.ahead_by=2;x.total_commits=2;}
+    ]){
+      const y=inputs(),cmp=JSON.parse(fs.readFileSync(compareFile,'utf8'));
+      mutate(cmp);
+      y.readGitComparison=()=>cmp;
+      assert.throws(()=>h.verify(y),/git_ancestry_or_manifest_only_commit_not_proven/);
+    }
+  });
+  test('second commit must contain ONLY one newly added manifest',()=>{
+    for(const mutate of [
+      x=>{x.files=[];},
+      x=>{x.files[0].status='modified';},
+      x=>{x.files[0].filename='some-other-manifest.json';},
+      x=>{x.files.push({filename:'.github/workflows/privileged.yml',status:'added'});}
+    ]){
+      const y=inputs(),cmp=JSON.parse(fs.readFileSync(compareFile,'utf8'));
+      mutate(cmp);
+      y.readGitComparison=()=>cmp;
+      assert.throws(()=>h.verify(y),/git_ancestry_or_manifest_only_commit_not_proven/);
+    }
   });
   test('manifest drift, wrong Git blob and wrong source file SHA are denied',()=>{
     const x=inputs();
