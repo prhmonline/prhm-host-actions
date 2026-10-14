@@ -20,6 +20,8 @@ const evidence=require('./prhm-action-registry-root-evidence-v1.cjs');
 const systemd=require('./prhm-action-registry-fixed-systemd-bridge-v1.cjs');
 const BACKUPS='/var/backups/prhm-honartik-config-center-registration-v1';
 const CONSUMED='/var/lib/prhm-company-approval/consumed';
+// Live Approval Center-owned ledger (read-only): verified UID/GID 65039.
+const APPROVAL_UID=65039;
 const LOCKS='/var/lib/prhm-agent-selfmaint-exec/registry-recovery-lock-v1';
 const AUDIT=evidence.AUDIT_DIR;
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
@@ -30,19 +32,19 @@ function keys(x,fields,code){
  check(x&&typeof x==='object'&&!Array.isArray(x)&&
   Object.keys(x).sort().join('|')===fields.slice().sort().join('|'),code);
 }
-function safeDir(io,d,priv=false) {
+function safeDir(io,d,priv=false,owner=0) {
  const st=io.lstatSync(d);
- check(st.isDirectory()&&!st.isSymbolicLink()&&st.uid===0&&st.gid===0&&
+ check(st.isDirectory()&&!st.isSymbolicLink()&&st.uid===owner&&st.gid===owner&&
   (st.mode&0o022)===0&&(!priv||(st.mode&0o077)===0)&&
   io.realpathSync(d)===d,'root_directory_unsafe');
  return st;
 }
-function readFixed(io,filename,{privateFile=true,max=65536}={}) {
+function readFixed(io,filename,{privateFile=true,max=65536,owner=0}={}) {
  const parent=path.posix.dirname(filename);
- safeDir(io,parent,privateFile);
+ safeDir(io,parent,privateFile,owner);
  const st=io.lstatSync(filename);
  check(st.isFile()&&!st.isSymbolicLink()&&io.realpathSync(filename)===filename&&
-  st.uid===0&&(st.mode&0o022)===0&&
+  st.uid===owner&&st.gid===owner&&(st.mode&0o022)===0&&
   (!privateFile||(st.mode&0o077)===0)&&
   st.size>0&&st.size<=max,'root_file_unsafe');
  const fd=io.openSync(filename,fs.constants.O_RDONLY|fs.constants.O_NOFOLLOW);
@@ -95,14 +97,14 @@ function assertConsumed({io,id,release,snapshot}) {
   claimed.arguments_sha256===digest,'claim_binding_mismatch');
  // Ledger is persisted by the genuine Approval Center, not this module.
  // Search ONLY fixed root-owned consumed directory, bound by request hash/id.
- const cdir=safeDir(io,CONSUMED,true);
+ const cdir=safeDir(io,CONSUMED,true,APPROVAL_UID);
  const entries=io.readdirSync(CONSUMED);
  check(Array.isArray(entries)&&entries.length<=20000,'consumption_directory_unbounded');
  let matched=0;
  for(const filename of entries) {
   check(typeof filename==='string','ledger_name_invalid');
   if(!/^[a-f0-9-]{36}\.json$/i.test(filename))continue;
-  const ledger=parse(readFixed(io,CONSUMED+'/'+filename),'ledger_json');
+  const ledger=parse(readFixed(io,CONSUMED+'/'+filename,{owner:APPROVAL_UID}),'ledger_json');
   if(ledger.request_id!==id)continue;
   keys(ledger,['schema_version','approval_id','request_id','work_order_id',
     'project_id','operation','request_hash','consumed_at','consumer',
@@ -121,7 +123,7 @@ function assertConsumed({io,id,release,snapshot}) {
   matched++;
  }
  check(matched===1,'unique_original_consumed_approval_missing');
- const next=safeDir(io,CONSUMED,true);
+ const next=safeDir(io,CONSUMED,true,APPROVAL_UID);
  check(cdir.dev===next.dev&&cdir.ino===next.ino,'consumption_directory_replaced');
  check(snapshot.request_id===id,'journal_request_mismatch');
  return true;
