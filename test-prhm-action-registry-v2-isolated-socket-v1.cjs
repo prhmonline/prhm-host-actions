@@ -64,6 +64,7 @@ test('real AF_UNIX HTTP isolated route accepts only fixed paths, no TCP listener
   assert.equal(url,'/v2/registry/honartik/request');
   assert.deepEqual(body,G.REQUEST);
   return {ok:true,status:'pending',secret_exposed:false,
+   request_id:'11111111-1111-4111-8111-111111111111',
    action:G.REQUEST.action,arguments_sha256:G.ARGUMENTS_SHA};
  }}),async sock=>{
   const r=await request(sock,'/v2/registry/honartik/request',G.REQUEST);
@@ -93,6 +94,20 @@ test('socket redacts internal errors and never exposes real or forged approval s
   const r=await request(sock,'/v2/registry/honartik/confirm',{...G.REQUEST});
   assert.equal(r.status,409);assert.equal(JSON.stringify(r.value).includes('LEAK'),false);
  });
+});
+test('unexpected nested response, keys or token-derived fields are never returned to clients',async()=>{
+ await withServer(()=>({dispatch:async()=>({
+  ok:true,status:'pending',secret_exposed:false,
+  request_id:'11111111-1111-4111-8111-111111111111',
+  action:G.REQUEST.action,arguments_sha256:G.ARGUMENTS_SHA,
+  approval:{token:'SECRET_JWS'}
+ })}),async sock=>{
+  const r=await request(sock,'/v2/registry/honartik/request',G.REQUEST);
+  assert.equal(r.status,409);
+  assert.equal(JSON.stringify(r.value).includes('SECRET_JWS'),false);
+ });
+ const src=fs.readFileSync('./prhm-action-registry-v2-isolated-socket-v1.cjs','utf8');
+ assert.ok(src.indexOf('process.umask(0o077)')<src.indexOf('server.listen(SOCKET'));
 });
 test('oversized HTTP request fails without ever invoking an L4 capability',async()=>{
  let called=0;
