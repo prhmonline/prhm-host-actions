@@ -121,3 +121,17 @@ node --test \
   test-deploy-control-cutover-fixture-v1.cjs \
   test-deploy-control-cutover-temp-installer-v1.cjs
 ```
+
+## Additional binding blocker discovered from the real active policy and Agent 3 registry
+
+**Read-only observation:** the current `prhm-company-approval` policy has **75 operations** and **52 typed scopes**; the reviewed candidate PR #13 has **75 operations** and **55 typed scopes**. Neither declares `host_action.deploy_control_cutover_install_v1` or a corresponding critical `host_action_v2_apply` typed scope. Agent 3 Primary's `selfmaint_health` also does **not** list `deploy_control_cutover_install_v1`.
+
+Existing `host_action.host_action_v2_installer_v1` has **Level 3** policy, not the required independently reviewed, one-time **Level 4** cutover policy; do not substitute it or any unrelated registered action. The active Level-4 policy requires human approval by `mohammad`, secondary confirmation, and a 180-second max TTL.
+
+New pure source-only gate `deploy-control-l4-registration-readiness-v1.cjs` evaluates a policy snapshot and the authoritative read-only Host Action registry response, requiring a dedicated exact action, critical Level-4 operation, explicit second confirmation, one-time use, named approver, and a single exact principal/tool/environment/scope binding. Its result is **never an authorization**, even with synthetic passing inputs: `approved=false`, `execution_authorized=false`, `may_install=false`. The companion `test-deploy-control-l4-registration-readiness-v1.cjs` tests missing, duplicate, malformed and wildcard scope/registration cases.
+
+**Verified isolated tests (15 October 2026):** Git-blob-checked sources; authenticated read-only live policy checked against raw SHA256 `148fe2a724befc15cd8c731b0195d83e254d39215792a5084b70dd5b5c178174`; exact candidate policy Git blob; actual Agent 3 `selfmaint_health` registry snapshot. Source-only L4 registration test **10/10 PASS** and all four combined contract/fixture suites **52/52 PASS, zero skipped**. These do not attest to official GitHub Actions CI, real sudo privileges, or Production installation.
+
+**Effective sudo expansion limitation:** the authorized Remote Desktop Commander connector returned `Command not allowed` for read-only `sudo -n -l -U deploy-runner`. User groups were read successfully (`uid=1015(deploy-runner)`, one direct group `deploy-runner`). This is not evidence that the entire sudo graph is safe; no sudo command was bypassed or rerouted.
+
+**Unresolved bootstrap sequence (do not silently skip):** before a real install attempt, a separate properly authorized security-policy and Host Action registration process must make the specific Level-4 operation and exact typed scope active, and register its reviewed fixed installer with SHA-bound preimages/rollback. Any resulting policy SHA changes require a **full re-pin/review** of all earlier source hashes and contracts, rather than deploying a silently altered policy. Actual central dispatcher issuer attestation is still unwired and earlier privileged code edit blocked. No request or approval was issued or consumed.
