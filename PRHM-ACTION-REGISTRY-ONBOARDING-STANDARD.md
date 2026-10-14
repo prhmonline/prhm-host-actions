@@ -329,3 +329,46 @@ to the staged SHA-pinned artifact. A new reviewed two-commit source/release
 pair and corresponding source-closure manifest must incorporate this exact
 gateway update before any production bootstrap could rely on it.
 The current original release remains NOT_STAGED and NO-GO.
+
+## 2026-10-14: V2-only independent runtime and exact staged closure
+
+The actual Host Actions source bridge was previously restricted to the V1
+Honartik release path, so the separately published V2 manifest could not be
+accepted by that bridge. The bridge now accepts V2 **only** when source
+`aa267202d11784f0ac0a957e0d8ba911a6b07734`, manifest commit
+`d1a8b26da238d1a86b7a5d96f69185e7d25f1430`, manifest SHA256
+`9ff881e0d470da91aa26923b950589645613244d4b34d30b9e240d5277128f3b`,
+and the exact V2 Git path all agree. Unknown V3 paths, substitutions, and
+unsigned direct application are denied; the old V1 contract remains unchanged.
+
+The **new**, isolated V2-only sources are:
+- `prhm-action-registry-v2-root-pinned-readers-v1.cjs`
+- `prhm-action-registry-v2-independent-runner-contract-v1.cjs`
+- `prhm-action-registry-v2-fixed-systemd-bridge-v1.cjs`
+- `prhm-action-registry-v2-independent-runner-entry-v1.cjs`
+
+The effective 17-file staged-runtime candidate is **uniquely** defined by
+`manifests/honartik-shared-registry-v2-reviewed-runtime-stage-v1.json`;
+its runtime source commit is
+`6b038d7618f2ec27ecb44e8fc92f3c4a5979836b`.
+It supersedes the older **non-executable staging-plan** listing an unusable
+V1 bridge byte: the final bridge Git blob is
+`166d9253634df48624aaa75da719253dc1e21508`, not
+`45d9aae3dd390a14053d6844b201f118ab2c5586`.
+No destination is duplicated within the authoritative 17-file set.
+
+CI validates Git file content IDs, fixed dependency closure, independently
+pinned source/manifest identities, root-only reads, sealed credentials,
+restricted transient systemd cgroup and unavailable unapproved CLI apply.
+The offline source and simulated/cold-restart regression tests DO NOT
+constitute live Host Actions bootstrap or a real post-crash rollback test
+against the root-owned Production services.
+
+**Remaining hard Production NO-GO:** existing signed five-field Approval
+Center request/consume route is absent; the reviewed actual launcher and
+safe stage transport are not installed; trusted persistent recovery,
+post-install MCP discovery and metadata audit are not wired through a root
+executor. No live staging/deploy, approval request or consumption has
+occurred. Installation requires a separately approved immutable bootstrap
+with actual owner SHA re-attestation and independent recovery fault
+injection; never run a stale action-only v2 request or replay consumed L4.
