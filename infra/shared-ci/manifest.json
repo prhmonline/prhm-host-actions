@@ -55,6 +55,8 @@
     "node1_nft_preimage_sha256": null,
     "node1_prod_net_xml_preimage_sha256": null,
     "node1_preimage_reviewed_commit": null,
-    "node1_host_mutation_level4_approved": false
+    "node1_host_mutation_level4_approved": false,
+    "trusted_level4_public_key_sha256": null,
+    "trusted_level4_approval_provenance": "UNCONFIGURED_EXTERNAL_ED25519_CONTROL_PLANE"
   }
 }
