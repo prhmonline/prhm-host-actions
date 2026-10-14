@@ -135,3 +135,19 @@ New pure source-only gate `deploy-control-l4-registration-readiness-v1.cjs` eval
 **Effective sudo expansion limitation:** the authorized Remote Desktop Commander connector returned `Command not allowed` for read-only `sudo -n -l -U deploy-runner`. User groups were read successfully (`uid=1015(deploy-runner)`, one direct group `deploy-runner`). This is not evidence that the entire sudo graph is safe; no sudo command was bypassed or rerouted.
 
 **Unresolved bootstrap sequence (do not silently skip):** before a real install attempt, a separate properly authorized security-policy and Host Action registration process must make the specific Level-4 operation and exact typed scope active, and register its reviewed fixed installer with SHA-bound preimages/rollback. Any resulting policy SHA changes require a **full re-pin/review** of all earlier source hashes and contracts, rather than deploying a silently altered policy. Actual central dispatcher issuer attestation is still unwired and earlier privileged code edit blocked. No request or approval was issued or consumed.
+
+
+## Current binding supersession: stacked critical-policy PR #14 (15 October 2026)
+
+**This section supersedes the previously listed PR #13 *candidate* version/hash and PR #13 source SHA for future installer review; earlier sections remain historical evidence of the original 12/27/42/52-test runs.** The Production *preimage* remains unchanged.
+
+- New stacked policy [prhm-company-control-plane PR #14](https://github.com/prhmonline/prhm-company-control-plane/pull/14), exact head `acffc7f9e02073f7aaf6ba92777f7acff6481f81`, stacked on the original PR #13 branch; **Draft, not merged or installed**.
+- Candidate version `2026-10-15.1-deploy-control-l4-installer-enrollment-v1`.
+- Candidate policy-object SHA256 `732c21b15a54b47dced724e1f5be1c70aa1bd6c41cc5f94c5d2f600e45c36acb`, raw file SHA256 `ed527c12ee330b8e1f5616fcb0c712eb89dddd9395197b2d855f00d3deea0678`. Raw hash and JSON-object hash are distinct.
+- Exact additive Live (75/52) → New Candidate (76/56): all existing **75 operations** preserved, all **52 live scopes** preserved, exactly **3** fixed Level-3 application release scopes plus **1** strictly typed Level-4 installer operation and **1** critical Host Action scope. The `verifyPolicyTransition()` and source SHA pins in `deploy-control-cutover-contract-v1.cjs` were updated, as were associated tests and the L4 registration checks.
+- The new critical scope is **source-only**. The live Approval Center still reports its original 2026-10-02 policy hash `c141ce7d56bf1de9c11a6e98b0abd6d20da9a349a6cbe1735c5bb659e3a70fea` and Agent 3 Primary registry **does not advertise** `deploy_control_cutover_install_v1`. Therefore the new policy registration is **not yet activated**, and no authentic approval can be requested for this action.
+- Re-ran the source contract + memory fixture + temporary disk rollback + Level-4 registration check **52/52 PASS, 0 skipped**, with the *new* exact policy candidate verified by GitHub blob SHA, original policy fixture checked against its raw SHA, and source files verified by Git blob hashes. This remains **offline sandbox test evidence only**, not official GitHub-hosted Actions CI nor Production cutover attestation.
+- The original restricted editing environment blocked the privileged root dispatcher code wiring. No circumvention occurred: the candidate dispatcher still lacks a runtime call to `verifyIssuerPolicy()` before consuming approvals, and the tests deliberately fail closed for that authentic source.
+- Still required: independently authorized typed Host Action registration, trusted on-host installer implementation, actual expanded sudo and external deployment-hook audit, immutable root backups + rollback, full live issuer version/hash attestation, Level-4 human authorization and separately approved SHA-bound canary.
+
+**Do not use either candidate hash as evidence that it is the *running* issuer policy.**
