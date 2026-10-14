@@ -418,3 +418,31 @@ owner/asset service recovery callbacks and durable metadata audit. Then
 complete an isolated real-root restart/fault-injection preflight against
 the exact reviewed release and obtain fresh explicit L4 approval.
 Production, real credentials and approval ledgers were NOT modified.
+
+## 2026-10-14 — Sealed V2 runner cannot substitute application callback
+
+Security review found that `runWithCapabilities` exposed a caller-injectable
+`apply` function. Although the standalone executable was not staged,
+this source API allowed a fabricated success response in unit tests without
+the real signed Ed25519 Approval Center ledger check. This callsite
+is now fail-closed: the only allowed argument keys are `credential`
+and `capabilities`, the credential must be the exact object returned
+by `secureCredential` in this process (WeakSet identity), and the
+only execution path is the fixed `bridge.applyAfterConsumption`. It
+cannot be overridden with test or caller-provided callbacks. The bridge
+still checks the immutable Git release, live consumption ledger, durable
+one-time claim, reviewed atomic installer, and post-install discovery
+before returning success.
+
+The 18-file authoritative V2 source closure now pins the hardened entrypoint:
+`prhm-action-registry-v2-independent-runner-entry-v1.cjs`
+Git blob `8dd786829aad356c5d207365258cb4c9dd61b95d`,
+source commit `0a8fca5bbe59c607c4f96c1f75e80979124afaa8`.
+CI directly rejects extra apply/argv arguments, copied fabricated sealed
+credentials, and forged green postconditions. The tests use synthetic
+credentials only; no real Approval Center token was signed, issued or consumed.
+
+This does **not** bootstrap Production: the fixed typed 5-field signed
+route, independently launched root host runner, trustworthy reader/writer
+transport, rollback/blue-green live discovery, and durable audit remain
+uninstalled. Source-only CI does not supersede a real root preflight.
