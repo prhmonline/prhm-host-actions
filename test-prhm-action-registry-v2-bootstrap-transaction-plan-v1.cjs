@@ -150,7 +150,7 @@ test('rollback refuses forged out-of-scope journal steps, unsafe directories and
  const stale=evidence(txn,1);stale.stale_lock_absent=false;
  assert.throws(()=>P.rollbackCandidate({transaction:txn,completed:1,live:stale}),
   /durable_journal_or_lock_missing/);
- const unsafe=evidence(txn,1);unsafe.directories[originals.dirs[0].path].mode=0o777;
+ const unsafe=evidence(txn,1);unsafe.directories[txn.operations[0].path].mode=0o777;
  assert.throws(()=>P.rollbackCandidate({transaction:txn,completed:1,live:unsafe}),
   /recovery_directory_drift/);
  const owner=evidence(txn,1);owner.owners.policy='0'.repeat(64);
