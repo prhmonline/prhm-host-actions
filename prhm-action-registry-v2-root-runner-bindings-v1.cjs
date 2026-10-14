@@ -1,6 +1,6 @@
 'use strict';
 /**
- * Actual seven-capability slice of the Honartik V2 independent root runner.
+ * Actual nine-capability slice of the Honartik V2 independent root runner.
  *
  * Only a process in its own fixed transient root systemd cgroup with the
  * exact pinned five-field request and a REAL consumed Ed25519 L4 JWS may
@@ -11,16 +11,17 @@
  * reservation of the already verified, consumed request. Systemd controls
  * are wrapped behind that successful claim and the same live L4 proof.
  *
- * This module deliberately exposes ONLY 7 of the 12 required bridge
+ * This module deliberately exposes ONLY 9 of the 12 required bridge
  * functions. It cannot be passed as a successful complete runner bridge.
- * The remaining installer, independently verified rollback, original-state,
- * authenticated blue+green discovery and immutable audit must be attached
+ * The remaining installer, independently verified rollback and
+ * authenticated blue+green discovery must be attached
  * through a separately SHA-approved and reviewed root bootstrap.
  */
 const fs=require('node:fs');
 const pinned=require('./prhm-action-registry-v2-root-pinned-readers-v1.cjs');
 const systemd=require('./prhm-action-registry-v2-fixed-systemd-bridge-v1.cjs');
 const oneTime=require('./prhm-action-registry-one-time-fence-v1.cjs');
+const accountable=require('./prhm-action-registry-v2-root-accountability-v1.cjs');
 const gate=require('./prhm-action-registry-v2-five-field-approval-gate-v1.cjs');
 const gateway=require('./prhm-action-registry-gateway-v1.cjs');
 const bridge=require('./prhm-action-registry-host-actions-v2-bridge-v1.cjs');
@@ -31,7 +32,8 @@ const REQUIRED=Object.freeze([
 ]);
 const BOUND=Object.freeze([
  'readPinnedGitManifest','readPinnedGitSource','readLiveOwner','readStagedAsset',
- 'claimOnce','restartService','checkServiceHealth'
+ 'claimOnce','verifyOriginalState','restartService','checkServiceHealth',
+ 'writeMetadataAudit'
 ]);
 const MISSING=Object.freeze(REQUIRED.filter(k=>!BOUND.includes(k)));
 function fail(x){throw Error('registry_v2_root_runner_bindings_'+x)}
@@ -60,7 +62,7 @@ function inventory(){
   production_installed:false
  });
 }
-function createBoundSeven({input,approvalToken}={}){
+function createBoundNine({input,approvalToken}={}){
  assertIndependent();
  identity(input);
  check(typeof approvalToken==='string'&&approvalToken.length>=120&&
@@ -119,13 +121,29 @@ function createBoundSeven({input,approvalToken}={}){
   readLiveOwner:readers.readLiveOwner,
   readStagedAsset:readers.readStagedAsset,
   claimOnce,
+  verifyOriginalState:release=>{
+   ensureClaim();
+   return accountable.strictOriginalState(release,{
+    readLiveOwner:readers.readLiveOwner
+   });
+  },
   restartService:name=>{ensureClaim();return svc.restartService(name)},
-  checkServiceHealth:name=>{ensureClaim();return svc.checkServiceHealth(name)}
+  checkServiceHealth:name=>{ensureClaim();return svc.checkServiceHealth(name)},
+  writeMetadataAudit:async record=>{
+   ensureClaim();
+   const receipt=accountable.appendBoundAudit(record,{
+    requestId:proof.request_id
+   });
+   check(receipt?.durable===true&&receipt?.written===true&&
+    receipt.request_id===proof.request_id,
+    'audit_not_durable');
+   return receipt;
+  }
  });
  check(Object.keys(result).sort().join('|')===BOUND.slice().sort().join('|'),
-  'seven_capabilities_shape_drift');
+  'nine_capabilities_shape_drift');
  return result;
 }
 module.exports=Object.freeze({
- REQUIRED,BOUND,MISSING,inventory,identity,createBoundSeven
+ REQUIRED,BOUND,MISSING,inventory,identity,createBoundNine
 });
