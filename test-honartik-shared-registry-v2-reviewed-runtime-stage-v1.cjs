@@ -38,8 +38,8 @@ test('runtime manifest is a single coherent fixed V2 release without production 
   manifest_commit:M.release_manifest_commit,manifest_sha256:M.release_manifest_sha256
  },P.release_manifest_path),P.release_manifest_path);
 });
-test('all 19 effective V2 staging destinations are unique, fixed and Git blob attested',()=>{
- assert.equal(M.files.length,19);
+test('all 20 effective V2 staging destinations are unique, fixed and Git blob attested',()=>{
+ assert.equal(M.files.length,20);
  const dests=new Set(),files=new Set();
  for(const file of M.files){
   assert.deepEqual(Object.keys(file).sort(),
@@ -74,7 +74,7 @@ test('V2 replacement bridge exact SHA overrides the unusable pinned V1 bridge',(
  assert.ok(src.includes('assertHonartikReleaseIdentity'));
  assert.ok(src.includes('honartik-config-center-registry-release-v2.json'));
 });
-test('every local CommonJS dependency resolves inside the 19-file staged runtime',()=>{
+test('every local CommonJS dependency resolves inside the 20-file staged runtime',()=>{
  const staged=new Set(M.files.map(x=>x.source_path));
  for(const a of M.files.filter(x=>x.source_path.endsWith('.cjs'))){
   const src=git(['show',a.source_commit+':'+a.source_path]).toString('utf8');
@@ -132,6 +132,21 @@ test('signed five-field Ed25519 contract is present in immutable V2 runtime clos
  assert.match(src,/authorizeConsumeEnvelope/);
  assert.match(src,/CONFIRM_LEVEL_4_CRITICAL/);
  assert.match(src,/arguments_sha256/);
+});
+test('reviewed five-field HTTP adapter cannot be dropped from the immutable 20-file closure',()=>{
+ const x=M.files.filter(v=>v.source_path==='prhm-action-registry-v2-approval-http-adapter-v1.cjs');
+ assert.equal(x.length,1);
+ assert.equal(x[0].source_commit,M.approval_http_adapter_source_commit);
+ assert.equal(x[0].git_blob_sha1,'a4fc61d424c2209ddde7858cb6146d19b4823c97');
+ assert.equal(M.http_approval_route_installed,false);
+ assert.equal(M.http_approval_route_authentic_root_preflight_required,true);
+ const source=git(['show',x[0].source_commit+':'+x[0].source_path]).toString('utf8');
+ for(const code of ['sealApprovedToken','loadSealedApprovedToken',
+  'getTrustedRequest','verifyRootPreflight','readConsumedEvidence',
+  'launchPinnedRootRunner','/v1/consume']){
+  assert.ok(source.includes(code));
+ }
+ assert.equal(source.includes('express().listen('),false);
 });
 test('V2 independent entry cannot be used as an unapproved CLI apply',()=>{
  const r=cp.spawnSync(process.execPath,
