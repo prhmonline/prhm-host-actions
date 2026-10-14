@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Read-only, zero-argument Node1 shared-CI preflight; no VM/network/runner mutations."""
 import hashlib
+import importlib.util
 import ipaddress
 import json
 import pathlib
@@ -71,9 +72,21 @@ def inspect():
              "image_local_hash", "hash mismatch, missing or duplicate checksum entry")
 
     # A local checksums file alone is not proof of vendor authenticity.
-    # Intentionally blocked until separate reviewed, pinned GPG trust is in place.
-    gate(False, "ubuntu_publisher_signature",
-         "matching SHA256SUMS.gpg + independent trusted signer fingerprint not reviewed")
+    # Imported verifier is read-only; absent trusted keyring fails closed.
+    signer_script = ROOT / "image-signature.py"
+    if signer_script.is_file():
+        try:
+            spec = importlib.util.spec_from_file_location("prhm_ci_image_signature", signer_script)
+            if spec is None or spec.loader is None:
+                raise ValueError("signer loader missing")
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            authentic, signer_reason = module.verify(conf)
+        except (OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
+            authentic, signer_reason = False, "signature verifier failed: " + type(exc).__name__
+    else:
+        authentic, signer_reason = False, "signature verifier missing"
+    gate(authentic, "ubuntu_publisher_signature", signer_reason)
     gate(shutil.which("virsh") is not None and shutil.which("ip") is not None,
          "libvirt_commands_present", "virsh/ip missing")
     if shutil.which("virsh"):
