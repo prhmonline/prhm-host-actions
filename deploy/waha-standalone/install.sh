@@ -19,7 +19,7 @@ if [[ ! -e "$data/.env" ]]; then
   swagger_pass="$(openssl rand -hex 24)"
   cat > "$data/.env" <<EOF
 WAHA_API_KEY=$key
-WAHA_API_KEY_EXCLUDE_PATH=health,ping
+WHATSAPP_API_KEY_EXCLUDE_PATH=ping
 WAHA_DASHBOARD_ENABLED=true
 WAHA_DASHBOARD_USERNAME=admin
 WAHA_DASHBOARD_PASSWORD=$pass
@@ -58,11 +58,16 @@ chmod 0600 "$data/compose.yaml"
 docker compose -f "$data/compose.yaml" config -q
 docker compose -f "$data/compose.yaml" pull
 docker compose -f "$data/compose.yaml" up -d
+# The /health endpoint requires authentication when API-key protection is enabled.
+# Verify the same authenticated API endpoint used by the production diagnostic.
+api_key="$(sed -n 's/^WAHA_API_KEY=//p' "$data/.env" | head -n 1)"
+[[ -n "$api_key" ]] || { echo "ERROR: missing WAHA_API_KEY" >&2; exit 1; }
 healthy=0
 for i in $(seq 1 40); do
-  if curl --silent --fail --max-time 3 http://127.0.0.1:3101/health >/dev/null; then healthy=1; break; fi
+  if curl --silent --fail --max-time 3 -H "X-Api-Key: $api_key" http://127.0.0.1:3101/api/server/version >/dev/null; then healthy=1; break; fi
   sleep 2
 done
+unset api_key
 echo "DEPLOY_SOURCE_SHA=$sha"
 echo "CREDENTIALS_FILE=$data/.env (root-only, NEVER paste into chat)"
 echo "LOCAL_DASHBOARD=http://localhost:3101/dashboard"
