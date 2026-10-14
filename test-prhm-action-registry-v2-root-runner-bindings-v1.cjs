@@ -63,8 +63,8 @@ function harness(){
     }]))
   },
   './prhm-action-registry-v2-fixed-systemd-bridge-v1.cjs':{
-   cgroupAttestation:(raw,uid)=>{
-    assert.equal(uid,0);
+   cgroupAttestation:(raw,getuid)=>{
+    assert.equal(getuid(),0);
     assert.match(raw,/prhm-shared-registry-bootstrap-v2-fixed.service/);
     return 'prhm-shared-registry-bootstrap-v2-fixed.service';
    },
