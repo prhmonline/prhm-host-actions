@@ -121,16 +121,20 @@ test('missing or fabricated signed token never invokes installer',async()=>{
 
 test('reviewed Honartik handoff carries the original token and immutable Git manifest',()=>{
  const f=fixture();const token='x'.repeat(160);let captured;
+ const projectManifest=Buffer.from(JSON.stringify(f.manifest));
+ const cap={...f.trusted,readPinnedGitSource:spec=>
+  spec.source_path==='honartik-config-center-install-manifest-v1.json'?
+    projectManifest:f.trusted.readPinnedGitSource(spec)};
  const result=bridge.invokeHonartikReviewedInstaller({
   input:f.input,release:bridge.immutableManifest(f.input,f.trusted),
-  approvalToken:token,cap:f.trusted,
+  approvalToken:token,cap,
   installer:params=>{captured=params;return {delivered:true}}
  });
  assert.equal(result.delivered,true);
  assert.equal(captured.approvalToken,token);
  assert.deepEqual(captured.args,f.input);
- assert.equal(captured.readPinnedManifest(f.input.source_commit,
-   'honartik-config-center-install-manifest-v1.json'),null);
+ assert.deepEqual(captured.readPinnedManifest(f.input.source_commit,
+   'honartik-config-center-install-manifest-v1.json'),projectManifest);
  assert.equal(captured.restart('prhm-agent-selfmaint.service'),true);
  assert.equal(captured.health('prhm-agent-mcp-green.service'),true);
  assert.throws(()=>captured.restart('ssh.service'),/service_not_allowlisted/);
