@@ -101,7 +101,22 @@ def summarize(texts):
     networks = set(texts["networks"].splitlines())
     hooks, counts = nft_hooks(nft)
     normalized = json.dumps(canonical_nft(nft), sort_keys=True, separators=(",", ":"))
+    forward_hooks = [
+        item for item in hooks
+        if item["hook"] == "forward" and item["family"] in ("ip", "inet")
+    ]
+    prod_route_present = any(
+        item.get("dst") == "10.71.0.0/24"
+        and item.get("dev") == "virbr-prod"
+        for item in routes
+    )
+    default_route_present = any(item.get("dst") == "default" for item in routes)
     checks = {
+        "nft_ruleset_parsed_with_base_hooks": bool(hooks),
+        "forward_hook_present": bool(forward_hooks),
+        "prod_net_bridge_present": "virbr-prod" in bridges,
+        "prod_route_present": prod_route_present,
+        "default_public_route_present": default_route_present,
         "prod_net_expected_topology": prod_verified,
         "network_ci_net_absent": "ci-net" not in networks,
         "bridge_virbr_ci_absent": "virbr-ci" not in bridges,
