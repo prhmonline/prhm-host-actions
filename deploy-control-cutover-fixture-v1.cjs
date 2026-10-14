@@ -23,6 +23,8 @@ function clone(source) {
 }
 function sha(b){return createHash('sha256').update(b).digest('hex')}
 function checksum(snapshot){
+  if(!(snapshot instanceof Map))fail('memory_map_only');
+  for(const [p,v] of snapshot)if(typeof p!=='string'||!Buffer.isBuffer(v))fail('invalid_fixture_value');
   return [...snapshot].map(([p,v])=>p+':'+sha(v)).sort().join('\n');
 }
 function rejectUnwiredDispatcher(helper,core){
