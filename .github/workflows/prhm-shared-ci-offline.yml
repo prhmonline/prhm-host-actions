@@ -63,3 +63,25 @@ jobs:
 
 # This workflow does NOT run Node1 host probes, configure nftables,
 # enroll self-hosted runners, connect to Production or access environment secrets.
+
+  disposable-nft-dataplane-lab:
+    name: Disposable Linux network namespace dataplane proof (no production)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/infra/prhm-shared-ci-gitfirst-preflight-20261014' && github.repository == 'prhmonline/prhm-host-actions'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout review-only network test
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Run nft dataplane denial, public HTTPS, and guard rollback against synthetic targets
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq nftables iproute2
+          bash -n infra/shared-ci/test_nft_dataplane_lab.sh
+          sudo env GITHUB_ACTIONS="$GITHUB_ACTIONS" RUNNER_ENVIRONMENT="$RUNNER_ENVIRONMENT" PRHM_CI_DISPOSABLE_LAB=yes \
+            bash infra/shared-ci/test_nft_dataplane_lab.sh
