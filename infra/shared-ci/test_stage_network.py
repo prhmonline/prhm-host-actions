@@ -40,6 +40,7 @@ class StageNetworkTests(unittest.TestCase):
             return ""
         with patch.object(stage, "check_design", return_value={"xml_sha256": "a", "nft_sha256": "b"}), \
              patch.object(stage, "live_baseline", return_value={"ci_resources_absent": True}), \
+             patch.object(stage, "verify_and_consume_level4", return_value="test-approval-id"), \
              patch.object(stage, "STATE", SimpleNamespace(exists=lambda: False, is_symlink=lambda: False)), \
              patch.object(stage, "run", side_effect=fake_run), \
              patch.object(stage, "guard_exists", return_value=True), \
@@ -59,6 +60,7 @@ class StageNetworkTests(unittest.TestCase):
     def test_stage_refuses_journal_replay_before_mutation(self):
         with patch.object(stage, "check_design", return_value={}), \
              patch.object(stage, "live_baseline", return_value={}), \
+             patch.object(stage, "verify_and_consume_level4", return_value="test-approval-id"), \
              patch.object(stage, "STATE", SimpleNamespace(exists=lambda: True, is_symlink=lambda: False)), \
              patch.object(stage, "run") as command:
             with self.assertRaises(stage.Stop):
@@ -74,6 +76,7 @@ class StageNetworkTests(unittest.TestCase):
             return ""
         with patch.object(stage, "check_design", return_value={}), \
              patch.object(stage, "live_baseline", return_value={}), \
+             patch.object(stage, "verify_and_consume_level4", return_value="test-approval-id"), \
              patch.object(stage, "STATE", SimpleNamespace(exists=lambda: False, is_symlink=lambda: False)), \
              patch.object(stage, "run", side_effect=commands) as command, \
              patch.object(stage, "guard_exists", return_value=True), \
