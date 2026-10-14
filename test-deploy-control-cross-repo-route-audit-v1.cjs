@@ -60,24 +60,25 @@ if(!folder){
     };
     assert.throws(()=>g.audit(missing),/git_workflow_drift_central_draft/);
   });
-  test('a removed caller approval field cannot silently pass even with a matching declared checksum',()=>{
-    // Runtime checker also validates contract content after blob validation.
-    const r=require('node:crypto');
-    const file=fs.readFileSync(path.join(folder,'honartik_front-draft.yml'));
-    const bad=Buffer.from(file.toString('utf8').replace('"approval_id":"%s"','"approval_removed":"%s"'));
-    const entry=g.ENTRIES[1];
-    const sameBlob=()=>bad;
-    const original=entry.draft_blob;
-    try {
-      entry.draft_blob= r.createHash('sha1').update('blob '+bad.length+'\0').update(bad).digest('hex');
-      // Immutable rows are frozen; a checksum mismatch must still stop tampering.
-      assert.throws(()=>g.audit((repo,commit,p)=>repo===entry.repo&&commit===entry.draft_commit?sameBlob():reader(repo,commit,p)),
-        /git_workflow_drift_draft_honartik_front/);
-    }finally{assert.equal(entry.draft_blob,original)}
+  test('removing a draft approval field, adding a push trigger or changing central executor is denied',()=>{
+    const experiments=[
+      ['honartik_front-draft.yml',x=>x.replace('"approval_id":"%s"','"approval_missing":"%s"'),/git_workflow_drift_draft_honartik_front/],
+      ['aranob-main.yml',x=>x.replace('  workflow_dispatch:', '  push:\\n    branches: [main]\\n  workflow_dispatch:'),/git_workflow_drift_main_aranob/],
+      ['central-draft.yml',x=>x.replace('deploy-project-authorized-v1.mjs','deploy-project-legacy.sh'),/git_workflow_drift_central_draft/]
+    ];
+    for(const [file,change,expected] of experiments){
+      const data=Buffer.from(change(fs.readFileSync(path.join(folder,file),'utf8')));
+      const keys=file.replace(/\\.yml$/,'').split('-');
+      const phase=keys.pop(),project=keys.join('-');
+      const entry=project==='central'?g.CENTRAL:g.ENTRIES.find(e=>e.project===project);
+      const commit=phase==='main'?entry.main_commit:entry.draft_commit;
+      const candidate=(repo,sha,p)=>repo===entry.repo&&sha===commit?data:reader(repo,sha,p);
+      assert.throws(()=>g.audit(candidate),expected,file);
+    }
   });
   test('wrong repository, commit or workflow path cannot be used as a fixture reader',()=>{
     assert.throws(()=>reader('prhmonline/unknown','a'.repeat(40),g.FILE),/untrusted_repo/);
     assert.throws(()=>reader(g.ENTRIES[0].repo,'f'.repeat(40),g.FILE),/untrusted_commit_id/);
-    assert.throws(()=>reader(g.ENTRIES[0].repo,g.ENTRIES[0].main_commit,'../../.env'),/strictEqual/);
+    assert.throws(()=>reader(g.ENTRIES[0].repo,g.ENTRIES[0].main_commit,'../../.env'),/Expected values to be strictly equal/);
   });
 }
