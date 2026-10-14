@@ -121,7 +121,7 @@ test('root-only credential reader rejects non-root/unsafe permissions/duplicatio
  assert.throws(()=>T.readRootCredentials(io({override:dup}),()=>0),
   /credential_bytes_invalid|credential_key_duplicate_or_invalid/);
 });
-test('client cannot escape root boundary even when passing fake request callbacks',()=>{
+test('client cannot escape root boundary even when passing fake request callbacks',async()=>{
  assert.throws(()=>T.createTransport({
   requestFn:()=>{},credentialReader,getuid:()=>1000}),/root_required/);
  const fake=fakeHttp(()=>({ok:true,request:{...record(),
