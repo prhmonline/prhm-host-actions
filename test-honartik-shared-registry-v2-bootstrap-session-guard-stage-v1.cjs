@@ -1,5 +1,8 @@
 'use strict';
 const {test}=require('node:test');
+// Always run real kernel-fsync and SIGKILL tests in the mandatory shared registry gate.
+require('./test-prhm-action-registry-v2-bootstrap-real-fs-lab-v1.cjs');
+require('./test-honartik-shared-registry-v2-bootstrap-real-fs-lab-stage-v1.cjs');
 const assert=require('node:assert/strict');
 const cp=require('node:child_process');
 const crypto=require('node:crypto');
