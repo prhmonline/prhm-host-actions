@@ -20,7 +20,7 @@ const CONTRACT=Object.freeze({
   candidate_policy_version:'2026-10-15.1-deploy-control-l4-installer-enrollment-v1',
   candidate_policy_object_sha256:'732c21b15a54b47dced724e1f5be1c70aa1bd6c41cc5f94c5d2f600e45c36acb',
   source_shas:Object.freeze({
-    'prhmonline/deploy-control':'e9d4b435a8bb73a507b2a7dd4affc4caa455d524',
+    'prhmonline/deploy-control':'1e16bbb633a2d7b62d1322fe4c93bf9df346a748',
     'prhmonline/prhm-company-control-plane':'acffc7f9e02073f7aaf6ba92777f7acff6481f81',
     'prhmonline/aranob':'0454dd4bfb74e3064da36955006dd38426b12b82',
     'prhmonline/Honar-front-new':'5a13a594fc0081dd202583df3f3d04b06aa34b4f',
