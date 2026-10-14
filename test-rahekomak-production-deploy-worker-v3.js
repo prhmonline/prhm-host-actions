@@ -20,7 +20,7 @@ test('worker is locked to the reviewed RahKomak release, never caller-supplied p
 });
 
 test('only nonce-derived fixed report paths are accepted', () => {
-  assert.equal(m.reportPath('--apply', 'a'.repeat(32)),
+  assert.equal(m.reportPath('--apply', 'a'.repeat(32)).replaceAll('\\', '/'),
     '/var/lib/prhm-agent-selfmaint-exec/rahekomak-v3-' + 'a'.repeat(32) + '-apply.json');
   for (const invalid of ['../../tmp', 'A'.repeat(32), 'x'.repeat(32), 'a'.repeat(31), 'a'.repeat(33), '']) {
     assert.throws(() => m.reportPath('--preflight', invalid), /invalid_nonce/);
