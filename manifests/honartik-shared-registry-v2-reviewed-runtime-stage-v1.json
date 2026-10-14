@@ -129,6 +129,12 @@
       "source_commit": "e0c608c24990e1e75a6af06449b59b59664edb40",
       "git_blob_sha1": "78001c5d059d26be55fa53adcf5d2d6c84cb6181",
       "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-five-field-approval-gate-v1.cjs"
+    },
+    {
+      "source_path": "prhm-action-registry-v2-approval-http-adapter-v1.cjs",
+      "source_commit": "db632ebd75b4e7b9e543b7cfc7d0f9f381cbe376",
+      "git_blob_sha1": "a4fc61d424c2209ddde7858cb6146d19b4823c97",
+      "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-approval-http-adapter-v1.cjs"
     }
   ],
   "conditions": [
@@ -146,5 +152,8 @@
   "runner_entry_source_commit": "0a8fca5bbe59c607c4f96c1f75e80979124afaa8",
   "runner_entry_rejects_injected_apply": true,
   "five_field_approval_source_commit": "e0c608c24990e1e75a6af06449b59b59664edb40",
-  "five_field_approval_requires_ed25519_and_consumed_ledger": true
+  "five_field_approval_requires_ed25519_and_consumed_ledger": true,
+  "approval_http_adapter_source_commit": "db632ebd75b4e7b9e543b7cfc7d0f9f381cbe376",
+  "http_approval_route_installed": false,
+  "http_approval_route_authentic_root_preflight_required": true
 }
