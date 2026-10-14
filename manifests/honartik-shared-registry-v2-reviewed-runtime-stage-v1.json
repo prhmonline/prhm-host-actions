@@ -35,10 +35,10 @@
       "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-one-time-fence-v1.cjs"
     },
     {
-      "source_path": "prhm-action-registry-durable-recovery-v1.cjs",
-      "source_commit": "aa267202d11784f0ac0a957e0d8ba911a6b07734",
-      "git_blob_sha1": "c0ff49d97cfc9bd692bc27a377324d4391beb3fe",
-      "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-durable-recovery-v1.cjs"
+      "source_path": "prhm-action-registry-v2-durable-recovery-v1.cjs",
+      "source_commit": "cf505af78c9cae02b37e2bbc38a05fbd9516e629",
+      "git_blob_sha1": "51b6224c24ef6d4ec27c1da092dfe5aafbf65ec6",
+      "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-durable-recovery-v1.cjs"
     },
     {
       "source_path": "honartik-config-center-atomic-registration-installer-v1.cjs",
@@ -126,5 +126,7 @@
     "durable_rollback_approved_and_tested",
     "MCP_discovery_negative_after_recovery"
   ],
-  "production_mutation": false
+  "production_mutation": false,
+  "recovery_source_commit": "cf505af78c9cae02b37e2bbc38a05fbd9516e629",
+  "recovery_requires_negative_mcp_discovery": true
 }
