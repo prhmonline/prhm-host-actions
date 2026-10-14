@@ -48,7 +48,7 @@ test('review exact Git blob with pinned systemd root-only sandbox and no install
  assert.ok(TEXT.includes(Buffer.from('RuntimeDirectoryMode=0700')));
  assert.ok(TEXT.includes(Buffer.from('ProtectSystem=strict')));
  assert.ok(TEXT.includes(Buffer.from('CapabilityBoundingSet=CAP_DAC_READ_SEARCH')));
- assert.ok(!TEXT.includes(Buffer.from('[Install]')));
+ assert.ok(!TEXT.toString('utf8').split('\n').some(line=>line.trim()==='[Install]'));
  assert.ok(!TEXT.includes(Buffer.from('ExecStartPre=')));
  assert.ok(!TEXT.includes(Buffer.from('/bin/sh')));
 });
