@@ -53,7 +53,7 @@ class SharedCINetworkContractTests(unittest.TestCase):
         text = (ROOT / "ci-isolation.nft.review").read_text()
         list_region = text.split("elements = {", 1)[1].split("}", 1)[0]
         blocked = [ipaddress.ip_network(x) for x in
-                   re.findall(r"\\b(?:\\d{1,3}\\.){3}\\d{1,3}/\\d{1,2}\\b", list_region)]
+                   re.findall(r"\b(?:\d{1,3}\.){3}\d{1,3}/\d{1,2}\b", list_region)]
         def denied(ip):
             return any(ipaddress.ip_address(ip) in network for network in blocked)
         for addr in ("10.71.0.118", "10.71.0.1", "185.191.76.138", "127.0.0.1",
