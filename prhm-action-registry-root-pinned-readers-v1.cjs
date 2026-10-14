@@ -97,7 +97,7 @@ function readers(io=fs){
    const entry=assetByTarget.get(filename);
    check(!!entry,'asset_not_allowlisted');
    return secureRead(io,STAGED+'/'+entry.source_path,{
-     sha256:entry.sha256,maxBytes:req.max_bytes});
+     sha256:entry.sha256,maxBytes:4000000});
  }
  return Object.freeze({readPinnedGitManifest,readPinnedGitSource,
    readLiveOwner,readStagedAsset});
