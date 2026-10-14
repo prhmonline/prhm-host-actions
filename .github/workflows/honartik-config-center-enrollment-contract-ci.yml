@@ -6,6 +6,10 @@ on:
       - 'honartik-config-center-enrollment-action-v1.cjs'
       - 'test-honartik-config-center-enrollment-action-v1.cjs'
       - 'honartik-config-center-registration-candidate-v1.cjs'
+      - 'honartik-config-center-owner-sha-readonly-preflight-v1.cjs'
+      - 'test-honartik-config-center-owner-sha-readonly-preflight-v1.cjs'
+      - 'honartik-config-center-shared-release-builder-v1.cjs'
+      - 'test-honartik-config-center-shared-release-builder-v1.cjs'
       - 'honartik-config-center-trusted-adapter-v1.cjs'
       - 'honartik-config-center-privileged-runner-v1.cjs'
       - 'honartik-config-center-install-manifest-v1.json'
@@ -34,6 +38,10 @@ on:
       - 'honartik-config-center-enrollment-action-v1.cjs'
       - 'test-honartik-config-center-enrollment-action-v1.cjs'
       - 'honartik-config-center-registration-candidate-v1.cjs'
+      - 'honartik-config-center-owner-sha-readonly-preflight-v1.cjs'
+      - 'test-honartik-config-center-owner-sha-readonly-preflight-v1.cjs'
+      - 'honartik-config-center-shared-release-builder-v1.cjs'
+      - 'test-honartik-config-center-shared-release-builder-v1.cjs'
       - 'honartik-config-center-trusted-adapter-v1.cjs'
       - 'honartik-config-center-privileged-runner-v1.cjs'
       - 'honartik-config-center-install-manifest-v1.json'
@@ -83,6 +91,11 @@ jobs:
           node --check honartik-config-center-privileged-runner-v1.cjs
           node --check test-honartik-config-center-privileged-runner-v1.cjs
           node --check test-honartik-config-center-install-manifest-v1.cjs
+          node --check honartik-config-center-owner-sha-readonly-preflight-v1.cjs
+          node --check test-honartik-config-center-owner-sha-readonly-preflight-v1.cjs
+          node --check honartik-config-center-shared-release-builder-v1.cjs
+          node --check test-honartik-config-center-shared-release-builder-v1.cjs
+          node --test test-honartik-config-center-owner-sha-readonly-preflight-v1.cjs test-honartik-config-center-shared-release-builder-v1.cjs
           node --check honartik-config-center-atomic-registration-installer-v1.cjs
           node --check test-honartik-config-center-atomic-registration-installer-v1.cjs
           node --check honartik-config-center-signed-registration-approval-v1.cjs
