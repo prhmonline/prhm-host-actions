@@ -89,7 +89,7 @@ test('a forged once-only claim cannot authorize recovery',()=>{
 test('ledger tampering, wrong consumer or second same-request ledger deny recovery',()=>{
  for(const k of ['consumer','operation','request_hash','consumption_hash']){
   const f=fixture();const bad={...f.ledger,[k]:'unexpected'};
-  f.file(f.ledgerPath,JSON.stringify(bad)+'\n');
+  f.file(f.ledgerPath,JSON.stringify(bad)+'\n',0o100600,65039);
   assert.throws(()=>A.assertConsumed({io:f.io,id:uuid,release:f.release,snapshot:f.snapshot}),
    /consumption_binding_invalid/);
  }
@@ -97,7 +97,7 @@ test('ledger tampering, wrong consumer or second same-request ledger deny recove
  const second={...repeated.ledger,approval_id:'da499702-9785-47d8-9823-56aa44dc1eb0',
   consumption_hash:null};
  second.consumption_hash=hex(Buffer.from(JSON.stringify(second)));
- repeated.file(A.CONSUMED+'/'+second.approval_id+'.json',JSON.stringify(second)+'\n');
+ repeated.file(A.CONSUMED+'/'+second.approval_id+'.json',JSON.stringify(second)+'\n',0o100600,65039);
  assert.throws(()=>A.assertConsumed({io:repeated.io,id:uuid,
   release:repeated.release,snapshot:repeated.snapshot}),
   /unique_original_consumed_approval_missing/);
