@@ -31,8 +31,8 @@
     "sha256": "ffe6203da54deeb6db5d2a98a83f9ec8e55f149d3f7ba622e1abe5fa966ee3d6",
     "sums": "/var/lib/libvirt/images/base/ubuntu-noble-SHA256SUMS",
     "sig": "/var/lib/libvirt/images/base/ubuntu-noble-SHA256SUMS.gpg",
-    "vendor_keyring": null,
-    "expected_signer_fingerprint": null
+    "vendor_keyring": "/etc/prhm-ci/trust/ubuntu-cloudimage-keyring.gpg",
+    "expected_signer_fingerprint": "D2EB44626FDDC30B513D5BB71A5D6C4C7DB87C81"
   },
   "runners": {
     "mode": "per-repository-ephemeral",
