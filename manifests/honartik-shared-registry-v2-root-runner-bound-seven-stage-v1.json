@@ -1,0 +1,37 @@
+{
+  "schema": "prhm.honartik.registry-v2.independent-root-bound-seven-stage.v1",
+  "project": "honartik",
+  "repo": "prhmonline/prhm-host-actions",
+  "status": "SOURCE_ONLY_NOT_STAGED",
+  "runner_executable": false,
+  "production_authorized": false,
+  "production_mutated": false,
+  "l4_requested": false,
+  "l4_consumed": false,
+  "files": [
+    {
+      "path": "prhm-action-registry-v2-root-runner-bindings-v1.cjs",
+      "source_commit": "f86e2c823e37b9dadc377968e9b82331f9098d5b",
+      "git_blob_sha1": "e6f2d5c9b5dfdafe6db3957998c75abe8fa7805d"
+    },
+    {
+      "path": "test-prhm-action-registry-v2-root-runner-bindings-v1.cjs",
+      "source_commit": "89a12dccd7e51456e7e48529d3aecc408336da76",
+      "git_blob_sha1": "f95648f3221824525e24cd4530fe250f7d0e388f"
+    }
+  ],
+  "bound_capability_count": 7,
+  "required_capability_count": 12,
+  "missing_capabilities": [
+    "getInstaller",
+    "getRollback",
+    "verifyOriginalState",
+    "getToolDiscovery",
+    "writeMetadataAudit"
+  ],
+  "full_root_runner_preflight_passed": false,
+  "auth_discovery_preflight_passed": false,
+  "real_host_root_verified": false,
+  "independent_root_signed_launcher_installed": false,
+  "standalone_execution_allowed": false
+}
