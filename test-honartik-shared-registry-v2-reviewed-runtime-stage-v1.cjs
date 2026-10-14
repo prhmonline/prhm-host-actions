@@ -86,6 +86,18 @@ test('every local CommonJS dependency resolves inside the 17-file staged runtime
   }
  }
 });
+test('only the hardened V2 cold-recovery module is staged, never the old V1 success path',()=>{
+ const recovery=M.files.filter(x=>x.source_path.includes('durable-recovery'));
+ assert.equal(recovery.length,1);
+ assert.equal(recovery[0].source_path,'prhm-action-registry-v2-durable-recovery-v1.cjs');
+ assert.equal(recovery[0].git_blob_sha1,'51b6224c24ef6d4ec27c1da092dfe5aafbf65ec6');
+ assert.equal(recovery[0].source_commit,M.recovery_source_commit);
+ assert.equal(M.recovery_requires_negative_mcp_discovery,true);
+ const source=git(['show',recovery[0].source_commit+':'+recovery[0].source_path]).toString('utf8');
+ assert.match(source,/verifyTargetAbsent/);
+ assert.match(source,/target_mcp_tool_still_visible_or_unverified/);
+ assert.equal(M.files.some(x=>x.source_path==='prhm-action-registry-durable-recovery-v1.cjs'),false);
+});
 test('V2 independent entry cannot be used as an unapproved CLI apply',()=>{
  const r=cp.spawnSync(process.execPath,
  ['prhm-action-registry-v2-independent-runner-entry-v1.cjs'],
