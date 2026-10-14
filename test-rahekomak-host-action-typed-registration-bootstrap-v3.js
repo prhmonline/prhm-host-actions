@@ -118,6 +118,6 @@ test('live byte drift fails before any backup or write',async()=>{
  assert.ok(!h.events.includes('replace'));assert.ok(!h.events.includes('backup'));
 });
 test('no standalone CLI mutation; sources pinned to fixed Git commit',()=>{
- assert.equal(m.SOURCE_COMMIT,'4110de9f99a260b377875640ba1f71d69d3b5ea4');
+ assert.equal(m.SOURCE_COMMIT,'fe37c82f23c11eeafd55f9212ba74af178f59d76');
  assert.throws(()=>m.prepare({}),/trusted_read_adapter_required/);
 });
