@@ -8,7 +8,7 @@ const m=require('./manifests/honartik-shared-registry-v2-root-12-review-v1.json'
 const sha=b=>crypto.createHash('sha1').update(Buffer.from('blob '+b.length+'\0')).update(b).digest('hex');
 test('all five additional 12-function root sources have authentic immutable Git SHA1',()=>{
  assert.equal(m.schema,'prhm.registry-v2.honartik-root-12-review.v1');
- assert.equal(m.runtime_files.length,5);
+ assert.equal(m.runtime_files.length,6);
  assert.equal(m.source_functions,12);
  assert.equal(m.installed_functions,0);
  for(const f of m.runtime_files){
@@ -28,4 +28,5 @@ test('12-function source cannot grant production capabilities or claim a real ho
  assert.equal(m.status,'REVIEWED_SOURCE_ONLY_NOT_STAGED');
  assert.equal(m.old_runtime_files_pinned,20);
  assert.equal(m.old_root_files_pinned,7);
+ assert.equal(m.new_root_files_pinned,6);
 });
