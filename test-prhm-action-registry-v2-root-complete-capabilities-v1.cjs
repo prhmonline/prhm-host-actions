@@ -10,6 +10,7 @@ const production=require('./prhm-action-registry-v2-root-complete-capabilities-v
 const FILE=path.join(__dirname,'prhm-action-registry-v2-root-complete-capabilities-v1.cjs');
 const input={...gate.REQUEST};
 const id='12345678-1234-4234-8234-123456789abc';
+const TOKEN='a.b.c'.repeat(44);
 function fixture(){
  const trace={claim:0,install:0,rollback:0,inspect:0};
  const proof={request_id:id,action:input.action,
@@ -59,7 +60,7 @@ function fixture(){
    createRecovery:args=>{
     trace.rollback++;
     assert.equal(args.requestId,id);
-    assert.equal(args.approvalToken,'token');
+    assert.equal(args.approvalToken,TOKEN);
     return {readonlyPreflight:async()=>({ok:true}),
      recover:async()=>({verified:true,restored:true,request_id:id,steps:1})};
    }
@@ -89,7 +90,7 @@ test('complete source has exactly twelve reviewed functions and never executes s
 });
 test('all three real extension callbacks are blocked until a durable claim',async()=>{
  const h=fixture(),cap=h.fn.createBoundTwelve({
-  input:h.input,approvalToken:'token'
+  input:h.input,approvalToken:TOKEN
  });
  assert.equal(Object.keys(cap).length,12);
  bridge.attestExistingRoute(cap);
@@ -118,7 +119,7 @@ test('all three real extension callbacks are blocked until a durable claim',asyn
 });
 test('rollback refuses caller approval and release drift, no cold recovery attempts',async()=>{
  const h=fixture(),cap=h.fn.createBoundTwelve({
-  input:h.input,approvalToken:'token'
+  input:h.input,approvalToken:TOKEN
  });
  await cap.claimOnce({});
  const rollback=cap.getRollback(h.target);
