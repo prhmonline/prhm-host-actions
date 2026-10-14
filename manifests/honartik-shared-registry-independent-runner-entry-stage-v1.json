@@ -1,0 +1,21 @@
+{
+  "schema": "prhm.shared-registry.independent-runner-entry-stage.v1",
+  "repo": "prhmonline/prhm-host-actions",
+  "source_commit": "1fe90198db34c9fbfe70cffbe778dde61d03894e",
+  "entrypoint": {
+    "source_path": "prhm-action-registry-independent-runner-entry-v1.cjs",
+    "git_blob_sha1": "8a89438438fb046785693bb8cad0b80cb1a6b088",
+    "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v1/prhm-action-registry-independent-runner-entry-v1.cjs"
+  },
+  "dependency_manifests": [
+    "manifests/honartik-shared-registry-bootstrap-source-closure-v1.json",
+    "manifests/honartik-shared-registry-trusted-host-io-stage-v1.json"
+  ],
+  "contract": "systemd_LoadCredential_private_root_only",
+  "contract_status": "SOURCE_ONLY_FAIL_CLOSED",
+  "trusted_approval_five_field_route": "NOT_INSTALLED",
+  "trusted_rollback_and_discovery_binding": "NOT_IMPLEMENTED",
+  "stage_status": "NOT_STAGED",
+  "production_mutation": false,
+  "requires_fresh_l4": true
+}
