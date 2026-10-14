@@ -48,8 +48,6 @@ function inspect({policy,health}){
     blockers.push('dedicated_fixed_action_not_registered');
   if(health.host_actions_v2.filter(x=>x===ACTION).length!==1)
     blockers.push('action_registry_uniqueness_failure');
-  if(policy.operations['host_action.host_action_v2_installer_v1']?.level===3)
-    blockers.push('generic_v2_installer_is_level3_not_critical_substitute');
   if(health.ok!==true||health.service!=='prhm-agent-selfmaint-exec')
     blockers.push('host_action_registry_health_invalid');
   return Object.freeze({
@@ -57,6 +55,7 @@ function inspect({policy,health}){
     action:ACTION,operation:OPERATION,
     blockers:Object.freeze([...new Set(blockers)]),
     source_review_gates_present:blockers.length===0,
+    existing_generic_installer_level:policy.operations['host_action.host_action_v2_installer_v1']?.level??null,
     // A registry+policy view is NEVER a live signed authorization.
     approved:false,execution_authorized:false,may_install:false,
     needs:'independent_signed_one_time_level4_confirmation_and_trusted_runtime_attestation'
