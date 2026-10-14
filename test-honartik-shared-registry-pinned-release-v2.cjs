@@ -16,7 +16,7 @@ const OLD_GATEWAY='855218b5ae4acf7ab8752217c958d0623267f7de';
 const NEW_GATEWAY='2c20453a91cb55c305a8901217e4b2d2cc22e9f9';
 const sha256=b=>crypto.createHash('sha256').update(b).digest('hex');
 const blobSha=b=>crypto.createHash('sha1')
- .update(Buffer.from('blob '+b.length+'\\0')).update(b).digest('hex');
+ .update(Buffer.from('blob '+b.length+'\0')).update(b).digest('hex');
 function git(args){
  const r=cp.spawnSync('git',args,{cwd:__dirname,timeout:15000,maxBuffer:5000000});
  assert.equal(r.status,0,'immutable_git_read_failed:'+args.join(' '));
@@ -82,7 +82,7 @@ test('complete source closure pins the NEW rollback gateway without mutable HEAD
   const content=git(['show',a.git_commit+':'+a.git_path]);
   assert.equal(blobSha(content),a.git_blob_sha1);
   assert.match(git(['ls-tree',a.git_commit,'--',a.git_path]).toString('utf8'),
-   /^100644 blob [a-f0-9]{40}\\t/);
+   /^100644 blob [a-f0-9]{40}\t/);
  }
  const gw=pin.assets.find(x=>x.git_path==='prhm-action-registry-gateway-v1.cjs');
  assert.ok(gw);
@@ -92,10 +92,10 @@ test('complete source closure pins the NEW rollback gateway without mutable HEAD
  assert.ok(paths.has('honartik-config-center-atomic-registration-installer-v1.cjs'));
  const gatewayBytes=git(['show',pin.source_commit+':'+gw.git_path]).toString('utf8');
  assert.match(gatewayBytes,/originalAndUndiscoverable/);
- assert.match(gatewayBytes,/readInstalledTool\\(release\\.normalized\\.action\\)===false/);
+ assert.match(gatewayBytes,/readInstalledTool\(release\.normalized\.action\)===false/);
  for(const a of pin.assets.filter(x=>x.git_path.endsWith('.cjs'))){
   const src=git(['show',a.git_commit+':'+a.git_path]).toString('utf8');
-  for(const [,relative] of src.matchAll(/\\brequire\\s*\\(\\s*['"]([^'"]+)['"]\\s*\\)/g)){
+  for(const [,relative] of src.matchAll(/\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)/g)){
    if(relative.startsWith('node:'))continue;
    assert.ok(relative.startsWith('./'),'external_local_import:'+relative);
    const link=path.posix.normalize(path.posix.join(path.posix.dirname(a.git_path),relative));
