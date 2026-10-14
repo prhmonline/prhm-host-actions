@@ -87,3 +87,37 @@ PRHM_CUTOVER_CORE_FIXTURE=/isolated/production-approval-core.mjs \
 PRHM_CUTOVER_SUDOERS_FIXTURE=/isolated/deploy-control-gated.sudoers \
 node --test test-deploy-control-cutover-contract-v1.cjs test-deploy-control-cutover-fixture-v1.cjs
 ```
+
+
+## Disk-backed temp-filesystem transaction rehearsal (2026-10-15)
+
+Two files extend **Draft PR #207**, without creating any callable Production action:
+
+- `deploy-control-cutover-temp-installer-v1.cjs` is a **temporary-filesystem-only** transactional test harness. The only allowed root is a `prhm-cutover-fixture-*` directory created directly below the system temp directory, owned by the current nonprivileged process and mode 0700. It rejects arbitrary roots and runtime argument extension. It exposes only `run`, `PATHS` and `CHECKPOINTS`, not a Host Action apply/approval/registration API.
+- `test-deploy-control-cutover-temp-installer-v1.cjs` validates fixture path confinement, existing file/preimage checks, symlinked inputs/parents rejection, exclusive lock, real on-disk backup and fsync/rename-based candidate writes, candidate file verification, and **five separate disk rollback fault injections**.
+
+Authenticated fixture inputs: original non-secret Approval Center policy **read-only** via Agent 3 Primary and verified against raw SHA256 `148fe2a724befc15cd8c731b0195d83e254d39215792a5084b70dd5b5c178174`; proposed policy and dispatcher/core/sudoers read from exact reviewed GitHub commits and verified by per-file Git blob SHA. Test scripts were also checked against their Git blob SHAs before execution.
+
+**Executed in separate, disposable Composio sandbox with Node v20:** combined
+`test-deploy-control-cutover-contract-v1.cjs`,
+`test-deploy-control-cutover-fixture-v1.cjs`, and
+`test-deploy-control-cutover-temp-installer-v1.cjs`:
+**42 tests PASS / 0 FAIL / 0 SKIPPED**. The suite verifies the *actual unwired* central dispatcher is rejected **before modifying any disk fixture**. Only a synthetic **test-only in-memory rewrite** of its source is used to test the five successful rollback paths. No such rewrite is committed or installed to Production.
+
+Every fault point `policy_written`, `helper_written`, `core_written`, `sudoers_swapped` and `health_check` verified restoration from the **real on-disk backup**, including removal of newly created candidate assets and restoration of old legacy grants, all within the disposable temp directory. Test also rejects wildcard grants, symlink traversal, stale policy, changed source digests, and concurrent fixture lock collisions. The fixture journal excludes secrets and records success/rollback separately.
+
+**Security limitations:** This is *not* an operating-system transactional / crash-consistent root installer; no live issuer restart, real `visudo`, systemd or full effective sudo policy, external hook check, signed approval verification/consumption or Production rollout has happened. A true independently authorized, trusted Host Action implementation must separately implement reliable on-host backups, service restart, failure detection and validated rollback under Level-4 security review. The central privileged dispatcher wiring remains a distinct **safety-blocked** change and must not be circumvented. GitHub-hosted CI remains account/billing blocked. Source sandbox PASS must not be represented as hosted CI or Production PASS.
+
+To reproduce in an isolated checkout with verified fixture provenance:
+
+```sh
+PRHM_CUTOVER_LIVE_POLICY_FIXTURE=/isolated/live.json \
+PRHM_CUTOVER_CANDIDATE_POLICY_FIXTURE=/isolated/candidate.json \
+PRHM_CUTOVER_DISPATCHER_FIXTURE=/isolated/dispatcher.mjs \
+PRHM_CUTOVER_CORE_FIXTURE=/isolated/core.mjs \
+PRHM_CUTOVER_SUDOERS_FIXTURE=/isolated/sudoers.txt \
+node --test \
+  test-deploy-control-cutover-contract-v1.cjs \
+  test-deploy-control-cutover-fixture-v1.cjs \
+  test-deploy-control-cutover-temp-installer-v1.cjs
+```
