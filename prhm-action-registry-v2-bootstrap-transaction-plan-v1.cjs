@@ -14,6 +14,7 @@ const stage=require('./manifests/honartik-shared-registry-v2-reviewed-runtime-st
 const release=require('./manifests/honartik-config-center-registry-release-v2.json');
 const JPATH='/var/lib/prhm-agent-selfmaint-exec/registry-bootstrap-v2-journal.json';
 const FILE_MODE=0o600;
+const ATTESTED_BUNDLES=new WeakSet();
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const blob=b=>crypto.createHash('sha1').update(Buffer.from('blob '+b.length+'\0')).update(b).digest('hex');
 const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
@@ -84,16 +85,19 @@ function attestBundle(blobs){
    need(blob(b)===f.git_blob_sha1,'git_blob_sha_mismatch_'+f.git_path);
    digest[f.path]=sha(b);
  }
- return Object.freeze({schema:'prhm.registry-v2.attested-bundle.v1',
+ const proof=Object.freeze({schema:'prhm.registry-v2.attested-bundle.v1',
    count:p.files.length,total_bytes:total,source_sha256:Object.freeze(digest),
    bound_to_immutable_git_objects:true,producer_authorized:false});
+ ATTESTED_BUNDLES.add(proof);
+ return proof;
 }
 function proposal({request_id,bundle,observed}={}){
  const p=immutablePlan();
  need(UUID.test(request_id||''),'request_id_invalid');
  exact(bundle,['schema','count','total_bytes','source_sha256',
    'bound_to_immutable_git_objects','producer_authorized'],'bundle_shape');
- need(bundle.schema==='prhm.registry-v2.attested-bundle.v1'&&
+ need(ATTESTED_BUNDLES.has(bundle)&&
+   bundle.schema==='prhm.registry-v2.attested-bundle.v1'&&
    bundle.count===20&&bundle.bound_to_immutable_git_objects===true&&
    bundle.producer_authorized===false,'bundle_untrusted');
  exact(bundle.source_sha256,p.files.map(x=>x.path),'bundle_file_set_mismatch');
@@ -173,6 +177,43 @@ function rollbackCandidate({transaction,completed,live}={}){
    'operation_count_invalid');
  need(Number.isSafeInteger(completed)&&completed>=0&&completed<=expected.length,
    'completed_count_invalid');
+ // Reject a forged or mutated journal before ever offering an unlink/rmdir.
+ const fileSteps=expected.filter(s=>s.kind==='create_file');
+ const dirSteps=expected.filter(s=>s.kind==='mkdir');
+ need(fileSteps.length===20&&new Set(dirSteps.map(s=>s.path)).size===dirSteps.length&&
+   dirSteps.length+fileSteps.length===expected.length,
+   'journal_step_set_invalid');
+ const allowedDirs=new Set(p.dirs.map(d=>d.path));
+ const observedDirs=new Set();
+ for(const s of dirSteps){
+   exact(s,['kind','path','uid','gid','mode'],'mkdir_step_schema');
+   need(allowedDirs.has(s.path)&&!observedDirs.has(s.path)&&
+     s.uid===0&&s.gid===0&&s.mode===0o700,
+     'journal_mkdir_target_invalid');
+   observedDirs.add(s.path);
+ }
+ for(let i=0;i<fileSteps.length;i++){
+   const s=fileSteps[i],pinned=p.files[i];
+   exact(s,['kind','path','sha256','git_blob_sha1','uid','gid','mode'],
+     'file_step_schema');
+   need(s.path===pinned.path&&s.git_blob_sha1===pinned.git_blob_sha1&&
+     /^[a-f0-9]{64}$/.test(s.sha256)&&
+     s.uid===0&&s.gid===0&&s.mode===FILE_MODE,
+     'journal_file_target_invalid');
+ }
+ need(dirSteps.every((s,i)=>expected[i]===s)&&
+   fileSteps.every((s,i)=>expected[dirSteps.length+i]===s),
+   'journal_execution_order_invalid');
+ const knownExisting=transaction.existing_directory_paths;
+ need(Array.isArray(knownExisting)&&
+   new Set(knownExisting).size===knownExisting.length&&
+   knownExisting.length+dirSteps.length===p.dirs.length&&
+   knownExisting.every(d=>allowedDirs.has(d)&&!observedDirs.has(d)),
+   'journal_original_directory_partition_invalid');
+ const depth=d=>d.split('/').length;
+ for(let i=1;i<dirSteps.length;i++)
+   need(depth(dirSteps[i-1].path)<=depth(dirSteps[i].path),
+     'journal_directory_order_invalid');
  exact(live,['files','directories','owners','journal_persisted','stale_lock_absent'],
    'recovery_observation_shape');
  need(live.journal_persisted===true&&live.stale_lock_absent===true,
@@ -197,6 +238,10 @@ function rollbackCandidate({transaction,completed,live}={}){
  }
  for(const d of p.dirs){
    const state=live.directories[d.path];
+   if(!createdDirs.has(d.path)&&!knownExisting.includes(d.path)){
+     need(state==='absent','unrecorded_or_foreign_directory_'+d.key);
+     continue;
+   }
    exact(state,['exists','uid','gid','mode','empty'],'recovery_dir_shape');
    need(state.exists===true&&state.uid===0&&state.gid===0&&state.mode===0o700,
      'recovery_directory_drift');
