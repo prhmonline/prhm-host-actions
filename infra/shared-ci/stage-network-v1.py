@@ -10,6 +10,7 @@ import argparse
 from contextlib import contextmanager
 import fcntl
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -25,6 +26,7 @@ XML = ROOT / "ci-net.xml.review"
 NFT = ROOT / "ci-isolation.nft.review"
 STATE = Path("/var/lib/prhm-ci/network-stage-v1.json")
 REGISTRY = Path("/var/lib/prhm-ci")
+CONSUMED_APPROVALS = REGISTRY / "consumed-level4-requests"
 RELEASE_RE = re.compile(r"[0-9a-f]{40}\Z")
 SUBNET = "10.72.0.0/24"
 EXPECTED_IMAGE_SHA = "ffe6203da54deeb6db5d2a98a83f9ec8e55f149d3f7ba622e1abe5fa966ee3d6"
@@ -254,11 +256,56 @@ def verify_inactive():
         raise Stop("Production VM not running")
 
 
+def verify_and_consume_level4(sha, baseline):
+    # Signed approval MUST be issued independently by a trusted Approval Center.
+    # A true flag inside source-controlled manifest is never sufficient.
+    authorization = json.loads(MANIFEST.read_text())["authorization"]
+    pinned = authorization.get("trusted_level4_public_key_sha256")
+    if not isinstance(pinned, str) or not re.fullmatch(r"[0-9a-f]{64}", pinned):
+        raise Stop("trusted external Level-4 signing key not provisioned")
+    target = ROOT / "level4-approval.py"
+    spec = importlib.util.spec_from_file_location("prhm_ci_level4_gate", target)
+    if spec is None or spec.loader is None:
+        raise Stop("Level-4 verifier missing")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    try:
+        request_id = mod.verify_external_level4(
+            operation="stage", revision=sha,
+            nft_digest=baseline["nft_preimage_sha256"],
+            prod_xml_digest=baseline["prod_net_xml_sha256"],
+            pinned_public_key_sha256=pinned)
+    except mod.ApprovalRefused as exc:
+        raise Stop("external signed Level-4 approval refused: " + str(exc)) from exc
+    if not REGISTRY.is_dir() or REGISTRY.is_symlink():
+        raise Stop("pre-existing root-owned approval journal directory required")
+    stat_base = REGISTRY.stat()
+    if stat_base.st_uid != 0 or stat_base.st_mode & 0o077:
+        raise Stop("approval journal directory insecure")
+    if not CONSUMED_APPROVALS.is_dir() or CONSUMED_APPROVALS.is_symlink():
+        raise Stop("pre-existing root-owned one-time approval ledger required")
+    ledger_stat = CONSUMED_APPROVALS.stat()
+    if ledger_stat.st_uid != 0 or ledger_stat.st_mode & 0o077:
+        raise Stop("one-time approval ledger insecure")
+    marker = CONSUMED_APPROVALS / (request_id + ".consumed")
+    try:
+        fd = os.open(marker, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    except FileExistsError as exc:
+        raise Stop("Level-4 request already consumed; replay forbidden") from exc
+    with os.fdopen(fd, "w") as handle:
+        handle.write(sha + "\n")
+        handle.flush()
+        os.fsync(handle.fileno())
+    # Deliberately never delete marker, even if staged apply fails.
+    return request_id
+
+
 def staged_apply(sha):
     blobs = check_design()
-    live_baseline(sha)
+    baseline = live_baseline(sha)
     if STATE.exists() or STATE.is_symlink():
         raise Stop("stage journal exists; refusing replay")
+    request_id = verify_and_consume_level4(sha, baseline)
     # Distinct table added without flushing or touching any other nft table.
     run("nft", "-f", str(NFT))
     installed_guard = None
@@ -272,7 +319,7 @@ def staged_apply(sha):
             raise Stop("nft guard changed while staging")
         write_state({"kind": "prhm-ci-network-stage-v1", "network": "ci-net",
                      "sha": sha, "files": blobs, "guard_digest": installed_guard,
-                     "network_started": False, "production_modified": False})
+                     "approval_request_id": request_id, "network_started": False, "production_modified": False})
     except Exception:
         # Never delete an active network or remove the guard if rollback
         # cannot prove the network inactive and exclusively ours.
