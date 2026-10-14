@@ -593,3 +593,44 @@ unit have **not** been implemented or installed.
 `/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2` directory
 was verified absent (ENOENT). No sidecar socket or systemd unit was
 created by this task. Production remains NO-GO; PR #190 is a draft.
+
+## 2026-10-14 — Concrete root read-only attestation gate, not an approval authority
+
+Review confirmed the exact on-host four protected preimage SHA256 values still
+match the immutable Honartik V2 release, with all four files owned by root
+(the MCP owner has mode `0600`). The separately authorized V2 runtime
+directory `/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2`
+remains absent, therefore a sidecar cannot be safely started yet.
+Direct control-plane reads of Approval Center private requests/ledger
+were blocked by the read-only agent's scope: no request-lookup API or
+private-credential transport should be assumed to exist.
+
+A new executable **read-only inspection API**,
+`prhm-action-registry-v2-root-attestation-v1.cjs`, is implemented in Git
+with `test-prhm-action-registry-v2-root-attestation-v1.cjs`.
+`inspect()` verifies UID 0 and the locally compiled 20-file V2 staged
+closure; it then checks the original four owner bytes for exact SHA256,
+the root-owned private runtime directory and every staged Git blob
+for exact Git blob SHA1 (including guarded `O_NOFOLLOW` read,
+parent/file ownership, mode, inode and device race checks).
+It does **not** create files, request a signed approval, install,
+restart services, touch Production or report a false green runtime.
+Missing Stage or drift fails before any installer call.
+
+These checks are **one prerequisite** for a real root capability provider.
+The module is source-only on PR #190, not installed or bound to
+`prhm-action-registry-v2-isolated-socket-v1.cjs` yet. The root transport
+must use separately provisioned SHA-pinned, root-owned staged code and
+must still independently attest the Ed25519 consumed Approval Center
+ledger and durable one-time fence; it must provide root-only sealed
+credential storage, reviewed pinned installer/rollback callbacks and
+fresh authenticated blue/green MCP tools/list probes. No way to
+activate the HTTP adapter, sidecar or independent runner exists from
+the present deployed tool inventory without a separately reviewed
+bootstrap and a **fresh explicit** Level-4 approval.
+
+This read-only module is deliberately **not added to the 20-file
+Production closure** yet because its own closure-manifest dependency
+must be staged in a separate, SHA-attested bootstrap layer; treating
+a copied source as an installed Root adapter would create a new
+unbound runtime path. PR remains Draft / Production NO-GO.
