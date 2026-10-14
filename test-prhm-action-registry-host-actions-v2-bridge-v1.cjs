@@ -37,6 +37,7 @@ function fixture(project='honartik'){
     source_commit===source&&source_path==='sample-action-v1.cjs'?ASSET_BYTES:null,
   getInstaller:()=>async()=>{calls.installer++;return{ok:true,rollback:'not_needed',installedAssets:1,updatedOwners:4}},
   getRollback:()=>async()=>({verified:true}),
+  claimOnce:async()=>({request_id:'x',arguments_sha256:'0'.repeat(64),exclusive:true,durable:true}),
   verifyOriginalState:async()=>true,
   getToolDiscovery:async()=>true,
   writeMetadataAudit:async()=>{calls.audit++}
