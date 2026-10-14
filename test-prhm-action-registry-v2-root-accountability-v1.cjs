@@ -14,7 +14,7 @@ test('V2 owner release matching prevents old or swapped manifests',()=>{
 });
 test('original state refuses wrong owner before any other file probing',()=>{
  let touched=0;
- assert.throws(()=>A.strictOriginalState(release,{uid:()=>0,io:{lstatSync:()=>{touched++}},readLiveOwner:()=>Buffer.from('wrong')}),/owner_not_restored_/);
+ assert.throws(()=>A.strictOriginalState(release,{uid:()=>0,io:{lstatSync:()=>{touched++},realpathSync:p=>p},readLiveOwner:()=>Buffer.from('wrong')}),/owner_not_restored_/);
  assert.equal(touched,0);
 });
 test('audit strictly bound to one request without secret fields',()=>{
