@@ -191,3 +191,20 @@ In a disposable Node 20 sandbox, fetched verified GitHub Git blob bytes at the *
 ### Stop condition
 
 **Source handoff: DONE. Privileged registration: NOT DONE / blocked.** The source-only `prhm_action_registry_install_v1` gateway is not a callable installed Host Action; its manifest schema must not be confused with this review-only manifest. The current root dispatcher does not wire issuer policy-version/hash attestation before approval consumption; an earlier attempt to change its privileged entrypoint was blocked by the editing safety boundary, which must not be circumvented. Full effective sudo and external deployment trigger review remains incomplete. Until a trusted independently authorized route can review/install the exact four postimage owner SHAs and action asset, do **not** create a fake production release manifest or issue a Level-4 request. No Production changes or consumed approvals.
+
+
+## Verified Git graph — corrected two-commit ancestry check (15 October 2026)
+
+**Actual defect fixed:** The original `deploy-control-source-handoff-v1.cjs` claimed `source_commit` preceded `manifest_commit` based **only on their 40-character format and inequality**. That does not prove ancestry; unrelated or reversed commits with the expected file blobs could have satisfied the check.
+
+The source-only validator now **requires a trusted read-only Git comparison adapter**, in addition to the existing independently verified exact manifest and source Git blobs. It fails closed unless:
+- comparison reports `status=ahead`, `ahead_by=1`, `behind_by=0`, `total_commits=1`;
+- `merge_base_commit.sha` and `base_commit.sha` both exactly equal source commit `e63045b04c796d3178737b61dbe67758a7809a53`;
+- the only next commit is the fixed manifest commit `51a630445731e9c4ebd97758fbcf73285f74d051`;
+- exactly **one** file was changed, and it is an **added** `manifests/deploy-control-l4-source-handoff-20261015.json`.
+
+Authenticated GitHub compare API evidence for the two exact SHAs matched those constraints: `ahead_by=1`, `behind_by=0`, `status=ahead`, single **added** Manifest and no other changed files. Three extra negative test cases cover detached/reversed/unrelated history, mismatched merge base, non-manifest-only edits, missing readers and absence of comparison; new handoff suite **11/11 PASS**. All six existing source/fixture suites **70/70 PASS, zero skipped**, in isolated Node 20 test sandbox with GitHub Git blob verified code and manifest. No Production mutation or signed approval was involved.
+
+Added `.github/workflows/deploy-control-source-handoff-git-ci.yml`, which uses real Git graph commands (`merge-base`, `rev-list`, `rev-parse`, `diff-tree`), reads exact source/manifest bytes via `git show`, and executes the negative tests. YAML syntax was checked in the isolated sandbox. The hosted workflow has **not** been reported passing, because GitHub Actions billing is blocking job execution. The GitHub API comparison and isolated tests are independent evidence, **not hosted CI**.
+
+The separate **review-only handoff manifest** and its original source/manifest commits were not altered. This fix neither makes the manifest compatible with executable registry enrollment nor authorizes installation. The fixed security trust chain, independent critical Level-4 authorization, genuine reviewed root installer, issuer pre-consumption policy check, complete sudo/effective privilege audit and external deployment trigger review remain hard blockers.
