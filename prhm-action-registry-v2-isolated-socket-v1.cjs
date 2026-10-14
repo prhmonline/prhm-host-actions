@@ -13,6 +13,7 @@
 const http=require('node:http');
 const fs=require('node:fs');
 const ADAPTER=require('./prhm-action-registry-v2-approval-http-adapter-v1.cjs');
+const GATE=require('./prhm-action-registry-v2-five-field-approval-gate-v1.cjs');
 const SOCKET_DIR='/run/prhm-shared-registry-v2';
 const SOCKET=SOCKET_DIR+'/registry.sock';
 const UNIT='prhm-shared-registry-approval-v2.service';
@@ -73,8 +74,17 @@ function createSocketHandler(createTrustedHandlers){
     'trusted_handler_missing');
    const result=await handlers.dispatch(req.method,req.url,body);
    must(result?.secret_exposed===false&&result?.ok===true&&
-    !Object.hasOwn(result,'approval_token')&&!Object.hasOwn(result,'token'),
+    result.action===GATE.REQUEST.action&&
+    result.arguments_sha256===GATE.ARGUMENTS_SHA&&
+    typeof result.request_id==='string',
     'secret_or_postcondition_invalid');
+   const expected=(result.status==='registered'
+    ? ['ok','request_id','action','arguments_sha256','status','registry_visible','secret_exposed']
+    : ['ok','request_id','action','arguments_sha256','status','secret_exposed']);
+   must(Object.keys(result).sort().join('|')===expected.sort().join('|')&&
+    ['pending','approved','registered'].includes(result.status)&&
+    (result.status!=='registered'||result.registry_visible===true),
+    'unreviewed_response_fields');
    respond(result.status==='pending'?201:200,result);
   }catch(e){
    // Deliberately avoid reflecting exceptions with secret-bearing data.
@@ -96,6 +106,9 @@ function startFixedRootSidecar(){
  const capabilities=host.createRootCapabilities();
  const handlers=ADAPTER.createHandlers(capabilities);
  const server=createIsolatedServer(()=>handlers);
+ // Enforce a private 0600 socket from the instant bind() creates it.
+ // A later chmod() alone would leave a permission exposure window.
+ process.umask(0o077);
  server.listen(SOCKET,()=>{
   fs.chmodSync(SOCKET,0o600);
  });
