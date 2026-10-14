@@ -22,6 +22,9 @@ require('./test-prhm-action-registry-v2-root-live-mcp-v1.cjs');
 require('./test-honartik-shared-registry-v2-root-12-review-v1.cjs');
 // Exact reviewed Git closure for all 26 V2 root runtime objects.
 require('./test-honartik-shared-registry-v2-unified-root-closure-v1.cjs');
+// SHA-attested independently isolated root launcher; source-only, no automatic Production activation.
+require('./test-prhm-action-registry-v2-independent-root-launcher-v1.cjs');
+require('./test-honartik-shared-registry-v2-independent-root-launcher-stage-v1.cjs');
 // Lock remains durably held on partial rollback, failed live discovery, audit error, or drift.
 require('./test-prhm-action-registry-v2-durable-recovery-locksafe-v1.cjs');
 require('./test-honartik-shared-registry-v2-root-runner-bound-seven-stage-v1.cjs');
