@@ -1,0 +1,46 @@
+{
+  "schema": "prhm.registry-v2.honartik-root-12-review.v1",
+  "repo": "prhmonline/prhm-host-actions",
+  "project": "honartik",
+  "status": "REVIEWED_SOURCE_ONLY_NOT_STAGED",
+  "runtime_files": [
+    {
+      "path": "prhm-action-registry-v2-root-accountability-v1.cjs",
+      "source_commit": "5a79c43749c09cbe1f8066ef9c8cfecf6b4fb1eb",
+      "git_blob_sha1": "fb4c6e04577d912beeda2c06e61e03da50a6d6c4"
+    },
+    {
+      "path": "prhm-action-registry-v2-root-runner-bindings-v1.cjs",
+      "source_commit": "81ccf813fc9e6482b28c48c45d8fc0b654f0b368",
+      "git_blob_sha1": "7789953b66f5d93a6316174d931e000bb594ab83"
+    },
+    {
+      "path": "prhm-action-registry-v2-root-live-mcp-v1.cjs",
+      "source_commit": "81fad690088b73bb7a3e69a318456df7e82ed325",
+      "git_blob_sha1": "733050bc3586d5b975696af19c8f0a0de8e394f4"
+    },
+    {
+      "path": "prhm-action-registry-v2-root-recovery-io-v1.cjs",
+      "source_commit": "a9c0b407157ab622564350face1ec075d4e7aa13",
+      "git_blob_sha1": "502425d7dafce2cd34e240ed6e3a30259d564184"
+    },
+    {
+      "path": "prhm-action-registry-v2-root-complete-capabilities-v1.cjs",
+      "source_commit": "d9618b0691bc0a337ecf4217b04969e41db296c5",
+      "git_blob_sha1": "606629b1ac6f708096073dedeebb6c12a1cbc330"
+    }
+  ],
+  "source_functions": 12,
+  "installed_functions": 0,
+  "old_runtime_files_pinned": 20,
+  "old_root_files_pinned": 7,
+  "new_root_files_pinned": 5,
+  "approval_consumed": false,
+  "host_root_attested": false,
+  "root_credential_provisioned": false,
+  "authenticated_dual_worker_probe_verified": false,
+  "cold_recovery_drill_verified": false,
+  "production_authorized": false,
+  "production_mutation": false,
+  "standalone_enabled": false
+}
