@@ -50,7 +50,7 @@ function attestExistingRoute(bridge){
  // root executor, never constructed from client-provided path/code.
  const functions=['readPinnedGitManifest','readPinnedGitSource','readLiveOwner','readStagedAsset',
     'getInstaller','getRollback','claimOnce','verifyOriginalState',
-    'getToolDiscovery','writeMetadataAudit'];
+    'restartService','checkServiceHealth','getToolDiscovery','writeMetadataAudit'];
  for(const f of functions)if(!bridge||typeof bridge[f]!=='function')fail('trusted_capability_missing_'+f);
  return bridge;
 }
@@ -88,6 +88,51 @@ function immutableManifest(input,bridge){
     fail('manifest_project_or_path_mismatch');
  return out;
 }
+/**
+ * Fixed compatibility handoff to the existing Honartik atomic installer.
+ * Only the original signed token goes forward; a boolean 'approved' object
+ * cannot be repackaged into a successful project installer invocation.
+ *
+ * Source-only transport: the root executor must supply trusted pinned Git
+ * readers and allowlisted systemd controls. No user-supplied callback input.
+ */
+function invokeHonartikReviewedInstaller({input,release,approvalToken,installer,cap}){
+ strictRequest(input);
+ if(input.project!=='honartik'||
+    release?.normalized?.project!=='honartik'||
+    release?.normalized?.action!=='honartik_config_center_readonly_enroll_v1'||
+    release.source_commit!==input.source_commit||
+    release.manifest_commit!==input.manifest_commit||
+    release.manifest_sha256!==input.manifest_sha256||
+    typeof installer!=='function'||typeof approvalToken!=='string'||
+    approvalToken.length<120)fail('honartik_adapter_binding');
+ attestExistingRoute(cap);
+ const approvedServices=release.normalized.health?.services;
+ if(!Array.isArray(approvedServices)||approvedServices.length!==4)
+   fail('honartik_service_manifest_missing');
+ const service=(name,kind)=>{
+   if(!approvedServices.includes(name))fail('service_not_allowlisted');
+   const v=(kind==='restart'?cap.restartService:cap.checkServiceHealth)(name);
+   if(v!==true)fail('service_'+kind+'_verification_failed');
+   return v;
+ };
+ return installer({
+   approvalToken,args:input,release,
+   readPinnedManifest:(commit,path)=>{
+     if(commit!==input.source_commit||
+        path!=='honartik-config-center-install-manifest-v1.json')
+       fail('honartik_source_manifest_unbound');
+     const data=cap.readPinnedGitSource({
+       repo:'prhmonline/prhm-host-actions',source_commit:commit,
+       source_path:path,max_bytes:4000000});
+     if(!Buffer.isBuffer(data)||data.length<=100)
+       fail('honartik_source_manifest_missing');
+     return data;
+   },
+   restart:name=>service(name,'restart'),
+   health:name=>service(name,'health')
+ });
+}
 async function applyAfterConsumption({input,approvalToken,capabilities}){
  const request=strictRequest(input);
  if(typeof approvalToken!=='string'||approvalToken.length<120)fail('signed_l4_token_missing');
@@ -100,7 +145,8 @@ async function applyAfterConsumption({input,approvalToken,capabilities}){
  return g.executeAfterTrustedAuthorization({
   release,args:input,signedApprovalToken:approvalToken,
   trustedClaimOnce:async bound=>cap.claimOnce(bound),
-  trustedInstaller:async bound=>installer(bound), // project-specific reviewed atomic installer
+  trustedInstaller:async bound=>invokeHonartikReviewedInstaller({
+    input,release:bound.release,approvalToken,installer,cap}),
   trustedRollback:async bound=>rollback(bound),
   verifyOriginalState:async bound=>cap.verifyOriginalState(bound),
   readInstalledTool:async action=>cap.getToolDiscovery(action),
@@ -109,5 +155,5 @@ async function applyAfterConsumption({input,approvalToken,capabilities}){
 }
 module.exports=Object.freeze({
  ACTION,JWS_BOUNDARY,strictRequest,typedApprovalRequest,validateReceipt,
- attestExistingRoute,immutableManifest,applyAfterConsumption
+ attestExistingRoute,immutableManifest,invokeHonartikReviewedInstaller,applyAfterConsumption
 });
