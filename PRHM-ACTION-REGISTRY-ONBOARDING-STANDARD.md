@@ -372,3 +372,49 @@ executor. No live staging/deploy, approval request or consumption has
 occurred. Installation requires a separately approved immutable bootstrap
 with actual owner SHA re-attestation and independent recovery fault
 injection; never run a stale action-only v2 request or replay consumed L4.
+
+## 2026-10-14 — V2 recovery verdict closes stale MCP discovery across both workers
+
+Production remains NO-GO. Source-only V2 recovery now uses
+`prhm-action-registry-v2-durable-recovery-v1.cjs`: a previously consumed
+original signed Level-4 request, durable backup integrity, byte-identical
+four-owner restore, five-asset removal and four healthy services are **not**
+sufficient for a verified rollback unless the exact new tool is also absent
+from both MCP workers. If any worker still exposes it, the discovery
+probe fails, returns unknown/stale, or throws, the audit CANNOT report
+successful restoration. No token is replayed or reservation released.
+
+The root-executor-facing source module
+`prhm-action-registry-v2-mcp-discovery-v1.cjs` adds a strict two-worker
+negative/positive discovery contract: exactly the approved Honartik
+target action and fixed blue/green MCP service names; live, bounded-age,
+valid and unique tool lists are required from both independently
+authenticated, uncached root-provided probes. A disagreement is an
+ERROR, not false, so a partial deployment cannot masquerade as
+successful registry discovery or rollback. The module does not itself
+contact a Production MCP process or provide the trusted transport.
+
+The authoritative V2 staged-runtime file list now contains 18 immutable
+Git blob entries in
+`manifests/honartik-shared-registry-v2-reviewed-runtime-stage-v1.json`;
+the original V1 durable-recovery module has been replaced by the
+reviewed V2 discovery-gated module. CI covers success, stale one-worker
+discovery, partial registration, malformed and stale tool lists, missing
+trusted callbacks, and real OS-process SIGKILL + durable journal
+reconstruction against synthetic CI-only files.
+
+Read-only 2026-10-14 confirmation: Agent 3 selfmaint health OK, but
+`prhm_action_registry_install_v1` and
+`honartik_config_center_readonly_enroll_v1` remain absent from the
+installed action list, and the existing Honartik dashboard command
+`php console/yii config-center/check` still reports
+`CONFIG_CENTER_READONLY_FAIL`. This CI and metadata report does not
+prove the live tool cache is consistent on both MCP workers.
+
+**Hard blocker for Production:** provision the pre-existing trusted
+five-field Approval Center request/consume route, SHA-attested independent
+launcher, root-only live two-worker tools/list probes, privileged
+owner/asset service recovery callbacks and durable metadata audit. Then
+complete an isolated real-root restart/fault-injection preflight against
+the exact reviewed release and obtain fresh explicit L4 approval.
+Production, real credentials and approval ledgers were NOT modified.
