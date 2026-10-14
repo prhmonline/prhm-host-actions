@@ -4,7 +4,7 @@
 set -Eeuo pipefail
 umask 077
 
-if [[ "\${PRHM_CI_DISPOSABLE_LAB:-}" != "yes" || "\${GITHUB_ACTIONS:-}" != "true" || "\${RUNNER_ENVIRONMENT:-}" != "github-hosted" ]]; then
+if [[ "${PRHM_CI_DISPOSABLE_LAB:-}" != "yes" || "${GITHUB_ACTIONS:-}" != "true" || "${RUNNER_ENVIRONMENT:-}" != "github-hosted" ]]; then
   echo "LAB_REJECTED=missing_disposable_runner_binding" >&2; exit 81
 fi
 [[ "$(id -u)" == 0 ]] || { echo "LAB_REJECTED=needs_root_on_disposable_runner" >&2; exit 82; }
@@ -26,7 +26,7 @@ orig_forward="$(sysctl -n net.ipv4.ip_forward)"
 listeners=()
 cleanup() {
   set +e
-  for pid in "\${listeners[@]}"; do kill "$pid" >/dev/null 2>&1 || true; done
+  for pid in "${listeners[@]}"; do kill "$pid" >/dev/null 2>&1 || true; done
   nft delete table inet prhm_ci_isolation >/dev/null 2>&1 || true
   nft delete table inet prhm_ci_lab_existing >/dev/null 2>&1 || true
   for ns in ciw47 cip47 ciu47; do ip netns del "$ns" >/dev/null 2>&1 || true; done
