@@ -1,0 +1,29 @@
+{
+  "schema_version": "prhm.rahekomak-release-candidate.v3",
+  "status": "REVIEW_ONLY_NOT_REGISTERED",
+  "application": {
+    "repository": "prhmonline/help",
+    "ref": "main",
+    "merge_sha": "88605f30f9922d504b7e4f93ff1c4da9b837aa26",
+    "helper_path": "infra/docker/production-deploy-v1.cjs",
+    "helper_sha256_git_lf": "5e1abba88eaa90f3ab1140c6b39e1747cbb4000f9fbbbf3c27883c75c0c93db7",
+    "release_automation": "DISABLED"
+  },
+  "host_actions": {
+    "repository": "prhmonline/prhm-host-actions",
+    "worker_file": "rahekomak-production-deploy-worker-v3.js",
+    "worker_contract_action": "rahekomak_production_deploy_v1",
+    "legacy_v2": "IMMUTABLE_UNCHANGED",
+    "native_registrar": "NOT_INSTALLED",
+    "level4_signed_single_use_required": true,
+    "registered_action": "NONE_FOR_V3"
+  },
+  "conditions_for_activation": [
+    "Native signed registrar and fresh approved fixed-source tuple installed by already trusted authorized operator",
+    "Independently re-attest exact 4 owner preimages and immutable five assets; no bypass of resident ProtectHome=yes",
+    "Use fresh separate scoped Level-4 approvals; never replay consumed request",
+    "Validate server app checkout exact merge SHA and clean tree, deployment helper source SHA, backup/rollback and API/DB compatibility",
+    "Execute exact-SHA deploy only through registered action and verify financial-support resources 200, 11 category slugs, and durable audited rollback evidence"
+  ],
+  "production_mutation": false
+}
