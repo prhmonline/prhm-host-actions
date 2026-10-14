@@ -5,7 +5,7 @@ const crypto=require('node:crypto');
 const path=require('node:path');
 const stage=require('./manifests/honartik-shared-registry-trusted-host-io-stage-v1.json');
 const base=require('./manifests/honartik-shared-registry-bootstrap-source-closure-v1.json');
-const IO='86326692032c10321812bc897ed112d2907618ef';
+const IO='d958b1ae55b6d9cd728af56b5fcaa1f75b4f194a';
 const ROOT='/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v1/';
 function git(args){
  const p=cp.spawnSync('git',args,{cwd:__dirname,timeout:15000,maxBuffer:4000000});
