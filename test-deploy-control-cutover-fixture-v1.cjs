@@ -49,28 +49,36 @@ if(!haveAll){
   ]);
   const authentic=()=>({mode:'isolated-memory-fixture',state:files(),policyCandidate:candidate,
     dispatcher:helper,core,gatedSudoers:sudo,issuerBefore:issuer('before'),issuerAfter:issuer('after')});
-  const fakeRepaired=()=>{
-    // This is a SYNTHETIC in-memory testing modification of the *unwired*
-    // real dispatcher. The synthetic bytes are never committed as a production
-    // dispatcher or accepted as a reviewed source SHA.
-    const original=helper.toString('utf8');
-    assert.match(original,/import \{ assertRelease, consumeApprovedRelease \}/);
-    assert.match(original,/  const release = await consumeApprovedRelease\(/);
-    const patched=original
-      .replace('import { assertRelease, consumeApprovedRelease }','import { assertRelease, consumeApprovedRelease, verifyIssuerPolicy }')
-      .replace('  const release = await consumeApprovedRelease(',
-        "  await verifyIssuerPolicy({ baseUrl: config.base_url, expectedPolicyVersion: config.expected_policy_version, expectedPolicyHash: config.expected_policy_hash });\n  const release = await consumeApprovedRelease(");
-    return {...authentic(),dispatcher:Buffer.from(patched)};
+  // Candidate bytes MUST be the exact GitHub-reviewed root dispatcher, not
+  // a synthetic patch of the superseded unwired pre-review source.
+  const reviewedActual=()=>authentic();
+  const removeIssuerGateForNegativeCase=()=>{
+    const reviewed=helper.toString('utf8');
+    const gate=[
+      '  await verifyIssuerPolicy({',
+      '    baseUrl: config.base_url,',
+      '    expectedPolicyVersion: config.expected_policy_version,',
+      '    expectedPolicyHash: config.expected_policy_hash,',
+      '  });',
+      ''
+    ].join('\n');
+    assert.ok(reviewed.includes(gate),'reviewed dispatcher must contain exact issuer gate');
+    const missing=reviewed.replace(gate,'');
+    return Buffer.from(missing);
   };
-  test('current actual central source is BLOCKED because issuer attestation is not wired',()=>{
+  test('reviewed real central source contains pre-consume issuer gate',()=>{
     const x=authentic();
+    assert.equal(f.rejectUnwiredDispatcher(x.dispatcher,x.core),true);
+    assert.equal(x.state.has(P.GATE),false);
+  });
+  test('removing issuer attestation from reviewed source fails before simulation',()=>{
+    const x=authentic();x.dispatcher=removeIssuerGateForNegativeCase();
     assert.throws(()=>f.rejectUnwiredDispatcher(x.dispatcher,x.core),
       /issuer_attestation_not_wired/);
     assert.throws(()=>f.simulate(x),/issuer_attestation_not_wired/);
-    assert.equal(x.state.has(P.GATE),false);
   });
-  test('synthetic future-wired source permits an IN-MEMORY-only rehearsal',()=>{
-    const x=fakeRepaired(),before=f.checksum(x.state);
+  test('actual reviewed source permits an IN-MEMORY-only rehearsal',()=>{
+    const x=reviewedActual(),before=f.checksum(x.state);
     const r=f.simulate(x);
     assert.equal(r.ok,true);assert.equal(r.fixture_only,true);
     assert.equal(r.installed_on_host,false);assert.equal(r.execution_authorized,false);
@@ -83,7 +91,7 @@ if(!haveAll){
   });
   for(const failureAt of f.CHECKPOINTS){
     test('synthetic rollback restores exact bytes after fault '+failureAt,()=>{
-      const x={...fakeRepaired(),failureAt},original=f.checksum(x.state);
+      const x={...reviewedActual(),failureAt},original=f.checksum(x.state);
       const r=f.simulate(x);
       assert.equal(r.ok,false);
       assert.equal(r.rollback_simulated,true);
@@ -97,21 +105,21 @@ if(!haveAll){
     });
   }
   test('unexpected preexisting sudo grant blocks before even fixture mutation',()=>{
-    const x=fakeRepaired();x.state.delete(P.HONARTIK);
+    const x=reviewedActual();x.state.delete(P.HONARTIK);
     assert.throws(()=>f.simulate(x),/preimage_missing/);
   });
   test('candidate sudoers drift is rejected, including wildcard ALL',()=>{
-    const x=fakeRepaired();x.gatedSudoers=Buffer.from(
+    const x=reviewedActual();x.gatedSudoers=Buffer.from(
       sudo.toString('utf8')+'deploy-runner ALL=(root) NOPASSWD: ALL\n'
     );
     assert.throws(()=>f.simulate(x),/candidate_sudoers_drift/);
   });
   test('stale or false active issuer policy fails before any simulation',()=>{
-    const x=fakeRepaired();x.issuerBefore=issuer('after');
+    const x=reviewedActual();x.issuerBefore=issuer('after');
     assert.throws(()=>f.simulate(x),/issuer_policy_version_or_hash_mismatch/);
   });
   test('unhealthy proposed issuer health triggers memory rollback',()=>{
-    const x=fakeRepaired();x.issuerAfter={...issuer('after'),ok:false};
+    const x=reviewedActual();x.issuerAfter={...issuer('after'),ok:false};
     const result=f.simulate(x);
     assert.equal(result.ok,false);
     assert.equal(result.rollback_simulated,true);
@@ -119,11 +127,11 @@ if(!haveAll){
     assert.equal(f.checksum(result.restored_state),f.checksum(x.state));
   });
   test('untrusted core without health export blocks the fixture',()=>{
-    const x=fakeRepaired();x.core=Buffer.from('export function consumeApprovedRelease(){}');
+    const x=reviewedActual();x.core=Buffer.from('export function consumeApprovedRelease(){}');
     assert.throws(()=>f.simulate(x),/issuer_attestation_not_wired/);
   });
   test('bad failure injection selector is rejected',()=>{
-    const x={...fakeRepaired(),failureAt:'delete_everything'};
+    const x={...reviewedActual(),failureAt:'delete_everything'};
     assert.throws(()=>f.simulate(x),/failure_injection_unknown/);
   });
 }
