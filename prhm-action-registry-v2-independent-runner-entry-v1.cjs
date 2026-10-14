@@ -20,6 +20,7 @@ const PREFIX='prhm-shared-registry-bootstrap-v2-';
 const CREDENTIAL='registry-approval.json';
 const INPUT_FIELDS=Object.freeze(['action','project','source_commit',
  'manifest_commit','manifest_sha256','approval_token']);
+const LOADED_CREDENTIALS=new WeakSet();
 function stop(code){throw Error('registry_v2_independent_entry_'+code)}
 function requireThat(ok,code){if(!ok)stop(code)}
 function resolveCredentialPath({env,unit}){
@@ -82,20 +83,33 @@ function secureCredential({io=fs,env=process.env,
   'signed_approval_token_format');
  // Only a JWS-shaped secret is accepted here; the underlying gateway
  // independently cryptographically verifies Ed25519 and consumed ledger.
- return Object.freeze({input,approvalToken:data.approval_token,
+ const credential=Object.freeze({input,approvalToken:data.approval_token,
   unit,secret_source:'systemd-sealed-credential'});
+ // An arbitrary object with this string is not an authenticated credential.
+ // Only the exact object loaded via secureCredential() in THIS process is
+ // accepted at the entrypoint boundary.
+ LOADED_CREDENTIALS.add(credential);
+ return credential;
 }
-async function runWithCapabilities({credential,capabilities,
- apply=bridge.applyAfterConsumption}={}){
- requireThat(credential&&credential.secret_source==='systemd-sealed-credential'&&
-   typeof apply==='function','trusted_invocation_required');
+async function runWithCapabilities(parameters={}){
+ requireThat(parameters&&typeof parameters==='object'&&
+   !Array.isArray(parameters)&&
+   Object.keys(parameters).sort().join('|')==='capabilities|credential',
+   'trusted_invocation_schema');
+ const {credential,capabilities}=parameters;
+ requireThat(credential&&LOADED_CREDENTIALS.has(credential)&&
+   credential.secret_source==='systemd-sealed-credential',
+   'trusted_invocation_required');
  const check=bridge.strictRequest(credential.input);
  requireThat(check.arguments_sha256===runner.sandboxPlan().approval_arguments_sha256,
    'request_binding_drift');
  // No fallback to a dummy or untrusted callback: the existing bridge
  // validates ALL trusted capability functions before side effects.
  bridge.attestExistingRoute(capabilities);
- const result=await apply({
+ // This is intentionally NOT injectable. The only runtime path is the
+ // reviewed bridge: live Ed25519 verification, consumed Approval Center
+ // ledger and durable one-time claim are mandatory before installation.
+ const result=await bridge.applyAfterConsumption({
   input:credential.input,approvalToken:credential.approvalToken,
   capabilities
  });
