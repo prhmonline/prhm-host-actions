@@ -1,0 +1,45 @@
+{
+  "schema": "prhm.shared-registry.trusted-host-io-stage.v1",
+  "repo": "prhmonline/prhm-host-actions",
+  "host_io_source_commit": "17d707e971a19bdac33e6293ccf97194059c1374",
+  "existing_release_source_commit": "868ec0251688e30f30691c91390589e80d4f34f9",
+  "existing_release_manifest_commit": "e269cb8ee6f6dc1010620134a8a3ffe57d248535",
+  "mode": "reviewed_stage_only",
+  "runner_entrypoint_status": "NOT_IMPLEMENTED",
+  "trusted_approval_route_status": "NOT_INSTALLED",
+  "status": "NOT_STAGED",
+  "requires_fresh_l4": true,
+  "production_modified": false,
+  "assets": [
+    {
+      "source_path": "prhm-action-registry-root-pinned-readers-v1.cjs",
+      "git_blob_sha1": "211ffe886024dc7770b4463db2d461d703c25dab",
+      "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v1/prhm-action-registry-root-pinned-readers-v1.cjs"
+    },
+    {
+      "source_path": "prhm-action-registry-fixed-systemd-bridge-v1.cjs",
+      "git_blob_sha1": "6f9ab422c6e31009de88e55bbcdae5bc53f4b988",
+      "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v1/prhm-action-registry-fixed-systemd-bridge-v1.cjs"
+    },
+    {
+      "source_path": "prhm-action-registry-independent-runner-contract-v1.cjs",
+      "git_blob_sha1": "b4b1dcedce984ea94c26c2d008c3c5879284033e",
+      "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v1/prhm-action-registry-independent-runner-contract-v1.cjs"
+    },
+    {
+      "source_path": "manifests/honartik-shared-registry-bootstrap-source-closure-v1.json",
+      "git_blob_sha1": "1e084fa03730c5bc50c4c484e44a234941ebdf2d",
+      "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v1/manifests/honartik-shared-registry-bootstrap-source-closure-v1.json"
+    },
+    {
+      "source_path": "manifests/honartik-config-center-registry-release-v1.json",
+      "git_blob_sha1": "33b4aa715c4f70174ec38eb0ee6113e4f8532799",
+      "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v1/manifests/honartik-config-center-registry-release-v1.json"
+    },
+    {
+      "source_path": "manifests/honartik-config-center-registry-release-v1.json",
+      "git_blob_sha1": "33b4aa715c4f70174ec38eb0ee6113e4f8532799",
+      "destination": "/opt/prhm-agent-selfmaint-exec/staged/honartik-config-center-v1/shared-registry-release-v1.json"
+    }
+  ]
+}
