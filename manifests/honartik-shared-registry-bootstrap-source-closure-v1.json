@@ -67,5 +67,7 @@
   "approval_level": 4,
   "installation_authorized": false,
   "execution_available": false,
-  "production_mutation": false
+  "production_mutation": false,
+  "release_manifest_sha256": "111c2c38b6ad48e69a6f72974855b38d0932790335931fc5b128a3c37c3f5e49",
+  "expected_approval_arguments_sha256": "4478faff7feb76ec35f437ec96e02ec1742c239d6c08c914005750717c1e5e18"
 }
