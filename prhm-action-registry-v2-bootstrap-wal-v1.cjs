@@ -116,7 +116,11 @@ function scan(bytes,proposal){
  try{
   const str=bytes.toString('utf8');
   check(Buffer.from(str).equals(bytes),'non_utf8_bytes');
-  rows=str.trimEnd().split('\n').map(x=>JSON.parse(x));
+  rows=str.slice(0,-1).split('
+').map(x=>{
+   check(x.length>0,'blank_journal_row');
+   return JSON.parse(x);
+  });
  }catch(e){fail('journal_not_valid_utf8_json')}
  check(rows.length>=1&&rows.length<=61,'journal_row_count_invalid');
  let prev=ZERO,completed=0,pending=null;
