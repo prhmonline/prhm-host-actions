@@ -12,8 +12,10 @@ const EXPECTED={
 function fail(reason){throw Error('deploy_control_l4_registration_'+reason)}
 function validScope(s){
   return !!s&&typeof s==='object'&&!Array.isArray(s)&&
+    Object.keys(s).sort().join('|')==='action|environment|operation|principals|project|risk|tool'&&
     Object.entries(EXPECTED).every(([k,v])=>s[k]===v)&&
     Array.isArray(s.principals)&&s.principals.length===1&&
+    Object.keys(s.principals[0]||{}).sort().join('|')==='principal_id|roles'&&
     s.principals[0]?.principal_id===PRINCIPAL&&
     Array.isArray(s.principals[0].roles)&&
     s.principals[0].roles.length===1&&s.principals[0].roles[0]==='mcp-operator';
