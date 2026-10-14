@@ -59,6 +59,27 @@ function attestExistingRoute(bridge){
  for(const f of functions)if(!bridge||typeof bridge[f]!=='function')fail('trusted_capability_missing_'+f);
  return bridge;
 }
+// Explicit two-release policy. V2 is permitted only at its exact immutable
+// source, manifest and digest; a same-named mutable HEAD cannot qualify.
+// The previously released V1 contract is preserved for compatibility.
+const HONARTIK_V1='manifests/honartik-config-center-registry-release-v1.json';
+const HONARTIK_V2=Object.freeze({
+ path:'manifests/honartik-config-center-registry-release-v2.json',
+ source_commit:'aa267202d11784f0ac0a957e0d8ba911a6b07734',
+ manifest_commit:'d1a8b26da238d1a86b7a5d96f69185e7d25f1430',
+ manifest_sha256:'9ff881e0d470da91aa26923b950589645613244d4b34d30b9e240d5277128f3b'
+});
+function assertHonartikReleaseIdentity(input,gitPath){
+ const request=strictRequest(input);
+ if(request.project!=='honartik')fail('honartik_project_required');
+ if(gitPath===HONARTIK_V1)return HONARTIK_V1;
+ if(gitPath!==HONARTIK_V2.path ||
+    request.source_commit!==HONARTIK_V2.source_commit ||
+    request.manifest_commit!==HONARTIK_V2.manifest_commit ||
+    request.manifest_sha256!==HONARTIK_V2.manifest_sha256)
+    fail('honartik_release_manifest_path_or_sha_unexpected');
+ return HONARTIK_V2.path;
+}
 function immutableManifest(input,bridge){
  const request=strictRequest(input),cap=attestExistingRoute(bridge);
  // Repo is a fixed constant; client cannot choose arbitrary Git host.
@@ -91,9 +112,8 @@ function immutableManifest(input,bridge){
  });
  if(out.normalized.project!==input.project||out.normalized.git_path!==file.path)
     fail('manifest_project_or_path_mismatch');
- if(input.project==='honartik'&&
-    out.normalized.git_path!=='manifests/honartik-config-center-registry-release-v1.json')
-    fail('honartik_release_manifest_path_unexpected');
+ if(input.project==='honartik')
+    assertHonartikReleaseIdentity(input,out.normalized.git_path);
  return out;
 }
 /**
@@ -163,5 +183,6 @@ async function applyAfterConsumption({input,approvalToken,capabilities}){
 }
 module.exports=Object.freeze({
  ACTION,JWS_BOUNDARY,strictRequest,typedApprovalRequest,validateReceipt,
- attestExistingRoute,immutableManifest,invokeHonartikReviewedInstaller,applyAfterConsumption
+ attestExistingRoute,immutableManifest,assertHonartikReleaseIdentity,
+ invokeHonartikReviewedInstaller,applyAfterConsumption
 });
