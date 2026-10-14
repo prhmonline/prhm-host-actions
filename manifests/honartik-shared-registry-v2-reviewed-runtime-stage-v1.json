@@ -108,8 +108,8 @@
     },
     {
       "source_path": "prhm-action-registry-v2-independent-runner-entry-v1.cjs",
-      "source_commit": "6b038d7618f2ec27ecb44e8fc92f3c4a5979836b",
-      "git_blob_sha1": "3f51cb4402d1f8d08985283f1c785dd8dabd399f",
+      "source_commit": "0a8fca5bbe59c607c4f96c1f75e80979124afaa8",
+      "git_blob_sha1": "8dd786829aad356c5d207365258cb4c9dd61b95d",
       "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-independent-runner-entry-v1.cjs"
     },
     {
@@ -136,5 +136,7 @@
   "recovery_source_commit": "cf505af78c9cae02b37e2bbc38a05fbd9516e629",
   "recovery_requires_negative_mcp_discovery": true,
   "discovery_source_commit": "4c448583a1759fcccb2cf44dbd94ad19ec309037",
-  "discovery_requires_both_live_mcp_workers": true
+  "discovery_requires_both_live_mcp_workers": true,
+  "runner_entry_source_commit": "0a8fca5bbe59c607c4f96c1f75e80979124afaa8",
+  "runner_entry_rejects_injected_apply": true
 }
