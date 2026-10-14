@@ -8,6 +8,8 @@ const M=require('./manifests/honartik-shared-registry-v2-root-capabilities-stage
 const R=require('./manifests/honartik-shared-registry-v2-reviewed-runtime-stage-v1.json');
 const C=require('./prhm-action-registry-v2-trusted-base-capabilities-v1.cjs');
 const B=require('./prhm-action-registry-v2-approval-http-adapter-v1.cjs');
+// Exercise the signed consumption receipt regressions in the existing CI stage suite.
+require('./test-prhm-action-registry-v2-root-consumed-receipt-v1.cjs');
 const ROOT='/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2';
 function git(args){
  const r=cp.spawnSync('git',args,{cwd:__dirname,timeout:20000,maxBuffer:6000000});
