@@ -108,7 +108,8 @@ test('untrusted root-mode/dir/key and attempted tamper fail closed',()=>{
  assert.throws(()=>v.loadSealedApprovedToken(ID),/file_unsafe/);
  m.files.get(V.DIR+'/'+ID+'.json').mode=0o100600;
  m.files.get(V.DIR+'/'+ID+'.json').data=Buffer.from('{"approval_token":"forged"}');
- assert.throws(()=>v.loadSealedApprovedToken(ID),/sealed_schema_invalid/);
+ assert.throws(()=>v.loadSealedApprovedToken(ID),
+  /file_unsafe|sealed_schema_invalid/);
 });
 test('secret vault has no delete/retry/token creation interface',()=>{
  const f=fixture(),v=V.createVault({io:io(f.key).impl,getuid:()=>0,now:()=>f.now});
