@@ -21,20 +21,25 @@
     },
     {
       "path": "prhm-action-registry-v2-root-recovery-io-v1.cjs",
-      "source_commit": "a9c0b407157ab622564350face1ec075d4e7aa13",
-      "git_blob_sha1": "502425d7dafce2cd34e240ed6e3a30259d564184"
+      "source_commit": "ca817eb2397946e4f160c1e2e2d469c71b17e4aa",
+      "git_blob_sha1": "a3d3f1836de58dbf02a6cba42140e3f655c93ddc"
     },
     {
       "path": "prhm-action-registry-v2-root-complete-capabilities-v1.cjs",
       "source_commit": "d9618b0691bc0a337ecf4217b04969e41db296c5",
       "git_blob_sha1": "606629b1ac6f708096073dedeebb6c12a1cbc330"
+    },
+    {
+      "path": "prhm-action-registry-v2-durable-recovery-locksafe-v1.cjs",
+      "source_commit": "073cc8242630a8936f835cb9535b73ffee940fd7",
+      "git_blob_sha1": "5940be35daa1ae676f30c3f505a1a2c3e254d452"
     }
   ],
   "source_functions": 12,
   "installed_functions": 0,
   "old_runtime_files_pinned": 20,
   "old_root_files_pinned": 7,
-  "new_root_files_pinned": 5,
+  "new_root_files_pinned": 6,
   "approval_consumed": false,
   "host_root_attested": false,
   "root_credential_provisioned": false,
