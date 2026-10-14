@@ -1,7 +1,7 @@
 {
   "schema": "prhm.shared-registry.trusted-host-io-stage.v1",
   "repo": "prhmonline/prhm-host-actions",
-  "host_io_source_commit": "df721f26f3265e1d8e8676bbbf711314f092cc92",
+  "host_io_source_commit": "86326692032c10321812bc897ed112d2907618ef",
   "existing_release_source_commit": "868ec0251688e30f30691c91390589e80d4f34f9",
   "existing_release_manifest_commit": "e269cb8ee6f6dc1010620134a8a3ffe57d248535",
   "mode": "reviewed_stage_only",
@@ -13,7 +13,7 @@
   "assets": [
     {
       "source_path": "prhm-action-registry-root-pinned-readers-v1.cjs",
-      "git_blob_sha1": "900199a22b17da8781835fdb3429e49382ce347e",
+      "git_blob_sha1": "6d5fbe45b376b0373a77dd4e6bffbf74a14e49cf",
       "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v1/prhm-action-registry-root-pinned-readers-v1.cjs"
     },
     {
