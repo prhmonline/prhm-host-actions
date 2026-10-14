@@ -38,7 +38,7 @@ function fail(x){throw Error('registry_v2_root_runner_bindings_'+x)}
 function check(v,why){if(!v)fail(why)}
 function assertIndependent(){
  const raw=fs.readFileSync('/proc/self/cgroup','utf8');
- return systemd.cgroupAttestation(raw,process.getuid?.());
+ return systemd.cgroupAttestation(raw,()=>process.getuid?.());
 }
 function identity(args){
  gate.assertPinned(args);
