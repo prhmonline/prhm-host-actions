@@ -175,5 +175,5 @@ test('a different Honartik manifest path cannot be accepted as the release',()=>
  const input={...f.input,manifest_sha256:g.sha(bytes)};
  assert.throws(()=>bridge.immutableManifest(input,{
    ...f.trusted,readPinnedGitManifest:()=>({path:altered.git_path,bytes})
- }),/honartik_release_manifest_path_unexpected/);
+ }),/honartik_release_manifest_path_or_sha_unexpected/);
 });
