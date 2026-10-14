@@ -477,3 +477,55 @@ attach real Approval Center transport, install the root-owned runner,
 re-attest live four-owner SHAs, and independently validate recovery and
 MCP discovery before a new explicit L4 approval. Never reuse an older
 consumed request or treat source-only CI as deployed success.
+
+## 2026-10-14 — Read-only live baseline and bounded 5-field HTTP integration
+
+Live control-plane `sha256sum` verified all four owner preimages for the
+V2 release **exactly**: base
+`4c29d01a248d59ee85754dfa5a59e8132fe22e6b34ef04324228c16c88727406`,
+executor `410406ba0965ef3a5cad6da6306a85335e38acc3637fb6ed60fa42200a10c2e0`,
+policy `148fe2a724befc15cd8c731b0195d83e254d39215792a5084b70dd5b5c178174`,
+MCP `bd768f992dab75710558e3f47187c311c2ee5b5ec6f5751a74e0bbfa64729166`.
+Read-only inspection of the existing base server verified the concrete
+`/v2/host-actions/request`, `/v2/host-actions/confirm`, and
+`/v2/host-actions/authorize-consume` routes still hash `{action}`.
+Do NOT retrofit those general routes with an incompatible five-field hash.
+
+Two new reviewed artifacts in this PR:
+
+- `prhm-action-registry-v2-approval-http-adapter-v1.cjs` implements fixed,
+  separately scoped `/v2/registry/honartik/request`,
+  `/v2/registry/honartik/confirm`, and
+  `/v2/registry/honartik/execute` handlers through trusted, injected,
+  root-owned Approval Center transports only. The confirmed signed token
+  is sealed in the executor vault instead of returned to the caller.
+  Before a token may be consumed, the root-provided preflight must attest
+  exact owner SHAs, staged immutable Git blobs, trusted runner binary,
+  durable recovery, dual-worker MCP discovery and installed signed route.
+  Consumption requires the real signed Approval Center validation and
+  consumed ledger cryptographic verification before the exact pinned
+  independent launcher; no token replay on failure.
+- `prhm-action-registry-v2-base-http-patch-v1.cjs` is a **pure Buffer
+  candidate builder** that requires the exact live base SHA above and a
+  unique existing v2 route anchor, inserts only these distinct fixed routes,
+  and rejects any base drift. It neither writes files nor starts services.
+  Its route code expects a separately staged, SHA-attested trusted
+  capabilities provider at
+  `/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-trusted-base-capabilities-v1.cjs`.
+
+CI includes synthetic end-to-end Ed25519/consumption, missing-preflight,
+mismatched-SHA, forged decision, stale consumed ledger, old endpoint
+noninterference, missing capabilities and patch guard tests. The effective
+staged runtime manifest pins **20 immutable blobs** with the HTTP adapter,
+but NOT the base patcher (a separately approved bootstrap-only artifact).
+
+Read-only `ls -ld /opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2`
+currently returns **ENOENT**. Therefore the trusted module and root runner
+are NOT staged, the HTTP routes are NOT mounted, and the new Host Action
+is NOT registered. The new module must never be loaded by the existing base
+until the independent root-owned capability provider is implemented,
+source reviewed, hash pinned, staged and a fresh signed L4 bootstrap
+has passed all preflight and rollback verifications.
+
+**Current state: reviewed Git source + CI only; NO Production mutation,
+NO token issuance/approval/consumption, NO route activation.**
