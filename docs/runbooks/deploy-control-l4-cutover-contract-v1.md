@@ -249,3 +249,25 @@ GitHub branch metadata read-only on the four default branches reported `protecte
 4. **Safe next route once prerequisites are legitimately met:** GitHub source commit and independent tests → reviewed, exact-SHA, human-authorized typed L4 installation of the fixed trust boundary → verify live issuer and runner route → coordinated approval-ID workflow activation for the three app repositories and the central deploy-control repository → fresh, separate one-time project+SHA bound deployment approval and verified rollback. Avoid mixed-version merges and do not replay approvals.
 
 **Outcome:** The *question of whether the expired DeployHQ token prevents progress on this specific GitHub deployment pipeline* is **closed: it does not**. The *privileged security-gated Production cutover* is **open**, not installed, not approved and not ready for dispatch. No Production changes, no new token, no PR merge, no critical authorization consumed.
+
+
+## 15 October 2026 — live-bound L4 preinstall source checkpoint after central code review
+
+**CHECKPOINT: SOURCE_PREINSTALL_EVIDENCE=PASS; AUTHORIZED_INSTALL=NO.** This is a read-only check followed by offline sandbox tests, **not** a host installer, a credentialed approval, nor an authorization to modify Production.
+
+Directly verified again using the connected PRHM Agent 3 Primary read-only executor:
+- `/opt/prhm-agent-selfmaint/server.js` — SHA256 `4c29d01a248d59ee85754dfa5a59e8132fe22e6b34ef04324228c16c88727406`;
+- `/opt/prhm-agent-selfmaint-exec/server.js` — `410406ba0965ef3a5cad6da6306a85335e38acc3637fb6ed60fa42200a10c2e0`;
+- `/opt/prhm-company-control-plane/config/approval-policy.json` — `148fe2a724befc15cd8c731b0195d83e254d39215792a5084b70dd5b5c178174`;
+- `/home/agent/ssh-mcp-server/src/plugins/hostActionsV2.js` — `bd768f992dab75710558e3f47187c311c2ee5b5ec6f5751a74e0bbfa64729166`.
+
+Live issuer `GET http://127.0.0.1:18133/health` returned `ok=true`, `service=prhm-company-approval`, Ed25519, `one_time_use=true`, `policy_version=2026-10-02.1-control-plane-current-owner-bootstrap-repair-v1` and `policy_hash=c141ce7d56bf1de9c11a6e98b0abd6d20da9a349a6cbe1735c5bb659e3a70fea`. The Agent 3 selfmaint registry is healthy but **does not list** `deploy_control_cutover_install_v1`. No policy activation or registration has happened.
+
+Using GitHub-blob-verified `deploy-control-l4-owner-preinstall-v1.cjs`, companion registry/contract, source test, and policy from [control-plane PR #14](https://github.com/prhmonline/prhm-company-control-plane/pull/14) at `acffc7f9e02073f7aaf6ba92777f7acff6481f81`, tested the **live data** with an injected offline snapshot in a disposable Node sandbox:
+- `test-deploy-control-l4-owner-preinstall-v1.cjs`: **7/7 PASS, zero skipped**.
+- `preinstall(...)`: `ok=true`, four live owner preimages verified, `candidate_source_commit=acffc7f9e02073f7aaf6ba92777f7acff6481f81`, and explicitly `authorized=false`, `host_registered=false`, `can_install=false`, `can_consume_approval=false`.
+- The policy candidate's exact Git blob `702fbed1d0a9936e6fc0e42694f3e1ce6941f4bc` and raw SHA256 `ed527c12ee330b8e1f5616fcb0c712eb89dddd9395197b2d855f00d3deea0678` were pinned. No production network request was made from the sandbox.
+
+**Updated central-code facts (do not silently rewrite the original immutable two-commit handoff):** [central PR #22](https://github.com/prhmonline/deploy-control/pull/22) now has security-reviewed HEAD `1e16bbb633a2d7b62d1322fe4c93bf9df346a748`, with `await verifyIssuerPolicy(...)` before `consumeApprovedRelease(...)`; its current source passed **21/21** offline core, health, structural and VM behavioral tests (separate from this 7/7 host preinstall suite). GitHub user `mohammadyours` has recorded an `APPROVED` PR review; separate control of this account from the author is not independently established. The **historical** immutable source-handoff manifest still pins the older central SHA `e9d4b435a8bb73a507b2a7dd4affc4caa455d524` and `issuer_preconsumption_check_wired=false` as a prior snapshot; it is **not** a current executable enrollment manifest. Any future real release must receive fresh current-SHA review/pins and not simply change or reinterpret that signed historical two-commit record.
+
+**Remaining independently gated checks:** registered, actually implemented immutable root-owned L4 action; authorized policy enrollment; verified privileged parent-file ownership and complete expanded sudo grants, runner groups, external hooks/DeployHQ; trusted private Approval Center bridge and token handling; atomic protected on-disk backups, actual service health/rollback; signed, one-time, exact-SHA Level-4 human second confirmation; coordinated three application dispatchers. The read-only Agent 3 policy denied `sudo -l -U deploy-runner` with HTTP 403 (`sudo is restricted to postgres psql`); **no effective sudo attestation can be claimed**. GitHub Actions official hosted jobs are not green. Do not trigger workflow dispatch, merge Drafts or install from this evidence.
