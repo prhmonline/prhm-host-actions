@@ -35,6 +35,7 @@ jobs:
           node --check honartik-config-center-owner-sha-readonly-preflight-v1.cjs
           node --check test-honartik-config-center-owner-sha-readonly-preflight-v1.cjs
           node --check test-honartik-config-center-pinned-generic-release-v1.cjs
+          node --check test-honartik-shared-registry-pinned-release-v2.cjs
           node --check test-honartik-shared-registry-bootstrap-source-closure-v1.cjs
           node --check prhm-action-registry-independent-runner-contract-v1.cjs
           node --check test-prhm-action-registry-independent-runner-contract-v1.cjs
@@ -47,7 +48,7 @@ jobs:
           node --check prhm-action-registry-independent-runner-entry-v1.cjs
           node --check test-prhm-action-registry-independent-runner-entry-v1.cjs
           node --check test-honartik-shared-registry-independent-runner-entry-stage-v1.cjs
-          node --test test-prhm-action-registry-gateway-v1.cjs test-prhm-action-registry-host-actions-v2-bridge-v1.cjs test-prhm-action-registry-postinstall-rollback-v1.cjs test-prhm-action-registry-durable-recovery-v1.cjs test-prhm-action-registry-one-time-fence-v1.cjs test-honartik-config-center-shared-release-builder-v1.cjs test-honartik-config-center-owner-sha-readonly-preflight-v1.cjs test-honartik-config-center-pinned-generic-release-v1.cjs test-honartik-shared-registry-bootstrap-source-closure-v1.cjs test-prhm-action-registry-independent-runner-contract-v1.cjs test-prhm-action-registry-cold-restart-v1.cjs test-prhm-action-registry-root-pinned-readers-v1.cjs test-prhm-action-registry-fixed-systemd-bridge-v1.cjs test-honartik-shared-registry-trusted-host-io-stage-v1.cjs test-prhm-action-registry-independent-runner-entry-v1.cjs test-honartik-shared-registry-independent-runner-entry-stage-v1.cjs
+          node --test test-prhm-action-registry-gateway-v1.cjs test-prhm-action-registry-host-actions-v2-bridge-v1.cjs test-prhm-action-registry-postinstall-rollback-v1.cjs test-prhm-action-registry-durable-recovery-v1.cjs test-prhm-action-registry-one-time-fence-v1.cjs test-honartik-config-center-shared-release-builder-v1.cjs test-honartik-config-center-owner-sha-readonly-preflight-v1.cjs test-honartik-config-center-pinned-generic-release-v1.cjs test-honartik-shared-registry-pinned-release-v2.cjs test-honartik-shared-registry-bootstrap-source-closure-v1.cjs test-prhm-action-registry-independent-runner-contract-v1.cjs test-prhm-action-registry-cold-restart-v1.cjs test-prhm-action-registry-root-pinned-readers-v1.cjs test-prhm-action-registry-fixed-systemd-bridge-v1.cjs test-honartik-shared-registry-trusted-host-io-stage-v1.cjs test-prhm-action-registry-independent-runner-entry-v1.cjs test-honartik-shared-registry-independent-runner-entry-stage-v1.cjs
       - name: Explicit Production not installed acknowledgment
         run: |
           # A successful source contract never means an MCP tool was installed.
