@@ -307,3 +307,25 @@ discovery and audit adapters; safe source-to-stage transport; actual
 independent systemd runner attestation; fresh Level-4 authorization.
 These may not be bypassed via `--apply`, arbitrary files, a fake
 `approved=true` receipt or replay of any prior request.
+
+## 2026-10-14: Rollback also requires MCP unregistration (Git only)
+
+The shared gateway rollback verdict now requires both the independently
+verified original owner/asset state and **negative discovery** for the new
+MCP action after an installer, discovery or audit failure. Restoring original
+disk bytes does not establish rollback if an old MCP worker still advertises
+the failed action. Discovery exceptions are treated as unverified, never
+as successful recovery. Regression cases cover stuck/stale MCP discovery
+and unavailable discovery after rollback.
+
+Source commits: `a2876459bc3b7bf70af619a4452a554b414109ac`
+(gateway) and `9e09a2215866e00a64140fd3b843e4f9e439c876`
+(regression tests). No live MCP removal, restart or approval occurred.
+
+**Immutable-release caveat:** the previously pinned SOURCE_COMMIT
+`868ec0251688e30f30691c91390589e80d4f34f9` and its published
+release manifest predate this hardening. Git branch HEAD is NOT equivalent
+to the staged SHA-pinned artifact. A new reviewed two-commit source/release
+pair and corresponding source-closure manifest must incorporate this exact
+gateway update before any production bootstrap could rely on it.
+The current original release remains NOT_STAGED and NO-GO.
