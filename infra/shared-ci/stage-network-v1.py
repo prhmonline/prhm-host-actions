@@ -7,6 +7,8 @@ are explicit root actions for a separately authorized operator, never
 invoked by GitHub CI. Boot activation/guest use is NOT implemented.
 """
 import argparse
+from contextlib import contextmanager
+import fcntl
 import hashlib
 import json
 import os
@@ -91,7 +93,43 @@ def check_design():
     return {"xml_sha256": sha256(XML), "nft_sha256": sha256(NFT)}
 
 
-def live_baseline():
+def normalized_nft_digest(json_text):
+    data = json.loads(json_text)
+    def clean(item):
+        if isinstance(item, list):
+            return [clean(x) for x in item]
+        if isinstance(item, dict):
+            return {k: clean(x) for k, x in item.items()
+                    if k not in ("handle", "packets", "bytes", "metainfo")}
+        return item
+    canonical = json.dumps(clean(data), sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def guard_digest():
+    return normalized_nft_digest(run("nft", "-j", "list", "table",
+                                     "inet", "prhm_ci_isolation"))
+
+
+@contextmanager
+def exclusive_network_lock():
+    path = "/run/lock/prhm-ci-network-stage-v1.lock"
+    flags = os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW
+    fd = os.open(path, flags, 0o600)
+    try:
+        metadata = os.fstat(fd)
+        if metadata.st_uid != 0 or metadata.st_mode & 0o077:
+            raise Stop("network stage lock file has unsafe owner or permissions")
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            raise Stop("network stage already in progress")
+        yield
+    finally:
+        os.close(fd)
+
+
+def live_baseline(reviewed_sha=None):
     if run("hostname", "-f").strip() != "server1.prhm.ir":
         raise Stop("wrong Node1 host")
     if run("firewall-cmd", "--state").strip() != "running":
@@ -99,7 +137,8 @@ def live_baseline():
     zones = run("firewall-cmd", "--get-active-zones")
     if "virbr-prod" not in zones or "eno1" not in zones or "virbr-ci" in zones:
         raise Stop("unexpected firewall zones")
-    prod = ET.fromstring(run("virsh", "net-dumpxml", "prod-net"))
+    production_xml = run("virsh", "net-dumpxml", "prod-net")
+    prod = ET.fromstring(production_xml)
     bridge, ip, forward = prod.find("bridge"), prod.find("ip"), prod.find("forward")
     if not (prod.findtext("name") == "prod-net" and bridge is not None
             and bridge.get("name") == "virbr-prod" and ip is not None
@@ -127,10 +166,25 @@ def live_baseline():
                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                       timeout=15).returncode == 0:
         raise Stop("CI nft table already exists")
-    # Check only; no live firewall mutation.
+    # Check only; no live firewall mutation. Canonical nft normalization
+    # ignores mutable counters/handles while preserving actual rule expressions.
     run("nft", "-c", "-f", str(NFT))
+    live_nft = normalized_nft_digest(run("nft", "-j", "-a", "list", "ruleset"))
+    live_prod_xml = hashlib.sha256(production_xml.encode("utf-8")).hexdigest()
+    if reviewed_sha is not None:
+        authorization = json.loads(MANIFEST.read_text())["authorization"]
+        if authorization.get("node1_preimage_reviewed_commit") != reviewed_sha:
+            raise Stop("reviewed SHA not independently pinned to baseline")
+        if authorization.get("node1_host_mutation_level4_approved") is not True:
+            raise Stop("explicit Level-4 review gate is not recorded")
+        if authorization.get("node1_nft_preimage_sha256") != live_nft:
+            raise Stop("live nft preimage differs from Git-approved digest")
+        if authorization.get("node1_prod_net_xml_preimage_sha256") != live_prod_xml:
+            raise Stop("live prod-net XML differs from Git-approved digest")
     return {"host": "server1.prhm.ir", "prod_net_unchanged": True,
-            "production_vm_running": True, "ci_resources_absent": True}
+            "production_vm_running": True, "ci_resources_absent": True,
+            "nft_preimage_sha256": live_nft,
+            "prod_net_xml_sha256": live_prod_xml}
 
 
 def write_state(data):
@@ -197,19 +251,23 @@ def verify_inactive():
 
 def staged_apply(sha):
     blobs = check_design()
-    live_baseline()
+    live_baseline(sha)
     if STATE.exists() or STATE.is_symlink():
         raise Stop("stage journal exists; refusing replay")
     # Distinct table added without flushing or touching any other nft table.
     run("nft", "-f", str(NFT))
+    installed_guard = None
     try:
         if not guard_exists():
             raise Stop("nft guard not installed")
+        installed_guard = guard_digest()
         run("virsh", "net-define", str(XML))
         verify_inactive()
+        if guard_digest() != installed_guard:
+            raise Stop("nft guard changed while staging")
         write_state({"kind": "prhm-ci-network-stage-v1", "network": "ci-net",
-                     "sha": sha, "files": blobs, "network_started": False,
-                     "production_modified": False})
+                     "sha": sha, "files": blobs, "guard_digest": installed_guard,
+                     "network_started": False, "production_modified": False})
     except Exception:
         # Never delete an active network or remove the guard if rollback
         # cannot prove the network inactive and exclusively ours.
@@ -220,6 +278,8 @@ def staged_apply(sha):
                            for x in info.splitlines()) for k in ("Active:", "Autostart:")):
                 raise Stop("CI network state uncertain; guard retained")
             run("virsh", "net-undefine", "ci-net")
+        if installed_guard is None or guard_digest() != installed_guard:
+            raise Stop("guard ownership uncertain; leave nft guard in place")
         run("nft", "delete", "table", "inet", "prhm_ci_isolation")
         raise
     return {"stage": "DEFINED_INACTIVE_ONLY", "network_active": False,
@@ -231,6 +291,8 @@ def rollback(sha):
     if s["sha"] != sha or s["files"] != check_design():
         raise Stop("SHA or file drift; cannot safely rollback")
     verify_inactive()
+    if not s.get("guard_digest") or guard_digest() != s["guard_digest"]:
+        raise Stop("live nft guard digest differs; refuse to remove it")
     run("virsh", "net-undefine", "ci-net")
     if "ci-net" in run("virsh", "net-list", "--all", "--name").splitlines():
         raise Stop("ci-net still present; retain guard")
@@ -253,11 +315,14 @@ def main():
         if args.operation == "plan":
             result = {"operation": "plan", "mode": "READ_ONLY",
                       "design": blobs, "baseline": live_baseline(),
-                      "ready_to_stage": False, "reason": "Owner SHA approval required for stage"}
-        elif args.operation == "stage":
-            result = staged_apply(args.reviewed_sha)
+                      "ready_to_stage": False,
+                      "reason": "Pinned preimages and independent Level-4 owner approval required"}
         else:
-            result = rollback(args.reviewed_sha)
+            with exclusive_network_lock():
+                if args.operation == "stage":
+                    result = staged_apply(args.reviewed_sha)
+                else:
+                    result = rollback(args.reviewed_sha)
         print(json.dumps({"ok": True, **result}, sort_keys=True))
         return 0
     except (Stop, OSError, ValueError, ET.ParseError, subprocess.TimeoutExpired,
