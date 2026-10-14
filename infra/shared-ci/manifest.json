@@ -51,6 +51,10 @@
   "authorization": {
     "git_first": true,
     "review_and_approval_required": true,
-    "production_operations": false
+    "production_operations": false,
+    "node1_nft_preimage_sha256": null,
+    "node1_prod_net_xml_preimage_sha256": null,
+    "node1_preimage_reviewed_commit": null,
+    "node1_host_mutation_level4_approved": false
   }
 }
