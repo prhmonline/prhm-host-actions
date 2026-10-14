@@ -280,17 +280,24 @@ async function finalizeVerifiedInstall({release,approval,trustedInstaller,truste
   } catch(e) {
     failure=String(e?.message||e).slice(0,160);
   }
-  let restored=false;
-  try { restored=await verifyOriginalState(release)===true; } catch {}
+  // Restoring disk bytes is not sufficient: a restarted MCP worker may still
+  // advertise the failed action from a stale registry cache. The original
+  // state is verified only when BOTH disk preimages and tool absence agree.
+  // The discovery callback is trusted and checks the actual active servers.
+  async function originalAndUndiscoverable() {
+    try {
+      return await verifyOriginalState(release)===true &&
+        await readInstalledTool(release.normalized.action)===false;
+    } catch { return false; }
+  }
+  let restored=await originalAndUndiscoverable();
   if(!restored) {
     let rb;
     try {
       rb=await trustedRollback({release,approval,installed:result,
         reason:'failed_install_or_postcondition'});
     } catch {}
-    if(rb?.verified===true) {
-      try { restored=await verifyOriginalState(release)===true; } catch {}
-    }
+    if(rb?.verified===true) restored=await originalAndUndiscoverable();
   }
   if(!restored) throw new Error('registry_gateway_rollback_unverified');
   try {
