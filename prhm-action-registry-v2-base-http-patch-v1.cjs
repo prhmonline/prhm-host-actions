@@ -46,6 +46,11 @@ function prepare(live){
  check(Buffer.isBuffer(live)&&live.length>=1000&&live.length<=2000000,
   'expected_real_owner_bytes');
  check(SHA(live)===PINNED_BEFORE,'current_base_sha_drift');
+ // HARD STOP: mounting new HTTP routes changes this protected owner before
+ // the signed project-registry installer can attest its original preimage.
+ // Such a patch would make the five-field route self-blocking (circular
+ // bootstrap). Use the separately rooted Unix socket sidecar instead.
+ fail('protected_owner_preimage_circularity_use_isolated_socket');
  const src=live.toString('utf8');
  check(Buffer.from(src,'utf8').equals(live),'base_encoding_drift');
  check(!src.includes(MARKER)&&!src.includes("'/v2/registry/honartik/"),
