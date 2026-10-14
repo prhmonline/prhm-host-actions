@@ -11,13 +11,13 @@
   "files": [
     {
       "path": "prhm-action-registry-v2-root-runner-bindings-v1.cjs",
-      "source_commit": "f86e2c823e37b9dadc377968e9b82331f9098d5b",
-      "git_blob_sha1": "e6f2d5c9b5dfdafe6db3957998c75abe8fa7805d"
+      "source_commit": "90bd72bed53ab49d77c516c9d5bb77285528d874",
+      "git_blob_sha1": "5a7e9e523157e8f7060c4e0b16f2d46b14579816"
     },
     {
       "path": "test-prhm-action-registry-v2-root-runner-bindings-v1.cjs",
-      "source_commit": "89a12dccd7e51456e7e48529d3aecc408336da76",
-      "git_blob_sha1": "f95648f3221824525e24cd4530fe250f7d0e388f"
+      "source_commit": "7c3bdbf24f7536fa6090d2af62be28ae1ec0cff1",
+      "git_blob_sha1": "0b8323e9153f4203ad4a5611c6e1212811100f85"
     }
   ],
   "bound_capability_count": 7,
