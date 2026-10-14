@@ -200,3 +200,38 @@ its registration candidate, execute the zero-arg preflight, attest
 all four returned generated SHA values, and only then publish the
 independent immutable release manifest. The live shared five-field
 registrar and privileged install remain separate Level-4 work.
+
+## 2026-10-14: Independent runner contract + OS-process crash recovery CI
+
+An independently spawned transient root runner is required to avoid
+self-restarting the long-lived Host Actions executor and to preserve
+security isolation. The source-only
+`prhm-action-registry-independent-runner-contract-v1.cjs` now fixes a
+narrow directory write allowlist, systemd one-shot hardening properties,
+the independently pinned SOURCE/MANIFEST commits and owner preimages,
+and a deny-by-default readiness gate for missing signed five-field
+approval, staged executable, cold-process verification, and discovery.
+It NEVER invokes systemd, reads secrets, requests approval or mutates a
+Production owner. It returns `can_execute:false` and
+`runner_staged:false`; the runnable root bootstrap has NOT been installed.
+
+Crucially, the new
+`test-prhm-action-registry-cold-restart-v1.cjs` now exercises the
+existing durable recovery implementation with REAL, independently
+spawned OS processes, disk-backed backups and recovery JSON inside
+the GitHub Actions ephemeral system temporary directory. The child
+fsyncs four backups, four updated synthetic owners, five synthetic
+assets, journal and a SIMULATED approval-consumption receipt, then
+SIGKILLs itself. A fresh process reconstructs nine-path state using
+the persisted journal, verifies and restores the four originals,
+removes five installed synthetic assets, checks idempotence and
+retains its claimed request. Corrupt backup and absent simulated
+consumption deny recovery before mutation; a failed simulated
+service-health check denies a success audit.
+
+These tests are NOT a real Ed25519 Approval Center request, service
+restart or privileged Production deployment. They establish offline
+failure recovery semantics only. The remaining separately reviewed
+work is the actual trusted standalone executable/transport, staging
+and systemd unit launch tied to fresh Level-4 Authorization Center
+approval. Do not treat green CI as installation readiness.
