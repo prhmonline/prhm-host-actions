@@ -29,8 +29,11 @@ class SharedCINetworkContractTests(unittest.TestCase):
         self.assertIn("table inet prhm_ci_isolation", text)
         self.assertIn('iifname "virbr-ci"', text)
         self.assertIn('oifname "virbr-ci"', text)
+        active_rules = "\n".join(
+            line.split("#", 1)[0] for line in text.splitlines()
+        )
         for command in ("flush ruleset", "delete table", "flush chain", "add chain"):
-            self.assertNotIn(command + " ", text.replace("#", ""))
+            self.assertNotIn(command + " ", active_rules)
         self.assertNotIn('iifname "virbr-prod"', text)
         self.assertNotIn('oifname "virbr-prod"', text)
         self.assertIn("priority -195", text)
