@@ -84,7 +84,9 @@ if(!files.every(Boolean)){
     for(const mutant of [
       s=>s.project='*',s=>s.principals[0].principal_id='*',
       s=>s.principals.push({principal_id:'admin',roles:['mcp-operator']}),
-      s=>s.principals[0].roles.push('admin')
+      s=>s.principals[0].roles.push('admin'),
+      s=>s.extra_permission='ALL',
+      s=>s.principals[0].extra_role='admin'
     ]){
       const x=proposed();mutant(x.policy.typed_scopes.at(-1));
       assert.ok(g.inspect(x).blockers.includes('dedicated_l4_typed_scope_absent_or_invalid'));
