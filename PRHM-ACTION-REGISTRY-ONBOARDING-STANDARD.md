@@ -529,3 +529,67 @@ has passed all preflight and rollback verifications.
 
 **Current state: reviewed Git source + CI only; NO Production mutation,
 NO token issuance/approval/consumption, NO route activation.**
+
+## 2026-10-14 — Protected-owner SHA circularity: fixed by an isolated AF_UNIX route
+
+A critical bootstrap ordering bug was confirmed **before Production mutation**.
+The proposed `prhm-action-registry-v2-base-http-patch-v1.cjs` would
+install new HTTP handlers by modifying
+`/opt/prhm-agent-selfmaint/server.js` *before* the new five-field
+Approval Center request can be issued. But the immutable release
+manifest and `immutableManifest` require this exact file's
+**original** SHA256
+`4c29d01a248d59ee85754dfa5a59e8132fe22e6b34ef04324228c16c88727406`.
+The HTTP bootstrap would invalidate that preimage and make its own
+registration permanently fail closed. Do not attempt this sequence.
+
+**Corrected architecture:** `prhm-action-registry-v2-base-http-patch-v1.cjs`
+now rejects even exact original owner bytes with
+`protected_owner_preimage_circularity_use_isolated_socket`. The new
+`prhm-action-registry-v2-isolated-socket-v1.cjs` is a separate
+**source-only** root-owned AF_UNIX HTTP endpoint designed for a
+dedicated `prhm-shared-registry-approval-v2.service` unit on
+`/run/prhm-shared-registry-v2/registry.sock`. It requires root UID, the
+exact dedicated systemd cgroup, an already provisioned 0700 root-owned
+directory, no preexisting socket path, and a fixed compiled local
+`prhm-action-registry-v2-trusted-base-capabilities-v1.cjs` provider.
+It never binds a TCP port, never intercepts old
+`/v2/host-actions/*` routes and preserves all four registry owner
+preimages before the signed L4 install. The socket applies process
+umask 0077 *before* listen, plus 0600 socket permissions.
+Only `POST` to the three approved Honartik registry paths is accepted;
+409/413/404 failure responses are fixed and secrets/error messages
+are not reflected. Response schemas are strictly allowlisted,
+including rejection of nested approval data.
+
+**Regressions:** node:test creates a REAL Unix socket under a temporary
+CI directory and verifies one fixed successful route, unsupported paths,
+GET, oversized payload, failure redaction, nested secret rejection,
+dedicated cgroup/root/permission checks, and the now-disabled on-base
+patch. The test process does not access Production sockets, secrets,
+service files or the real Approval Center. The sidecar is NOT part of
+the current 20-file executable closure because its separately reviewed
+root capabilities provider, signed stage transport and root systemd
+unit have **not** been implemented or installed.
+
+**Required order for any later L4-authorized bootstrap:**
+1. Review and SHA-pin a real root-owned capabilities provider with
+   strictly audited Approval Center request/decision/validate/consume,
+   sealed credentials, immutable Git and four-owner attestation,
+   durable recovery and authenticated blue/green MCP discovery.
+2. Stage a complete, dependency-closed version of the sidecar,
+   root provider and independent executable under a *separate*
+   fresh signed bootstrap, without modifying four protected owners.
+3. Prove socket-only preflight, actual owner SHA unchanged,
+   root runner recovery fault injection, negative dual-MCP discovery
+   and Approval Center request lookup with NO token issuance.
+4. Obtain fresh explicitly scoped L4 approval and run exactly the
+   pinned SHA. Only **after** cryptographic approval is consumed and
+   the one-time fence is durable may the reviewed atomic installer
+   modify original owners, restart services and check tool discovery.
+   On failure use durable rollback; never replay a consumed token.
+
+**Live stage status:** the
+`/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2` directory
+was verified absent (ENOENT). No sidecar socket or systemd unit was
+created by this task. Production remains NO-GO; PR #190 is a draft.
