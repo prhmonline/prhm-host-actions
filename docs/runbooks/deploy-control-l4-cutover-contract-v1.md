@@ -64,3 +64,26 @@ The live policy fixture must be read from the **live, read-only control-plane** 
 **Production NOT DONE:** policy/sudoers/issuer cutover, operator authorization, coordinated PR merges and exact-SHA canary unexecuted.
 
 If any candidate SHA or expected live preimage differs, revise and re-review the *contract source in Git*, then rerun the isolated test suite before seeking any Level-4 authorization.
+
+
+## In-memory transactional rollback rehearsal (added on 2026-10-14)
+
+The source-only PR now also includes:
+- `deploy-control-cutover-fixture-v1.cjs`: **only** a cloned `Map<string, Buffer>` transactional simulator. No filesystem, shell, HTTP, signing-token, status-polling or Production process capabilities. All changes are to a cloned in-memory fixture; outputs declare `fixture_only=true`, `installed_on_host=false`, `execution_authorized=false`.
+- `test-deploy-control-cutover-fixture-v1.cjs`: negative tests including malformed inputs, unknown grants, stale issuer, privileged wildcard, not-wired dispatcher, and five post-mutation synthetic rollback checkpoints.
+- In an isolated Node v20 sandbox, both source and test files, plus the actual old dispatcher, core and new sudoers candidate, were fetched from exact pinned GitHub Git blob SHAs. The nonsecret live Approval Center policy was read via Agent 3 **read-only** and matched raw SHA256; candidate policy matched the GitHub blob SHA.
+- Combined suite: **27 PASS, 0 FAIL, 0 SKIP** with five fixture inputs; this comprises original 12 policy-contract cases plus 15 fixture/rollback cases.
+- Current **real** central dispatcher intentionally **FAILS** `issuer_attestation_not_wired` because it does not yet call `verifyIssuerPolicy` before `consumeApprovedRelease`. This is the intended hard gate. Only a synthetic *test-only* in-memory dispatcher alteration is used for the successful fixture pathway; **that altered source is neither committed as a Production artifact nor permitted for cutover**.
+- For five failure injections (`policy_written`, `helper_written`, `core_written`, `sudoers_swapped`, `health_check`), the simulator restores byte-for-byte the original in-memory policy and sudo grants, while leaving its caller-owned Map untouched. **No operating-system atomicity, actual file backup, root sudoers update, running issuer reload or live rollback has been tested**.
+- This fixture tests the *proposed ordering and rollback specification only*. A real purpose-built, reviewed, registered root installer with trusted approval consumption and durable rollback remains **NOT DONE**.
+
+To reproduce in an isolated checkout after verifying the files' Git blob SHAs:
+
+```sh
+PRHM_CUTOVER_LIVE_POLICY_FIXTURE=/isolated/live.json \
+PRHM_CUTOVER_CANDIDATE_POLICY_FIXTURE=/isolated/candidate.json \
+PRHM_CUTOVER_DISPATCHER_FIXTURE=/isolated/dispatcher.mjs \
+PRHM_CUTOVER_CORE_FIXTURE=/isolated/production-approval-core.mjs \
+PRHM_CUTOVER_SUDOERS_FIXTURE=/isolated/deploy-control-gated.sudoers \
+node --test test-deploy-control-cutover-contract-v1.cjs test-deploy-control-cutover-fixture-v1.cjs
+```
