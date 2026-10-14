@@ -15,14 +15,14 @@ const args={action:G.ACTION,project:'honartik',
 function createIo(){
  const map=new Map();const dirs=new Map();
  let ino=20,opens=0,closed=0,fdRead=0;
- function mkdir(p,mode=0o40700){dirs.set(p,{ino:++ino,dev:1,uid:0,gid:0,
+ function mkdir(p,mode=0o40700,owner=0){dirs.set(p,{ino:++ino,dev:1,uid:owner,gid:owner,
   mode,isDirectory:()=>true,isSymbolicLink:()=>false});}
- function file(p,body,mode=0o100600){
+ function file(p,body,mode=0o100600,owner=0){
   const b=Buffer.from(body);
-  map.set(p,{ino:++ino,dev:1,uid:0,gid:0,mode,size:b.length,body:b,
+  map.set(p,{ino:++ino,dev:1,uid:owner,gid:owner,mode,size:b.length,body:b,
    isFile:()=>true,isSymbolicLink:()=>false});
  }
- for(const d of [once.DIR,A.CONSUMED,'/tmp/test-root'])mkdir(d);
+ mkdir(once.DIR);mkdir(A.CONSUMED,0o40700,65039);mkdir('/tmp/test-root');
  const io={
   lstatSync:p=>{
    const m=dirs.get(p)||map.get(p);
@@ -59,7 +59,7 @@ function fixture(){
  const claimPath=once.DIR+'/'+uuid+'.json';
  const ledgerPath=A.CONSUMED+'/'+approval+'.json';
  f.file(claimPath,G.canonicalJson(claim)+'\n');
- f.file(ledgerPath,JSON.stringify(ledger)+'\n');
+ f.file(ledgerPath,JSON.stringify(ledger)+'\n',0o100600,65039);
  return {...f,claim,ledger,claimPath,ledgerPath,release:{
   normalized:{project:'honartik'},source_commit:args.source_commit,
   manifest_commit:args.manifest_commit,manifest_sha256:args.manifest_sha256
@@ -139,4 +139,15 @@ test('module has no CLI install, token minting or approval reservation entrypoin
   'readFixed','safeDir'].sort());
  for(const key of ['apply','approve','install','requestApproval','mintToken',
   'consume','resetClaim','deleteConsumed'])assert.equal(Object.hasOwn(A,key),false);
+});
+
+test('approval-service ledger owner is fixed and cannot be replaced with root or arbitrary UID',()=>{
+ const fixtureOwner=fixture();
+ fixtureOwner.dirs.get(A.CONSUMED).uid=0;
+ assert.throws(()=>A.assertConsumed({io:fixtureOwner.io,id:uuid,
+  release:fixtureOwner.release,snapshot:fixtureOwner.snapshot}),/root_directory_unsafe/);
+ const fixtureFile=fixture();
+ fixtureFile.map.get(fixtureFile.ledgerPath).uid=0;
+ assert.throws(()=>A.assertConsumed({io:fixtureFile.io,id:uuid,
+  release:fixtureFile.release,snapshot:fixtureFile.snapshot}),/root_file_unsafe/);
 });
