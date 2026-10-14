@@ -68,7 +68,7 @@ if(!folder){
     ];
     for(const [file,change,expected] of experiments){
       const data=Buffer.from(change(fs.readFileSync(path.join(folder,file),'utf8')));
-      const keys=file.replace(/\\.yml$/,'').split('-');
+      const keys=file.slice(0,-4).split('-');
       const phase=keys.pop(),project=keys.join('-');
       const entry=project==='central'?g.CENTRAL:g.ENTRIES.find(e=>e.project===project);
       const commit=phase==='main'?entry.main_commit:entry.draft_commit;
