@@ -18,6 +18,7 @@ require('./test-prhm-action-registry-v2-root-runner-bindings-v1.cjs');
 require('./test-prhm-action-registry-v2-root-accountability-v1.cjs');
 // Root V2 full 12-function contract: immutable installer, cold recovery, authenticated dual-MCP probe.
 require('./test-prhm-action-registry-v2-root-complete-capabilities-v1.cjs');
+require('./test-honartik-shared-registry-v2-root-12-review-v1.cjs');
 require('./test-honartik-shared-registry-v2-root-runner-bound-seven-stage-v1.cjs');
 const ROOT='/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2';
 function git(args){
