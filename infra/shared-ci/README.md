@@ -111,3 +111,19 @@ The reviewed read-only `transaction-plan.py` consumes this baseline and the sour
 **Do not apply yet.** A full source-controlled SHA-pinned host transaction, independently reviewable firewall start/reload ordering, preimage digest capture, boot guard persistence and guest isolation smoke suite remain prerequisites. The host Agent's generic `firewall-cmd` read returned a restricted-command 403; the operator's supplied text was used only as partial evidence, without bypassing that restriction.
 
 Real CI result for this update: [run #38549904820](https://github.com/prhmonline/prhm-host-actions/actions/runs/38549904820) passed the offline suite including planner contracts, nft grammar, and signed Ubuntu image verification. No current code in PR #205 is allowed to apply Node1 changes.
+
+
+## Disposable network-namespace packet proof (2026-10-14)
+
+[GitHub Actions push run **38552587140**](https://github.com/prhmonline/prhm-host-actions/actions/runs/38552587140) completed both jobs successfully after correcting the lab's namespace setup. Its dedicated **disposable Linux nftables dataplane lab** proved, using four self-contained network namespaces and exclusively fake endpoints:
+
+- `LAB_PRE_GUARD_CONNECTIVITY=PASS` — real TCP to synthetic Production SSH, mock public 80/443, and mock host administration was **reachable before** installing the guard, preventing false-negative tests.
+- `LAB_POST_GUARD_ISOLATION=PASS` — synthetic Production `10.71.0.118:22/443` blocked, router administrative port blocked, mock public port 80 blocked, and mock public port 443 permitted.
+- `LAB_GUARD_ROLLBACK=PASS` — removing ONLY the disposable namespace's dedicated nft table restored the synthetic Production route, demonstrating reversal of the isolated guard.
+- `LAB_PRODUCTION_TOUCHED=NO` — synthetic IP `10.71.0.118` belonged to a local `cip47` fake-target namespace on GitHub-hosted infrastructure, not real Production; policy was applied only inside `cir47` temporary router namespace. All namespaces and temporary state were torn down by a cleanup trap.
+- The separate offline job still passed **30** unit/contract tests, nft grammar and signed Ubuntu image provenance. New regression contracts verify no host-level nft/sysctl mutation and bind the privileged lab job to a temporary **GitHub-hosted** VM on controlled push, not to a self-hosted Runner.
+
+**Explicit limitation:** this is a real Linux packet/dataplane test of the reviewed nft rules, **not** validation of firewalld/libvirt interoperability, persistence across reboot, or guest egress on Node1. It does not authorize host apply and does not prove a GitHub-only HTTPS destination allowlist. No production secrets, VM, CI network, SSH key, runner enrollment, firewall policy or Live Production were changed.
+
+**Remaining host apply gates:** capture complete live Node1 normalized nft/firewalld/prod-net preimage; implement reviewed SHA-bound host transaction with crash/reboot-safe guard and exact rollback; test actual libvirt DHCP/DNS, guest negative probes and boot/reload behavior with operator-controlled recovery; then register one no-secret ephemeral Runner and prove a real GitHub self-hosted job starts and is destroyed.
+
