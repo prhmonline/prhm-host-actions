@@ -17,7 +17,10 @@ const ROOTS=Object.freeze([
  '/opt/prhm-company-control-plane/config',
  '/home/agent/ssh-mcp-server/src/plugins',
  '/var/backups/prhm-honartik-config-center-registration-v1',
- '/var/lib/prhm-agent-selfmaint-exec/registry-one-time-v1'
+ '/var/lib/prhm-agent-selfmaint-exec/registry-one-time-v1',
+ '/var/lib/prhm-agent-selfmaint-exec/registry-recovery-lock-v1',
+ '/var/lib/prhm-agent-selfmaint-exec/registry-audit-v1',
+ '/opt/prhm-agent-selfmaint-exec/staged/honartik-config-center-v1'
 ]);
 const SERVICES=Object.freeze([
  'prhm-agent-selfmaint.service','prhm-agent-selfmaint-exec.service',
