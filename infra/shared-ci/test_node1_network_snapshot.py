@@ -51,6 +51,23 @@ class Node1SnapshotTests(unittest.TestCase):
                     "vm_prhm_shared_ci_absent", "proposed_cidr_not_routed"):
             self.assertFalse(result["checks"][key], key)
 
+    def test_missing_forward_baseline_fails_closed(self):
+        base = fixture()
+        nft = json.loads(base["nft"])
+        nft["nftables"] = [entry for entry in nft["nftables"] if "chain" not in entry]
+        base["nft"] = json.dumps(nft)
+        self.assertFalse(module.summarize(base)["checks"]["forward_hook_present"])
+
+    def test_missing_prod_route_fails_closed(self):
+        base = fixture()
+        base["routes"] = json.dumps([{"dst": "default"}])
+        self.assertFalse(module.summarize(base)["checks"]["prod_route_present"])
+
+    def test_missing_prod_bridge_fails_closed(self):
+        base = fixture()
+        base["bridges"] = json.dumps([])
+        self.assertFalse(module.summarize(base)["checks"]["prod_net_bridge_present"])
+
     def test_existing_table_collision_rejected(self):
         base = fixture()
         raw = json.loads(base["nft"])
