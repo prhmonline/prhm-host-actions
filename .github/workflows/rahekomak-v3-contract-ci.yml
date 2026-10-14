@@ -1,0 +1,76 @@
+name: RahKomak v3 Signed Registration Contract (source only)
+
+on:
+  pull_request:
+    paths:
+      - 'rahekomak-*-v3.js'
+      - 'test-rahekomak-*-v3.js'
+      - 'rahekomak-release-88605f30-manifest-v3.json'
+      - '.github/workflows/rahekomak-v3-contract-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rahkomak_v3_source_contract:
+    name: RahKomak v3 source-only fail-closed contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Read-only Git checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Node 22 for contract-only tests
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Verify runtime files are parseable
+        run: |
+          set -euo pipefail
+          for file in \
+            rahekomak-production-deploy-worker-v3.js \
+            rahekomak-host-action-executor-patch-v3.js \
+            rahekomak-host-action-repair-installer-v3.js \
+            rahekomak-host-action-stage-v3.js \
+            rahekomak-host-action-activation-v3.js \
+            rahekomak-host-action-registration-v3.js \
+            rahekomak-host-action-typed-registration-bootstrap-v3.js \
+            rahekomak-host-action-native-dispatcher-bridge-v3.js; do
+            node --check "$file"
+          done
+
+      - name: Independent v3 approval, rollback and immutable source tests
+        run: |
+          set -euo pipefail
+          node --test test-rahekomak-production-deploy-worker-v3.js test-rahekomak-host-action-*-v3.js
+
+      - name: Enforce registration and Production hold
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const assert = require('node:assert/strict');
+          const m = require('./rahekomak-release-88605f30-manifest-v3.json');
+          const worker = require('./rahekomak-production-deploy-worker-v3.js');
+          const installer = require('./rahekomak-host-action-repair-installer-v3.js');
+          const registration = require('./rahekomak-host-action-registration-v3.js');
+          const bootstrap = require('./rahekomak-host-action-typed-registration-bootstrap-v3.js');
+          assert.equal(m.status, 'REVIEW_ONLY_NOT_REGISTERED');
+          assert.equal(m.production_mutation, false);
+          assert.equal(m.application.merge_sha, '88605f30f9922d504b7e4f93ff1c4da9b837aa26');
+          assert.equal(worker.HEAD, m.application.merge_sha);
+          assert.equal(worker.HELPER_SHA256, m.application.helper_sha256_git_lf);
+          assert.equal(registration.manifest().registration_installed, false);
+          assert.equal(registration.manifest().production_mutation, false);
+          assert.equal(bootstrap.ACTION, 'rahekomak_host_action_repair_registration_v3');
+          assert.equal(bootstrap.SOURCE_COMMIT, 'fe37c82f23c11eeafd55f9212ba74af178f59d76');
+          assert.equal(installer.manifest().installer_status, 'candidate_only');
+          assert.equal(installer.manifest().preflight_mutation, false);
+          console.log('RahKomak v3 source-only hold: PASS');
+          NODE
+
+      - name: Confirm workflow did not modify repository
+        run: test -z "$(git status --porcelain)"
