@@ -16,7 +16,9 @@ function fixture(project='honartik'){
  const action=project+'_config_center_readonly_enroll_v1';
  const source='a'.repeat(40);
  const manifest={
-  schema_version:'prhm.action-registry.release.v1',git_path:'manifests/'+project+'-registration.json',
+  schema_version:'prhm.action-registry.release.v1',git_path:project==='honartik'?
+    'manifests/honartik-config-center-registry-release-v1.json':
+    'manifests/'+project+'-registration.json',
   project,action,source_commit:source,risk:'critical',approval_level:4,
   rollback_required:true,
   registry_owners:Object.fromEntries(Object.keys(g.OWNER_PATHS).map(x=>
@@ -158,4 +160,20 @@ test('cross-project attempt and missing systemd verification fail closed',()=>{
  assert.throws(()=>bridge.invokeHonartikReviewedInstaller({
    ...getOpts(f),approvalToken:'approved'
  }),/honartik_adapter_binding/);
+});
+
+test('source and manifest must be distinct pinned Git commits before L4 request',()=>{
+ const f=fixture();
+ assert.throws(()=>bridge.strictRequest({...f.input,
+   manifest_commit:f.input.source_commit}),
+   /source_and_manifest_commits_must_differ/);
+});
+test('a different Honartik manifest path cannot be accepted as the release',()=>{
+ const f=fixture();
+ const altered={...f.manifest,git_path:'manifests/unreviewed-release.json'};
+ const bytes=Buffer.from(JSON.stringify(altered));
+ const input={...f.input,manifest_sha256:g.sha(bytes)};
+ assert.throws(()=>bridge.immutableManifest(input,{
+   ...f.trusted,readPinnedGitManifest:()=>({path:altered.git_path,bytes})
+ }),/honartik_release_manifest_path_unexpected/);
 });
