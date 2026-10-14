@@ -74,7 +74,9 @@ test('rejects arbitrary repo, project, source revision, manifest revision and re
    {...req,repo:'other/repo'},{...req,project:'moeinshow'},
    {...req,source_commit:'f'.repeat(40)},
    {...req,manifest_commit:'f'.repeat(40)},
-   {...req,max_bytes:'4000000'}
+   {...req,max_bytes:'4000000'},
+   {...req,max_bytes:5000000},
+   {...req,untrusted_path:'/etc/shadow'}
  ])assert.throws(()=>f.reads.readPinnedGitManifest(bad),/manifest_request_untrusted/);
  assert.throws(()=>f.reads.readPinnedGitSource({repo:closure.repo,
    source_commit:P.SOURCE,source_path:'../../etc/shadow',max_bytes:4000000}),
@@ -118,4 +120,20 @@ test('the returned capability surface has precisely four read-only operations',(
   'request','verifyToken','sign','spawn'])
    assert.equal(Object.hasOwn(f.reads,name),false);
  assert.ok(f.getOpens()>0||f.getOpens()===0);
+});
+
+test('request byte ceilings are actual read limits, not decorative metadata',()=>{
+ const f=fixture();
+ const q={repo:closure.repo,project:'honartik',
+   source_commit:P.SOURCE,manifest_commit:P.MANIFEST,max_bytes:100};
+ assert.throws(()=>f.reads.readPinnedGitManifest(q),/file_not_root_owned_or_unsafe/);
+ const asset=release.assets[0];
+ assert.throws(()=>f.reads.readPinnedGitSource({
+   repo:closure.repo,source_commit:P.SOURCE,source_path:asset.source_path,
+   max_bytes:100
+ }),/file_not_root_owned_or_unsafe/);
+ assert.throws(()=>f.reads.readPinnedGitSource({
+   repo:closure.repo,source_commit:P.SOURCE,source_path:asset.source_path,
+   max_bytes:4000000,untrusted:'bad'
+ }),/source_request_untrusted/);
 });
