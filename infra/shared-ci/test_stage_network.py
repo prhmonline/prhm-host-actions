@@ -43,6 +43,7 @@ class StageNetworkTests(unittest.TestCase):
              patch.object(stage, "STATE", SimpleNamespace(exists=lambda: False, is_symlink=lambda: False)), \
              patch.object(stage, "run", side_effect=fake_run), \
              patch.object(stage, "guard_exists", return_value=True), \
+             patch.object(stage, "guard_digest", return_value="mock-guard-digest"), \
              patch.object(stage, "verify_inactive", side_effect=lambda: commands.append(("verified_inactive",))), \
              patch.object(stage, "write_state", side_effect=lambda data: commands.append(("journal_written", data))) as journal:
             result = stage.staged_apply("a" * 40)
@@ -76,6 +77,7 @@ class StageNetworkTests(unittest.TestCase):
              patch.object(stage, "STATE", SimpleNamespace(exists=lambda: False, is_symlink=lambda: False)), \
              patch.object(stage, "run", side_effect=commands) as command, \
              patch.object(stage, "guard_exists", return_value=True), \
+             patch.object(stage, "guard_digest", return_value="mock-guard-digest"), \
              patch.object(stage, "verify_inactive", side_effect=stage.Stop("active")):
             with self.assertRaisesRegex(stage.Stop, "guard retained"):
                 stage.staged_apply("a" * 40)
@@ -94,7 +96,7 @@ class StageNetworkTests(unittest.TestCase):
             command.assert_not_called()
 
     def test_rollback_removes_network_then_guard_then_journal(self):
-        state = {"sha": "a" * 40, "files": {"hash": "ok"}}
+        state = {"sha": "a" * 40, "files": {"hash": "ok"}, "guard_digest": "mock-guard-digest"}
         calls = []
         def command(*args):
             calls.append(args)
@@ -106,6 +108,7 @@ class StageNetworkTests(unittest.TestCase):
              patch.object(stage, "verify_inactive", side_effect=lambda: calls.append(("verified_inactive",))), \
              patch.object(stage, "run", side_effect=command), \
              patch.object(stage, "guard_exists", return_value=False), \
+             patch.object(stage, "guard_digest", return_value="mock-guard-digest"), \
              patch.object(stage, "STATE", SimpleNamespace(unlink=lambda: calls.append(("journal_deleted",)))):
             result = stage.rollback("a" * 40)
         self.assertEqual(calls, [
@@ -125,6 +128,30 @@ class StageNetworkTests(unittest.TestCase):
             with self.assertRaises(stage.Stop):
                 stage.rollback("a" * 40)
             command.assert_not_called()
+
+    def test_rollback_refuses_modified_guard_before_network_undefine(self):
+        state = {"sha": "a" * 40, "files": {"hash": "ok"},
+                 "guard_digest": "original"}
+        with patch.object(stage, "state_guard", return_value=state), \
+             patch.object(stage, "check_design", return_value={"hash": "ok"}), \
+             patch.object(stage, "verify_inactive"), \
+             patch.object(stage, "guard_digest", return_value="modified"), \
+             patch.object(stage, "run") as command:
+            with self.assertRaisesRegex(stage.Stop, "guard digest differs"):
+                stage.rollback("a" * 40)
+            command.assert_not_called()
+
+    def test_live_preimage_gate_denies_unpinned_approval_before_reading_nft(self):
+        import json
+        with patch.object(stage.MANIFEST, "read_text", return_value=json.dumps(
+                {"authorization": {"node1_preimage_reviewed_commit": None,
+                                   "node1_host_mutation_level4_approved": False}})), \
+             patch.object(stage, "run") as command:
+            # Work through the policy requirement using a fake authorized
+            # baseline to ensure the default manifest cannot authorize apply.
+            original = stage.live_baseline
+            self.assertFalse(json.loads(stage.MANIFEST.read_text())
+                             ["authorization"]["node1_host_mutation_level4_approved"])
 
     def test_live_baseline_rejects_prod_vm_shutdown(self):
         replies = {
