@@ -1,0 +1,28 @@
+{
+  "schema": "prhm.registry-v2.bootstrap-wal-stage.v1",
+  "repo": "prhmonline/prhm-host-actions",
+  "project": "honartik",
+  "status": "NOT_STAGED",
+  "source_only": true,
+  "source": {
+    "path": "prhm-action-registry-v2-bootstrap-wal-v1.cjs",
+    "commit": "699a5020bc66323558d85fc2a81aa55724fe1a48",
+    "git_blob_sha1": "ad28d5868a7a37a7ccf3de4fa4e8d6b89b4e2fe6"
+  },
+  "test": {
+    "path": "test-prhm-action-registry-v2-bootstrap-wal-v1.cjs",
+    "commit": "b42a8d6848b9e1127b72b173a4a08f2f2cb5bcc7",
+    "git_blob_sha1": "3daa3bb4b26905d171aa9dbfbac1060c84653580"
+  },
+  "fixed_journal_path": "/var/lib/prhm-agent-selfmaint-exec/registry-bootstrap-v2-journal.json",
+  "protected_runtime_file_count": 20,
+  "bootstrap_directory_count": 10,
+  "root_executor_installed": false,
+  "real_journal_writer_installed": false,
+  "installed_signed_l4_route": false,
+  "production_modified": false,
+  "approval_consumed": false,
+  "recovery_policy": "INDETERMINATE_ON_UNMATCHED_INTENT_NO_REPLAY",
+  "requires_independent_root_lock": true,
+  "requires_root_signed_bootstrap": true
+}
