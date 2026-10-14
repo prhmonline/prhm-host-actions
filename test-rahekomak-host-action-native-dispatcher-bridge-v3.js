@@ -15,7 +15,7 @@ test('exact 4+5 allowlist, pinned source and no self approval',()=>{
  assert.equal(mod.TARGETS.length,9);
  assert.deepEqual(mod.TARGETS,tx.paths());
  assert.deepEqual(mod.OWNERS,Object.values(reg.PATHS));
- assert.equal(mod.SOURCE_COMMIT,'4110de9f99a260b377875640ba1f71d69d3b5ea4');
+ assert.equal(mod.SOURCE_COMMIT,'fe37c82f23c11eeafd55f9212ba74af178f59d76');
  const m=mod.manifest();assert.equal(m.installed,false);
  assert.equal(m.approval_source,'external_trusted_native_dispatcher_only');
  assert.equal(m.deployment_authorized,false);
