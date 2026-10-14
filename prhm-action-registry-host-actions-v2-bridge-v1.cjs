@@ -18,6 +18,11 @@ function exactFields(obj,fields) {
 function strictRequest(input){
  exactFields(input,['action','project','source_commit','manifest_commit','manifest_sha256']);
  if(input.action!==ACTION)fail('action_not_allowlisted');
+ // A release manifest contains the immutable source commit; publishing
+ // that manifest must yield its OWN second Git commit. Never accept a
+ // self-referential or mutable release ID at the approval boundary.
+ if(input.source_commit===input.manifest_commit)
+   fail('source_and_manifest_commits_must_differ');
  const json=g.canonicalArgs(input);
  if(json.length>360)fail('request_size');
  return Object.freeze({...input,arguments_sha256:g.approvalBindingSha(input)});
@@ -86,6 +91,9 @@ function immutableManifest(input,bridge){
  });
  if(out.normalized.project!==input.project||out.normalized.git_path!==file.path)
     fail('manifest_project_or_path_mismatch');
+ if(input.project==='honartik'&&
+    out.normalized.git_path!=='manifests/honartik-config-center-registry-release-v1.json')
+    fail('honartik_release_manifest_path_unexpected');
  return out;
 }
 /**
