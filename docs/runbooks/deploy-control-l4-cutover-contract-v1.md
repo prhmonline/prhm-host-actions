@@ -170,3 +170,24 @@ The live Approval Center `/health` still attests **old 2026-10-02 policy**, Ed25
 Verified GitHub blob identities of new test/source files and candidate policy, plus authenticated read-only Agent 3 live owner hashes, issuer and registry metadata. In a disposable Node 20 sandbox, **new suite 7/7 PASS**, and all five combined source/simulation/disk/registration/preinstall test suites **59/59 PASS, 0 FAIL, 0 SKIP**. These are independent *offline* tests, not GitHub-hosted CI (billing-blocked).
 
 **Real installation remains blocked** until an independently authorized fixed L4 Action registration and execution route exists, all effective sudo and external-trigger capabilities are reviewed, and the central root dispatcher integrates the policy version/hash gate under a permitted review path. Previous tool restrictions on its privileged entrypoint have **not** been bypassed. Do not create or consume a Level-4 approval for an as-yet-unregistered action.
+
+
+## Two-commit, **non-executable** source handoff (15 October 2026)
+
+The [PRHM Action Registry onboarding standard](../../PRHM-ACTION-REGISTRY-ONBOARDING-STANDARD.md) requires a distinct reviewed `source_commit` and later `manifest_commit`; however, the **actual live shared registration gateway is NOT installed**. Its executable release schema additionally requires four reviewed *after-install owner hashes*, staged executable action assets, a trusted typed bootstrap, signed one-time Level-4 authorization and real rollback. None may be fabricated or inferred from sandbox success.
+
+Created the following **review-evidence-only** handoff on the existing Draft PR #207:
+- Source commit (five immutable audited sources and checker/test code): `e63045b04c796d3178737b61dbe67758a7809a53`.
+- Manifest commit (a distinct later commit): `51a630445731e9c4ebd97758fbcf73285f74d051`.
+- Manifest: `manifests/deploy-control-l4-source-handoff-20261015.json`.
+- Manifest Git blob SHA-1: `92f2e64ad767db70595fc25243b744b33130c295`.
+- Manifest raw SHA-256: `5e1540ac447136177f9a9c783150023f062ccf2bb7f7caa29eed7f06683fd1a4`.
+- Standalone validator: `deploy-control-source-handoff-v1.cjs`; test: `test-deploy-control-source-handoff-v1.cjs`.
+
+The manifest pins exact Git blob SHA-1 **and SHA-256** for five source files at the earlier immutable `source_commit`, the four currently observed read-only owner preimage digests, the policy PR #14 SHA/blob/raw/object hashes, and the authentic, still-**unwired** deploy-control dispatcher PR #22 SHA. It explicitly declares `production_executable=false`, `registered=false`, `approved=false`, `gateway_manifest_compatible=false`. The verifier rejects forged source bytes, manifest-to-commit mismatches, extra fields or authority claims, changed owner bytes, silent policy escalations, and absence of verified dual-commit identity. Its return value always says `can_register=false`, `can_install=false`, `can_request_level4=false`, `can_consume_level4=false`.
+
+In a disposable Node 20 sandbox, fetched verified GitHub Git blob bytes at the *two exact commits*. New review-only tests: **8/8 PASS**. All six isolated contract/memory/disk/registry/preinstall/handoff suites together: **67/67 PASS, 0 FAIL, 0 SKIP**. This is **offline source-test evidence**, not hosted GitHub Actions CI and **not** a root installation test.
+
+### Stop condition
+
+**Source handoff: DONE. Privileged registration: NOT DONE / blocked.** The source-only `prhm_action_registry_install_v1` gateway is not a callable installed Host Action; its manifest schema must not be confused with this review-only manifest. The current root dispatcher does not wire issuer policy-version/hash attestation before approval consumption; an earlier attempt to change its privileged entrypoint was blocked by the editing safety boundary, which must not be circumvented. Full effective sudo and external deployment trigger review remains incomplete. Until a trusted independently authorized route can review/install the exact four postimage owner SHAs and action asset, do **not** create a fake production release manifest or issue a Level-4 request. No Production changes or consumed approvals.
