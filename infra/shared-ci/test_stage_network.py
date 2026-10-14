@@ -141,17 +141,32 @@ class StageNetworkTests(unittest.TestCase):
                 stage.rollback("a" * 40)
             command.assert_not_called()
 
-    def test_live_preimage_gate_denies_unpinned_approval_before_reading_nft(self):
+    def test_manifest_refuses_host_apply_without_independent_attestation(self):
         import json
-        with patch.object(stage.MANIFEST, "read_text", return_value=json.dumps(
-                {"authorization": {"node1_preimage_reviewed_commit": None,
-                                   "node1_host_mutation_level4_approved": False}})), \
-             patch.object(stage, "run") as command:
-            # Work through the policy requirement using a fake authorized
-            # baseline to ensure the default manifest cannot authorize apply.
-            original = stage.live_baseline
-            self.assertFalse(json.loads(stage.MANIFEST.read_text())
-                             ["authorization"]["node1_host_mutation_level4_approved"])
+        manifest = json.loads((ROOT / "manifest.json").read_text())
+        auth = manifest["authorization"]
+        self.assertIsNone(auth["node1_preimage_reviewed_commit"])
+        self.assertIsNone(auth["node1_nft_preimage_sha256"])
+        self.assertIsNone(auth["node1_prod_net_xml_preimage_sha256"])
+        self.assertFalse(auth["node1_host_mutation_level4_approved"])
+        source = (ROOT / "stage-network-v1.py").read_text()
+        self.assertIn("Node1 preimage attestation commit missing", source)
+        self.assertIn("live nft preimage differs", source)
+        self.assertIn("live prod-net XML differs", source)
+
+    def test_nft_digest_ignores_mutable_counters_and_handles(self):
+        import json
+        one = {"nftables": [{"metainfo": {"version":"1"}},
+             {"rule": {"family":"ip", "table":"filter", "chain":"forward", "handle":2,
+                       "expr":[{"counter":{"packets":2, "bytes":20}}, {"accept":None}]}}]}
+        two = json.loads(json.dumps(one))
+        two["nftables"][1]["rule"]["handle"] = 900
+        two["nftables"][1]["rule"]["expr"][0]["counter"]["packets"] = 400
+        self.assertEqual(stage.normalized_nft_digest(json.dumps(one)),
+                         stage.normalized_nft_digest(json.dumps(two)))
+        two["nftables"][1]["rule"]["expr"][1] = {"drop": None}
+        self.assertNotEqual(stage.normalized_nft_digest(json.dumps(one)),
+                            stage.normalized_nft_digest(json.dumps(two)))
 
     def test_live_baseline_rejects_prod_vm_shutdown(self):
         replies = {
