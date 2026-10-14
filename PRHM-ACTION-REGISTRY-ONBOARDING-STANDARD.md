@@ -93,3 +93,47 @@ Synthetic restart tests are NOT live crash/restart fault injection.
 Before requesting Level 4, stage exact Git blobs; verify recovery with an
 offline root-owned fixture and prove rollback after a real service failure.
 Do not turn this module into a caller-controlled arbitrary file writer.
+
+## 2026-10-14 security checkpoint — irreversible one-use install reservation
+
+The Ed25519 Approval Center consumption ledger alone proves that a Level-4
+token was consumed by Host Actions, not that a crashed/restarted executor
+has never attempted the same approved install again. To prevent replay,
+the reviewed shared gateway now REQUIRES a root-provided `trustedClaimOnce`
+capability after checking the real signed+consumed token and before any
+installer I/O. It validates an exact request ID, canonical arguments SHA,
+and an exclusive, durable reservation receipt. Missing or invalid receipts
+fail closed. A failed install must not release or reuse this reservation.
+
+The source-only `prhm-action-registry-one-time-fence-v1.cjs` implements a
+fixed-path POSIX O_CREAT|O_EXCL|O_NOFOLLOW claim under
+`/var/lib/prhm-agent-selfmaint-exec/registry-one-time-v1`.
+The PRE-EXISTING trusted root installer must provision this directory
+as uid/gid 0:0 mode 0700; the fence MUST refuse to create it itself.
+The claim is fsynced including its containing directory and is never
+deleted after a partial write, sync failure, crash or failed installation.
+Thus a consumed request is never silently re-applied. Recovery must use
+the independently verified original request's durable recovery journal.
+
+Honartik handoff now requires a direct passthrough of the ORIGINAL signed
+token to the reviewed project atomic installer (not a fabricated approval
+object), the exact fixed project manifest read from its pinned Git commit,
+and the four allowlisted systemd restart/health callbacks. Any unknown
+service, altered Git path, unsigned token or missing trusted adapter fails
+closed. No dynamic shell or arbitrary target paths were added.
+
+**Required trusted bootstrap before Level 4:** install one reviewed Git SHA
+with the existing typed five-field request/authorize-consume route,
+the permanent `claimOnce` callback mapping to the root-only fence,
+the SHA-pinned source manifest reader, project-specific installer adapter,
+durable trusted rollback, original-state verification and post-restart
+service health. Prove an offline restart/partial-write fault-injection
+using the same fixed root directory and retain evidence. Until then,
+do not register either new live action or issue a Level-4 request.
+
+Live read-only verification on 2026-10-14:
+- PR #190 owner preimages still match all four root-owned SHA256 pins
+- selfmaint_health healthy; shared/target action absent
+- honartik `php console/yii config-center/check` is CONFIG_CENTER_READONLY_FAIL
+- separate V19 current-baseline installer-stage preflight 17/17 PASS
+  but that is NOT a shared-registry bootstrap
