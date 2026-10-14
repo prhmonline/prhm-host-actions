@@ -35,7 +35,7 @@ test('review contract cannot execute or request approval with runtime parameters
 
 test('pinned live and proposed policy are different immutable identities',()=>{
   assert.equal(c.CONTRACT.live_policy_version,'2026-10-02.1-control-plane-current-owner-bootstrap-repair-v1');
-  assert.equal(c.CONTRACT.candidate_policy_version,'2026-10-14.1-deploy-control-exact-sha-scopes-v1');
+  assert.equal(c.CONTRACT.candidate_policy_version,'2026-10-15.1-deploy-control-l4-installer-enrollment-v1');
   assert.match(c.CONTRACT.live_policy_raw_sha256,/^[a-f0-9]{64}$/);
   assert.match(c.CONTRACT.live_policy_object_sha256,/^[a-f0-9]{64}$/);
   assert.match(c.CONTRACT.candidate_policy_object_sha256,/^[a-f0-9]{64}$/);
@@ -110,6 +110,8 @@ if(livePath&&proposedPath){
     assert.equal(result.original_operations,75);
     assert.equal(result.preserved_typed_scopes,52);
     assert.equal(result.added_exact_deploy_scopes,3);
+    assert.equal(result.added_critical_installer_scopes,1);
+    assert.equal(result.added_critical_operations,1);
     assert.equal(result.source_only,true);
   });
   test('candidate tampering, additional scopes and version drift are refused',()=>{
