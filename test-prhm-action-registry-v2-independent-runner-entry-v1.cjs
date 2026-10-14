@@ -81,45 +81,65 @@ test('symlink, insecure permissions, changed inode, non-root credential are reje
    /credential_directory_unsafe|credential_file_unsafe|credential_file_replaced/);
  }
 });
-test('all host capability slots are required BEFORE approval execution',async()=>{
+
+test('all host capability slots are required BEFORE signed approval execution',async()=>{
+ const credential=e.secureCredential(fixture());
+ await assert.rejects(e.runWithCapabilities({credential,capabilities:{}}),
+  /trusted_capability_missing/);
+});
+test('cannot inject an alternate apply function or another argument into the entrypoint',async()=>{
  const credential=e.secureCredential(fixture());
  let called=false;
- await assert.rejects(e.runWithCapabilities({credential,
-  capabilities:{},apply:async()=>{called=true}}),/trusted_capability_missing/);
+ await assert.rejects(e.runWithCapabilities({credential,capabilities:{},
+  apply:async()=>{called=true;return {ok:true}}}),/trusted_invocation_schema/);
  assert.equal(called,false);
+ await assert.rejects(e.runWithCapabilities({credential,capabilities:{},
+  argv:['--apply']}),/trusted_invocation_schema/);
+});
+test('a forged credential with copied fields is NOT the sealed file object',async()=>{
+ const credential=e.secureCredential(fixture());
+ const forged={...credential};
+ const fake={};
+ await assert.rejects(e.runWithCapabilities({credential:forged,capabilities:fake}),
+  /trusted_invocation_required/);
+ await assert.rejects(e.runWithCapabilities({
+  credential:{secret_source:'systemd-sealed-credential',input:pinned,
+   approvalToken:token,unit},capabilities:fake
+ }),/trusted_invocation_required/);
+});
+test('full callback-shaped fake does not bypass signed approval or pinned Git manifest',async()=>{
+ const credential=e.secureCredential(fixture());
  const funcs=['readPinnedGitManifest','readPinnedGitSource','readLiveOwner',
   'readStagedAsset','getInstaller','getRollback','claimOnce',
   'verifyOriginalState','restartService','checkServiceHealth',
   'getToolDiscovery','writeMetadataAudit'];
+ let installs=0,claims=0;
  const fake=Object.fromEntries(funcs.map(x=>[x,()=>true]));
- const ret=await e.runWithCapabilities({credential,capabilities:fake,
-  apply:async arg=>{
-   called=true;
-   assert.equal(arg.approvalToken,token);
-   assert.deepEqual(arg.input,pinned);
-   return {ok:true,registry_visible:true,rollback:'not_needed',
-    source_commit:pinned.source_commit,manifest_commit:pinned.manifest_commit};
-  }});
- assert.equal(called,true);
- assert.equal(ret.ok,true);
+ fake.getInstaller=()=>()=>{installs++;return{ok:true}};
+ fake.claimOnce=()=>{claims++;return{exclusive:true,durable:true}};
+ await assert.rejects(e.runWithCapabilities({credential,capabilities:fake}),
+  /git_manifest_missing/);
+ assert.equal(installs,0);
+ assert.equal(claims,0);
 });
-test('negative or forged postconditions never appear as success',async()=>{
+test('successful output cannot be fabricated without the reviewed signature verifier',async()=>{
  const credential=e.secureCredential(fixture());
  const funcs=['readPinnedGitManifest','readPinnedGitSource','readLiveOwner',
   'readStagedAsset','getInstaller','getRollback','claimOnce',
   'verifyOriginalState','restartService','checkServiceHealth',
   'getToolDiscovery','writeMetadataAudit'];
  const fake=Object.fromEntries(funcs.map(x=>[x,()=>true]));
- for(const result of [
-  {ok:true,registry_visible:false,rollback:'not_needed',
-   source_commit:pinned.source_commit,manifest_commit:pinned.manifest_commit},
-  {ok:false,registry_visible:true,rollback:'not_needed',
-   source_commit:pinned.source_commit,manifest_commit:pinned.manifest_commit},
-  {ok:true,registry_visible:true,rollback:'unverified',
-   source_commit:pinned.source_commit,manifest_commit:pinned.manifest_commit}
- ])await assert.rejects(e.runWithCapabilities({
-   credential,capabilities:fake,apply:async()=>result
- }),/signed_run_postcondition_unverified/);
+ for(const tampering of [
+  {credential,capabilities:fake,apply:async()=>({
+    ok:true,registry_visible:true,rollback:'not_needed',
+    source_commit:pinned.source_commit,manifest_commit:pinned.manifest_commit
+  })},
+  {credential,capabilities:fake,postcondition:{ok:true}},
+  {credential:{...credential,approvalToken:'invalid'},capabilities:fake}
+ ]){
+  await assert.rejects(e.runWithCapabilities(tampering),
+   /trusted_invocation_schema|trusted_invocation_required/);
+ }
 });
 test('standalone CLI is disabled before root I/O or credential reads',()=>{
  const r=cp.spawnSync(process.execPath,['prhm-action-registry-v2-independent-runner-entry-v1.cjs'],
