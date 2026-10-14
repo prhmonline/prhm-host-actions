@@ -64,24 +64,28 @@ function readers(io=fs){
  function readPinnedGitManifest(req){
    check(req&&req.repo===closure.repo&&req.source_commit===SOURCE&&
     req.manifest_commit===MANIFEST&&req.project==='honartik'&&
-    Number.isInteger(req.max_bytes)&&req.max_bytes>=release.assets.length,
+    Number.isInteger(req.max_bytes)&&req.max_bytes>=100&&req.max_bytes<=160000&&
+    Object.keys(req).sort().join('|')===
+      'manifest_commit|max_bytes|project|repo|source_commit',
     'manifest_request_untrusted');
    const bytes=secureRead(io,RELEASE_LOCAL,{
-     sha256:closure.release_manifest_sha256,maxBytes:160000});
+     sha256:closure.release_manifest_sha256,maxBytes:req.max_bytes});
    return Object.freeze({path:closure.release_manifest_path,bytes});
  }
  function readPinnedGitSource(req){
    check(req&&req.repo===closure.repo&&req.source_commit===SOURCE&&
     typeof req.source_path==='string'&&
-    Number.isInteger(req.max_bytes)&&req.max_bytes<=4000000,
+    Number.isInteger(req.max_bytes)&&req.max_bytes>=100&&req.max_bytes<=4000000&&
+    Object.keys(req).sort().join('|')===
+      'max_bytes|repo|source_commit|source_path',
     'source_request_untrusted');
    if(req.source_path===ORIGINAL_MANIFEST)
      return secureRead(io,RUNTIME+'/'+ORIGINAL_MANIFEST,{
-       gitBlobSha:legacy.git_blob_sha1,maxBytes:160000});
+       gitBlobSha:legacy.git_blob_sha1,maxBytes:Math.min(req.max_bytes,160000)});
    const entry=assetBySource.get(req.source_path);
    check(!!entry,'source_not_allowlisted');
    return secureRead(io,STAGED+'/'+entry.source_path,{
-     sha256:entry.sha256,maxBytes:4000000});
+     sha256:entry.sha256,maxBytes:req.max_bytes});
  }
  function readLiveOwner(filename){
    const pin=Object.values(release.registry_owners)
@@ -93,7 +97,7 @@ function readers(io=fs){
    const entry=assetByTarget.get(filename);
    check(!!entry,'asset_not_allowlisted');
    return secureRead(io,STAGED+'/'+entry.source_path,{
-     sha256:entry.sha256,maxBytes:4000000});
+     sha256:entry.sha256,maxBytes:req.max_bytes});
  }
  return Object.freeze({readPinnedGitManifest,readPinnedGitSource,
    readLiveOwner,readStagedAsset});
