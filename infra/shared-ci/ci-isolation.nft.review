@@ -1,0 +1,52 @@
+# REVIEW ONLY: do not run `nft -f` on Node1 until a reviewed, SHA-bound
+# transaction is approved, staged, tested, and has verified rollback.
+# Existing firewalld/libvirt chains remain untouched. Do not flush ruleset.
+# Input/forward drop controls from the CI bridge run at priority -195,
+# BEFORE standard filter priority 0. Other existing hook chains can still
+# reject public egress; successful public HTTPS must be verified in a guest.
+table inet prhm_ci_isolation {
+    set denied_ipv4 {
+        type ipv4_addr
+        flags interval
+        elements = {
+            0.0.0.0/8,
+            10.0.0.0/8,
+            100.64.0.0/10,
+            127.0.0.0/8,
+            169.254.0.0/16,
+            172.16.0.0/12,
+            192.0.0.0/24,
+            192.0.2.0/24,
+            192.88.99.0/24,
+            192.168.0.0/16,
+            198.18.0.0/15,
+            198.51.100.0/24,
+            203.0.113.0/24,
+            224.0.0.0/4,
+            240.0.0.0/4,
+            185.191.76.136/30
+        }
+    }
+
+    chain ci_host_input {
+        type filter hook input priority -195; policy accept;
+        iifname "virbr-ci" meta nfproto ipv6 drop
+        iifname "virbr-ci" ip saddr != 10.72.0.0/24 drop
+        iifname "virbr-ci" ip daddr 10.72.0.1 udp sport 68 udp dport 67 accept
+        iifname "virbr-ci" ip daddr 10.72.0.1 udp dport 53 accept
+        iifname "virbr-ci" ip daddr 10.72.0.1 tcp dport 53 accept
+        iifname "virbr-ci" drop
+    }
+
+    chain ci_forward {
+        type filter hook forward priority -195; policy accept;
+        iifname "virbr-ci" meta nfproto ipv6 drop
+        oifname "virbr-ci" meta nfproto ipv6 drop
+        iifname "virbr-ci" ip saddr != 10.72.0.0/24 drop
+        iifname "virbr-ci" ip daddr @denied_ipv4 drop
+        iifname "virbr-ci" meta nfproto ipv4 tcp dport 443 accept
+        iifname "virbr-ci" drop
+        oifname "virbr-ci" ct state established,related accept
+        oifname "virbr-ci" drop
+    }
+}
