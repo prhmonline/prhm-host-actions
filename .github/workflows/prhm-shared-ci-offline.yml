@@ -35,6 +35,14 @@ jobs:
           set -euo pipefail
           python3 -m compileall -q infra/shared-ci
           python3 -m unittest discover -s infra/shared-ci -p 'test_*.py' -v
+      - name: Verify draft nftables grammar on disposable GitHub runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq nftables
+          # --check validates grammar/evaluation without installing any rules.
+          sudo nft --check --file infra/shared-ci/ci-isolation.nft.review
       - name: Verify archival Ubuntu cloud image signature and digest
         shell: bash
         run: bash infra/shared-ci/verify-ubuntu-archive.sh
