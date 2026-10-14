@@ -1,0 +1,11 @@
+<!-- REVIEW ONLY: MUST NOT virsh net-define until approved host transaction. -->
+<network>
+  <name>ci-net</name>
+  <forward mode='nat'/>
+  <bridge name='virbr-ci' stp='on' delay='0'/>
+  <ip address='10.72.0.1' netmask='255.255.255.0'>
+    <dhcp>
+      <range start='10.72.0.100' end='10.72.0.199'/>
+    </dhcp>
+  </ip>
+</network>
