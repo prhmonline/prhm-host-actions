@@ -7,6 +7,8 @@ on:
       - 'test-honartik-config-center-enrollment-action-v1.cjs'
       - 'honartik-config-center-registration-candidate-v1.cjs'
       - 'honartik-config-center-owner-sha-readonly-preflight-v1.cjs'
+      - 'test-honartik-config-center-pinned-generic-release-v1.cjs'
+      - 'manifests/honartik-config-center-registry-release-v1.json'
       - 'test-honartik-config-center-owner-sha-readonly-preflight-v1.cjs'
       - 'honartik-config-center-shared-release-builder-v1.cjs'
       - 'test-honartik-config-center-shared-release-builder-v1.cjs'
@@ -39,6 +41,8 @@ on:
       - 'test-honartik-config-center-enrollment-action-v1.cjs'
       - 'honartik-config-center-registration-candidate-v1.cjs'
       - 'honartik-config-center-owner-sha-readonly-preflight-v1.cjs'
+      - 'test-honartik-config-center-pinned-generic-release-v1.cjs'
+      - 'manifests/honartik-config-center-registry-release-v1.json'
       - 'test-honartik-config-center-owner-sha-readonly-preflight-v1.cjs'
       - 'honartik-config-center-shared-release-builder-v1.cjs'
       - 'test-honartik-config-center-shared-release-builder-v1.cjs'
@@ -93,6 +97,8 @@ jobs:
           node --check test-honartik-config-center-install-manifest-v1.cjs
           node --check honartik-config-center-owner-sha-readonly-preflight-v1.cjs
           node --check test-honartik-config-center-owner-sha-readonly-preflight-v1.cjs
+          node --check test-honartik-config-center-pinned-generic-release-v1.cjs
+          node --test test-honartik-config-center-pinned-generic-release-v1.cjs
           node --check honartik-config-center-shared-release-builder-v1.cjs
           node --check test-honartik-config-center-shared-release-builder-v1.cjs
           node --test test-honartik-config-center-owner-sha-readonly-preflight-v1.cjs test-honartik-config-center-shared-release-builder-v1.cjs
