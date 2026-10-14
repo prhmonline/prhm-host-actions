@@ -109,6 +109,18 @@ test('both-worker fresh MCP discovery module is required in the staged V2 closur
  assert.match(source,/prhm-agent-mcp-green.service/);
  assert.match(source,/blue_green_registry_inconsistent/);
 });
+test('runner entry is pinned to immutable Git and cannot accept custom apply callbacks',()=>{
+ const item=M.files.find(x=>x.source_path==='prhm-action-registry-v2-independent-runner-entry-v1.cjs');
+ assert.ok(item);
+ assert.equal(M.runner_entry_rejects_injected_apply,true);
+ assert.equal(item.source_commit,M.runner_entry_source_commit);
+ assert.equal(item.git_blob_sha1,'8dd786829aad356c5d207365258cb4c9dd61b95d');
+ const src=git(['show',item.source_commit+':'+item.source_path]).toString();
+ assert.ok(src.includes('LOADED_CREDENTIALS.has(credential)'));
+ assert.ok(src.includes('bridge.applyAfterConsumption({'));
+ assert.ok(src.includes('trusted_invocation_schema'));
+ assert.equal(src.includes('apply=bridge.applyAfterConsumption'),false);
+});
 test('V2 independent entry cannot be used as an unapproved CLI apply',()=>{
  const r=cp.spawnSync(process.execPath,
  ['prhm-action-registry-v2-independent-runner-entry-v1.cjs'],
