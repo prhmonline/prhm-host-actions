@@ -17,11 +17,11 @@ const CONTRACT=Object.freeze({
   live_policy_version:'2026-10-02.1-control-plane-current-owner-bootstrap-repair-v1',
   live_policy_object_sha256:'c141ce7d56bf1de9c11a6e98b0abd6d20da9a349a6cbe1735c5bb659e3a70fea',
   live_policy_raw_sha256:'148fe2a724befc15cd8c731b0195d83e254d39215792a5084b70dd5b5c178174',
-  candidate_policy_version:'2026-10-14.1-deploy-control-exact-sha-scopes-v1',
-  candidate_policy_object_sha256:'7db7303d1da799347448f98062eae2f0e6599909bde016eaad9bde4b30c8ab5e',
+  candidate_policy_version:'2026-10-15.1-deploy-control-l4-installer-enrollment-v1',
+  candidate_policy_object_sha256:'732c21b15a54b47dced724e1f5be1c70aa1bd6c41cc5f94c5d2f600e45c36acb',
   source_shas:Object.freeze({
     'prhmonline/deploy-control':'e9d4b435a8bb73a507b2a7dd4affc4caa455d524',
-    'prhmonline/prhm-company-control-plane':'018f5da4d2781e4131bac4ae78904cecc3a91d9f',
+    'prhmonline/prhm-company-control-plane':'acffc7f9e02073f7aaf6ba92777f7acff6481f81',
     'prhmonline/aranob':'0454dd4bfb74e3064da36955006dd38426b12b82',
     'prhmonline/Honar-front-new':'5a13a594fc0081dd202583df3f3d04b06aa34b4f',
     'prhmonline/honar-back-new':'c3a4b93035698315e1358a298316538bd2d2ce4b',
@@ -41,6 +41,18 @@ const newScope=(project)=>({
   principals:[{principal_id:'mohammad',roles:['mcp-operator']}]
 });
 const expectedProjects=Object.freeze(['aranob','honartik_front','honartik_back']);
+const INSTALLER_OPERATION='host_action.deploy_control_cutover_install_v1';
+const installerRule=Object.freeze({
+ level:4,risk:'critical',requires_second_confirmation:true,one_time_use:true,
+ requested_approver:'mohammad',expires_seconds:180,
+ policy_version:CONTRACT.candidate_policy_version,
+ rollback_reference:'host-action-v2:deploy-control-cutover-install-v1:exact-preimage-runtime-restore'
+});
+const installerScope=Object.freeze({
+ tool:'host_action_v2_apply',project:'control_plane',environment:'production',
+ action:'deploy_control_cutover_install_v1',risk:'critical',operation:INSTALLER_OPERATION,
+ principals:[{principal_id:'mohammad',roles:['mcp-operator']}]
+});
 const expectedIntegrity=Object.freeze({
   git_first_required:true,
   exact_commit_sha_required_for_production:true,
@@ -71,12 +83,15 @@ function verifyPolicyTransition(liveBytes,candidateBytes){
   if(live.version!==CONTRACT.live_policy_version||candidate.version!==CONTRACT.candidate_policy_version)
     fail('policy_version_drift');
   const oldOps=Object.keys(live.operations||{}),newOps=Object.keys(candidate.operations||{});
-  if(oldOps.length!==75||newOps.length!==75||canonical(live.operations)!==canonical(candidate.operations))
+  if(oldOps.length!==75||newOps.length!==76||
+     canonical(candidate.operations[INSTALLER_OPERATION])!==canonical(installerRule)||
+     canonical(live.operations)!==canonical(Object.fromEntries(
+       Object.entries(candidate.operations).filter(([k])=>k!==INSTALLER_OPERATION))))
     fail('operations_mutated_or_missing');
   if(!Array.isArray(live.typed_scopes)||live.typed_scopes.length!==52||
-     !Array.isArray(candidate.typed_scopes)||candidate.typed_scopes.length!==55)
+     !Array.isArray(candidate.typed_scopes)||candidate.typed_scopes.length!==56)
     fail('typed_scope_count_drift');
-  const extras=expectedProjects.map(newScope);
+  const extras=[...expectedProjects.map(newScope),installerScope];
   for(const e of extras){
     if(candidate.typed_scopes.filter(s=>canonical(s)===canonical(e)).length!==1)
       fail('missing_or_duplicate_exact_deploy_scope');
@@ -87,14 +102,15 @@ function verifyPolicyTransition(liveBytes,candidateBytes){
     fail('existing_typed_scopes_mutated');
   if(canonical(candidate.deployment_integrity)!==canonical(expectedIntegrity))
     fail('deployment_integrity_drift');
-  const ignored=new Set(['version','typed_scopes','deployment_integrity']);
+  const ignored=new Set(['version','operations','typed_scopes','deployment_integrity']);
   const stableFields=p=>Object.fromEntries(Object.entries(p).filter(([k])=>!ignored.has(k)));
   if(canonical(stableFields(live))!==canonical(stableFields(candidate)))
     fail('existing_policy_fields_mutated');
   if(Object.hasOwn(live,'deployment_integrity'))fail('unexpected_preexisting_integrity');
   return Object.freeze({
     ok:true,source_only:true,original_operations:75,preserved_typed_scopes:52,
-    added_exact_deploy_scopes:3,live_policy_raw_sha256:CONTRACT.live_policy_raw_sha256,
+    added_exact_deploy_scopes:3,added_critical_installer_scopes:1,
+    added_critical_operations:1,live_policy_raw_sha256:CONTRACT.live_policy_raw_sha256,
     candidate_policy_object_sha256:CONTRACT.candidate_policy_object_sha256
   });
 }
