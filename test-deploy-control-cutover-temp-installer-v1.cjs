@@ -39,17 +39,22 @@ function getAssets() {
   const [live,policy,helper,core,sudo]=paths.map(x=>fs.readFileSync(x));
   return {live,policy,helper,core,sudo};
 }
-function patchOnlyForSandbox(helper){
-  const old=helper.toString('utf8');
-  assert.match(old,/import \{ assertRelease, consumeApprovedRelease \}/);
-  assert.match(old,/  const release = await consumeApprovedRelease\(/);
-  return Buffer.from(old.replace(
-    'import { assertRelease, consumeApprovedRelease }',
-    'import { assertRelease, consumeApprovedRelease, verifyIssuerPolicy }'
-  ).replace('  const release = await consumeApprovedRelease(',
-    '  await verifyIssuerPolicy({baseUrl: config.base_url, expectedPolicyVersion: config.expected_policy_version, expectedPolicyHash: config.expected_policy_hash});\n  const release = await consumeApprovedRelease('));
+function removeIssuerGateForNegativeCase(helper){
+  // Deliberately corrupt a copy to verify preflight rejects an unwired driver.
+  // The positive rehearsal always uses the actual reviewed GitHub blob bytes.
+  const reviewed=helper.toString('utf8');
+  const gate=[
+    '  await verifyIssuerPolicy({',
+    '    baseUrl: config.base_url,',
+    '    expectedPolicyVersion: config.expected_policy_version,',
+    '    expectedPolicyHash: config.expected_policy_hash,',
+    '  });',
+    ''
+  ].join('\n');
+  assert.ok(reviewed.includes(gate),'reviewed exact dispatcher gate required');
+  return Buffer.from(reviewed.replace(gate,''));
 }
-function setup(asset,{synthetic=true}={}){
+function setup(asset,{unwired=false}={}){
   const r=root();
   put(r,PATHS.POLICY,asset.live);
   put(r,PATHS.ARANOB,legacyA);
@@ -57,7 +62,7 @@ function setup(asset,{synthetic=true}={}){
   const options={
     mode:'isolated-temp-filesystem',root:r,failureAt:null,
     inputs:{
-      policyCandidate:asset.policy,dispatcher:synthetic?patchOnlyForSandbox(asset.helper):asset.helper,
+      policyCandidate:asset.policy,dispatcher:unwired?removeIssuerGateForNegativeCase(asset.helper):asset.helper,
       core:asset.core,gatedSudoers:asset.sudo,issuerBefore:fxHealth('before'),
       issuerAfter:fxHealth('after')
     }
@@ -86,15 +91,15 @@ if(!haveAll){
   test('isolated disk fixture requires 5 independently authenticated files',{skip:'Set 5 source fixture env vars'},()=>{});
 }else{
   const assets=getAssets();
-  test('real unwired dispatcher rejects before filesystem mutation',()=>{
-    const {r,options}=setup(assets,{synthetic:false});
+  test('deliberately unwired copy of reviewed dispatcher rejects before filesystem mutation',()=>{
+    const {r,options}=setup(assets,{unwired:true});
     try{
       assert.throws(()=>run(options),/issuer_attestation_not_wired/);
       equalBefore(r,assets);
       assert.equal(fs.existsSync(path.join(r,'.cutover-test-lock')),false);
     }finally{clean(r)}
   });
-  test('synthetic future source does a TEMP-ONLY transaction with backed-up preimage',()=>{
+  test('real reviewed source does a TEMP-ONLY transaction with backed-up preimage',()=>{
     const {r,options}=setup(assets);
     try{
       const result=run(options);
