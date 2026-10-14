@@ -68,12 +68,15 @@ test('fixed reader refuses symlink and weak path permissions before source read'
  };
  assert.throws(()=>pre.readPinnedOwner(fsIo,'base'),/owner_unsafe_base/);
  assert.equal(opens,0);
- const io2={...fsIo,lstatSync:p=>({
-  isDirectory:()=>!Object.values(pre.PATHS).includes(p),
-  isSymbolicLink:()=>false,
-  isFile:()=>Object.values(pre.PATHS).includes(p),
-  mode:0o100666,size:200,ino:1,dev:1,uid:0,gid:0
- })};
+ const io2={...fsIo,lstatSync:p=>{
+  const target=Object.values(pre.PATHS).includes(p);
+  return {
+    isDirectory:()=>!target,isSymbolicLink:()=>false,
+    isFile:()=>target,
+    mode:target?0o100666:0o40755,size:200,
+    ino:1,dev:1,uid:0,gid:0
+  };
+ }};
  assert.throws(()=>pre.readPinnedOwner(io2,'base'),/owner_unsafe_base/);
  assert.equal(opens,0);
 });
