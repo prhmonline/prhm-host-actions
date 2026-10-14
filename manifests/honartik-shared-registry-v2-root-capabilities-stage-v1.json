@@ -23,8 +23,8 @@
   },
   "test": {
     "path": "test-prhm-action-registry-v2-trusted-base-capabilities-v1.cjs",
-    "source_commit": "0548bce98af8efca7e7ac2390fd18235d52aa83c",
-    "git_blob_sha1": "4efb3ebbcc85646ccdaa48e7e8065a462f306315"
+    "source_commit": "da4c1686c2397856d5700b4b62ab017606ba6db1",
+    "git_blob_sha1": "fcbc38a7f439fb45bf999593d0110889bde683e4"
   },
   "files": [
     {
