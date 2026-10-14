@@ -235,3 +235,37 @@ failure recovery semantics only. The remaining separately reviewed
 work is the actual trusted standalone executable/transport, staging
 and systemd unit launch tied to fresh Level-4 Authorization Center
 approval. Do not treat green CI as installation readiness.
+
+## 2026-10-14: Executable-boundary components implemented (not deployed)
+
+Fixed root I/O sources now exist and are independently CI-tested:
+
+- `prhm-action-registry-root-pinned-readers-v1.cjs` provides four real
+  restricted read functions: exact SHA-pinned original four Production
+  owners, reviewed five staged assets, immutable project Git source bytes
+  and immutable generic release manifest. It enforces root file/parent
+  ownership, `O_NOFOLLOW`, stat/fstat inode equality, byte ceilings and
+  SHA256/Git blob checks. Source and manifest commit IDs are constants.
+- `prhm-action-registry-fixed-systemd-bridge-v1.cjs` provides the exact
+  four synchronous `restartService`/`checkServiceHealth` callbacks needed
+  by the atomic installer. It refuses any service outside the fixed
+  allowlist, insists on root and a separately named transient unit
+  cgroup, never invokes a shell and verifies the service MainPID changes.
+- Their immutable staged Git source commit, three reviewed helper files,
+  two exact supporting JSON manifests and one staging duplicate are
+  listed in `manifests/honartik-shared-registry-trusted-host-io-stage-v1.json`.
+  This staging plan is explicitly `NOT_STAGED`. All relative module
+  imports and file Git blob object IDs are checked by CI.
+
+These callbacks are ACTUAL bounded I/O implementations, not booleans or
+pretend approval. They are **not** an installed executable root runner.
+Additional required work before any Production GO: a separately reviewed
+root bootstrap entrypoint + full post-crash recovery connector, trusted
+Host Actions v2 five-field signed request/consume routing, cryptographic
+authentications and durable root-owned claim, fixed staging transaction,
+actual MCP discovery probe and final integration/cold service restart
+health. Every action requires its own legitimate approval boundary.
+
+Do not mistake CI (mocked service restarts, original Git blobs and file
+readers) for a real service restart or live registration. No Level-4 token
+was requested or consumed for these source-only commits.
