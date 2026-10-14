@@ -117,6 +117,12 @@
       "source_commit": "6b038d7618f2ec27ecb44e8fc92f3c4a5979836b",
       "git_blob_sha1": "1656955e9a9927a13a5b8ced2b6ee2cddd53ea3f",
       "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/manifests/honartik-shared-registry-pinned-release-v2.json"
+    },
+    {
+      "source_path": "prhm-action-registry-v2-mcp-discovery-v1.cjs",
+      "source_commit": "4c448583a1759fcccb2cf44dbd94ad19ec309037",
+      "git_blob_sha1": "c47456483b529226184415e4d6107ed44099051d",
+      "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-mcp-discovery-v1.cjs"
     }
   ],
   "conditions": [
@@ -128,5 +134,7 @@
   ],
   "production_mutation": false,
   "recovery_source_commit": "cf505af78c9cae02b37e2bbc38a05fbd9516e629",
-  "recovery_requires_negative_mcp_discovery": true
+  "recovery_requires_negative_mcp_discovery": true,
+  "discovery_source_commit": "4c448583a1759fcccb2cf44dbd94ad19ec309037",
+  "discovery_requires_both_live_mcp_workers": true
 }
