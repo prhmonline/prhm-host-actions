@@ -18,8 +18,8 @@
     },
     {
       "source_path": "test-prhm-action-registry-v2-sidecar-unit-review-v1.cjs",
-      "source_commit": "e0a72e789fec6f4b520e75f0015e7e9afd4463c4",
-      "git_blob_sha1": "d0bdaf6e349a98737961e6dfa0df03235e4b2eb1"
+      "source_commit": "2561bd49da465d1010f9aa6d855acdefd207af33",
+      "git_blob_sha1": "abc20edfa8726bca16b164c578d7194f8ce51abc"
     }
   ],
   "reviewed_runtime_closure_count": 27,
