@@ -151,3 +151,22 @@ New pure source-only gate `deploy-control-l4-registration-readiness-v1.cjs` eval
 - Still required: independently authorized typed Host Action registration, trusted on-host installer implementation, actual expanded sudo and external deployment-hook audit, immutable root backups + rollback, full live issuer version/hash attestation, Level-4 human authorization and separately approved SHA-bound canary.
 
 **Do not use either candidate hash as evidence that it is the *running* issuer policy.**
+
+
+## 15 October: four-owner read-only preinstall gate — 59 offline tests
+
+Added `deploy-control-l4-owner-preinstall-v1.cjs` and `test-deploy-control-l4-owner-preinstall-v1.cjs` to the still-Draft [PR #207](https://github.com/prhmonline/prhm-host-actions/pull/207). The module is a **pure, source-only review**: injected read-only snapshots only, with no host I/O, privileged calls, approval issuance, registry mutation or operational install function.
+
+The authenticated read-only Agent 3 `sha256sum` check confirmed these **actual live owner preimages**:
+- `/opt/prhm-agent-selfmaint/server.js` — `4c29d01a248d59ee85754dfa5a59e8132fe22e6b34ef04324228c16c88727406`
+- `/opt/prhm-agent-selfmaint-exec/server.js` — `410406ba0965ef3a5cad6da6306a85335e38acc3637fb6ed60fa42200a10c2e0`
+- `/opt/prhm-company-control-plane/config/approval-policy.json` — `148fe2a724befc15cd8c731b0195d83e254d39215792a5084b70dd5b5c178174`
+- `/home/agent/ssh-mcp-server/src/plugins/hostActionsV2.js` — `bd768f992dab75710558e3f47187c311c2ee5b5ec6f5751a74e0bbfa64729166`
+
+The proposal remains the **stacked, Draft PR #14** `acffc7f9e02073f7aaf6ba92777f7acff6481f81`, proposed policy Git blob `702fbed1d0a9936e6fc0e42694f3e1ce6941f4bc`, raw SHA256 `ed527c12ee330b8e1f5616fcb0c712eb89dddd9395197b2d855f00d3deea0678`, JSON-object SHA256 `732c21b15a54b47dced724e1f5be1c70aa1bd6c41cc5f94c5d2f600e45c36acb`.
+
+The live Approval Center `/health` still attests **old 2026-10-02 policy**, Ed25519, one-time use, and its old object hash; Agent 3 `selfmaint_health` still has **no** `deploy_control_cutover_install_v1` among its 35 advertised V2 actions. The new preinstall phase specifically expects that absence; incorrectly demanding the target to be registered *before* authorized registration creates a circular dependency. It returns `authorized:false`, `host_registered:false`, `can_install:false` and `can_consume_approval:false`, even when all read-only source checks pass.
+
+Verified GitHub blob identities of new test/source files and candidate policy, plus authenticated read-only Agent 3 live owner hashes, issuer and registry metadata. In a disposable Node 20 sandbox, **new suite 7/7 PASS**, and all five combined source/simulation/disk/registration/preinstall test suites **59/59 PASS, 0 FAIL, 0 SKIP**. These are independent *offline* tests, not GitHub-hosted CI (billing-blocked).
+
+**Real installation remains blocked** until an independently authorized fixed L4 Action registration and execution route exists, all effective sudo and external-trigger capabilities are reviewed, and the central root dispatcher integrates the policy version/hash gate under a permitted review path. Previous tool restrictions on its privileged entrypoint have **not** been bypassed. Do not create or consume a Level-4 approval for an as-yet-unregistered action.
