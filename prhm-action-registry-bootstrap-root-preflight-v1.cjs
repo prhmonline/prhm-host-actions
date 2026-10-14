@@ -37,7 +37,12 @@ function immutablePlan(){
  for(const target of required){
   // A child may lie under an exact reviewed writable ancestor; new roots
   // must never authorize a broad /, /home, /var, /etc or /opt subtree.
-  const allowed=roots.some(root=>target.path===root||target.path.startsWith(root+'/'));
+  // The staging *parent* is provisioned by the separate approved stager;
+  // granting RW to its whole subtree would widen the transient worker scope.
+  // The runner needs RW only within the Honartik-specific child.
+  const allowed=target.key==='staged_parent'
+   ? roots.includes(target.path+'/honartik-config-center-v1')
+   : roots.some(root=>target.path===root||target.path.startsWith(root+'/'));
   check(allowed,'missing_sandbox_writepath_'+target.key);
  }
  for(const forbidden of ['/','/opt','/home','/var','/var/lib','/etc','/root','/tmp'])
