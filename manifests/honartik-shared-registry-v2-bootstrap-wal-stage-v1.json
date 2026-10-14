@@ -6,8 +6,8 @@
   "source_only": true,
   "source": {
     "path": "prhm-action-registry-v2-bootstrap-wal-v1.cjs",
-    "commit": "b06e5da2ab3729e103dcaf1926dd115002ffc532",
-    "git_blob_sha1": "0266d99abb8729b68566c3f5234674fbf4efe7fb"
+    "commit": "3a13b9419b3e845ee5b55edc8949f1966ab48bac",
+    "git_blob_sha1": "56bafedd65487539cbe33ddad30bda3866ffa491"
   },
   "test": {
     "path": "test-prhm-action-registry-v2-bootstrap-wal-v1.cjs",
