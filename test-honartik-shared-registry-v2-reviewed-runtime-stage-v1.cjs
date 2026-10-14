@@ -38,8 +38,8 @@ test('runtime manifest is a single coherent fixed V2 release without production 
   manifest_commit:M.release_manifest_commit,manifest_sha256:M.release_manifest_sha256
  },P.release_manifest_path),P.release_manifest_path);
 });
-test('all 17 effective V2 staging destinations are unique, fixed and Git blob attested',()=>{
- assert.equal(M.files.length,17);
+test('all 18 effective V2 staging destinations are unique, fixed and Git blob attested',()=>{
+ assert.equal(M.files.length,18);
  const dests=new Set(),files=new Set();
  for(const file of M.files){
   assert.deepEqual(Object.keys(file).sort(),
@@ -97,6 +97,17 @@ test('only the hardened V2 cold-recovery module is staged, never the old V1 succ
  assert.match(source,/verifyTargetAbsent/);
  assert.match(source,/target_mcp_tool_still_visible_or_unverified/);
  assert.equal(M.files.some(x=>x.source_path==='prhm-action-registry-durable-recovery-v1.cjs'),false);
+});
+test('both-worker fresh MCP discovery module is required in the staged V2 closure',()=>{
+ assert.equal(M.discovery_requires_both_live_mcp_workers,true);
+ const x=M.files.filter(x=>x.source_path==='prhm-action-registry-v2-mcp-discovery-v1.cjs');
+ assert.equal(x.length,1);
+ assert.equal(x[0].source_commit,M.discovery_source_commit);
+ assert.equal(x[0].git_blob_sha1,'c47456483b529226184415e4d6107ed44099051d');
+ const source=git(['show',x[0].source_commit+':'+x[0].source_path]).toString('utf8');
+ assert.match(source,/prhm-agent-mcp-blue.service/);
+ assert.match(source,/prhm-agent-mcp-green.service/);
+ assert.match(source,/blue_green_registry_inconsistent/);
 });
 test('V2 independent entry cannot be used as an unapproved CLI apply',()=>{
  const r=cp.spawnSync(process.execPath,
