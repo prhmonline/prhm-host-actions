@@ -40,13 +40,16 @@ test('no broad WritePaths or HOME exception is permitted by reviewed plan',()=>{
  const p=runner.sandboxPlan();
  const paths=p.systemd_properties.ReadWritePaths.split(' ');
  assert.deepEqual(paths,runner.ROOTS);
- assert.equal(paths.length,6);
+ assert.equal(paths.length,9);
  assert.equal(new Set(paths).size,paths.length);
  for(const bad of ['/','/opt','/home','/etc','/root',
                      '/etc/systemd/system','/var/lib','/tmp'])
   assert.equal(paths.includes(bad),false,bad);
  assert.ok(paths.includes('/home/agent/ssh-mcp-server/src/plugins'));
  assert.ok(paths.includes('/var/lib/prhm-agent-selfmaint-exec/registry-one-time-v1'));
+ assert.ok(paths.includes('/var/lib/prhm-agent-selfmaint-exec/registry-recovery-lock-v1'));
+ assert.ok(paths.includes('/var/lib/prhm-agent-selfmaint-exec/registry-audit-v1'));
+ assert.ok(paths.includes('/opt/prhm-agent-selfmaint-exec/staged/honartik-config-center-v1'));
  assert.ok(!paths.includes('/home/honartik'));
 });
 test('real current bootstrap evidence fails CLOSED for missing live runner and route',()=>{
