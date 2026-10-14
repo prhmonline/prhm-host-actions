@@ -1,0 +1,30 @@
+{
+  "schema": "prhm.registry-v2.bootstrap-transaction-stage.v1",
+  "repo": "prhmonline/prhm-host-actions",
+  "status": "NOT_STAGED",
+  "project": "honartik",
+  "action": "prhm_action_registry_install_v1",
+  "source": {
+    "path": "prhm-action-registry-v2-bootstrap-transaction-plan-v1.cjs",
+    "commit": "e45b737f9eb72abe34a7761127cdd782d6ffcbf8",
+    "git_blob_sha1": "3c4d6afda40b5f8ca1919d92b3861a032a0ddcbb"
+  },
+  "test": {
+    "path": "test-prhm-action-registry-v2-bootstrap-transaction-plan-v1.cjs",
+    "commit": "b68909fd2db30b920dad278b5b4ebcca60c28513",
+    "git_blob_sha1": "c13c128f39c5e456cfdd21cc96dda1b40813eea7"
+  },
+  "journal_path": "/var/lib/prhm-agent-selfmaint-exec/registry-bootstrap-v2-journal.json",
+  "planned_fixed_directory_count": 10,
+  "planned_immutable_git_file_count": 20,
+  "production_modified": false,
+  "root_installer_installed": false,
+  "signed_five_field_route_installed": false,
+  "root_capability_provider_installed": false,
+  "private_socket_and_vault_installed": false,
+  "approval_requested": false,
+  "approval_consumed": false,
+  "operator_review_required_for_crash_recovery": true,
+  "external_signed_root_bootstrap_required": true,
+  "source_only": true
+}
