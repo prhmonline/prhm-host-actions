@@ -446,3 +446,34 @@ This does **not** bootstrap Production: the fixed typed 5-field signed
 route, independently launched root host runner, trustworthy reader/writer
 transport, rollback/blue-green live discovery, and durable audit remain
 uninstalled. Source-only CI does not supersede a real root preflight.
+
+## 2026-10-14 — Immutable five-field Approval Center gate
+
+The existing Host Actions v2 base route creates Approval Center requests
+from `{action}` only; it CANNOT issue the five-field registry approval.
+The separately reviewed, source-only contract
+`prhm-action-registry-v2-five-field-approval-gate-v1.cjs` now enforces
+`action`, `project`, `source_commit`, `manifest_commit` and
+`manifest_sha256` throughout request, confirmation, validate-and-consume.
+The canonical arguments SHA256 is pinned to
+`d1f29c8f517ca787f88f61d218a5dde03ecee2be096a7aefd91c6c2865d394c3`.
+A confirmation requires the real, pending and unexpired Approval Center
+request with that exact hash, plus the explicit critical second
+confirmation. Consumption has a fixed executor identity, not a generic
+consumer. The actual Ed25519 token and persisted one-time consumption
+ledger are independently verified by the existing gateway function.
+
+The authoritative V2 staged-runtime manifest now contains **19** exact
+Git blob pins, including this new contract. Tests check canonical
+five-field SHA, cross-release rejection, signed Ed25519, expired or
+forged token, policy mismatch and tampered ledger. No real token,
+approval request, approval decision or consumption occurred.
+
+**Important:** this is NOT a live registered HTTP route and does not
+modify policy, host owner files, MCP registry, or Production. The installed
+base API still uses action-only routing. The remaining bootstrap must
+safely register dedicated fixed request/confirm/consume endpoints,
+attach real Approval Center transport, install the root-owned runner,
+re-attest live four-owner SHAs, and independently validate recovery and
+MCP discovery before a new explicit L4 approval. Never reuse an older
+consumed request or treat source-only CI as deployed success.
