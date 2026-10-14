@@ -89,7 +89,7 @@ if(!haveAll){
   test('real unwired dispatcher rejects before filesystem mutation',()=>{
     const {r,options}=setup(assets,{synthetic:false});
     try{
-      assert.throws(()=>run(options),/preflight_denied/);
+      assert.throws(()=>run(options),/issuer_attestation_not_wired/);
       equalBefore(r,assets);
       assert.equal(fs.existsSync(path.join(r,'.cutover-test-lock')),false);
     }finally{clean(r)}
