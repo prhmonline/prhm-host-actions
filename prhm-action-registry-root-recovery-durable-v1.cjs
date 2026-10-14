@@ -129,12 +129,12 @@ function assertConsumed({io,id,release,snapshot}) {
 function createRecovery({release,requestId,io=fs,services=null,
  getuid=()=>process.getuid?.(),cgroup=()=>fs.readFileSync('/proc/self/cgroup','utf8')}={}){
  check(UUID.test(requestId||''),'request_uuid_invalid');
- const pinned=O.assertRelease(release);
  const checkIndependent=()=>{
   check(getuid()===0,'root_required');
   systemd.cgroupAttestation(cgroup(),getuid);
  };
  checkIndependent();
+ const pinned=O.assertRelease(release);
  const backup=BACKUPS+'/'+requestId,lock=LOCKS+'/'+requestId;
  const snapshot=parse(readFixed(io,backup+'/recovery.json'),'journal_json');
  C.validateSnapshot(release,snapshot,
