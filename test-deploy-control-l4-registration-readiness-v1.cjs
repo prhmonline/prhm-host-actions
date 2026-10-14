@@ -22,19 +22,14 @@ if(!files.every(Boolean)){
 }else{
   const [live,candidate,health]=files.map(x=>JSON.parse(fs.readFileSync(x,'utf8')));
   const copy=x=>structuredClone(x);
-  const criticalOperation={
-    level:4,risk:'critical',requires_second_confirmation:true,
-    one_time_use:true,requested_approver:'mohammad',expires_seconds:180
-  };
   const criticalScope={...g.EXPECTED,
     principals:[{principal_id:'mohammad',roles:['mcp-operator']}]};
   const proposed=()=>{
-    const p=copy(candidate);
-    p.operations[g.OPERATION]=copy(criticalOperation);
-    p.typed_scopes.push(copy(criticalScope));
+    // Final PR #14 policy already has the typed L4 operation and scope.
+    // Only the future registered Agent action is modeled here.
     const h=copy(health);
     h.host_actions_v2.push(g.ACTION);
-    return {policy:p,health:h};
+    return {policy:copy(candidate),health:h};
   };
   test('authentic live policy and registered actions prove L4 installer is ABSENT',()=>{
     const result=g.inspect({policy:live,health});
@@ -48,15 +43,17 @@ if(!files.every(Boolean)){
     assert.ok(result.blockers.includes('dedicated_l4_typed_scope_absent_or_invalid'));
     assert.ok(result.blockers.includes('dedicated_fixed_action_not_registered'));
   });
-  test('reviewed policy candidate has three release scopes but NO L4 installer scope',()=>{
+  test('reviewed PR #14 policy includes L4 permission but live Agent registry has no installer',()=>{
     const result=g.inspect({policy:candidate,health});
-    assert.equal(candidate.typed_scopes.length,55);
-    assert.equal(Object.keys(candidate.operations).length,75);
+    assert.equal(candidate.typed_scopes.length,56);
+    assert.equal(Object.keys(candidate.operations).length,76);
     assert.equal(result.source_review_gates_present,false);
     assert.equal(result.approved,false);
     assert.equal(result.may_install,false);
-    assert.ok(result.blockers.includes('dedicated_l4_operation_not_allowlisted'));
-    assert.ok(result.blockers.includes('dedicated_l4_typed_scope_absent_or_invalid'));
+    assert.equal(result.existing_generic_installer_level,3);
+    assert.deepEqual(result.blockers,[
+      'dedicated_fixed_action_not_registered','action_registry_uniqueness_failure'
+    ]);
   });
   test('synthetic fully typed L4 action satisfies only source review, never authorizes execution',()=>{
     const out=g.inspect(proposed());
