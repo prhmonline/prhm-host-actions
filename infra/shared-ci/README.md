@@ -93,3 +93,21 @@ firewall-cmd --get-policies 2>/dev/null || true
 
 This limited baseline does not replace a full normalized hash snapshot, but can disclose whether the proposed pre-forward hook priority is compatible with current firewalld/libvirt chains. **Do not apply any firewall rule based only on this output.**
 
+
+## Operator-supplied live Node1 hook/zone baseline (2026-10-14)
+
+Baseline evidence is recorded in `node1-observed-hooks-20261014.json`. This is **partial and human-pasted**, NOT the complete normalized read-only snapshot.
+- Existing IPv4 `filter` hooks: input/forward priority 0.
+- Existing IPv4 `mangle` hooks: input/forward priority -150.
+- Existing IPv4 `security` hooks: input/forward priority 150.
+- Existing `ip6` and `bridge` hooks reported; `inet prhm_ci_isolation` is not shown in the baseline excerpt.
+- Active zones: `public` on `eno1`, `libvirt` on `virbr-prod`; current firewalld policies: `allow-host-ipv6`.
+- Dedicated CI input/forward nft priorities **-195**, earlier than the observed IPv4 L3 filter/mangle/security hooks. This is a priority compatibility observation, **not proof** packets really traverse this hook or survive/reject in later iptables/firewalld/nat chains.
+- **Important scope caveat:** the current nft review policy permits TCP 443 to **any publicly routed IPv4 destination**, not GitHub-only. It is not a destination allowlist or anti-exfiltration control. Until a reviewed outbound proxy / allowlist policy is in place, only no-secret CI jobs may run and the approval gate must explicitly accept this public egress exposure.
+- No IPv6 egress is permitted by the reviewed bridge rules, but actual dual-stack leakage can only be ruled out by negative network tests from a guest. Do not assume filtering bridged east-west traffic between guests; never run two project workers on the same trusted L2 segment concurrently.
+
+The reviewed read-only `transaction-plan.py` consumes this baseline and the source manifest. Its stages are **guard first**, dedicated firewalld zone, `ci-net` definition, network start, disposable negative-probe VM, initial controller VM, and single ephemeral no-secret runner registration. The rollback sequence shuts down all CI workers before removing the network and finally deleting solely the dedicated CI guard; it explicitly refuses to disable the guard while CI guests remain running. A host reboot must not autostart CI networking or guests unless the guard is already verified and persistent.
+
+**Do not apply yet.** A full source-controlled SHA-pinned host transaction, independently reviewable firewall start/reload ordering, preimage digest capture, boot guard persistence and guest isolation smoke suite remain prerequisites. The host Agent's generic `firewall-cmd` read returned a restricted-command 403; the operator's supplied text was used only as partial evidence, without bypassing that restriction.
+
+Real CI result for this update: [run #38549904820](https://github.com/prhmonline/prhm-host-actions/actions/runs/38549904820) passed the offline suite including planner contracts, nft grammar, and signed Ubuntu image verification. No current code in PR #205 is allowed to apply Node1 changes.
