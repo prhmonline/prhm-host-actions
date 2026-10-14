@@ -96,8 +96,8 @@
     },
     {
       "source_path": "prhm-action-registry-v2-independent-runner-contract-v1.cjs",
-      "source_commit": "6b038d7618f2ec27ecb44e8fc92f3c4a5979836b",
-      "git_blob_sha1": "109806c87556bf7d193608956eb259ac2d5aa1fc",
+      "source_commit": "b0d99fba530e6780bf230a6f10908f547068c86d",
+      "git_blob_sha1": "0f9c09a80b6bd0f20850dad1a2aef032abf491c2",
       "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-independent-runner-contract-v1.cjs"
     },
     {
@@ -155,5 +155,7 @@
   "five_field_approval_requires_ed25519_and_consumed_ledger": true,
   "approval_http_adapter_source_commit": "db632ebd75b4e7b9e543b7cfc7d0f9f381cbe376",
   "http_approval_route_installed": false,
-  "http_approval_route_authentic_root_preflight_required": true
+  "http_approval_route_authentic_root_preflight_required": true,
+  "v2_runner_recovery_lock_and_audit_write_scopes_verified_in_source": true,
+  "v2_runner_scope_source_commit": "b0d99fba530e6780bf230a6f10908f547068c86d"
 }
