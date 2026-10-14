@@ -14,12 +14,12 @@
   "real_recovery_verified": false,
   "runtime_manifest": "manifests/honartik-shared-registry-v2-reviewed-runtime-stage-v1.json",
   "expected_immutable_runtime_files": 20,
-  "additional_root_files": 6,
+  "additional_root_files": 7,
   "destination_root": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2",
   "source": {
     "path": "prhm-action-registry-v2-trusted-base-capabilities-v1.cjs",
-    "source_commit": "d4266dc0ed6e5d1fb1010a433ae50ed617bfc3ea",
-    "git_blob_sha1": "07c7d8f99b1d6dd1f0f0f7fb113304e70c14b405"
+    "source_commit": "947c89b007f7d1956e3036587c12eb4196e27d6e",
+    "git_blob_sha1": "4812b3da7227d7200620e81194e771ebe74e46f7"
   },
   "test": {
     "path": "test-prhm-action-registry-v2-trusted-base-capabilities-v1.cjs",
@@ -29,8 +29,8 @@
   "files": [
     {
       "source_path": "prhm-action-registry-v2-trusted-base-capabilities-v1.cjs",
-      "source_commit": "d4266dc0ed6e5d1fb1010a433ae50ed617bfc3ea",
-      "git_blob_sha1": "07c7d8f99b1d6dd1f0f0f7fb113304e70c14b405",
+      "source_commit": "947c89b007f7d1956e3036587c12eb4196e27d6e",
+      "git_blob_sha1": "4812b3da7227d7200620e81194e771ebe74e46f7",
       "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-trusted-base-capabilities-v1.cjs"
     },
     {
@@ -62,6 +62,19 @@
       "source_commit": "d4266dc0ed6e5d1fb1010a433ae50ed617bfc3ea",
       "git_blob_sha1": "5e98876da1121dae41cc8d8fd64ed604d011af47",
       "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/manifests/honartik-shared-registry-v2-reviewed-runtime-stage-v1.json"
+    },
+    {
+      "source_path": "prhm-action-registry-v2-root-consumed-receipt-v1.cjs",
+      "source_commit": "541d0b49988b3159f36bcab2294a85e8b6a3bc23",
+      "git_blob_sha1": "a5ea90ba6681ee23d9cfe09080ce585b217638b2",
+      "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-root-consumed-receipt-v1.cjs"
     }
-  ]
+  ],
+  "consumed_ledger_reader_implemented_in_source": true,
+  "consumed_ledger_reader_installed": false,
+  "consumed_receipt_test": {
+    "path": "test-prhm-action-registry-v2-root-consumed-receipt-v1.cjs",
+    "source_commit": "54de0ebaf317f7838f7c6d47694d67639b31b265",
+    "git_blob_sha1": "53371efdadd267cbf253c8cd208f8bc5a372f13a"
+  }
 }
