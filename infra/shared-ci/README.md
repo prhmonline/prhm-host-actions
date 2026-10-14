@@ -60,3 +60,14 @@ Source of truth: `infra/shared-ci/manifest.json`; the read-only audit is `prefli
 
 Manual GPG/key import, root filesystem writes, firewall edits, Runner registration and VM creation **remain blocked** here. Any future apply needs separate owner authorization and reviewed immutable Git SHA.
 
+
+## Verified off-host evidence (2026-10-14)
+
+- **Real dedicated workflow PASS:** [GitHub Actions run 38547738341](https://github.com/prhmonline/prhm-host-actions/actions/runs/38547738341) ran **15/15 offline contract tests** with no Production/Node1 keys or protected environments.
+- **Official Ubuntu archival signature PASS:** `verify-ubuntu-archive.sh` retrieved the signed historical `noble/release-20260705` checksums and detached signature from Ubuntu, fetched the UEC signing public key, pinned signer fingerprint `D2EB44626FDDC30B513D5BB71A5D6C4C7DB87C81`, verified the detached GPG signature via `gpgv`, and confirmed the documented Ubuntu image's SHA256 exactly matches the owner-reported Node1 image SHA256 (`ffe6203da54deeb6db5d2a98a83f9ec8e55f149d3f7ba622e1abe5fa966ee3d6`). This is a vendor signature provenance check on the CI runner, **not** a fresh direct file read from Node1.
+- **nftables grammar PASS:** the same disposable GitHub runner installed nftables and ran `sudo nft --check --file infra/shared-ci/ci-isolation.nft.review`; this did **not** install rules and does **not** prove that the draft policy correctly isolates live Node1 firewalld/libvirt traffic.
+- **Host GPG keyring gate intentionally blocks:** `preflight.py` requires a root-owned trusted keyring under `/etc/prhm-ci/trust/` to run a separate local publisher-signature check; no keyring was installed on Node1. CI's separate verified provenance does not silently bypass that host gate.
+- **Still NOT DONE:** Node1 existing-firewall preimage inventory, nft/firewalld NAT interoperability test, full negative guest connectivity, executable approved apply/rollback transaction, isolated VM, GitHub ephemeral Runner registration, successful self-hosted smoke job, and clean one-job worker teardown.
+
+This evidence should not be summarized as a live Production/network guard being deployed. The signed hash, network file, root-owned keyring, policy and host identity must be rechecked immediately before any authorized apply.
+
