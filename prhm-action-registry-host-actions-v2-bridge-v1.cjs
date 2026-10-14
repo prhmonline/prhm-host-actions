@@ -49,7 +49,7 @@ function attestExistingRoute(bridge){
  // Externally injected capabilities are owned exclusively by the existing
  // root executor, never constructed from client-provided path/code.
  const functions=['readPinnedGitManifest','readPinnedGitSource','readLiveOwner','readStagedAsset',
-    'getInstaller','getRollback','verifyOriginalState',
+    'getInstaller','getRollback','claimOnce','verifyOriginalState',
     'getToolDiscovery','writeMetadataAudit'];
  for(const f of functions)if(!bridge||typeof bridge[f]!=='function')fail('trusted_capability_missing_'+f);
  return bridge;
@@ -99,6 +99,7 @@ async function applyAfterConsumption({input,approvalToken,capabilities}){
    fail('approved_installer_or_rollback_not_registered');
  return g.executeAfterTrustedAuthorization({
   release,args:input,signedApprovalToken:approvalToken,
+  trustedClaimOnce:async bound=>cap.claimOnce(bound),
   trustedInstaller:async bound=>installer(bound), // project-specific reviewed atomic installer
   trustedRollback:async bound=>rollback(bound),
   verifyOriginalState:async bound=>cap.verifyOriginalState(bound),
