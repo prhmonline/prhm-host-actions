@@ -38,8 +38,8 @@ test('runtime manifest is a single coherent fixed V2 release without production 
   manifest_commit:M.release_manifest_commit,manifest_sha256:M.release_manifest_sha256
  },P.release_manifest_path),P.release_manifest_path);
 });
-test('all 18 effective V2 staging destinations are unique, fixed and Git blob attested',()=>{
- assert.equal(M.files.length,18);
+test('all 19 effective V2 staging destinations are unique, fixed and Git blob attested',()=>{
+ assert.equal(M.files.length,19);
  const dests=new Set(),files=new Set();
  for(const file of M.files){
   assert.deepEqual(Object.keys(file).sort(),
@@ -74,7 +74,7 @@ test('V2 replacement bridge exact SHA overrides the unusable pinned V1 bridge',(
  assert.ok(src.includes('assertHonartikReleaseIdentity'));
  assert.ok(src.includes('honartik-config-center-registry-release-v2.json'));
 });
-test('every local CommonJS dependency resolves inside the 17-file staged runtime',()=>{
+test('every local CommonJS dependency resolves inside the 19-file staged runtime',()=>{
  const staged=new Set(M.files.map(x=>x.source_path));
  for(const a of M.files.filter(x=>x.source_path.endsWith('.cjs'))){
   const src=git(['show',a.source_commit+':'+a.source_path]).toString('utf8');
@@ -120,6 +120,18 @@ test('runner entry is pinned to immutable Git and cannot accept custom apply cal
  assert.ok(src.includes('bridge.applyAfterConsumption({'));
  assert.ok(src.includes('trusted_invocation_schema'));
  assert.equal(src.includes('apply=bridge.applyAfterConsumption'),false);
+});
+test('signed five-field Ed25519 contract is present in immutable V2 runtime closure',()=>{
+ const matches=M.files.filter(x=>x.source_path==='prhm-action-registry-v2-five-field-approval-gate-v1.cjs');
+ assert.equal(matches.length,1);
+ assert.equal(M.five_field_approval_requires_ed25519_and_consumed_ledger,true);
+ assert.equal(matches[0].source_commit,M.five_field_approval_source_commit);
+ assert.equal(matches[0].git_blob_sha1,'78001c5d059d26be55fa53adcf5d2d6c84cb6181');
+ const src=git(['show',matches[0].source_commit+':'+matches[0].source_path]).toString('utf8');
+ assert.match(src,/verifyConsumedRegistrationApproval/);
+ assert.match(src,/authorizeConsumeEnvelope/);
+ assert.match(src,/CONFIRM_LEVEL_4_CRITICAL/);
+ assert.match(src,/arguments_sha256/);
 });
 test('V2 independent entry cannot be used as an unapproved CLI apply',()=>{
  const r=cp.spawnSync(process.execPath,
