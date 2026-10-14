@@ -83,9 +83,10 @@ def inspect():
             gate(conf["vm"]["name"] not in vms, "vm_name_unused", "target VM already exists")
             gate(conf["network"]["name"] not in nets, "net_name_unused", "target network already exists")
             prod = ET.fromstring(cmd("virsh", "net-dumpxml", "prod-net"))
+            bridge, ip = prod.find("bridge"), prod.find("ip")
             gate(prod.findtext("name") == "prod-net" and
-                 prod.find("bridge").attrib.get("name") == "virbr-prod" and
-                 prod.find("ip").attrib.get("address") == "10.71.0.1",
+                 bridge is not None and bridge.attrib.get("name") == "virbr-prod" and
+                 ip is not None and ip.attrib.get("address") == "10.71.0.1",
                  "prod_net_unchanged", "existing prod bridge/subnet differs from audit")
             pool = cmd("virsh", "pool-info", "vm-storage")
             gate("State:" in pool, "pool_detected", "pool info missing")
