@@ -84,8 +84,11 @@ function observedFixture(stage){
   .map(op=>[op.destination,'absent']));
  const directory_states=Object.fromEntries(bootstrap.DIRECTORIES
   .map(d=>[d,'absent']));
+ const parent_states=Object.fromEntries(Object.values(stage.fixed_directory_parents)
+  .map(d=>[d,bootstrap.DIRECTORIES.includes(d)?'absent':'secure_root_parent']));
  return {owner_sha256:{...boundary.OWNERS},target_states,directory_states,
-  unit_load_state:'not-found',journal_absent:true,lock_absent:true};
+  parent_states,unit_load_state:'not-found',journal_absent:true,
+  lock_absent:true,socket_absent:true};
 }
 
 test('bootstrap stages exactly 35 immutable source files plus fixed systemd unit, never overwrites',()=>{
@@ -94,15 +97,28 @@ test('bootstrap stages exactly 35 immutable source files plus fixed systemd unit
  assert.equal(stage.action,'prhm_action_registry_install_v1');
  assert.equal(stage.source_file_count,35);
  assert.equal(stage.unit_count,1);
- assert.equal(stage.directory_count,2);
- assert.equal(stage.operations.length,38);
+ assert.equal(stage.directory_count,10);
+ assert.equal(stage.operations.length,46);
  assert.equal(stage.rollback_operations.length,stage.operations.length);
  assert.deepEqual(stage.operations.filter(x=>x.kind==='create_exclusive_pinned_git_file')
   .map(x=>x.destination).length,36);
- assert.equal(new Set(stage.operations.map(x=>x.destination)).size,38);
+ assert.equal(new Set(stage.operations.map(x=>x.destination)).size,46);
  assert.equal(stage.operations.at(-1).destination,bootstrap.UNIT);
  assert.equal(stage.operations.at(-1).mode,'0644');
- assert.equal(stage.operations[2].mode,'0600');
+ assert.equal(stage.operations[10].mode,'0600');
+ assert.ok(bootstrap.DIRECTORIES.includes(
+  '/var/lib/prhm-agent-selfmaint-exec/registry-approval-v2'));
+ assert.ok(bootstrap.DIRECTORIES.includes('/run/prhm-shared-registry-v2'));
+ assert.ok(bootstrap.DIRECTORIES.includes(
+  '/var/lib/prhm-agent-selfmaint-exec/registry-recovery-lock-v1'));
+ assert.ok(bootstrap.DIRECTORIES.includes(
+  '/var/backups/prhm-honartik-config-center-registration-v1'));
+ assert.equal(stage.fixed_directory_parents[
+  '/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/manifests'],
+  '/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2');
+ assert.ok(stage.operations.slice(0,10).every(x=>x.mode==='0700'));
+ assert.equal(stage.preexisting_directory_policy,
+  'exact_secure_root_owned_0700_or_absent');
  assert.equal(stage.write_precondition,'independently_authenticated_signed_l4_and_durable_lock');
  assert.equal(stage.no_overwrite_existing_targets,true);
  assert.equal(stage.no_protected_owner_rewrites,true);
@@ -135,7 +151,7 @@ test('observed host metadata can be consistent but cannot authorize Stage or L4'
 test('fail closed on occupied file, unsafe directory, journal, lock and unit',()=>{
  const stage=bootstrap.plan(fixture());
  let r=observedFixture(stage);
- r.target_states[stage.operations[2].destination]='present';
+ r.target_states[stage.operations[10].destination]='present';
  assert.ok(bootstrap.assessObserved(stage,r).blockers.includes('TARGET_NOT_ABSENT'));
  r=observedFixture(stage);r.directory_states[bootstrap.DIRECTORIES[0]]='unsafe_or_unknown';
  assert.ok(bootstrap.assessObserved(stage,r).blockers.includes('UNSAFE_STAGE_DIR'));
@@ -145,6 +161,14 @@ test('fail closed on occupied file, unsafe directory, journal, lock and unit',()
  assert.ok(bootstrap.assessObserved(stage,r).blockers.includes('FOREIGN_OR_UNKNOWN_JOURNAL'));
  r=observedFixture(stage);r.lock_absent=false;
  assert.ok(bootstrap.assessObserved(stage,r).blockers.includes('FOREIGN_OR_UNKNOWN_LOCK'));
+ r=observedFixture(stage);r.socket_absent=false;
+ assert.ok(bootstrap.assessObserved(stage,r).blockers.includes('FOREIGN_OR_UNKNOWN_SOCKET'));
+ r=observedFixture(stage);
+ r.parent_states['/var/lib/prhm-agent-selfmaint-exec']='absent';
+ assert.ok(bootstrap.assessObserved(stage,r).blockers.includes('UNSAFE_OR_MISSING_PARENT'));
+ r=observedFixture(stage);
+ r.parent_states['/var/backups']='unsafe_or_unknown';
+ assert.ok(bootstrap.assessObserved(stage,r).blockers.includes('UNSAFE_OR_MISSING_PARENT'));
 });
 
 test('reject forged observation fields, unknown paths and privileged execute',()=>{
@@ -153,6 +177,8 @@ test('reject forged observation fields, unknown paths and privileged execute',()
  assert.throws(()=>bootstrap.assessObserved(stage,r),/target_set/);
  r=observedFixture(stage);r.directory_states['/root']='absent';
  assert.throws(()=>bootstrap.assessObserved(stage,r),/directory_set/);
+ r=observedFixture(stage);r.parent_states['/root']='secure_root_parent';
+ assert.throws(()=>bootstrap.assessObserved(stage,r),/parent_set/);
  r=observedFixture(stage);r.owner_sha256.executor='0'.repeat(64);
  assert.ok(bootstrap.assessObserved(stage,r).blockers.includes('OWNER_DRIFT_executor'));
  r=observedFixture(stage);r.approved=true;
