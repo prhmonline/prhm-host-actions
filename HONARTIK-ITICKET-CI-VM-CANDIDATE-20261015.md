@@ -73,6 +73,57 @@ Docker + pinned MySQL 8 + Yii2 toolchain requires a **separately
 reviewed offline dependency/image-delivery method**, not weakening
 isolation by adding NAT or temporarily attaching to `prod-net`.
 
+## Reviewable source-only transaction core (2026-10-15)
+
+`honartik-iticket-ci-vm-transaction-v1.cjs` is now in this Draft PR.
+It is **not** an installed root helper or a live Agent 3 action.
+It builds exact offline `<domain>` and `<network>` XML, binds
+five approval fields using recursively sorted-key canonical JSON
+(in accordance with Approval Center), and defines a transaction
+contract for a future, **separately signed and registered**
+Host Actions v2 dispatcher.
+
+The dispatcher must own and independently supply the following
+non-user-input capabilities: verify immutable Git source and assets,
+consume a genuine one-time Level-4 Ed25519 approval,
+lock exactly this resource, read and recheck live host facts,
+durably/fsync journal intents and results, create/check exactly the
+new network/disk/non-booted VM, and roll back **only proven-owned**
+creations. Unknown creation outcomes must remain in a
+`MANUAL_RECOVERY_REQUIRED` journal for human inspection, not be
+unconditionally deleted. Nothing uses arbitrary command strings
+or accepts user-supplied paths, VM names, bank tokens or guest
+credentials.
+
+The candidate intentionally does **not** provide a CLI, invoke
+`virsh`, register a tool, obtain approval, start the guest,
+attach `prod-net`, create Docker containers or contact the bank.
+
+`test-honartik-iticket-ci-vm-transaction-v1.cjs` uses only an
+in-memory synthetic capability adapter; 10/10 tests PASS in a
+temporary source-blob-SHA-verified Linux folder:
+
+- canonical 5-field approval SHA and exact fixed guest XML,
+- simulated signed receipt and immutable Git source validation,
+- write-ahead ownership journal and exclusive resource lock,
+- safe 3-step offline definition with VM not started,
+- unauthenticated/replayed request and source mismatch refusal,
+- ambiguous disk creation, isolation verification failure,
+- rollback of only owned resources in reverse order,
+- unacknowledged journal finalization and rollback error reporting.
+
+An initial test caught a false-positive when a simulated journal
+finalization returned `false` instead of throwing. The core was
+fixed to treat missing durable acknowledgement as
+`MANUAL_RECOVERY_REQUIRED` and all 10 tests rerun green.
+This is **not** a real hypervisor apply test or recovery proof.
+
+The GitHub Actions source-only workflow now exercises both the
+6 existing fixed-resource candidate tests and 10 new transaction tests.
+Any claim of live readiness requires separate signed Host Actions
+registration, preflight, and a real isolated VM install after explicit
+approval.
+
 ## Critical trust-boundary blocker
 
 This candidate does **not** install or register an Agent 3 action.
