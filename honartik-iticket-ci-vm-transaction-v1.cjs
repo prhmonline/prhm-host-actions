@@ -71,12 +71,16 @@ function bindings(params){
     'source_binding_schema');
   requireTrue(SHA.test(params.source_commit)&&SHA.test(params.manifest_commit)&&
     HEX.test(params.manifest_sha256),'source_binding_invalid');
-  const args=JSON.stringify({
+  // Live Approval Center hashes recursively key-sorted canonical JSON,
+  // NOT insertion-order JSON.stringify. Preserve the exact typed five fields.
+  const fields={
     action:SPEC.action,project:'honartik_iticket_ci',
     source_commit:params.source_commit,
     manifest_commit:params.manifest_commit,
     manifest_sha256:params.manifest_sha256,
-  });
+  };
+  const args='{'+Object.keys(fields).sort().map(k=>
+    JSON.stringify(k)+':'+JSON.stringify(fields[k])).join(',')+'}';
   return Object.freeze({args,hash:sha(Buffer.from(args)),...params});
 }
 function assertCapabilities(io){
