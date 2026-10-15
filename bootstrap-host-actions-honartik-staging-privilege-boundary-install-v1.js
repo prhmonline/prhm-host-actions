@@ -11,12 +11,18 @@
  * candidate must NOT be callable as a privileged installer itself.
  */
 const boundary=require('./honartik-staging-privilege-boundary-install-v1.js');
+const layout=require('./prhm-action-registry-v2-root-bootstrap-layout-v1.cjs');
 const ROOT=boundary.ROOT;
 const UNIT=boundary.UNIT;
 const ACTION='prhm_action_registry_install_v1';
 const JOURNAL='/var/lib/prhm-agent-selfmaint-exec/registry-bootstrap-v2-journal.json';
 const LOCK='/var/lib/prhm-agent-selfmaint-exec/registry-bootstrap-v2-exclusive.lock';
-const DIRECTORIES=Object.freeze([ROOT,ROOT+'/manifests']);
+// Use the canonical reviewed root/runner/sidecar directory layout, not a
+// competing two-directory plan. Source-only module; no fs operations here.
+const DIRECTORY_SPECS=layout.required;
+const DIRECTORIES=Object.freeze(DIRECTORY_SPECS.map(d=>d.path));
+const PARENTS=layout.PARENTS;
+const SOCKET='/run/prhm-shared-registry-v2/registry.sock';
 function fail(reason){throw Error('honartik_root_bootstrap_plan_'+reason)}
 function check(ok,reason){if(!ok)fail(reason)}
 function exact(value,keys,reason){
@@ -29,6 +35,12 @@ function plan(inspectInput){
   reviewed.required_action===ACTION&&
   reviewed.installation_authorized===false&&
   reviewed.action_registered===false,'unreviewed_input');
+ const reviewedLayout=layout.immutablePlan();
+ check(reviewedLayout.required_dirs.length===10&&
+  DIRECTORIES.length===10&&new Set(DIRECTORIES).size===10&&
+  DIRECTORIES[0]===ROOT&&DIRECTORIES[1]===ROOT+'/manifests'&&
+  DIRECTORY_SPECS.every(d=>d.uid===0&&d.gid===0&&d.mode===0o700),
+  'canonical_root_layout_drift');
  const files=reviewed.stage_sources.map(f=>Object.freeze({
   kind:'create_exclusive_pinned_git_file',
   destination:f.destination,source_commit:f.source_commit,
@@ -45,8 +57,9 @@ function plan(inspectInput){
  check(files.length===35&&new Set([...files,service].map(f=>f.destination)).size===36,
   'duplicate_or_missing_stage_files');
  const ops=Object.freeze([
-  ...DIRECTORIES.map(destination=>Object.freeze({
-   kind:'mkdir_if_absent_root_only',destination,uid:0,gid:0,mode:'0700'
+  ...DIRECTORY_SPECS.map(spec=>Object.freeze({
+   kind:'mkdir_if_absent_root_only',destination:spec.path,
+   owner_role:spec.writer,uid:0,gid:0,mode:'0700'
   })),
   ...files,service
  ]);
@@ -63,7 +76,10 @@ function plan(inspectInput){
   manifest_blobs:reviewed.reviewed_manifest_blobs,
   exclusive_lock_path:LOCK,durable_journal_path:JOURNAL,
   write_precondition:'independently_authenticated_signed_l4_and_durable_lock',
-  directory_count:2,source_file_count:35,unit_count:1,
+  directory_count:10,source_file_count:35,unit_count:1,
+  fixed_directory_parents:Object.freeze(Object.fromEntries(
+   DIRECTORY_SPECS.map(d=>[d.path,PARENTS[d.key]]))),
+  preexisting_directory_policy:'exact_secure_root_owned_0700_or_absent',
   operations:ops,rollback_operations:rollbacks,
   phases:Object.freeze([
    'independent_host_readonly_preflight',
@@ -91,16 +107,19 @@ function plan(inspectInput){
  */
 function assessObserved(stage,observed){
  check(stage?.schema==='prhm.honartik.root-bootstrap-staging-plan.v1'&&
-  stage.action===ACTION&&stage.operations?.length===38&&
+  stage.action===ACTION&&stage.operations?.length===46&&
   stage.operations.at(-1)?.destination===UNIT&&
   stage.installs===false&&stage.executes===false,'untrusted_plan');
  exact(observed,
-  ['owner_sha256','target_states','directory_states','unit_load_state',
-   'journal_absent','lock_absent'],'observation_schema');
+  ['owner_sha256','target_states','directory_states','parent_states',
+   'unit_load_state','journal_absent','lock_absent','socket_absent'],
+  'observation_schema');
  exact(observed.owner_sha256,Object.keys(boundary.OWNERS),'owner_set');
  const targets=stage.operations.filter(x=>x.kind==='create_exclusive_pinned_git_file');
  exact(observed.target_states,targets.map(x=>x.destination),'target_set');
  exact(observed.directory_states,DIRECTORIES,'directory_set');
+ const parentPaths=[...new Set(Object.values(stage.fixed_directory_parents))];
+ exact(observed.parent_states,parentPaths,'parent_set');
  const blockers=[];
  for(const [kind,sha] of Object.entries(boundary.OWNERS))
   if(observed.owner_sha256[kind]!==sha)blockers.push('OWNER_DRIFT_'+kind);
@@ -108,6 +127,14 @@ function assessObserved(stage,observed){
   const state=observed.target_states[target.destination];
   check(['absent','present','unknown'].includes(state),'target_state_invalid');
   if(state!=='absent')blockers.push('TARGET_NOT_ABSENT');
+ }
+ for(const parent of parentPaths){
+  const state=observed.parent_states[parent];
+  check(['secure_root_parent','absent','unsafe_or_unknown'].includes(state),
+   'parent_state_invalid');
+  if(state!=='secure_root_parent'&&
+   !(state==='absent'&&DIRECTORIES.includes(parent)))
+   blockers.push('UNSAFE_OR_MISSING_PARENT');
  }
  for(const d of DIRECTORIES){
   const state=observed.directory_states[d];
@@ -120,6 +147,7 @@ function assessObserved(stage,observed){
  if(observed.unit_load_state!=='not-found')blockers.push('UNIT_ALREADY_REGISTERED');
  if(observed.journal_absent!==true)blockers.push('FOREIGN_OR_UNKNOWN_JOURNAL');
  if(observed.lock_absent!==true)blockers.push('FOREIGN_OR_UNKNOWN_LOCK');
+ if(observed.socket_absent!==true)blockers.push('FOREIGN_OR_UNKNOWN_SOCKET');
  return Object.freeze({
   schema:'prhm.honartik.root-bootstrap-staging-host-observation.v1',
   reviewed_file_count:36,reported_conditions_clear:blockers.length===0,
@@ -131,4 +159,4 @@ function assessObserved(stage,observed){
 }
 function execute(){fail('signed_root_host_adapter_missing')}
 module.exports=Object.freeze({ACTION,ROOT,UNIT,JOURNAL,LOCK,DIRECTORIES,
- plan,assessObserved,execute});
+ PARENTS,SOCKET,plan,assessObserved,execute});
