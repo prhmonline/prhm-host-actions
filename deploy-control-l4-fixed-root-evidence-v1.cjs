@@ -70,7 +70,7 @@ function gatherEvidence(read=readPinned){
    }catch(e){problem=String(e.message||e).slice(0,100)}
    const sha_match=!!observed&&observed.sha256===t.expected_sha256;
    const ownership_match=!!observed&&observed.uid===t.uid&&observed.gid===t.gid&&
-     (t.mode===null||observed.mode===t.mode);
+     (t.mode===null?(observed.mode&0o022)===0:observed.mode===t.mode);
    return Object.freeze({category:t.category,path:t.path,expected_sha256:t.expected_sha256,
      observed_sha256:observed?.sha256||null,
      observed_uid:observed?.uid??null,observed_gid:observed?.gid??null,
