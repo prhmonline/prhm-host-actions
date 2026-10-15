@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "project": "prhm-shared-ci",
+  "status": "REVIEW_ONLY",
+  "host": "server1.prhm.ir",
+  "virtualization": "libvirt",
+  "network": {
+    "name": "ci-net",
+    "bridge": "virbr-ci",
+    "subnet": "10.72.0.0/24",
+    "egress": "REQUIRES_EXPLICIT_HOST_FIREWALL_POLICY",
+    "forbidden_destinations": [
+      "10.71.0.0/24",
+      "127.0.0.0/8",
+      "169.254.0.0/16",
+      "172.16.0.0/12",
+      "192.168.0.0/16",
+      "10.0.0.0/8"
+    ],
+    "ipv6": "DISABLED_UNTIL_EXPLICITLY_ISOLATED",
+    "offhost_nft_grammar_check_run": "https://github.com/prhmonline/prhm-host-actions/actions/runs/38547738341"
+  },
+  "vm": {
+    "name": "prhm-shared-ci",
+    "vcpus": 4,
+    "memory_mib": 8192,
+    "disk_gib": 80,
+    "concurrent_jobs": 1
+  },
+  "image": {
+    "path": "/var/lib/libvirt/images/base/noble-server-cloudimg-amd64.img",
+    "sha256": "ffe6203da54deeb6db5d2a98a83f9ec8e55f149d3f7ba622e1abe5fa966ee3d6",
+    "sums": "/var/lib/libvirt/images/base/ubuntu-noble-SHA256SUMS",
+    "sig": "/var/lib/libvirt/images/base/ubuntu-noble-SHA256SUMS.gpg",
+    "vendor_keyring": "/etc/prhm-ci/trust/ubuntu-cloudimage-keyring.gpg",
+    "expected_signer_fingerprint": "D2EB44626FDDC30B513D5BB71A5D6C4C7DB87C81",
+    "ubuntu_release": "noble/release-20260705",
+    "vendor_filename": "ubuntu-24.04-server-cloudimg-amd64.img",
+    "signed_checksums_url": "https://cloud-images.ubuntu.com/releases/noble/release-20260705/SHA256SUMS",
+    "detached_signature_url": "https://cloud-images.ubuntu.com/releases/noble/release-20260705/SHA256SUMS.gpg",
+    "pinned_signer_reference": "https://ubuntu.com/docs/public-images/public-images-how-to/verify-image-checksum/",
+    "offhost_signature_attestation_run": "https://github.com/prhmonline/prhm-host-actions/actions/runs/38547738341"
+  },
+  "runners": {
+    "mode": "per-repository-ephemeral",
+    "lifetime": "single-job-then-destroy-worker",
+    "privilege": "unprivileged",
+    "default_secrets": false,
+    "production_deploy": false
+  },
+  "authorization": {
+    "git_first": true,
+    "review_and_approval_required": true,
+    "production_operations": false,
+    "node1_nft_preimage_sha256": null,
+    "node1_prod_net_xml_preimage_sha256": null,
+    "node1_preimage_reviewed_commit": null,
+    "node1_host_mutation_level4_approved": false,
+    "trusted_level4_public_key_sha256": null,
+    "trusted_level4_approval_provenance": "UNCONFIGURED_EXTERNAL_ED25519_CONTROL_PLANE"
+  }
+}

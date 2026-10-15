@@ -1,0 +1,116 @@
+{
+  "schema": 1,
+  "source": "owner-provided root shell read-only command output, 2026-10-14",
+  "completeness": "PARTIAL_HOOK_SUMMARY_ONLY",
+  "host": "server1.prhm.ir",
+  "commands": [
+    "nft -a list ruleset | awk '/^table / || /type (filter|nat) hook/ {print}' | head -n 100",
+    "firewall-cmd --get-active-zones",
+    "firewall-cmd --get-policies"
+  ],
+  "nft_tables": [
+    "ip/filter",
+    "ip/security",
+    "ip/raw",
+    "ip/mangle",
+    "ip/nat",
+    "ip6/filter",
+    "ip6/security",
+    "ip6/raw",
+    "ip6/mangle",
+    "ip6/nat",
+    "bridge/filter",
+    "bridge/nat"
+  ],
+  "nft_forward_hooks": [
+    {
+      "family": "ip",
+      "table": "filter",
+      "priority": "filter",
+      "numeric_priority": 0,
+      "policy": "accept"
+    },
+    {
+      "family": "ip",
+      "table": "mangle",
+      "priority": "mangle",
+      "numeric_priority": -150,
+      "policy": "accept"
+    },
+    {
+      "family": "ip",
+      "table": "security",
+      "priority": "150",
+      "numeric_priority": 150,
+      "policy": "accept"
+    },
+    {
+      "family": "ip6",
+      "table": "filter",
+      "priority": "filter",
+      "numeric_priority": 0,
+      "policy": "accept"
+    },
+    {
+      "family": "ip6",
+      "table": "security",
+      "priority": "150",
+      "numeric_priority": 150,
+      "policy": "accept"
+    },
+    {
+      "family": "ip6",
+      "table": "mangle",
+      "priority": "mangle",
+      "numeric_priority": -150,
+      "policy": "accept"
+    },
+    {
+      "family": "bridge",
+      "table": "filter",
+      "priority": "filter",
+      "numeric_priority": 0,
+      "policy": "accept"
+    }
+  ],
+  "nft_input_hooks": [
+    {
+      "family": "ip",
+      "table": "filter",
+      "numeric_priority": 0
+    },
+    {
+      "family": "ip",
+      "table": "mangle",
+      "numeric_priority": -150
+    },
+    {
+      "family": "ip",
+      "table": "security",
+      "numeric_priority": 150
+    }
+  ],
+  "firewalld_active_zones": {
+    "libvirt": [
+      "virbr-prod"
+    ],
+    "public": [
+      "eno1"
+    ]
+  },
+  "firewalld_policies": [
+    "allow-host-ipv6"
+  ],
+  "planned_chain_priority": -195,
+  "reserved_new_name": "prhm_ci_isolation",
+  "observed_ci_net_exists": false,
+  "full_normalized_ruleset_digest": null,
+  "full_prod_net_xml_digest": null,
+  "assertions": {
+    "existing_production_zone_modification_allowed": false,
+    "snapshot_is_sufficient_for_apply": false,
+    "nft_grammar_offhost_test_completed": true,
+    "libvirt_firewalld_interop_live_test_completed": false,
+    "guest_negative_production_reachability_test_completed": false
+  }
+}
