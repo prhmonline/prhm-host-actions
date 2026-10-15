@@ -94,7 +94,7 @@ function verifyApproval(approval, operation) {
   // This must come from the trusted control plane's consumed-approval boundary,
   // NEVER from browser JSON or operator-supplied fields.
   if (!approval || approval.consumedByTrustedControlPlane!==true ||
-      approval.oneTime===false || approval.operation!==operation ||
+      approval.oneTime!==true || approval.operation!==operation ||
       approval.backendSha!==PINS.backend.target ||
       approval.frontendSha!==PINS.frontend.target ||
       typeof approval.receiptId!=='string' || approval.receiptId.length<8)
