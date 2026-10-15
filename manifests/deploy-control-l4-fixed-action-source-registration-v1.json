@@ -1,0 +1,65 @@
+{
+  "schema_version": "prhm.deploy-control.l4-fixed-action.source-registration.v1",
+  "action": "deploy_control_cutover_install_v1",
+  "operation": "host_action.deploy_control_cutover_install_v1",
+  "source_repository": "prhmonline/prhm-host-actions",
+  "source_commit": "a0d8fff2a53427a19440369048546e3c9e72591c",
+  "source_path": "deploy-control-l4-privileged-transaction-v1.cjs",
+  "source_git_blob": "0508a8df4824e5642f805eef87d2daa0278eec31",
+  "source_sha256": "6cbd55f4e7dfd58c7368ce2adecc6e376fe4a4a6cae39d5f1b7352b245c89385",
+  "risk": "critical",
+  "level": 4,
+  "tool": "host_action_v2_apply",
+  "project": "control_plane",
+  "environment": "production",
+  "requires_second_confirmation": true,
+  "one_time_use": true,
+  "typed_scope": {
+    "principal_id": "mohammad",
+    "role": "mcp-operator",
+    "action": "deploy_control_cutover_install_v1",
+    "operation": "host_action.deploy_control_cutover_install_v1",
+    "tool": "host_action_v2_apply",
+    "project": "control_plane",
+    "environment": "production",
+    "risk": "critical"
+  },
+  "policy": {
+    "repository": "prhmonline/prhm-company-control-plane",
+    "commit": "acffc7f9e02073f7aaf6ba92777f7acff6481f81",
+    "path": "config/approval-policy.json",
+    "git_blob": "702fbed1d0a9936e6fc0e42694f3e1ce6941f4bc",
+    "raw_sha256": "ed527c12ee330b8e1f5616fcb0c712eb89dddd9395197b2d855f00d3deea0678"
+  },
+  "central_dispatcher": {
+    "repository": "prhmonline/deploy-control",
+    "commit": "1e16bbb633a2d7b62d1322fe4c93bf9df346a748",
+    "preconsumption_issuer_attestation": true
+  },
+  "rollback": {
+    "archive": "/root/prhm-cutover-backup-8ntRjFRD/preimage.tar",
+    "sha256": "8108ef30c1a5b56fc25bebf52a67857ec77165c4c159354c876e622e0e0304b2",
+    "required": true,
+    "runtime_only": true,
+    "git_history_unchanged": true
+  },
+  "root_owner_preimages": {
+    "/opt/prhm-agent-selfmaint/server.js": "4c29d01a248d59ee85754dfa5a59e8132fe22e6b34ef04324228c16c88727406",
+    "/opt/prhm-agent-selfmaint-exec/server.js": "410406ba0965ef3a5cad6da6306a85335e38acc3637fb6ed60fa42200a10c2e0",
+    "/opt/prhm-company-control-plane/config/approval-policy.json": "148fe2a724befc15cd8c731b0195d83e254d39215792a5084b70dd5b5c178174",
+    "/home/agent/ssh-mcp-server/src/plugins/hostActionsV2.js": "bd768f992dab75710558e3f47187c311c2ee5b5ec6f5751a74e0bbfa64729166"
+  },
+  "stage": "reviewed-source-registration-only",
+  "registered_in_git": true,
+  "registered_on_host": false,
+  "approved": false,
+  "production_executable": false,
+  "requires": [
+    "independently_reviewed_root_owned_capability_adapter",
+    "approved_fixed_host_action_v2_owner_patches",
+    "root_registry_installation_with_signed_level4_authorization",
+    "private_executor_token_provisioned_outside_git",
+    "actual_sudo_and_external_trigger_lock_attestation",
+    "restart_and_crash_recovery_verification"
+  ]
+}
