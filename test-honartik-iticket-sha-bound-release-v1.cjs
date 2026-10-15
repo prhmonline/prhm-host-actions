@@ -59,15 +59,15 @@ function mock(options={}){
     verifyDark:async()=>{trace.push('dark');return options.darkFails!==true;},
     rollbackApplication:async()=>{trace.push('rollback');if(options.rollbackThrows)throw Error('rollback_failed');},
     verifyRollback:async()=>{trace.push('rollback_verification');return !options.rollbackInvalid;},
-    armPilot:async()=>{trace.push('pilot');return {
-      scopedSingleBuyerSeat:true,publicCheckoutDisabled:true
+    armPilot:async()=>{trace.push('pilot');if(options.pilotThrows)throw new Error('pilot_partial');return {
+      scopedSingleBuyerSeat:!options.pilotInvalid,publicCheckoutDisabled:true
     };},
     verifyPilotFinancialEvidence:async()=>{trace.push('financial_proof');return {
       bankSepVerified:true,sellerWalletDebitedOnce:true,samfaTicketValid:true,
       clearingJournalBalanced:true,refundReconciliationTested:!options.refundUnproven
     };},
     armPublic:async()=>{trace.push('public');if(options.activationThrows)throw new Error('public_failed');return {publicCheckoutEnabled:true};},
-    disarmPurchases:async()=>{trace.push('disarm');},
+    disarmPurchases:async()=>{trace.push('disarm');if(options.disarmThrows)throw new Error('disarm_failed');},
     writeAudit:async(record)=>{trace.push('audit:'+record.status);audits.push(record);}
   };
   return {ops,trace,audits};
@@ -220,4 +220,28 @@ test('CAS conflict refuses to record a false preflight',async()=>{
   const c=createReleaseCoordinator(x.ops);
   await assert.rejects(c.preflight(),/durable_release_state_conflict/);
   assert.equal(c.getPhase(),'new');
+});
+
+test('partial pilot exception disarms payment and retains dark state',async()=>{
+  const x=mock({pilotThrows:true});
+  const c=createReleaseCoordinator(x.ops);
+  await c.preflight();await c.darkDeploy();
+  await assert.rejects(c.pilot(),/pilot_partial/);
+  assert.equal(c.getPhase(),'dark');
+  assert.ok(x.trace.includes('disarm'));
+  assert.equal(x.audits.at(-1).publicCheckoutEnabled,false);
+});
+test('invalid pilot scope disarms before public availability',async()=>{
+  const x=mock({pilotInvalid:true});
+  const c=createReleaseCoordinator(x.ops);
+  await c.preflight();await c.darkDeploy();
+  await assert.rejects(c.pilot(),/pilot_scope_not_verified/);
+  assert.ok(x.trace.includes('disarm'));
+  assert.ok(!x.trace.includes('public'));
+});
+test('failed disarm leaves a deliberate critical manual-intervention error',async()=>{
+  const x=mock({pilotThrows:true,disarmThrows:true});
+  const c=createReleaseCoordinator(x.ops);
+  await c.preflight();await c.darkDeploy();
+  await assert.rejects(c.pilot(),/pilot_disarm_unverified_manual_intervention_required/);
 });
