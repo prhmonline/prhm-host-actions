@@ -1,0 +1,40 @@
+name: Deploy Control Fixed L4 Action Source Registration
+
+on:
+  pull_request:
+    paths:
+      - 'deploy-control-l4-privileged-transaction-v1.cjs'
+      - 'test-deploy-control-l4-privileged-transaction-v1.cjs'
+      - 'test-deploy-control-l4-fixed-action-registration-v1.cjs'
+      - 'manifests/deploy-control-l4-fixed-action-source-registration-v1.json'
+      - '.github/workflows/deploy-control-l4-fixed-action-review-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verified-fixed-action-source-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Verify pinned Git source and no privileged runtime interface
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check deploy-control-l4-privileged-transaction-v1.cjs
+          node --check test-deploy-control-l4-privileged-transaction-v1.cjs
+          node --check test-deploy-control-l4-fixed-action-registration-v1.cjs
+          node --test test-deploy-control-l4-fixed-action-registration-v1.cjs
+          node - <<'NODE'
+          const x=require('./manifests/deploy-control-l4-fixed-action-source-registration-v1.json');
+          if(x.registered_on_host!==false || x.approved!==false ||
+             x.production_executable!==false || x.level!==4 ||
+             x.requires_second_confirmation!==true) {
+            throw Error('misrepresented_live_registration');
+          }
+          console.log('SOURCE_REGISTRATION=PASS LIVE_INSTALL=NOT_AUTHORIZED');
+          NODE
