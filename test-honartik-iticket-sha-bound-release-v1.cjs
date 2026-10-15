@@ -18,12 +18,24 @@ function state(){
 }
 function mock(options={}){
   const trace=[],audits=[];
+  let durablePhase='new';
   const approval=(operation)=>({
     consumedByTrustedControlPlane:true,oneTime:true,operation,
     backendSha:PINS.backend.target,frontendSha:PINS.frontend.target,
     receiptId:'signedreceipt-1234'
   });
   const ops={
+    readState:async()=>{trace.push('read_state');return {
+      phase:durablePhase,backendSha:PINS.backend.target,frontendSha:PINS.frontend.target
+    };},
+    writeState:async(record)=>{
+      trace.push('state:'+record.expectedPhase+'->'+record.nextPhase);
+      if(options.stateCasFails || durablePhase!==record.expectedPhase ||
+        record.backendSha!==PINS.backend.target ||
+        record.frontendSha!==PINS.frontend.target) return {casCommitted:false};
+      durablePhase=record.nextPhase;
+      return {casCommitted:true};
+    },
     inspect:async()=>{trace.push('inspect');return options.state||state();},
     testIsolated:async()=>{trace.push('tests');return {
       backendTarget:PINS.backend.target,frontendTarget:PINS.frontend.target,
@@ -128,7 +140,7 @@ test('preflight rejects missing source without requesting money, DDL or approval
   const s=state();s.backend.pinnedSourceObjectVerified=false;
   const x=mock({state:s}),c=createReleaseCoordinator(x.ops);
   await assert.rejects(c.preflight(),/backend_pinned_source_unavailable/);
-  assert.deepEqual(x.trace,['inspect']);
+  assert.deepEqual(x.trace,['read_state','inspect']);
 });
 test('incomplete real MySQL integration blocks before approval or mutation',async()=>{
   const x=mock({tests:{mysql8Yii2IntegrationPassed:false}}),c=createReleaseCoordinator(x.ops);
@@ -187,4 +199,25 @@ test('activation failure disarms rather than leaving partial public checkout',as
   await assert.rejects(c.publicLaunch(),/public_failed/);
   assert.equal(c.getPhase(),'pilot');
   assert.ok(x.trace.includes('disarm'));
+});
+
+test('Host Action restart resumes persisted stage without replaying migration',async()=>{
+  const x=mock();
+  const first=createReleaseCoordinator(x.ops);
+  await first.preflight();
+  await first.darkDeploy();
+  const afterRestart=createReleaseCoordinator(x.ops);
+  await afterRestart.pilot();
+  assert.equal(afterRestart.getPhase(),'pilot');
+  assert.equal(x.trace.filter(k=>k==='migrations').length,1);
+  const launchWorker=createReleaseCoordinator(x.ops);
+  const result=await launchWorker.publicLaunch();
+  assert.equal(result.publicCheckoutEnabled,true);
+  assert.equal(launchWorker.getPhase(),'public');
+});
+test('CAS conflict refuses to record a false preflight',async()=>{
+  const x=mock({stateCasFails:true});
+  const c=createReleaseCoordinator(x.ops);
+  await assert.rejects(c.preflight(),/durable_release_state_conflict/);
+  assert.equal(c.getPhase(),'new');
 });
