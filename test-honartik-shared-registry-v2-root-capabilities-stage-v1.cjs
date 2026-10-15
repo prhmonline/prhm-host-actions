@@ -30,6 +30,8 @@ require('./test-honartik-shared-registry-v2-independent-root-launcher-stage-v2.c
 require('./test-prhm-action-registry-v2-root-stage-readonly-preflight-v1.cjs');
 // Existing three-manifest root+sidecar closure: exactly 35 runtime Git objects and fixed isolated systemd unit.
 require('./test-honartik-shared-registry-v2-three-manifest-closure-v1.cjs');
+// Source-only, independently pinned signed-staging handoff; approval and execution remain privileged host operations.
+require('./test-honartik-staging-privilege-boundary-install-v1.js');
 // Lock remains durably held on partial rollback, failed live discovery, audit error, or drift.
 require('./test-prhm-action-registry-v2-durable-recovery-locksafe-v1.cjs');
 require('./test-honartik-shared-registry-v2-root-runner-bound-seven-stage-v1.cjs');
