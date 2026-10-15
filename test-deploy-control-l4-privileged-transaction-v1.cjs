@@ -26,7 +26,7 @@ function fixtures(){
 function harness({inject='',receiptPatch=null,wrongLive=false,unfreezeFail=false}={}){
  const {assets,old}=fixtures();
  let files=new Map([...old].map(([k,b])=>[k,Buffer.from(b)]));
- let snapshot=null,policyNew=false,frozen=false,consumed=0,writeCount=0,rollbacks=0;
+ let snapshot=null,policyNew=false,frozen=false,consumed=0,writeCount=0,rollbacks=0,discoveryCalls=0;
  const events=[],calls=[];
  const before=()=>{
   const state=policyNew?{version:'2026-10-15.1-deploy-control-l4-installer-enrollment-v1',
@@ -81,7 +81,7 @@ function harness({inject='',receiptPatch=null,wrongLive=false,unfreezeFail=false
   reloadApprovalCenter:async()=>{calls.push('reload');policyNew=sha(files.get(tx.ASSETS[0].path))===tx.ASSETS[0].sha256;
    failPoint('restart');return true},
   getApprovalCenterHealth:async()=>wrongLive?{...before(),policy_hash:'a'.repeat(64)}:before(),
-  getFixedToolDiscovery:async()=>{failPoint('registration');return true},
+  getFixedToolDiscovery:async()=>{discoveryCalls++;if(inject==='unregistered-preflight')return false;if(inject==='registration'&&discoveryCalls>1)throw Error('simulated_registration');return true},
   verifyInstalledPostimages:async({assets,legacy_absent,staging})=>{
    failPoint('postimage');for(const a of assets)if(!files.has(a.path)||sha(files.get(a.path))!==a.sha256)return false;
    for(const a of legacy_absent)if(files.has(a))return false;
@@ -129,6 +129,19 @@ test('unexpected asset SHA, missing capability and wrong issuer fail before any 
  await assert.rejects(tx.applyFixedCutover({host:b.host,assets:b.assets}),/DENIED_OR_ROLLED_BACK/);
  assert.equal(b.gets().consumed,0);assert.equal(b.gets().writeCount,0);
 });
+test('missing independently registered Level-4 action denies BEFORE freezing, backup or permit consumption',async()=>{
+ const h=harness({inject:'unregistered-preflight'});
+ await assert.rejects(tx.applyFixedCutover({host:h.host,assets:h.assets}),
+   /DENIED_OR_ROLLED_BACK/);
+ assert.equal(h.gets().consumed,0);
+ assert.equal(h.gets().writeCount,0);
+ assert.equal(h.gets().rollbacks,0);
+ assert.equal(h.gets().frozen,false);
+ assert.equal(h.calls.includes('freeze'),false);
+ assert.equal(h.calls.includes('journal'),false);
+ sameState(h.gets(),h.old);
+});
+
 test('unverified receipt cannot install any Root file and restores journal',async()=>{
  const h=harness({receiptPatch:{signed:false}});
  await assert.rejects(tx.applyFixedCutover({host:h.host,assets:h.assets}),/DENIED_OR_ROLLED_BACK/);
