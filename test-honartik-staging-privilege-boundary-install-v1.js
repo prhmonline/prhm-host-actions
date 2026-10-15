@@ -74,3 +74,89 @@ test('no executable or signed stage capability exposed from development source',
  assert.equal(typeof boundary.execute,'undefined');
  assert.equal(typeof boundary.requestApproval,'undefined');
 });
+
+
+const bootstrap=require('./bootstrap-host-actions-honartik-staging-privilege-boundary-install-v1.js');
+
+function observedFixture(stage){
+ const target_states=Object.fromEntries(stage.operations
+  .filter(op=>op.kind==='create_exclusive_pinned_git_file')
+  .map(op=>[op.destination,'absent']));
+ const directory_states=Object.fromEntries(bootstrap.DIRECTORIES
+  .map(d=>[d,'absent']));
+ return {owner_sha256:{...boundary.OWNERS},target_states,directory_states,
+  unit_load_state:'not-found',journal_absent:true,lock_absent:true};
+}
+
+test('bootstrap stages exactly 35 immutable source files plus fixed systemd unit, never overwrites',()=>{
+ const stage=bootstrap.plan(fixture());
+ assert.equal(stage.schema,'prhm.honartik.root-bootstrap-staging-plan.v1');
+ assert.equal(stage.action,'prhm_action_registry_install_v1');
+ assert.equal(stage.source_file_count,35);
+ assert.equal(stage.unit_count,1);
+ assert.equal(stage.directory_count,2);
+ assert.equal(stage.operations.length,38);
+ assert.equal(stage.rollback_operations.length,stage.operations.length);
+ assert.deepEqual(stage.operations.filter(x=>x.kind==='create_exclusive_pinned_git_file')
+  .map(x=>x.destination).length,36);
+ assert.equal(new Set(stage.operations.map(x=>x.destination)).size,38);
+ assert.equal(stage.operations.at(-1).destination,bootstrap.UNIT);
+ assert.equal(stage.operations.at(-1).mode,'0644');
+ assert.equal(stage.operations[2].mode,'0600');
+ assert.equal(stage.write_precondition,'independently_authenticated_signed_l4_and_durable_lock');
+ assert.equal(stage.no_overwrite_existing_targets,true);
+ assert.equal(stage.no_protected_owner_rewrites,true);
+ for(const field of ['installs','executes','production_mutation',
+  'safe_to_request_l4','verified_on_real_host'])assert.equal(stage[field],false,field);
+});
+
+test('rollback is reverse-order and cannot remove unowned original files',()=>{
+ const stage=bootstrap.plan(fixture());
+ assert.deepEqual(stage.rollback_operations.map(x=>x.destination),
+  stage.operations.map(x=>x.destination).reverse());
+ assert.equal(stage.rollback_operations[0].destination,bootstrap.UNIT);
+ assert.ok(stage.rollback_operations.every(x=>
+  ['unlink_only_if_created_by_current_verified_journal',
+   'rmdir_if_created_and_verified_empty'].includes(x.kind)));
+ assert.equal(stage.does_not_remove_unowned_files,true);
+ assert.equal(stage.root_approval_not_issued,true);
+});
+
+test('observed host metadata can be consistent but cannot authorize Stage or L4',()=>{
+ const stage=bootstrap.plan(fixture());
+ const review=bootstrap.assessObserved(stage,observedFixture(stage));
+ assert.equal(review.reported_conditions_clear,true);
+ assert.deepEqual(review.blockers,[]);
+ for(const k of ['independently_root_attested','authorized','installation_approved',
+  'can_stage','can_request_l4','production_mutation'])
+  assert.equal(review[k],false,k);
+});
+
+test('fail closed on occupied file, unsafe directory, journal, lock and unit',()=>{
+ const stage=bootstrap.plan(fixture());
+ let r=observedFixture(stage);
+ r.target_states[stage.operations[2].destination]='present';
+ assert.ok(bootstrap.assessObserved(stage,r).blockers.includes('TARGET_NOT_ABSENT'));
+ r=observedFixture(stage);r.directory_states[bootstrap.DIRECTORIES[0]]='unsafe_or_unknown';
+ assert.ok(bootstrap.assessObserved(stage,r).blockers.includes('UNSAFE_STAGE_DIR'));
+ r=observedFixture(stage);r.unit_load_state='loaded';
+ assert.ok(bootstrap.assessObserved(stage,r).blockers.includes('UNIT_ALREADY_REGISTERED'));
+ r=observedFixture(stage);r.journal_absent=false;
+ assert.ok(bootstrap.assessObserved(stage,r).blockers.includes('FOREIGN_OR_UNKNOWN_JOURNAL'));
+ r=observedFixture(stage);r.lock_absent=false;
+ assert.ok(bootstrap.assessObserved(stage,r).blockers.includes('FOREIGN_OR_UNKNOWN_LOCK'));
+});
+
+test('reject forged observation fields, unknown paths and privileged execute',()=>{
+ const stage=bootstrap.plan(fixture());
+ let r=observedFixture(stage);r.target_states['/etc/sudoers']='absent';
+ assert.throws(()=>bootstrap.assessObserved(stage,r),/target_set/);
+ r=observedFixture(stage);r.directory_states['/root']='absent';
+ assert.throws(()=>bootstrap.assessObserved(stage,r),/directory_set/);
+ r=observedFixture(stage);r.owner_sha256.executor='0'.repeat(64);
+ assert.ok(bootstrap.assessObserved(stage,r).blockers.includes('OWNER_DRIFT_executor'));
+ r=observedFixture(stage);r.approved=true;
+ assert.throws(()=>bootstrap.assessObserved(stage,r),/observation_schema/);
+ assert.throws(()=>bootstrap.execute(),/signed_root_host_adapter_missing/);
+ assert.equal(typeof bootstrap.install,'undefined');
+});
