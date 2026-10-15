@@ -43,7 +43,7 @@ const POLICY_AFTER=Object.freeze({version:CONTRACT.candidate_policy_version,
   hash:CONTRACT.candidate_policy_object_sha256});
 const CAPABILITIES=Object.freeze([
  'assertTrustedRootExecutor','attestExactGitCommitAndBlobs','freezeAllDeployEntrypoints',
- 'readTrustedFile','assertAbsent','inspectEffectiveSudoGrants',
+ 'readTrustedFile','attestRootFileSha256','assertAbsent','inspectEffectiveSudoGrants',
  'verifyBackupArchive','createDurableRecoveryJournal','verifyRecoveryIsReady',
  'readPrivateExecutorToken','consumeSignedExactLevel4Authorization',
  'atomicWriteRootFile','removeExactLegacySudoers','validateFullSudoers',
@@ -91,9 +91,9 @@ async function preflight(host,assets){
  const staging=await h.readTrustedFile(STAGING.path);
  if(!Buffer.isBuffer(staging)||sha(staging)!==STAGING.sha256)
    fail('staging_grant_drift');
- const live=await h.readTrustedFile(ASSETS[0].path);
- if(!Buffer.isBuffer(live)||sha(live)!==CONTRACT.live_policy_raw_sha256)
-   fail('live_policy_drift');
+ // Root-owned executor must safely hash the on-disk policy preimage itself.
+ if(await h.attestRootFileSha256(ASSETS[0].path)!==
+    CONTRACT.live_policy_raw_sha256)fail('live_policy_drift');
  for(const target of ASSETS.slice(1))if(await h.assertAbsent(target.path)!==true)
    fail('unexpected_existing_target');
  if(await h.assertAbsent(CONFIG)!==true)fail('unexpected_private_config');
