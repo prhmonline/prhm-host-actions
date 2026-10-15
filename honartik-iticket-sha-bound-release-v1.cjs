@@ -197,6 +197,8 @@ function createReleaseCoordinator(ops) {
       // then throw. Never leave such an operation publicly reachable.
       try {
         await ops.disarmPurchases();
+        if (observedPhase === 'pilot')
+          await setPhase('pilot','dark');
         await audit('pilot_activation_failed_closed',{
           publicCheckoutEnabled:false,
           issue:error.code||'pilot_activation_error'
@@ -225,8 +227,16 @@ function createReleaseCoordinator(ops) {
       await setPhase('pilot','public');
       return await audit('public_enabled',{publicCheckoutEnabled:true});
     }catch(e) {
-      await ops.disarmPurchases();
-      await audit('public_activation_rolled_back',{issue:e.code||'activation_failure'});
+      try {
+        await ops.disarmPurchases();
+        if (observedPhase === 'public')
+          await setPhase('public','pilot');
+        await audit('public_activation_rolled_back',{
+          issue:e.code||'activation_failure',publicCheckoutEnabled:false
+        });
+      } catch {
+        deny('public_disarm_or_phase_rollback_unverified_manual_intervention_required');
+      }
       throw e;
     }
   }
