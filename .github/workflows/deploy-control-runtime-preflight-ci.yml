@@ -1,0 +1,34 @@
+name: Deploy Control Legacy Runtime Preimage Review
+
+on:
+  pull_request:
+    paths:
+      - 'deploy-control-live-runtime-evidence-v1.cjs'
+      - 'test-deploy-control-live-runtime-evidence-v1.cjs'
+      - '.github/workflows/deploy-control-runtime-preflight-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  source-only-legacy-boundary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Strict syntax and negative-control tests
+        run: |
+          node --version
+          node --check deploy-control-live-runtime-evidence-v1.cjs
+          node --check test-deploy-control-live-runtime-evidence-v1.cjs
+          node --test test-deploy-control-live-runtime-evidence-v1.cjs
+      - name: Guard against turning review helper into installer
+        run: |
+          node - <<'NODE'
+          const a=require('./deploy-control-live-runtime-evidence-v1.cjs');
+          if(typeof a.install==='function'||typeof a.apply==='function'||typeof a.run==='function')
+            throw Error('unsafe_public_ci_privileged_interface');
+          console.log('SOURCE_ONLY=YES PRODUCTION_INSTALL=NO');
+          NODE
