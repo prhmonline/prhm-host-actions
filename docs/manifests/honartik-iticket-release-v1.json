@@ -1,0 +1,52 @@
+{
+  "schema_version": "prhm.honartik-iticket.release-source.v1",
+  "action": "honartik_iticket_sha_bound_release_v1",
+  "project": "honartik",
+  "source_repository": "prhmonline/prhm-host-actions",
+  "source_commit": "ef25f2215bbf137839b76cb20615157d062b235c",
+  "status": "git_source_candidate_registration_pending",
+  "installed": false,
+  "production_modified": false,
+  "gates_closed": true,
+  "trusted_registration_installed": false,
+  "live_registry_owner_preimages_verified": false,
+  "backend_sha": "91f11681d1689ca0a042ecca32fd82c93a0da88b",
+  "frontend_sha": "faa9762cdca0ff189989f06da7a0c20ca9d7fa68",
+  "backend_previous_sha": "502376d0360a338f9522e4a2be5f9dccc91408d7",
+  "frontend_previous_sha": "87580ce105eff53d7142d0ca1d5267d0f4097bb2",
+  "phase_actions": [
+    "honartik_iticket_dark_deploy_v1",
+    "honartik_iticket_pilot_enable_v1",
+    "honartik_iticket_public_enable_v1"
+  ],
+  "source_assets": [
+    {
+      "path": "honartik-iticket-sha-bound-release-v1.cjs",
+      "sha256": "b858fdc02c1809bc8bc1e6e5c0d7efaa450cf83d342264958309bc371af33de6",
+      "git_blob_sha": "01c6d54b9dcd60afa41ec16fb251e84614d6d433"
+    },
+    {
+      "path": "test-honartik-iticket-sha-bound-release-v1.cjs",
+      "sha256": "7dba811fd462c95ff5a326941f9fac725726829a1aa6e9672f6f691ef7997b77",
+      "git_blob_sha": "bbf43f6d686e3a070c3ce705e5da88fb0fd6eed4"
+    },
+    {
+      "path": ".github/workflows/honartik-iticket-sha-bound-release-v1.yml",
+      "sha256": "8b738a91b88cffc8163ed826749564dc802ce202535c2a6a350f5039405838a1",
+      "git_blob_sha": "786bd564627ed5887862b825dd2a892d974c3b86"
+    },
+    {
+      "path": "docs/runbooks/honartik-iticket-sha-bound-release-v1.md",
+      "sha256": "dfcd01895adaf634ee0bfd29ddae5bf260c45f0200667d36f72e8acd38a60b7b",
+      "git_blob_sha": "d88aa9c8b92dc14b92cca125d8a502f85d7d87dc"
+    }
+  ],
+  "pending_gates": [
+    "attest_live_base_executor_policy_mcp_owner_sha256",
+    "install_five_field_shared_registry_with_signed_L4",
+    "install_three_fixed_honartik_release_actions",
+    "prove_mysql8_yii2_E2E",
+    "verify_real_SEP_provider_Samfa_pilot",
+    "enable_public_checkout_with_separate_signed_approval"
+  ]
+}
