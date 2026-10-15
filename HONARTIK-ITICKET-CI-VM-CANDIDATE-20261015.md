@@ -124,6 +124,24 @@ Any claim of live readiness requires separate signed Host Actions
 registration, preflight, and a real isolated VM install after explicit
 approval.
 
+## Host image and storage read-only technical check
+
+An additional **read-only SSH** inspection on node1
+(`server1.prhm.ir`, port 22) verified the pinned Ubuntu base image
+really is **QCOW2** (`qemu-img info --output=json`), with backing
+virtual size 3.5 GiB and reported non-corrupt QCOW2 metadata.
+The existing `vm-storage` pool is `running`; no storage pool
+or VM was modified. The future host adapter must use a pinned,
+explicit `qcow2` backing-image format, refuse target collision
+and verify both new-disk provenance and read-back guest XML before
+it may mark a resource owned.
+
+The trusted root-owned command adapter and durable on-disk journal
+implementation remain **unimplemented/unregistered**. The transaction
+module exercises the invocation and recovery **contract** against
+a synthetic I/O adapter and does not call QEMU/libvirt. This limitation
+prevents a false claim that the installer can already create a VM.
+
 ## Critical trust-boundary blocker
 
 This candidate does **not** install or register an Agent 3 action.
