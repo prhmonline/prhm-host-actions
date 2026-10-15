@@ -105,10 +105,28 @@ function createReleaseCoordinator(ops) {
     'inspect','consumeApproval','testIsolated','backupAndVerify',
     'applyMigrations','promoteCode','healthCheck','verifyDark',
     'rollbackApplication','verifyRollback','armPilot','verifyPilotFinancialEvidence',
-    'armPublic','disarmPurchases','writeAudit'
+    'armPublic','disarmPurchases','writeAudit','readState','writeState'
   ];
   for (const name of required) if (typeof ops?.[name]!=='function') deny('trusted_adapter_missing_'+name);
-  let phase='new';
+  let observedPhase='new';
+  const validPhases=['new','preflight','dark','pilot','public','rolled_back','rollback_unverified'];
+  async function readPhase() {
+    const record=await ops.readState(PINS);
+    if (!record || !validPhases.includes(record.phase) ||
+      record.backendSha!==PINS.backend.target ||
+      record.frontendSha!==PINS.frontend.target) deny('durable_release_state_invalid');
+    observedPhase=record.phase;
+    return record.phase;
+  }
+  async function setPhase(previous,next) {
+    if(!validPhases.includes(next))deny('release_transition_invalid');
+    const result=await ops.writeState({
+      expectedPhase:previous,nextPhase:next,
+      backendSha:PINS.backend.target,frontendSha:PINS.frontend.target
+    });
+    if(!result || result.casCommitted!==true)deny('durable_release_state_conflict');
+    observedPhase=next;
+  }
   const audit=async(status, extra={})=>{
     const record=Object.assign({action:PINS.action,status,
       backendSha:PINS.backend.target,frontendSha:PINS.frontend.target},extra);
@@ -116,14 +134,14 @@ function createReleaseCoordinator(ops) {
     return record;
   };
   async function preflight() {
-    if (phase!=='new') deny('phase_already_used');
+    if (await readPhase()!=='new') deny('phase_already_used');
     verifyState(await ops.inspect(PINS));
     await audit('preflight_passed');
-    phase='preflight';
-    return {ok:true,phase, pins:PINS};
+    await setPhase('new','preflight');
+    return {ok:true,phase:'preflight', pins:PINS};
   }
   async function darkDeploy() {
-    if(phase!=='preflight')deny('preflight_required');
+    if(await readPhase()!=='preflight')deny('preflight_required');
     // All tests and immutable source evidence must be verified BEFORE a live
     // backup, DDL, or service mutation.
     verifyTests(await ops.testIsolated(PINS));
@@ -144,7 +162,7 @@ function createReleaseCoordinator(ops) {
           health.frontendSha!==PINS.frontend.target) deny('cutover_health_failed');
       if (await ops.verifyDark(PINS)!==true)
         deny('dark_gates_not_closed');
-      phase='dark';
+      await setPhase('preflight','dark');
       return await audit('dark_deployed',{backupId:snap.id,
         migrations:PINS.migrations.slice(),publicCheckoutEnabled:false});
     } catch(e) {
@@ -154,8 +172,9 @@ function createReleaseCoordinator(ops) {
           await ops.rollbackApplication(PINS,snap.id);
           rollbackOk=await ops.verifyRollback(PINS)===true;
         } catch {}
-        phase=rollbackOk?'rolled_back':'rollback_unverified';
-        await audit(phase,{backupId:snap.id,issue:e.code||'release_failure',
+        const rollbackPhase=rollbackOk?'rolled_back':'rollback_unverified';
+        await setPhase('preflight',rollbackPhase);
+        await audit(rollbackPhase,{backupId:snap.id,issue:e.code||'release_failure',
           dbSchemaKept:true,customerFundsUntouchedByRunner:true});
         if(!rollbackOk)deny('rollback_unverified_manual_intervention_required');
       }
@@ -163,7 +182,7 @@ function createReleaseCoordinator(ops) {
     }
   }
   async function pilot() {
-    if(phase!=='dark') deny('dark_deploy_required');
+    if(await readPhase()!=='dark') deny('dark_deploy_required');
     verifyApproval(await ops.consumeApproval('host_action.honartik_iticket_pilot_enable_v1',PINS),
       'host_action.honartik_iticket_pilot_enable_v1');
     const evidence=await ops.armPilot(PINS);
@@ -172,11 +191,11 @@ function createReleaseCoordinator(ops) {
       await ops.disarmPurchases();
       deny('pilot_scope_not_verified');
     }
-    phase='pilot';
+    await setPhase('dark','pilot');
     return await audit('pilot_only',{publicCheckoutEnabled:false});
   }
   async function publicLaunch() {
-    if(phase!=='pilot') deny('pilot_required');
+    if(await readPhase()!=='pilot') deny('pilot_required');
     const financial=await ops.verifyPilotFinancialEvidence(PINS);
     if (!financial || financial.bankSepVerified!==true ||
         financial.sellerWalletDebitedOnce!==true ||
@@ -190,16 +209,15 @@ function createReleaseCoordinator(ops) {
       const launched=await ops.armPublic(PINS);
       if(!launched || launched.publicCheckoutEnabled!==true)
         deny('public_activation_not_verified');
-      phase='public';
+      await setPhase('pilot','public');
       return await audit('public_enabled',{publicCheckoutEnabled:true});
     }catch(e) {
       await ops.disarmPurchases();
-      phase='pilot';
       await audit('public_activation_rolled_back',{issue:e.code||'activation_failure'});
       throw e;
     }
   }
-  return Object.freeze({preflight,darkDeploy,pilot,publicLaunch,getPhase:()=>phase});
+  return Object.freeze({preflight,darkDeploy,pilot,publicLaunch,getPhase:()=>observedPhase});
 }
 if (require.main===module) {
   // Direct shell invocation is NOT an approval or deploy surface.
