@@ -68,7 +68,7 @@ function mock(options={}){
     };},
     armPublic:async()=>{trace.push('public');if(options.activationThrows)throw new Error('public_failed');return {publicCheckoutEnabled:true};},
     disarmPurchases:async()=>{trace.push('disarm');if(options.disarmThrows)throw new Error('disarm_failed');},
-    writeAudit:async(record)=>{trace.push('audit:'+record.status);audits.push(record);}
+    writeAudit:async(record)=>{trace.push('audit:'+record.status);if(options.auditFailsOn===record.status)throw new Error('audit_failed');audits.push(record);}
   };
   return {ops,trace,audits};
 }
@@ -244,4 +244,30 @@ test('failed disarm leaves a deliberate critical manual-intervention error',asyn
   const c=createReleaseCoordinator(x.ops);
   await c.preflight();await c.darkDeploy();
   await assert.rejects(c.pilot(),/pilot_disarm_unverified_manual_intervention_required/);
+});
+
+test('pilot audit failure disarms and reverts durable state',async()=>{
+  const x=mock({auditFailsOn:'pilot_only'});
+  const c=createReleaseCoordinator(x.ops);
+  await c.preflight();await c.darkDeploy();
+  await assert.rejects(c.pilot(),/audit_failed/);
+  assert.equal(c.getPhase(),'dark');
+  assert.ok(x.trace.includes('disarm'));
+  assert.ok(x.trace.includes('state:pilot->dark'));
+});
+test('public audit failure disarms and reverts durable state',async()=>{
+  const x=mock({auditFailsOn:'public_enabled'});
+  const c=createReleaseCoordinator(x.ops);
+  await c.preflight();await c.darkDeploy();await c.pilot();
+  await assert.rejects(c.publicLaunch(),/audit_failed/);
+  assert.equal(c.getPhase(),'pilot');
+  assert.ok(x.trace.includes('state:public->pilot'));
+  assert.ok(x.trace.includes('disarm'));
+});
+test('public failure plus failed disarm blocks all further automated transitions',async()=>{
+  const x=mock({activationThrows:true,disarmThrows:true});
+  const c=createReleaseCoordinator(x.ops);
+  await c.preflight();await c.darkDeploy();await c.pilot();
+  await assert.rejects(c.publicLaunch(),/public_disarm_or_phase_rollback_unverified_manual_intervention_required/);
+  assert.equal(c.getPhase(),'pilot');
 });
