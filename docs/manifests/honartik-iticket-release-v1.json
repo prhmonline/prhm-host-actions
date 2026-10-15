@@ -3,7 +3,7 @@
   "action": "honartik_iticket_sha_bound_release_v1",
   "project": "honartik",
   "source_repository": "prhmonline/prhm-host-actions",
-  "source_commit": "96e0a824ffc627a5427127658a0aad31a71a97a6",
+  "source_commit": "c84cbfbabf05e154d2e68bf4163db4c0ce199b35",
   "status": "git_source_candidate_registration_pending",
   "installed": false,
   "production_modified": false,
@@ -22,13 +22,13 @@
   "source_assets": [
     {
       "path": "honartik-iticket-sha-bound-release-v1.cjs",
-      "sha256": "871964054b194e82d4d42c10d1cfb5a33fbf19469f623c520a5513575eb9cfc1",
-      "git_blob_sha": "8b15586a72b496df9d9e49972b95bdb11fc82550"
+      "sha256": "65da08785fb9ce2e3e35f8f0b0a9f5dd88a41b8fce9b9da62ef78826024711c9",
+      "git_blob_sha": "c33b95e0ccaa77e107f4876c61a17023ae533b64"
     },
     {
       "path": "test-honartik-iticket-sha-bound-release-v1.cjs",
-      "sha256": "86a5ae6182a28f6358a81f2a38bdf3b29157b2c7998e89bfe84cd3784dd7c294",
-      "git_blob_sha": "23bcadde4ed2c58c15ef32b8b65716ce175d4771"
+      "sha256": "de2334efa48d45e2d245a47c07eb4d79d1956895e3eb5e22753b35725ea822af",
+      "git_blob_sha": "1ca8c880f7f3030e8de2214d4cc02da553e7b960"
     },
     {
       "path": ".github/workflows/honartik-iticket-sha-bound-release-v1.yml",
