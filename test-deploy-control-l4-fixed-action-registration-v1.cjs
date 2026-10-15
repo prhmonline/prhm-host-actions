@@ -3,15 +3,20 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const crypto=require('node:crypto');
+const cp=require('node:child_process');
 const manifest=JSON.parse(fs.readFileSync('manifests/deploy-control-l4-fixed-action-source-registration-v1.json','utf8'));
 const tx=require('./deploy-control-l4-privileged-transaction-v1.cjs');
 const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
 test('immutable registration identifies a real bounded source module, not a generic root command',()=>{
  assert.equal(manifest.schema_version,'prhm.deploy-control.l4-fixed-action.source-registration.v1');
  assert.equal(manifest.source_repository,'prhmonline/prhm-host-actions');
- assert.equal(manifest.source_commit,'a0d8fff2a53427a19440369048546e3c9e72591c');
+ assert.match(manifest.source_commit,/^[a-f0-9]{40}$/);
  assert.equal(manifest.source_path,'deploy-control-l4-privileged-transaction-v1.cjs');
  const bytes=fs.readFileSync(manifest.source_path);
+ // The manifest must reference bytes already committed in a prior Git commit,
+ // not a self-referential or unconstrained HEAD source.
+ const pinned=cp.execFileSync('git',['show',manifest.source_commit+':'+manifest.source_path],{maxBuffer:1024*1024});
+ assert.deepEqual(pinned,bytes);
  assert.equal(sha(bytes),manifest.source_sha256);
  const blob=crypto.createHash('sha1').update('blob '+bytes.length+'\0').update(bytes).digest('hex');
  assert.equal(blob,manifest.source_git_blob);
@@ -61,4 +66,15 @@ test('private token stays outside source registry and privileged root capability
  assert.ok(tx.CAPABILITIES.includes('restoreJournalAndReload'));
  assert.ok(tx.CAPABILITIES.includes('attestRootFileSha256'));
  assert.equal(tx.CAPABILITIES.includes('shell'),false);
+});
+
+test('registered L4 action must be attested in trusted preflight before any permit is consumed',()=>{
+ const content=fs.readFileSync(manifest.source_path,'utf8');
+ const before=content.indexOf("fail('fixed_l4_action_not_registered_before_approval')");
+ const consumption=content.indexOf('await h.consumeSignedExactLevel4Authorization(SCOPE)');
+ const freezing=content.indexOf('await h.freezeAllDeployEntrypoints()');
+ assert.ok(before>0,'independent registry guard is mandatory');
+ assert.ok(before<freezing,'registry guard must run before freezing external deployments');
+ assert.ok(before<consumption,'registry guard must run before one-time permit consumption');
+ assert.ok(content.includes("if(await h.getFixedToolDiscovery(ACTION)!==true)"));
 });
