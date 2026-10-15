@@ -1,0 +1,39 @@
+name: Honartik iTicket CI VM source-only contract
+on:
+  pull_request:
+    paths:
+      - 'honartik-iticket-ci-vm-candidate-v1.cjs'
+      - 'test-honartik-iticket-ci-vm-candidate-v1.cjs'
+      - 'honartik-iticket-ci-vm-node1-readonly-facts-v1.py'
+      - 'honartik-iticket-ci-vm-transaction-v1.cjs'
+      - 'test-honartik-iticket-ci-vm-transaction-v1.cjs'
+      - '.github/workflows/honartik-iticket-ci-vm-candidate.yml'
+  push:
+    paths:
+      - 'honartik-iticket-ci-vm-candidate-v1.cjs'
+      - 'test-honartik-iticket-ci-vm-candidate-v1.cjs'
+      - 'honartik-iticket-ci-vm-node1-readonly-facts-v1.py'
+      - 'honartik-iticket-ci-vm-transaction-v1.cjs'
+      - 'test-honartik-iticket-ci-vm-transaction-v1.cjs'
+      - '.github/workflows/honartik-iticket-ci-vm-candidate.yml'
+permissions:
+  contents: read
+jobs:
+  source-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Validate fixed source-only VM candidate
+        run: |
+          node --check honartik-iticket-ci-vm-candidate-v1.cjs
+          node --test test-honartik-iticket-ci-vm-candidate-v1.cjs
+          node --check honartik-iticket-ci-vm-transaction-v1.cjs
+          node --test test-honartik-iticket-ci-vm-transaction-v1.cjs
+      - name: Syntax check read-only hypervisor inventory collector
+        run: python3 -m py_compile honartik-iticket-ci-vm-node1-readonly-facts-v1.py
+      - name: Verify no deploy or privileged installer interface
+        run: |
+          node -e "const m=require('./honartik-iticket-ci-vm-candidate-v1.cjs'); if('apply' in m || 'execute' in m || 'register' in m) process.exit(3);"
