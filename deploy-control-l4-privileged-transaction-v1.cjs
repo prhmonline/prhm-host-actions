@@ -84,6 +84,13 @@ async function preflight(host,assets){
      policy_commit:'acffc7f9e02073f7aaf6ba92777f7acff6481f81',
      asset_hashes:Object.fromEntries(ASSETS.map(x=>[x.key,x.sha256]))
    })!==true)fail('git_source_not_attested');
+ // Security boundary: this transaction is NOT allowed to enroll itself.
+ // A separately approved root-of-trust bootstrap must have registered the
+ // fixed action before we freeze entrypoints, create a rollback journal or
+ // consume a one-time Level-4 authorization. The post-install discovery below
+ // independently checks that the registration survives the cutover.
+ if(await h.getFixedToolDiscovery(ACTION)!==true)
+   fail('fixed_l4_action_not_registered_before_approval');
  for(const rec of LEGACY){
    const b=await h.readTrustedFile(rec.path);
    if(!Buffer.isBuffer(b)||sha(b)!==rec.sha256)fail('legacy_sudoers_drift');
