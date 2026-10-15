@@ -185,14 +185,27 @@ function createReleaseCoordinator(ops) {
     if(await readPhase()!=='dark') deny('dark_deploy_required');
     verifyApproval(await ops.consumeApproval('host_action.honartik_iticket_pilot_enable_v1',PINS),
       'host_action.honartik_iticket_pilot_enable_v1');
-    const evidence=await ops.armPilot(PINS);
-    if (!evidence || evidence.scopedSingleBuyerSeat!==true ||
-        evidence.publicCheckoutDisabled!==true) {
-      await ops.disarmPurchases();
-      deny('pilot_scope_not_verified');
+    try {
+      const evidence=await ops.armPilot(PINS);
+      if (!evidence || evidence.scopedSingleBuyerSeat!==true ||
+          evidence.publicCheckoutDisabled!==true)
+        deny('pilot_scope_not_verified');
+      await setPhase('dark','pilot');
+      return await audit('pilot_only',{publicCheckoutEnabled:false});
+    } catch (error) {
+      // A pilot enable operation can partially alter runtime switches and
+      // then throw. Never leave such an operation publicly reachable.
+      try {
+        await ops.disarmPurchases();
+        await audit('pilot_activation_failed_closed',{
+          publicCheckoutEnabled:false,
+          issue:error.code||'pilot_activation_error'
+        });
+      } catch {
+        deny('pilot_disarm_unverified_manual_intervention_required');
+      }
+      throw error;
     }
-    await setPhase('dark','pilot');
-    return await audit('pilot_only',{publicCheckoutEnabled:false});
   }
   async function publicLaunch() {
     if(await readPhase()!=='pilot') deny('pilot_required');
