@@ -7,7 +7,7 @@ const crypto=require('node:crypto');
 const tx=require('./deploy-control-l4-privileged-transaction-v1.cjs');
 const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
 const base=process.env.PRHM_L4_RUNTIME_TEST_FIXTURES;
-const required=['policy-live.json','policy-candidate.json','dispatcher.mjs','core.mjs','gated.sudoers'];
+const required=['policy-candidate.json','dispatcher.mjs','core.mjs','gated.sudoers'];
 function fixtures(){
  if(!base)throw Error('isolated_real_blob_fixtures_required');
  const assets={policy:fs.readFileSync(path.join(base,'policy-candidate.json')),
@@ -16,7 +16,7 @@ function fixtures(){
  sudoers:fs.readFileSync(path.join(base,'gated.sudoers'))};
  const stage=Buffer.from('# Honartik staging canonical rebuild privilege boundary.\n# deploy-runner may execute ONLY the fixed no-argument dry-run wrapper.\ndeploy-runner ALL=(root) NOPASSWD: /usr/local/libexec/prhm-agent/honartik-staging-canonical-dry-run ""\n');
  const old=new Map([
-  [tx.ASSETS[0].path,fs.readFileSync(path.join(base,'policy-live.json'))],
+  [tx.ASSETS[0].path,Buffer.from('TRUSTED_HOST_ONLY_POLICY_BYTES_NOT_EXPORTED')],
   [tx.LEGACY[0].path,Buffer.from('deploy-runner ALL=(prhm) NOPASSWD: /home/prhm/deploy/aranob-production.sh *\n')],
   [tx.LEGACY[1].path,Buffer.from('deploy-runner ALL=(root) NOPASSWD: /usr/local/libexec/deploy-control/honartik-front-production *\ndeploy-runner ALL=(honartik) NOPASSWD: /usr/local/libexec/deploy-control/honartik-back-production *\n')],
   [tx.STAGING.path,stage]
@@ -44,6 +44,11 @@ function harness({inject='',receiptPatch=null,wrongLive=false,unfreezeFail=false
    calls.push('git'); assert.equal(input.commit,'1e16bbb633a2d7b62d1322fe4c93bf9df346a748');return true},
   freezeAllDeployEntrypoints:async()=>{calls.push('freeze');frozen=true;return true},
   readTrustedFile:async p=>files.get(p),
+  attestRootFileSha256:async p=>{
+    assert.equal(p,tx.ASSETS[0].path);
+    return inject==='wrong-live-hash'?'0'.repeat(64):
+      '148fe2a724befc15cd8c731b0195d83e254d39215792a5084b70dd5b5c178174';
+  },
   assertAbsent:async p=>!files.has(p),
   inspectEffectiveSudoGrants:async ({phase})=>{
    if(phase==='before')return files.has(tx.LEGACY[0].path)&&files.has(tx.LEGACY[1].path);
@@ -120,7 +125,7 @@ test('unexpected asset SHA, missing capability and wrong issuer fail before any 
  assert.equal(h.gets().consumed,0);assert.equal(h.gets().writeCount,0);
  const g=harness();delete g.host.assertTrustedRootExecutor;
  await assert.rejects(tx.applyFixedCutover({host:g.host,assets:g.assets}),/missing_trusted_executor_capabilities/);
- const b=harness({wrongLive:true});
+ const b=harness({inject:'wrong-live-hash'});
  await assert.rejects(tx.applyFixedCutover({host:b.host,assets:b.assets}),/DENIED_OR_ROLLED_BACK/);
  assert.equal(b.gets().consumed,0);assert.equal(b.gets().writeCount,0);
 });
