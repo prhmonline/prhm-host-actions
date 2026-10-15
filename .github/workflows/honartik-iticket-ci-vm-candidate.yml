@@ -4,11 +4,13 @@ on:
     paths:
       - 'honartik-iticket-ci-vm-candidate-v1.cjs'
       - 'test-honartik-iticket-ci-vm-candidate-v1.cjs'
+      - 'honartik-iticket-ci-vm-node1-readonly-facts-v1.py'
       - '.github/workflows/honartik-iticket-ci-vm-candidate.yml'
   push:
     paths:
       - 'honartik-iticket-ci-vm-candidate-v1.cjs'
       - 'test-honartik-iticket-ci-vm-candidate-v1.cjs'
+      - 'honartik-iticket-ci-vm-node1-readonly-facts-v1.py'
       - '.github/workflows/honartik-iticket-ci-vm-candidate.yml'
 permissions:
   contents: read
@@ -24,6 +26,8 @@ jobs:
         run: |
           node --check honartik-iticket-ci-vm-candidate-v1.cjs
           node --test test-honartik-iticket-ci-vm-candidate-v1.cjs
+      - name: Syntax check read-only hypervisor inventory collector
+        run: python3 -m py_compile honartik-iticket-ci-vm-node1-readonly-facts-v1.py
       - name: Verify no deploy or privileged installer interface
         run: |
           node -e "const m=require('./honartik-iticket-ci-vm-candidate-v1.cjs'); if('apply' in m || 'execute' in m || 'register' in m) process.exit(3);"
