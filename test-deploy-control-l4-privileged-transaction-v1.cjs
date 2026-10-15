@@ -58,7 +58,7 @@ function harness({inject='',receiptPatch=null,wrongLive=false,unfreezeFail=false
   createDurableRecoveryJournal:async ()=>{
    calls.push('journal');
    snapshot=new Map([...files].map(([k,v])=>[k,Buffer.from(v)]));
-   return{id:'fixture-durable-backup'},
+   return {id:'fixture-durable-backup'};
   },
   verifyRecoveryIsReady:async()=>true,
   readPrivateExecutorToken:async()=>('isolated-only-fake-nonsecret-executor-token-'+('q'.repeat(40))),
