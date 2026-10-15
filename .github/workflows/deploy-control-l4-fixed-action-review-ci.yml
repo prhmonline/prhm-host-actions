@@ -5,6 +5,7 @@ on:
     paths:
       - 'deploy-control-l4-privileged-transaction-v1.cjs'
       - 'test-deploy-control-l4-privileged-transaction-v1.cjs'
+      - 'test-deploy-control-l4-public-preflight-negative-v1.cjs'
       - 'test-deploy-control-l4-fixed-action-registration-v1.cjs'
       - 'manifests/deploy-control-l4-fixed-action-source-registration-v1.json'
       - '.github/workflows/deploy-control-l4-fixed-action-review-ci.yml'
@@ -27,8 +28,10 @@ jobs:
           set -euo pipefail
           node --check deploy-control-l4-privileged-transaction-v1.cjs
           node --check test-deploy-control-l4-privileged-transaction-v1.cjs
+          node --check test-deploy-control-l4-public-preflight-negative-v1.cjs
           node --check test-deploy-control-l4-fixed-action-registration-v1.cjs
-          node --test test-deploy-control-l4-fixed-action-registration-v1.cjs
+          node --test test-deploy-control-l4-public-preflight-negative-v1.cjs test-deploy-control-l4-fixed-action-registration-v1.cjs
+          echo 'PRIVATE_RELEASE_FIXTURE_INTEGRATION=NOT_EXECUTED_IN_PUBLIC_CI'
           node - <<'NODE'
           const x=require('./manifests/deploy-control-l4-fixed-action-source-registration-v1.json');
           if(x.registered_on_host!==false || x.approved!==false ||
