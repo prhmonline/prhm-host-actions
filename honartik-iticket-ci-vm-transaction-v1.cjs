@@ -212,9 +212,11 @@ async function executeBoundCandidate({io,source}){
     const failures=await rollback(io,owner,requestId);
     if(journalCreated){
       try{
-        await io.finishJournal({request_id:requestId,
+        const finalized=await io.finishJournal({request_id:requestId,
           outcome:(uncertain||failures.length)?
             'MANUAL_RECOVERY_REQUIRED':'ROLLBACK_VERIFIED'});
+        // A non-throwing false is NOT an acknowledged durable journal.
+        if(finalized!==true)failures.push('journal');
       }catch(_ignored){failures.push('journal');}
     }
     reject((uncertain||failures.length?
