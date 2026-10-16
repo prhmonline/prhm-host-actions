@@ -1,8 +1,8 @@
 {
   "schema": "prhm.agent3.universal-backup.release-lock.v1",
   "status": "candidate_not_installed",
-  "source_commit_sha": "5c0cd23087fe15435102f2ea4bb4e563579e890f",
-  "verified_ci_run": "https://github.com/prhmonline/prhm-host-actions/actions/runs/38963549241",
+  "source_commit_sha": "73b144496fafdafbbe0ac53013c46b0b99b45532",
+  "verified_ci_run": null,
   "fixed_action": "agent3_universal_backup_engine_install_v1",
   "approval_level": 4,
   "target_host": "prhm-production",
@@ -12,7 +12,7 @@
   "expected_sha256": {
     "lib/agent3-confined-open.js": "fdd84a4e12ab428c9b57c313be49f470b3b9ba7bc0526aefad83e21886b4cefc",
     "lib/universal-backup-policy.js": "db6b017f90add884833dc2592d7b291322afe0de66808a5a9fd0dc0957dcb2b1",
-    "lib/agent3-encrypted-bundle.candidate.js": "37e71c8760045acb0fcda072e7eaf2b305c645e90af67ec5a6d1aeef7d32f745",
+    "lib/agent3-encrypted-bundle.candidate.js": "30ef584c709f0652231c3c4481fe658fbb0f4bbc742dd7ec309007d4c6202eec",
     "lib/agent3-policy-broker.candidate.js": "fd12c2de52dbcd593e0d021833b9c4571e71908325e7f61c30707d607fc10127",
     "ops/agent3-universal-backup/install-candidate.js": "6e2cf2f366fc933b7886786b1ff265c86810014bb03b20cced590edd40887f16"
   },
