@@ -1,0 +1,16 @@
+name: Agent 3 Backup Policy Tests
+on:
+  push:
+    branches: [feature/agent3-universal-backup-engine]
+  workflow_dispatch:
+jobs:
+  policy-tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node --test test/universal-backup-policy.test.js
