@@ -70,9 +70,9 @@ async function preflight({sha,hashes,base=BASE}){
  return {ok:true,mode:'preflight_only',action:ACTION,sha,files:Object.keys(staged),
    active_preimage:active,mutated:false,level4_required:true};
 }
-async function installTransaction({sha,hashes,approvalMediator,registerAction,healthProbe}){
+async function installTransaction({sha,hashes,approvalMediator,registerAction,rollbackRegistration,healthProbe}){
  if(typeof approvalMediator!=='function'||typeof registerAction!=='function'||
-    typeof healthProbe!=='function')fail('trusted_mediator_required');
+    typeof rollbackRegistration!=='function'||typeof healthProbe!=='function')fail('trusted_mediator_required');
  const plan=await preflight({sha,hashes});
  // This call MUST be supplied by the trusted Approval Center integration, not
  // the caller/model. It consumes one-time cryptographically verified approval.
@@ -85,7 +85,7 @@ async function installTransaction({sha,hashes,approvalMediator,registerAction,he
  const active=path.join(root,'current'),release=path.join(releases,sha);
  const transaction=path.join(root,'.current-'+sha+'.tmp');
  const staged=await hashStage(stage,hashes);
- let releaseCreated=false,pointerMoved=false;
+ let releaseCreated=false,pointerMoved=false,registrationAttempted=false;
  await fsp.mkdir(releases,{recursive:true,mode:0o700});
  try{
   await fsp.mkdir(release,{mode:0o700});
@@ -97,9 +97,12 @@ async function installTransaction({sha,hashes,approvalMediator,registerAction,he
     try{await fd.writeFile(staged[rel]);await fd.sync();}finally{await fd.close();}
   }
   await fsyncDir(path.join(release,'lib'));await fsyncDir(release);await fsyncDir(releases);
+  const justBefore=await readPointer(active);
+  if(justBefore!==plan.active_preimage)fail('concurrent_pointer_drift');
   await fsp.symlink('releases/'+sha,transaction);
   await fsp.rename(transaction,active);pointerMoved=true;
   await fsyncDir(root);
+  registrationAttempted=true;
   await registerAction({action:ACTION,sha,release,capabilities:['file.read','backup.create','backup.verify']});
   const health=await healthProbe({sha,release});
   if(!health||health.ok!==true||health.sha!==sha||health.registered!==true)fail('health_not_verified');
@@ -107,6 +110,10 @@ async function installTransaction({sha,hashes,approvalMediator,registerAction,he
     verified:true,rollback:false};
  }catch(e){
   const errors=[];
+  if(registrationAttempted){
+    try{await rollbackRegistration({action:ACTION,sha,expected_previous:plan.active_preimage});}
+    catch(regErr){errors.push('registry:'+regErr.message);}
+  }
   if(pointerMoved){
     try{
       const rollbackLink=path.join(root,'.rollback-'+sha+'.tmp');
