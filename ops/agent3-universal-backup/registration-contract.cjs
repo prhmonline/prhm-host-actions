@@ -66,23 +66,36 @@ function verifyReviewedManifest({bytes,gitPath}){
  return Object.freeze({release,sha256:gateway.sha(bytes),trusted_install_ready:false});
 }
 function status(input={}){
+ const phase=input.phase===undefined?'preinstall':input.phase;
+ if(!['preinstall','authorized','active'].includes(phase))
+   deny('invalid_readiness_phase');
+ // The target action is *not* registered before bootstrap. Requiring its
+ // discovery in preinstall would create a circular dependency.
  const q=gateway.readiness({
-  phase:'preinstall',release:input.gitAttested===true,
+  phase,
+  release:input.gitAttested===true,
   registrarInstalled:input.sharedRegistrarVisible===true,
   approvalRouteInstalled:input.typedApprovalRouteVisible===true,
   rollbackReady:input.fourOwnerRollbackVerified===true,
-  servicesHealthy:input.allFourServicesHealthy===true
+  servicesHealthy:input.allFourServicesHealthy===true,
+  approval:input.signedL4Consumed===true?{verified:true}:null,
+  registeredToolVisible:input.liveInstallerRegistered===true
  });
  const blockers=[...q.gaps];
- if(input.liveInstallerRegistered!==true)blockers.push('TARGET_INSTALL_ACTION_NOT_REGISTERED');
- if(input.pinnedServiceKeyReady!==true)blockers.push('BACKUP_KEY_NOT_PROVISIONED');
- return Object.freeze({phase:'preinstall',ready:q.ready&&
-    input.liveInstallerRegistered===true&&input.pinnedServiceKeyReady===true,
-    action:INSTALL_ACTION,source_commit:SOURCE_COMMIT,source_ci:SOURCE_CI_RUN,
-    request_schema:'action,project,source_commit,manifest_commit,manifest_sha256',
-    approval:'new one-time Ed25519 Level-4, signed and ledger-consumed',
-    owner_count:4,git_repo:EXPECTED_GIT_REPO,
-    gaps:Object.freeze(blockers)});
+ // A backup encryption key is needed before engine activation, but not
+ // before a new action can be enrolled into the shared registry.
+ if(phase==='active'&&input.pinnedServiceKeyReady!==true)
+   blockers.push('BACKUP_KEY_NOT_PROVISIONED');
+ // Explicitly separate the three gates; a preliminary "ready" does not
+ // imply approval, installation, key provisioning or usable backup.
+ return Object.freeze({phase,ready:blockers.length===0,
+   registrar_preinstall_ready:phase==='preinstall'&&blockers.length===0,
+   engine_active:phase==='active'&&blockers.length===0,
+   action:INSTALL_ACTION,source_commit:SOURCE_COMMIT,source_ci:SOURCE_CI_RUN,
+   request_schema:'action,project,source_commit,manifest_commit,manifest_sha256',
+   approval:'new one-time Ed25519 Level-4, signed and ledger-consumed',
+   owner_count:4,git_repo:EXPECTED_GIT_REPO,
+   gaps:Object.freeze(blockers)});
 }
 module.exports=Object.freeze({INSTALL_ACTION,REGISTRY_ACTION,PROJECT,
  SOURCE_COMMIT,SOURCE_CI_RUN,EXPECTED_MANIFEST_PATH,EXPECTED_GIT_REPO,
