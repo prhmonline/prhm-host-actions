@@ -26,6 +26,9 @@ test('inspector reports bounded line identifiers and digests, never full source'
  assert.equal(out.line_count,10);
  assert.equal(typeof out.sha256,'string');
  assert.equal(out.anchors.v2_apply_dispatch.samples[0].line,7);
+ assert.equal(Object.hasOwn(out.anchors.v2_spec_registry.samples[0],'excerpt'),false);
+ assert.equal(JSON.stringify(out).includes('const HOST_ACTION_V2_SPECS'),false);
+ assert.equal(JSON.stringify(out).includes('function applyHostActionV2'),false);
 });
 test('all token, environment and credential lines are redacted including false positives',()=>{
  for(const text of [
