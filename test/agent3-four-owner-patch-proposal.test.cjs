@@ -20,7 +20,7 @@ test('exact-anchor transforms make one additive registry entry each; no handler 
  const m=p.mcpTransform(mcp);
  const policy=JSON.parse(p.policyTransform(originalPolicy()));
  assert.match(b,new RegExp(A));
- assert.equal(b.split(A).length-1,1);
+ assert.equal(b.split(A).length-1,2); // key and fully qualified operation each embed the action name
  assert.match(e,new RegExp("kind:'"+A+"'"));
  assert.ok(e.includes("if(action==='host_action_v2_installer_v1')"));
  assert.ok(!e.includes("if(action==='"+A+"')")); // no unverified dispatch
