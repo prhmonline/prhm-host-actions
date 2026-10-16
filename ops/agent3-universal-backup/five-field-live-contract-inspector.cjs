@@ -13,7 +13,7 @@ const crypto=require('node:crypto');
 const check=require('./four-owner-live-patch-preflight.cjs');
 const ownerPins=require('./production-registration-contract.json');
 const KEYS=Object.freeze(['base','executor','policy','mcp']);
-const MAX_SOURCE_LINE=0; // legacy exported constant; source excerpts prohibited
+const MAX_SOURCE_LINE=220; // retained only for isolated redaction unit tests
 const MAX_WINDOW_HITS=3;
 const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
 
