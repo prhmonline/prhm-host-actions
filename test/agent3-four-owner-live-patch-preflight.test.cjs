@@ -88,3 +88,26 @@ test('no unlisted file can be read and unknown modes never trigger installation'
  assert.equal(result.status,64);
  assert.match(result.stderr,/read-only --check only/);
 });
+
+test('valid MCP ES module imports pass syntax-only check without being loaded',()=>{
+ const candidate=Buffer.from("import {readFileSync} from 'node:fs';\nexport const name = 'safe';\n");
+ assert.doesNotThrow(()=>preflight.checkSyntax('mcp',candidate));
+ const f=fixture();
+ f.plan.candidate_buffers.mcp=candidate;
+ f.plan.after_sha256.mcp=sha(candidate);
+ const v=preflight.assess(f);
+ assert.equal(v.ok,true);
+ assert.equal(v.candidate_bytes_disclosed,false);
+});
+test('malformed MCP ES module and CommonJS syntax fail closed',()=>{
+ assert.throws(()=>preflight.checkSyntax('mcp',Buffer.from("import { from 'node:fs';\n")),
+  /mcp_module_syntax_invalid/);
+ assert.throws(()=>preflight.checkSyntax('executor',Buffer.from('function broken ( {')),
+  /SyntaxError/);
+ assert.throws(()=>preflight.checkSyntax('policy',Buffer.from('{}')),
+  /invalid_syntax_check_target/);
+});
+test('MCP syntax check never executes top-level code or side effects',()=>{
+ const candidate=Buffer.from("import 'node:fs';\nthrow new Error('NEVER_EXECUTED');\n");
+ assert.doesNotThrow(()=>preflight.checkSyntax('mcp',candidate));
+});
