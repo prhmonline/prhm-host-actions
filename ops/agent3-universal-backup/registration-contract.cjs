@@ -51,6 +51,11 @@ function verifyReviewedManifest({bytes,gitPath}){
     gitPath!==EXPECTED_MANIFEST_PATH)deny('pinned_manifest_required');
  let manifest;
  try{manifest=JSON.parse(bytes.toString('utf8'))}catch{deny('manifest_parse');}
+ // Reject wrong target before shared schema/health validation so no unrelated
+ // registration manifest can be interpreted as a release for Agent 3.
+ if(!manifest||manifest.project!==PROJECT||manifest.action!==INSTALL_ACTION||
+    manifest.source_commit!==SOURCE_COMMIT||manifest.git_path!==EXPECTED_MANIFEST_PATH)
+   deny('manifest_target_mismatch');
  const release=gateway.assertManifest(manifest);
  if(release.project!==PROJECT||release.action!==INSTALL_ACTION||
     release.source_commit!==SOURCE_COMMIT||
