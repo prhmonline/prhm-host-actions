@@ -50,7 +50,9 @@ function harness({inject='',receiptPatch=null,wrongLive=false,unfreezeFail=false
     if(inject==='wrong-live-hash')return '0'.repeat(64);
     if(inject==='legacy-policy-before-registration')
       return '148fe2a724befc15cd8c731b0195d83e254d39215792a5084b70dd5b5c178174';
-    if(inject==='registered-policy-drift-postwrite'&&policyShaReads>1)
+    if(inject==='registered-policy-drift-preconsume'&&policyShaReads===2)
+      return 'e'.repeat(64);
+    if(inject==='registered-policy-drift-postwrite'&&policyShaReads===3)
       return 'f'.repeat(64);
     return tx.ASSETS[0].sha256;
   },
@@ -60,7 +62,13 @@ function harness({inject='',receiptPatch=null,wrongLive=false,unfreezeFail=false
    return !files.has(tx.LEGACY[0].path)&&!files.has(tx.LEGACY[1].path)&&
      files.has('/etc/sudoers.d/prhm-deploy-control-gated')},
   verifyBackupArchive:async p=>{assert.equal(p.sha256,tx.BACKUP.sha256);return true},
-  createDurableRecoveryJournal:async ()=>{
+  createDurableRecoveryJournal:async info=>{
+   assert.equal(info.action,tx.ACTION);
+   assert.ok(!info.preimages.includes(tx.ASSETS[0].path),
+     'registered issuer policy must never enter phase-2 restore set');
+   assert.deepEqual(info.readonly_expected,[{
+     path:tx.ASSETS[0].path,sha256:tx.ASSETS[0].sha256
+   }]);
    calls.push('journal');
    snapshot=new Map([...files].map(([k,v])=>[k,Buffer.from(v)]));
    return {id:'fixture-durable-backup'};
@@ -208,5 +216,25 @@ test('phase-2 post-registration candidate policy is never written even on rollba
  assert.ok(!h.calls.includes('write:'+tx.ASSETS[0].path));
  assert.ok(!h.calls.includes('reload'));
  assert.equal(sha(h.gets().files.get(tx.ASSETS[0].path)),tx.ASSETS[0].sha256);
+ sameState(h.gets(),h.old);
+});
+
+test('policy SHA race after freeze denies BEFORE consuming permit',async()=>{
+ const h=harness({inject:'registered-policy-drift-preconsume'});
+ await assert.rejects(tx.applyFixedCutover({host:h.host,assets:h.assets}),
+   /DENIED_OR_ROLLED_BACK/);
+ assert.equal(h.gets().consumed,0);
+ assert.equal(h.gets().writeCount,0);
+ assert.equal(h.gets().rollbacks,1);
+ assert.ok(h.calls.indexOf('freeze')<h.calls.indexOf('journal'));
+ assert.ok(!h.calls.includes('consume'));
+ sameState(h.gets(),h.old);
+});
+test('post-write policy SHA race cannot return success and performs recovery',async()=>{
+ const h=harness({inject:'registered-policy-drift-postwrite'});
+ await assert.rejects(tx.applyFixedCutover({host:h.host,assets:h.assets}),
+   /DENIED_OR_ROLLED_BACK/);
+ assert.equal(h.gets().consumed,1);
+ assert.equal(h.gets().rollbacks,1);
  sameState(h.gets(),h.old);
 });
