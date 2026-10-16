@@ -74,7 +74,6 @@ async function dispatch({input,approvalToken,rootCapabilities}={}) {
    stop('signed_approval_required');
  const root=bridge.attestExistingRoute(rootCapabilities);
  const narrowed=Object.freeze({
-  ...root,
   readPinnedGitManifest(query) {
    if(query.repo!==registration.EXPECTED_GIT_REPO||
       query.source_commit!==registration.SOURCE_COMMIT||
@@ -90,6 +89,11 @@ async function dispatch({input,approvalToken,rootCapabilities}={}) {
       query.source_path!==SOURCE)stop('untrusted_git_source');
    return root.readPinnedGitSource(query);
   },
+  readLiveOwner(p) {
+   if(!Object.values(gateway.OWNER_PATHS).includes(p))
+     stop('untrusted_owner_path');
+   return root.readLiveOwner(p);
+  },
   readStagedAsset(p) {
    if(p!==DEST)stop('untrusted_asset_destination');
    return root.readStagedAsset(p);
@@ -102,9 +106,23 @@ async function dispatch({input,approvalToken,rootCapabilities}={}) {
    if(a!==registration.INSTALL_ACTION)stop('untrusted_rollback_dispatch');
    return root.getRollback(a);
   },
+  verifyOriginalState(release) {
+   if(release?.normalized?.action!==registration.INSTALL_ACTION||
+      release?.normalized?.project!==registration.PROJECT||
+      release?.source_commit!==registration.SOURCE_COMMIT)
+      stop('untrusted_rollback_evidence');
+   return root.verifyOriginalState(release);
+  },
   getToolDiscovery(a) {
    if(a!==registration.INSTALL_ACTION)stop('untrusted_discovery');
    return root.getToolDiscovery(a);
+  },
+  writeMetadataAudit(record) {
+   if(record?.project!==registration.PROJECT||
+      record?.action!==registration.INSTALL_ACTION||
+      record?.source_commit!==registration.SOURCE_COMMIT)
+      stop('untrusted_audit_record');
+   return root.writeMetadataAudit(record);
   }
  });
  return bridge.applyAfterConsumption({
