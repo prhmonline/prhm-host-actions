@@ -10,6 +10,8 @@ on:
       - 'deploy-control-l4-post-registration-cutover-v2.cjs'
       - 'test-deploy-control-l4-post-registration-public-v2.cjs'
       - 'test-deploy-control-l4-post-registration-cutover-v2.cjs'
+      - 'deploy-control-l4-registration-root-survey-v1.cjs'
+      - 'test-deploy-control-l4-registration-root-survey-v1.cjs'
       - '.github/workflows/deploy-control-runtime-preflight-ci.yml'
 
 permissions:
@@ -36,6 +38,9 @@ jobs:
           node --check test-deploy-control-l4-post-registration-public-v2.cjs
           node --test test-deploy-control-l4-post-registration-public-v2.cjs
           node --check test-deploy-control-l4-post-registration-cutover-v2.cjs
+          node --check deploy-control-l4-registration-root-survey-v1.cjs
+          node --check test-deploy-control-l4-registration-root-survey-v1.cjs
+          node --test test-deploy-control-l4-registration-root-survey-v1.cjs
       - name: Guard against turning review helper into installer
         run: |
           node - <<'NODE'
