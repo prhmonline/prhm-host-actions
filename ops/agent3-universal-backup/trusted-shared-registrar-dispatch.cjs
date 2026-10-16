@@ -13,6 +13,7 @@ const gateway=require('../../prhm-action-registry-gateway-v1.cjs');
 const registration=require('./registration-contract.cjs');
 const lock=require('./release-lock.json');
 const pins=require('./production-registration-contract.json');
+const durableClaim=require('./durable-execution-claim.cjs');
 const SOURCE='ops/agent3-universal-backup/install-candidate.js';
 const DEST='/opt/prhm-agent-selfmaint-exec/actions/agent3-backup-installer.cjs';
 const OWNERS=Object.freeze(['base','executor','policy','mcp']);
@@ -176,7 +177,19 @@ async function dispatch({input,approvalToken,rootCapabilities}={}) {
    stop('immutable_manifest_required');
  if(typeof approvalToken!=='string'||approvalToken.length<120)
    stop('signed_approval_required');
- const narrowed=boundRootCapabilities(request,rootCapabilities);
+ // This is the only host-callable entry point. Do not accept a
+ // caller-provided claim callback: pin the durable O_EXCL journal from this
+ // reviewed, immutable source release. The journal itself requires UID 0,
+ // a fixed root-owned directory and successful file+directory fsync.
+ if(!rootCapabilities||typeof rootCapabilities!=='object'||
+    Array.isArray(rootCapabilities))stop('trusted_root_capabilities_required');
+ if(Object.prototype.hasOwnProperty.call(rootCapabilities,'claimExecutionOnce'))
+   stop('untrusted_execution_claim_override');
+ const trustedRoot=Object.freeze({
+  ...rootCapabilities,
+  claimExecutionOnce:durableClaim.claimExecutionOnce
+ });
+ const narrowed=boundRootCapabilities(request,trustedRoot);
  return bridge.applyAfterConsumption({
   input:request,approvalToken,capabilities:narrowed
  });
