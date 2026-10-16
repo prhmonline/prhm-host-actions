@@ -14,3 +14,12 @@ jobs:
         with:
           node-version: '20'
       - run: node --test test/agent3-encrypted-crash.test.js test/agent3-installer-gate.test.js test/agent3-policy-broker.test.js test/agent3-encrypted-bundle.test.js test/universal-backup-*.test.js test/agent3-imotion-backup-inventory.test.js test/agent3-confined-open.test.js test/agent3-read-broker.test.js test/agent3-read-broker-security-gates.test.js test/agent3-read-broker-boundaries.test.js test/universal-backup-isolated-smoke.test.js test/universal-backup-failure-rollback.test.js test/universal-backup-malformed-plan.test.js test/universal-backup-completion-marker.test.js
+
+      - name: Exact source SHA-256 evidence for approved installer
+        run: |
+          sha256sum \
+            lib/agent3-confined-open.js \
+            lib/universal-backup-policy.js \
+            lib/agent3-encrypted-bundle.candidate.js \
+            lib/agent3-policy-broker.candidate.js \
+            ops/agent3-universal-backup/install-candidate.js
