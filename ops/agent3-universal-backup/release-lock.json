@@ -26,6 +26,5 @@
     "post-install health and audit",
     "isolated encrypted restore"
   ],
-  "canonical_registry_handler": "ops/agent3-universal-backup/trusted-shared-registrar-dispatch.cjs",
-  "canonical_registry_handler_sha_review": "preinstall_only_git_blob_not_live"
+  "canonical_registry_handler_path": "ops/agent3-universal-backup/trusted-shared-registrar-dispatch.cjs"
 }
