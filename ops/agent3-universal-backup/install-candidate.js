@@ -20,23 +20,67 @@ const FILES=Object.freeze([
 ]);
 const BASE='/opt/prhm-agent3-universal-backup';
 const TARGET_HOST='prhm-production';
+const MAX_STAGE_FILE_BYTES=4*1024*1024;
+const INSTALL_LOCK_NAME='.agent3-installer.lock';
 function fail(x){throw Error('agent3_install_denied:'+x);}
 function bytesHash(b){return crypto.createHash('sha256').update(b).digest('hex');}
 function checkRel(x){if(!FILES.includes(x))fail('unexpected_path');}
+async function requirePrivateDir(dir){
+ const st=await fsp.lstat(dir);
+ if(!st.isDirectory()||st.isSymbolicLink()||(st.mode&0o022)!==0||
+    (typeof process.getuid==='function'&&st.uid!==process.getuid())||
+    await fsp.realpath(dir)!==dir)fail('unsafe_parent_directory');
+ return st;
+}
 async function hashStage(stagedir,digests) {
- if(!digests||Object.keys(digests).length!==FILES.length)fail('invalid_digests');
+ if(!digests||typeof digests!=='object'||Array.isArray(digests)||
+    Object.keys(digests).sort().join('|')!==FILES.slice().sort().join('|'))
+   fail('invalid_digests');
+ await requirePrivateDir(stagedir);
+ await requirePrivateDir(path.join(stagedir,'lib'));
  const files={};
  for(const rel of FILES) {
    checkRel(rel);
    if(!H.test(digests[rel]||''))fail('invalid_sha');
    const src=path.join(stagedir,rel);
-   const st=await fsp.lstat(src);
-   if(!st.isFile()||st.isSymbolicLink()||(st.mode&0o022)!==0)fail('unsafe_stage');
-   const data=await fsp.readFile(src,{flag:fs.constants.O_RDONLY|fs.constants.O_NOFOLLOW});
-   if(bytesHash(data)!==digests[rel])fail('sha_mismatch:'+rel);
-   files[rel]=data;
+   const before=await fsp.lstat(src);
+   if(!before.isFile()||before.isSymbolicLink()||
+      (before.mode&0o022)!==0||before.size<=0||
+      before.size>MAX_STAGE_FILE_BYTES)fail('unsafe_stage_file');
+   const handle=await fsp.open(src,fs.constants.O_RDONLY|fs.constants.O_NOFOLLOW|fs.constants.O_NONBLOCK);
+   try{
+     const opened=await handle.stat();
+     if(!opened.isFile()||opened.ino!==before.ino||opened.dev!==before.dev||
+        opened.uid!==before.uid||opened.size!==before.size||
+        (opened.mode&0o777)!==(before.mode&0o777))
+       fail('stage_file_read_race');
+     const data=await handle.readFile();
+     const after=await handle.stat();
+     if(data.length!==opened.size||after.size!==opened.size||
+        after.mtimeMs!==opened.mtimeMs||after.ctimeMs!==opened.ctimeMs)
+       fail('stage_file_mutated_during_read');
+     if(bytesHash(data)!==digests[rel])fail('sha_mismatch:'+rel);
+     files[rel]=data;
+   }finally{await handle.close();}
  }
  return files;
+}
+async function acquireInstallLock(root){
+ await requirePrivateDir(root);
+ const filename=path.join(root,INSTALL_LOCK_NAME);
+ let handle;
+ try{handle=await fsp.open(filename,'wx',0o600);}
+ catch(e){if(e.code==='EEXIST')fail('concurrent_or_stale_install_lock');throw e;}
+ return Object.freeze({filename,handle});
+}
+async function releaseInstallLock(lock){
+ const st=await lock.handle.stat();
+ await lock.handle.close();
+ const current=await fsp.lstat(lock.filename);
+ if(current.ino!==st.ino||current.dev!==st.dev||!current.isFile())
+   fail('install_lock_replaced');
+ await fsp.unlink(lock.filename);
+ await fsyncDir(path.dirname(lock.filename));
 }
 function contract(expectedSha){
  if(!SHA.test(expectedSha||''))fail('invalid_source_sha');
@@ -63,6 +107,8 @@ async function preflight({sha,hashes,base=BASE}){
  const spec=contract(sha);
  if(base!==BASE)fail('fixed_target_only');
  const staging=path.join(base,'staging',sha),release=path.join(base,'releases',sha);
+ await requirePrivateDir(base);
+ await requirePrivateDir(path.join(base,'staging'));
  const staged=await hashStage(staging,hashes);
  try{await fsp.lstat(release);fail('release_exists');}
  catch(e){if(e.code!=='ENOENT')throw e;}
@@ -84,9 +130,14 @@ async function installTransaction({sha,hashes,approvalMediator,registerAction,ro
  const root=BASE,releases=path.join(root,'releases'),stage=path.join(root,'staging',sha);
  const active=path.join(root,'current'),release=path.join(releases,sha);
  const transaction=path.join(root,'.current-'+sha+'.tmp');
+ const installLock=await acquireInstallLock(root);
+ try{
+ const recheck=await preflight({sha,hashes});
+ if(recheck.active_preimage!==plan.active_preimage)fail('concurrent_pointer_drift');
  const staged=await hashStage(stage,hashes);
  let releaseCreated=false,pointerMoved=false,registrationAttempted=false;
  await fsp.mkdir(releases,{recursive:true,mode:0o700});
+ await requirePrivateDir(releases);
  try{
   await fsp.mkdir(release,{mode:0o700});
   releaseCreated=true;
@@ -137,6 +188,7 @@ async function installTransaction({sha,hashes,approvalMediator,registerAction,ro
  }finally{
   try{await fsp.unlink(transaction);}catch(e){if(e.code!=='ENOENT')throw e;}
  }
+ }finally{await releaseInstallLock(installLock);}
 }
 if(require.main===module){
  if(process.argv[2]==='--contract'&&process.argv.length===4){
@@ -144,4 +196,5 @@ if(require.main===module){
   catch(e){process.stderr.write(e.message+'\n');process.exitCode=78;}
  }else{process.stderr.write('no_standalone_apply_control_plane_required\n');process.exitCode=78;}
 }
-module.exports={FILES,ACTION,BASE,TARGET_HOST,contract,preflight,installTransaction};
+module.exports={FILES,ACTION,BASE,TARGET_HOST,contract,preflight,installTransaction,
+ hashStage,requirePrivateDir,acquireInstallLock,releaseInstallLock};
