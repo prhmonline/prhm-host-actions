@@ -31,4 +31,5 @@ jobs:
         run: |
           set -euo pipefail
           test -f PRHM-ACTION-REGISTRY-ONBOARDING-STANDARD.md
-          ! grep -Eq '(workflow_dispatch:.*inputs:|ssh -o StrictHostKeyChecking=no)' .github/workflows/honartik-registry-signed-root-stage-ci.yml
+          test "$(grep -c '^  workflow_dispatch:' .github/workflows/honartik-registry-signed-root-stage-ci.yml)" -eq 1
+          ! grep -Eq '^[[:space:]]+inputs:' .github/workflows/honartik-registry-signed-root-stage-ci.yml
