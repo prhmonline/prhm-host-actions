@@ -36,7 +36,8 @@
     "no production restore",
     "no reuse of honartik-specific installer"
   ],
-  "live_owner_sha_attestation": "PENDING_TRUSTED_READ_ONLY_VERIFICATION",
-  "attestation_warning": "The four SHA256 preimages are registration candidate pins, NOT proof of current live owner bytes. Before requesting Level-4 approval, run verify-pinned-owner-preimages.cjs --check through an authorized host route and independently attest four service states.",
-  "registration_can_apply": false
+  "live_owner_sha_attestation": "OPERATOR_REPORTED_4_OF_4_MATCH_PENDING_TRUSTED_EXECUTOR_RECHECK",
+  "attestation_warning": "Operator supplied sha256sum of all four live owner files on prhm-production and systemctl is-active results: 4/4 matching pinned preimages and 4/4 active. This observation is recorded in operator-owner-sha-observation.json and verified by CI, but it is not an independent signed host attestation. The approved installer must re-read exact live descriptors immediately before fresh Ed25519 Level-4 authorization/consumption.",
+  "registration_can_apply": false,
+  "operator_evidence_path": "ops/agent3-universal-backup/operator-owner-sha-observation.json"
 }
