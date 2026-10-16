@@ -45,9 +45,9 @@ function safeReadPinned(name){
   return bytes;
  }finally{fs.closeSync(fd);}
 }
-function assess({evidence,ownerBytes,build=proposalBuilder.propose}){
+function assess({evidence,ownerBytes,build=proposalBuilder.propose,verifyPin=pinVerifier.verify}){
  if(!evidence||!ownerBytes)deny('evidence_and_bytes_required');
- pinVerifier.verify({evidence,contract});
+ verifyPin({evidence,contract});
  if(Object.keys(ownerBytes).sort().join('|')!==NAMES.slice().sort().join('|'))
   deny('exact_owner_set_required');
  for(const k of NAMES){
