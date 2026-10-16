@@ -32,3 +32,15 @@ No Level-4 request/approval was issued or consumed. No Production patch, service
 5. Re-enumerate the actual 14 modified + 14 untracked iMotion files, capture pre-backup SHA-256, create encrypted bundle without modifying source, independently restore it in isolation, confirm 28/28 and rehash source.
 
 Decision: no Production deployment until these are verified. Current result is a **build/tested development candidate**, not a completed rollout.
+
+## Continuation verification — 2026-10-16 (current session)
+- Encrypted restore now uses a private sibling staging directory and replaces an empty isolated restore destination only after all GCM authentication and SHA-256 checks succeed; corrupt ciphertext cannot publish partial plaintext.
+- Negative regression: `test/agent3-restore-transaction.test.js` verifies tampering with the second ciphertext leaves restore target empty and removes transient plaintext staging files.
+- Hardened source pin: `ops/agent3-universal-backup/release-lock.json` updated to candidate source commit `73b144496fafdafbbe0ac53013c46b0b99b45532`; encrypted module SHA-256 `30ef584c709f0652231c3c4481fe658fbb0f4bbc742dd7ec309007d4c6202eec`.
+- CI evidence: https://github.com/prhmonline/prhm-host-actions/actions/runs/38966231608 — 34 tests PASS / 0 FAIL, source SHA lock test included.
+- PRHM Agent 3 Primary still reports healthy version `1.12.5-host-actions-v2-honartik-iticket-dark-backend-batch1` with **no** `agent3_universal_backup_engine_install_v1` registered. A fresh request returned `host_action_v2_not_allowed`.
+- Alternative Remote Desktop Commander device is online, but terminal commands are blocked by exhausted monthly connector usage; do not retry until reset. This is a tool availability problem, not authorization for fallback shell access.
+- Dedicated GitHub `deploy-control` self-hosted deploy workflow permits only `aranob`, `honartik_front` and `honartik_back`; **control-plane/Agent 3 infrastructure is not allowlisted**, so treating this workflow as a generic infrastructure installer would bypass its controls.
+- **No production deploy, Action registration, key provisioning, source-file backup, isolated Production restore or live 28/28 hash acceptance has occurred.**
+
+**Remaining operational gate:** An authorized operator/control-plane maintainer must onboard the exact `agent3_universal_backup_engine_install_v1` fixed action through an approved SHA-bound Level-4 registration transaction before a valid install request can exist. The tested library candidate alone cannot expand the live registry or supply its own privileges.
