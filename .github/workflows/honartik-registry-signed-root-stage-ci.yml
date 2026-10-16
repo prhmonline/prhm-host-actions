@@ -1,0 +1,34 @@
+name: Honartik Signed Root Staging Candidate
+
+on:
+  pull_request:
+    paths:
+      - 'honartik-registry-signed-root-stage-v1.cjs'
+      - 'test-honartik-registry-signed-root-stage-v1.cjs'
+      - 'test-honartik-registry-signed-root-stage-manifest-v1.cjs'
+      - '.github/workflows/honartik-registry-signed-root-stage-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fixed_stage_contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fixed 46-step stage syntax and signed approval contract
+        run: |
+          set -euo pipefail
+          node --check honartik-registry-signed-root-stage-v1.cjs
+          node --test test-honartik-registry-signed-root-stage-v1.cjs
+      - name: Full immutable review of canonical 35+1 real manifest closure
+        run: |
+          set -euo pipefail
+          node --test test-honartik-registry-signed-root-stage-manifest-v1.cjs
+      - name: Explicit prohibition on CI install
+        run: |
+          set -euo pipefail
+          test -f PRHM-ACTION-REGISTRY-ONBOARDING-STANDARD.md
+          ! grep -Eq '(workflow_dispatch:.*inputs:|ssh -o StrictHostKeyChecking=no)' .github/workflows/honartik-registry-signed-root-stage-ci.yml
