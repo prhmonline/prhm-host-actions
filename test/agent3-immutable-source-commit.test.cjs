@@ -37,6 +37,11 @@ test('immutable release includes reviewed exclusive claim protocol and root fsyn
  assert.match(handler,/root_exclusive_claim_required/);
  assert.match(handler,/durable_exclusive_execution_claim_denied/);
  assert.match(handler,/claimExecutionOnce/);
+ assert.match(handler,/function rootWithFixedJournal/);
+ assert.match(handler,/durableClaim\.claimExecutionOnce/);
+ assert.match(handler,/untrusted_execution_claim_override/);
+ assert.equal(release.fixed_journal_binding,
+   'trusted-shared-registrar-dispatch.cjs:rootWithFixedJournal -> durable-execution-claim.cjs:claimExecutionOnce');
  assert.match(journal,/O_EXCL/);
  assert.match(journal,/fs\.fsyncSync\(fd\)/);
  assert.match(journal,/fs\.fsyncSync\(directoryFd\)/);
