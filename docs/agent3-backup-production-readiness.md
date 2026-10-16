@@ -44,3 +44,37 @@ Decision: no Production deployment until these are verified. Current result is a
 - **No production deploy, Action registration, key provisioning, source-file backup, isolated Production restore or live 28/28 hash acceptance has occurred.**
 
 **Remaining operational gate:** An authorized operator/control-plane maintainer must onboard the exact `agent3_universal_backup_engine_install_v1` fixed action through an approved SHA-bound Level-4 registration transaction before a valid install request can exist. The tested library candidate alone cannot expand the live registry or supply its own privileges.
+
+## 2026-10-17 — typed shared-registry onboarding contract
+
+**New source-only module:** \`ops/agent3-universal-backup/registration-contract.cjs\`
+
+The only intended supported registration route is the existing reviewed shared-registry design:
+\`prhm-action-registry-gateway-v1.cjs\` + \`prhm-action-registry-host-actions-v2-bridge-v1.cjs\`.
+Neither is an installed Agent 3 capability merely because its source is in Git.
+
+Approved source revision for the five-field enrollment request:
+\`f71759aa3d91ddca1e36f629175354cde8baef58\`
+(34/34 backup CI PASS, immutable code SHA256 hashes in release lock).
+The dedicated onboarding contract passed 38/38 CI:
+https://github.com/prhmonline/prhm-host-actions/actions/runs/38969608525
+
+Exact registration envelope (not yet submitted, not an authorization):
+- action: \`prhm_action_registry_install_v1\`
+- project: \`agent3\`
+- source_commit: \`f71759aa3d91ddca1e36f629175354cde8baef58\`
+- manifest_commit: **must come from a separately reviewed future commit**
+- manifest_sha256: **must be calculated from that exact immutable manifest**
+- install target: \`agent3_universal_backup_engine_install_v1\`
+- approval: independent authenticated Ed25519 once-only Level-4, ≤180s, signed binding to *all five fields*, followed by a consumed ledger entry.
+
+### Required trusted work still pending
+1. Collect the four **current live** Control Plane owner SHAs via an authorized read-only auditor and prove service health. No historical fingerprints or generated fixtures are valid substitutes.
+2. Use the existing reviewed shared-registry bootstrap to register the five-field request/approve/consume/execute route with atomic four-owner rollback. The live Agent currently has no such documented installed route.
+3. Compute four immutable patched owner outputs, reviewed asset SHAs, and an immutable manifest referencing source_commit. Commit manifest separately and attest both Git blobs and on-host staged assets against those SHA values.
+4. Submit that exact five-field request through the trusted route; perform independent Level-4 approval and consumption; register action, verify tool discovery and rollback.
+5. Provision least-privilege service account, key and destination via approved operator action; conduct separate installation, health and 28/28 encrypted iMotion backup plus isolated restore.
+
+The two read-only preflight tools for historical installer refresh work reported PASS but are not evidence that the shared registrar is installed. Never re-purpose their signed registration bindings.
+
+**No Production change, no Level-4 approval used, no e-mail, no actual 28-file backup.**
