@@ -13,4 +13,4 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - run: node --test test/universal-backup-*.test.js test/agent3-read-broker.test.js test/agent3-read-broker-security-gates.test.js test/agent3-read-broker-boundaries.test.js test/universal-backup-isolated-smoke.test.js test/universal-backup-failure-rollback.test.js test/universal-backup-malformed-plan.test.js
+      - run: node --test test/universal-backup-*.test.js test/agent3-read-broker.test.js test/agent3-read-broker-security-gates.test.js test/agent3-read-broker-boundaries.test.js test/universal-backup-isolated-smoke.test.js test/universal-backup-failure-rollback.test.js test/universal-backup-malformed-plan.test.js test/universal-backup-completion-marker.test.js
