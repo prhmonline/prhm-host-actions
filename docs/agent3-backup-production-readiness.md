@@ -78,3 +78,12 @@ Exact registration envelope (not yet submitted, not an authorization):
 The two read-only preflight tools for historical installer refresh work reported PASS but are not evidence that the shared registrar is installed. Never re-purpose their signed registration bindings.
 
 **No Production change, no Level-4 approval used, no e-mail, no actual 28-file backup.**
+
+## Operator SHA verification and live registration gate — 2026-10-17
+
+- Operator executed on `prhm-production`: `sha256sum` of exactly four owner files and `systemctl is-active` of exactly four services. **4/4 reported SHA values match the pinned preimages and 4/4 services report active.** No need to ask the operator to repeat this initial check; production installer must independently re-attest at execution time to prevent drift.
+- Evidence is intentionally classified as **operator-reported**, not an independent machine-signed or once-only Level-4 approval. Source: `ops/agent3-universal-backup/operator-owner-sha-observation.json`.
+- `ops/agent3-universal-backup/production-registration-contract.json` now acknowledges match but retains `registration_can_apply=false` until signed trusted registrar / rollback / manifest checks pass.
+- CI validates reported values versus four fixed SHA pins, rejects tampering and forbids upgrading this observation into approval: https://github.com/prhmonline/prhm-host-actions/actions/runs/38971790326 — **53/53 PASS**.
+- Read-only Primary health remains OK, with both `prhm_action_registry_install_v1` and `agent3_universal_backup_engine_install_v1` absent. Official `host_action_v2_request` calls for both were rejected `host_action_v2_not_allowed`.
+- **No active registration, no issued/consumed Level-4 request, no production install, no real encrypted iMotion backup, and no isolated Production restore**. Next dependency is proper onboarding of the signed five-field shared registrar into the existing trusted Approval Center / Host Actions v2 runtime. Do not use an unrelated approved installer or an unapproved Runner as bypass.
