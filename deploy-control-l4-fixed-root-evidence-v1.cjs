@@ -12,7 +12,8 @@ const runtime=require('./deploy-control-live-runtime-evidence-v1.cjs');
 const tx=require('./deploy-control-l4-privileged-transaction-v1.cjs');
 const HELPER=Object.freeze({
  path:'/opt/prhm-agent-selfmaint-exec/actions/installer-refresh-l4-binding-repair-state-v1.js',
- reviewed_sha256:'b80f1f75e1794b7ffd21a432564454a5da42245b533e1b8cae09c4c73113c2cb'
+ preimage_sha256:'b3b99e33fccb9122bcb5155cce64e4a6e9c73ce2404860d43aaa0def2a12db1e',
+ postimage_sha256:'b80f1f75e1794b7ffd21a432564454a5da42245b533e1b8cae09c4c73113c2cb'
 });
 const MAX_BYTES=4*1024*1024;
 const SHA_RE=/^[a-f0-9]{64}$/;
@@ -29,7 +30,7 @@ const ROOT_TARGETS=Object.freeze([
  })),
  Object.freeze({path:tx.STAGING.path,expected_sha256:tx.STAGING.sha256,
    uid:0,gid:0,mode:0o440,category:'staging_exception'}),
- Object.freeze({path:HELPER.path,expected_sha256:HELPER.reviewed_sha256,
+ Object.freeze({path:HELPER.path,expected_sha256:HELPER.preimage_sha256,
    uid:0,gid:0,mode:null,category:'reviewed_repair_helper'}),
  Object.freeze({path:tx.BACKUP.path,expected_sha256:tx.BACKUP.sha256,
    uid:0,gid:0,mode:null,category:'rollback_archive'})
@@ -77,17 +78,31 @@ function gatherEvidence(read=readPinned){
      observed_mode:observed?.mode??null,sha_match,ownership_match,
      error:problem,match:sha_match&&ownership_match});
  });
- const blockers=files.filter(x=>!x.match).map(x=>
-   x.category==='reviewed_repair_helper'?'reviewed_installer_helper_not_installed_or_drift':
+ const fileMismatches=files.filter(x=>!x.match).map(x=>
+   x.category==='reviewed_repair_helper'?'installer_refresh_helper_preimage_drift':
    x.category==='root_owner'?'root_owner_preimage_unverified_or_drift:'+x.path:
    x.category==='rollback_archive'?'rollback_archive_not_attested':
    'legacy_or_staging_boundary_drift:'+x.path);
+ const helper=files.find(x=>x.path===HELPER.path);
+ // The currently approved-to-review baseline helper is intentionally the OLD
+ // fingerprint. The safer /run temporary-file helper is a future signed L4
+ // remediation. Distinguish a verified preimage from an authorized postimage.
+ const repairPending=helper?.match===true;
+ const postimageAlreadyPresent=helper?.observed_sha256===HELPER.postimage_sha256;
+ const blockers=[...fileMismatches,
+   ...(repairPending?['installer_refresh_state_helper_repair_pending']:[])];
+ const helper_state=repairPending?'reviewed_preimage_repair_pending':
+   postimageAlreadyPresent?'postimage_present_unverified':'missing_or_unreviewed_drift';
  // Fixed status labels explicitly prohibit any claim of host authorization.
  return Object.freeze({
    schema_version:'prhm.deploy-control-l4.fixed-readonly-root-evidence.v1',
    source_git_sha:registration.source_commit,
    files:Object.freeze(files),blockers:Object.freeze(blockers),
-   file_preimage_attested:blockers.length===0,
+   file_preimage_attested:fileMismatches.length===0,
+   root_owner_preimage_attested:files.filter(x=>x.category==='root_owner').every(x=>x.match),
+   helper_state,helper_preimage_sha256:HELPER.preimage_sha256,
+   helper_postimage_sha256:HELPER.postimage_sha256,
+   helper_repair_pending:repairPending,
    issuer_health_attested:false,external_deploy_triggers_attested:false,
    effective_sudo_grants_attested:false,host_action_registered_attested:false,
    backup_restore_tested_on_host:false,signed_level4_verified:false,
