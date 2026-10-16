@@ -96,7 +96,8 @@ test('trusted dispatcher independently rechecks owner SHA and refuses to install
   getRollback(){return async()=>({verified:true})},
   verifyOriginalState:async()=>true,
   getToolDiscovery:async()=>true,
-  writeMetadataAudit:async()=>{}
+  writeMetadataAudit:async()=>{},
+  claimExecutionOnce:async()=>{throw Error('must never claim when owner SHA drifts');}
  };
  await assert.rejects(d.dispatch({input,approvalToken:'x'.repeat(140),rootCapabilities:root}),
    /owner_sha_drift/);
@@ -126,6 +127,7 @@ test('canonical adapter exposes exactly nine allowlisted root capabilities, no a
   verifyOriginalState(){called++;return true;},
   getToolDiscovery(){called++;return true;},
   writeMetadataAudit(){called++;return true;},
+  claimExecutionOnce(){called++;return {claimed:true};},
   arbitraryShell(){called++;return true;}
  };
  const c=d.boundRootCapabilities(input,root);
