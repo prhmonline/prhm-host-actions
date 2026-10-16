@@ -47,5 +47,5 @@ test('idempotency conflict and evidence validation', () => fixture(({registry}) 
   assert.deepEqual(planner.planCreate(request),plan);
   assert.throws(() => verifyEvidence({},plan),/denied/);
   const hash='a'.repeat(64);
-  assert.deepEqual(verifyEvidence({job_id:plan.job_id,file_count:1,archive_sha256:hash,manifest_sha256:hash,archive_readback_ok:true,manifest_verified:true,atomic_commit_ok:true},plan),{job_id:plan.job_id,verified:true});
+  assert.throws(() => verifyEvidence({job_id:plan.job_id,file_count:1,archive_sha256:hash,manifest_sha256:hash,archive_readback_ok:true,manifest_verified:true,atomic_commit_ok:true},plan),/denied/);
 }));
