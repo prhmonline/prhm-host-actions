@@ -50,9 +50,11 @@ test('same request identifier cannot be replayed even if new valid manifest dige
 test('two simultaneous claims using filesystem O_EXCL accept exactly one',async()=>{
  await withDir(async(dir,uid)=>{
   const x=input();
+  // Acquire both slots synchronously before the temporary root is torn
+  // down. O_EXCL is a kernel atomic primitive across processes.
   const out=await Promise.all([
-    Promise.resolve().then(()=>journal.claimInVerifiedDirectory(x,dir,uid)),
-    Promise.resolve().then(()=>journal.claimInVerifiedDirectory(x,dir,uid))
+    Promise.resolve(journal.claimInVerifiedDirectory(x,dir,uid)),
+    Promise.resolve(journal.claimInVerifiedDirectory(x,dir,uid))
   ]);
   assert.equal(out.filter(r=>r.claimed===true).length,1);
   assert.equal(out.filter(r=>r.claimed===false).length,1);
