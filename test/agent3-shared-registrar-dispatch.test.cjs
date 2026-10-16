@@ -96,8 +96,7 @@ test('trusted dispatcher independently rechecks owner SHA and refuses to install
   getRollback(){return async()=>({verified:true})},
   verifyOriginalState:async()=>true,
   getToolDiscovery:async()=>true,
-  writeMetadataAudit:async()=>{},
-  claimExecutionOnce:async()=>{throw Error('must never claim when owner SHA drifts');}
+  writeMetadataAudit:async()=>{}
  };
  await assert.rejects(d.dispatch({input,approvalToken:'x'.repeat(140),rootCapabilities:root}),
    /owner_sha_drift/);
@@ -151,4 +150,28 @@ test('canonical adapter exposes exactly nine allowlisted root capabilities, no a
  assert.throws(()=>c.writeMetadataAudit({project:'agent3',action:registration.INSTALL_ACTION,
    source_commit:'0'.repeat(40)}),/untrusted_audit_record/);
  assert.equal(called,0);
+});
+
+test('production root journal is fixed-source; injected claim callback cannot replace it',async()=>{
+ const journal=require('../ops/agent3-universal-backup/durable-execution-claim.cjs');
+ const callbacks={
+  readPinnedGitManifest(){throw Error('should not fetch manifest')},
+  readPinnedGitSource(){throw Error('should not fetch source')},
+  readLiveOwner(){throw Error('should not read owner')},
+  readStagedAsset(){throw Error('should not read staged asset')},
+  getInstaller(){throw Error('should not enter installer')},
+  getRollback(){throw Error('should not enter rollback')},
+  verifyOriginalState(){throw Error('should not verify state')},
+  getToolDiscovery(){throw Error('should not discover action')},
+  writeMetadataAudit(){throw Error('should not audit')}
+ };
+ const root=d.rootWithFixedJournal(callbacks);
+ assert.equal(root.claimExecutionOnce,journal.claimExecutionOnce);
+ assert.equal(Object.hasOwn(callbacks,'claimExecutionOnce'),false);
+ assert.equal(Object.isFrozen(root),true);
+ assert.throws(()=>d.rootWithFixedJournal({...callbacks,claimExecutionOnce:()=>true}),
+  /untrusted_execution_claim_override/);
+ await assert.rejects(d.dispatch({input:args(),approvalToken:'x'.repeat(140),
+  rootCapabilities:{...callbacks,claimExecutionOnce:()=>true}}),
+  /untrusted_execution_claim_override/);
 });
