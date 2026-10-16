@@ -69,13 +69,19 @@ function gatherEvidence(read=readPinned){
         x.mode<0||x.mode>0o777)throw Error('unattested_observation');
      observed={sha256:x.sha256,uid:x.uid,gid:x.gid,mode:x.mode};
    }catch(e){problem=String(e.message||e).slice(0,100)}
-   const sha_match=!!observed&&observed.sha256===t.expected_sha256;
+   // The helper may legitimately be in either SHA-pinned reviewed state.
+   // Presence of the postimage attests bytes only, NOT Level-4 authorization.
+   const preimage_match=!!observed&&observed.sha256===t.expected_sha256;
+   const postimage_match=t.category==='reviewed_repair_helper'&&
+     !!observed&&observed.sha256===HELPER.postimage_sha256;
+   const sha_match=preimage_match||postimage_match;
    const ownership_match=!!observed&&observed.uid===t.uid&&observed.gid===t.gid&&
      (t.mode===null?(observed.mode&0o022)===0:observed.mode===t.mode);
    return Object.freeze({category:t.category,path:t.path,expected_sha256:t.expected_sha256,
      observed_sha256:observed?.sha256||null,
      observed_uid:observed?.uid??null,observed_gid:observed?.gid??null,
      observed_mode:observed?.mode??null,sha_match,ownership_match,
+     preimage_match,postimage_match,
      error:problem,match:sha_match&&ownership_match});
  });
  const fileMismatches=files.filter(x=>!x.match).map(x=>
@@ -87,18 +93,22 @@ function gatherEvidence(read=readPinned){
  // The currently approved-to-review baseline helper is intentionally the OLD
  // fingerprint. The safer /run temporary-file helper is a future signed L4
  // remediation. Distinguish a verified preimage from an authorized postimage.
- const repairPending=helper?.match===true;
- const postimageAlreadyPresent=helper?.observed_sha256===HELPER.postimage_sha256;
+ const repairPending=helper?.match===true&&helper?.preimage_match===true;
+ const postimageAlreadyPresent=helper?.match===true&&helper?.postimage_match===true;
  const blockers=[...fileMismatches,
-   ...(repairPending?['installer_refresh_state_helper_repair_pending']:[])];
+   ...(repairPending?['installer_refresh_state_helper_repair_pending']:[]),
+   ...(postimageAlreadyPresent?['installer_refresh_helper_postimage_signed_l4_not_attested']:[])];
  const helper_state=repairPending?'reviewed_preimage_repair_pending':
-   postimageAlreadyPresent?'postimage_present_unverified':'missing_or_unreviewed_drift';
+   postimageAlreadyPresent?'reviewed_postimage_signature_unattested':'missing_or_unreviewed_drift';
  // Fixed status labels explicitly prohibit any claim of host authorization.
  return Object.freeze({
    schema_version:'prhm.deploy-control-l4.fixed-readonly-root-evidence.v1',
    source_git_sha:registration.source_commit,
    files:Object.freeze(files),blockers:Object.freeze(blockers),
-   file_preimage_attested:fileMismatches.length===0,
+   // SHA-attested postimage is not a preimage nor proof of signed consent.
+   file_preimage_attested:fileMismatches.length===0&&!postimageAlreadyPresent,
+   reviewed_file_state_attested:fileMismatches.length===0,
+   helper_reviewed_postimage_attested:postimageAlreadyPresent,
    root_owner_preimage_attested:files.filter(x=>x.category==='root_owner').every(x=>x.match),
    helper_state,helper_preimage_sha256:HELPER.preimage_sha256,
    helper_postimage_sha256:HELPER.postimage_sha256,
