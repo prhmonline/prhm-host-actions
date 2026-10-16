@@ -1,8 +1,8 @@
 {
   "schema": "prhm.agent3.universal-backup.release-lock.v1",
   "status": "candidate_not_installed",
-  "source_commit_sha": "f71759aa3d91ddca1e36f629175354cde8baef58",
-  "verified_ci_run": "https://github.com/prhmonline/prhm-host-actions/actions/runs/38966231608",
+  "source_commit_sha": "ee9a69fae39e6764f536f4fb03834521c1e1041f",
+  "verified_ci_run": "https://github.com/prhmonline/prhm-host-actions/actions/runs/38980080545",
   "fixed_action": "agent3_universal_backup_engine_install_v1",
   "approval_level": 4,
   "target_host": "prhm-production",
@@ -25,5 +25,7 @@
     "registry rollback",
     "post-install health and audit",
     "isolated encrypted restore"
-  ]
+  ],
+  "canonical_registry_handler": "ops/agent3-universal-backup/trusted-shared-registrar-dispatch.cjs",
+  "canonical_registry_handler_sha_review": "preinstall_only_git_blob_not_live"
 }
