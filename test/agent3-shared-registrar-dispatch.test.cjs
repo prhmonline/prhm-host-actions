@@ -112,3 +112,41 @@ test('no CLI apply, separate signing route, or generic root command',()=>{
  assert.equal(Object.hasOwn(d,'issueApproval'),false);
  assert.equal(Object.hasOwn(d,'installDirect'),false);
 });
+
+test('canonical adapter exposes exactly nine allowlisted root capabilities, no arbitrary executor',()=>{
+ const input=args();
+ let called=0;
+ const root={
+  readPinnedGitManifest(){called++;return {path:'bad',bytes:Buffer.from('bad')};},
+  readPinnedGitSource(){called++;return Buffer.from('fixture');},
+  readLiveOwner(){called++;return Buffer.from('fixture');},
+  readStagedAsset(){called++;return Buffer.from('fixture');},
+  getInstaller(){called++;return ()=>{};},
+  getRollback(){called++;return ()=>{};},
+  verifyOriginalState(){called++;return true;},
+  getToolDiscovery(){called++;return true;},
+  writeMetadataAudit(){called++;return true;},
+  arbitraryShell(){called++;return true;}
+ };
+ const c=d.boundRootCapabilities(input,root);
+ assert.deepEqual(Object.keys(c).sort(),[
+  'readPinnedGitManifest','readPinnedGitSource','readLiveOwner','readStagedAsset',
+  'getInstaller','getRollback','verifyOriginalState','getToolDiscovery',
+  'writeMetadataAudit'].sort());
+ assert.equal(Object.hasOwn(c,'arbitraryShell'),false);
+ const wrongManifest={repo:registration.EXPECTED_GIT_REPO,source_commit:registration.SOURCE_COMMIT,
+   manifest_commit:'c'.repeat(40),project:'agent3'};
+ assert.throws(()=>c.readPinnedGitManifest(wrongManifest),/untrusted_manifest_query/);
+ assert.throws(()=>c.readPinnedGitSource({repo:registration.EXPECTED_GIT_REPO,
+   source_commit:registration.SOURCE_COMMIT,source_path:'evil.cjs'}),/untrusted_git_source/);
+ assert.throws(()=>c.readLiveOwner('/etc/shadow'),/untrusted_owner_path/);
+ assert.throws(()=>c.readStagedAsset('/tmp/evil.cjs'),/untrusted_asset_destination/);
+ assert.throws(()=>c.getInstaller('host_action_v2_installer_v1'),/untrusted_installer_dispatch/);
+ assert.throws(()=>c.getRollback('other'),/untrusted_rollback_dispatch/);
+ assert.throws(()=>c.getToolDiscovery('other'),/untrusted_discovery/);
+ assert.throws(()=>c.verifyOriginalState({normalized:{action:registration.INSTALL_ACTION,
+   project:'honartik'},source_commit:registration.SOURCE_COMMIT}),/untrusted_rollback_evidence/);
+ assert.throws(()=>c.writeMetadataAudit({project:'agent3',action:registration.INSTALL_ACTION,
+   source_commit:'0'.repeat(40)}),/untrusted_audit_record/);
+ assert.equal(called,0);
+});
