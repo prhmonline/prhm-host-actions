@@ -171,25 +171,22 @@ function boundRootCapabilities(input,rootCapabilities) {
   }
  });
 }
+function rootWithFixedJournal(rootCapabilities){
+ // Static local module binding: no caller-selected journal path, file or
+ // callbacks. The journal validates UID 0 and its fixed root-only directory.
+ if(!rootCapabilities||typeof rootCapabilities!=='object'||
+    Array.isArray(rootCapabilities))stop('trusted_root_capabilities_required');
+ if(Object.prototype.hasOwnProperty.call(rootCapabilities,'claimExecutionOnce'))
+   stop('untrusted_execution_claim_override');
+ return Object.freeze({...rootCapabilities,claimExecutionOnce:durableClaim.claimExecutionOnce});
+}
 async function dispatch({input,approvalToken,rootCapabilities}={}) {
  const request=registration.boundArgs(input);
  if(!request.manifest_commit||!request.manifest_sha256)
    stop('immutable_manifest_required');
  if(typeof approvalToken!=='string'||approvalToken.length<120)
    stop('signed_approval_required');
- // This is the only host-callable entry point. Do not accept a
- // caller-provided claim callback: pin the durable O_EXCL journal from this
- // reviewed, immutable source release. The journal itself requires UID 0,
- // a fixed root-owned directory and successful file+directory fsync.
- if(!rootCapabilities||typeof rootCapabilities!=='object'||
-    Array.isArray(rootCapabilities))stop('trusted_root_capabilities_required');
- if(Object.prototype.hasOwnProperty.call(rootCapabilities,'claimExecutionOnce'))
-   stop('untrusted_execution_claim_override');
- const trustedRoot=Object.freeze({
-  ...rootCapabilities,
-  claimExecutionOnce:durableClaim.claimExecutionOnce
- });
- const narrowed=boundRootCapabilities(request,trustedRoot);
+ const narrowed=boundRootCapabilities(request,rootWithFixedJournal(rootCapabilities));
  return bridge.applyAfterConsumption({
   input:request,approvalToken,capabilities:narrowed
  });
@@ -199,5 +196,5 @@ if(require.main===module){
  process.exitCode=78;
 }
 module.exports=Object.freeze({
- SOURCE,DEST,OWNERS,assertFixedManifest,boundRootCapabilities,dispatch
+ SOURCE,DEST,OWNERS,assertFixedManifest,boundRootCapabilities,rootWithFixedJournal,dispatch
 });
