@@ -14,6 +14,7 @@
 const fs=require('node:fs');
 const crypto=require('node:crypto');
 const vm=require('node:vm');
+const cp=require('node:child_process');
 const evidenceCollector=require('./four-owner-readonly-preflight.cjs');
 const pinVerifier=require('./verify-pinned-owner-preimages.cjs');
 const proposalBuilder=require('./four-owner-registration-patch-proposal.cjs');
@@ -44,6 +45,27 @@ function safeReadPinned(name){
   if(sha(bytes)!==contract.preimage_sha256[name])deny('owner_pin_drift:'+name);
   return bytes;
  }finally{fs.closeSync(fd);}
+}
+/**
+ * Syntax-check without executing candidate source.
+ * MCP is ESM: vm.Script would reject a valid static import declaration.
+ * Use the *same exact Node executable*, --check and --input-type=module,
+ * with source piped on stdin. No shell, args, paths or input from callers.
+ */
+function checkSyntax(name,bytes){
+ if(!NAMES.includes(name)||name==='policy'||!Buffer.isBuffer(bytes)||
+    bytes.length<=0||bytes.length>MAX_BYTES)
+  deny('invalid_syntax_check_target');
+ if(name!=='mcp'){
+  new vm.Script(bytes.toString('utf8'),{filename:name+'.js'});
+  return;
+ }
+ const result=cp.spawnSync(process.execPath,['--check','--input-type=module'],{
+   input:bytes,encoding:'utf8',timeout:12000,maxBuffer:64*1024,
+   shell:false,windowsHide:true
+ });
+ if(result.error||result.status!==0||result.signal)
+  deny('mcp_module_syntax_invalid');
 }
 function assess({evidence,ownerBytes,build=proposalBuilder.propose,verifyPin=pinVerifier.verify}){
  if(!evidence||!ownerBytes)deny('evidence_and_bytes_required');
@@ -78,7 +100,7 @@ function assess({evidence,ownerBytes,build=proposalBuilder.propose,verifyPin=pin
       !p.typed_scopes?.some(x=>x?.action===contract.action&&
        x?.risk==='critical'))deny('policy_postimage_missing');
   }else{
-   new vm.Script(b.toString('utf8'),{filename:k+'.js'});
+   checkSyntax(k,b);
   }
  }
  return Object.freeze({
@@ -112,4 +134,4 @@ if(require.main===module){
   catch(e){process.stderr.write(String(e.message||e)+'\n');process.exitCode=78;}
  }
 }
-module.exports=Object.freeze({NAMES,safeReadPinned,assess,run});
+module.exports=Object.freeze({NAMES,safeReadPinned,checkSyntax,assess,run});
