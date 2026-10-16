@@ -139,7 +139,10 @@ async function applyFixedCutover({host,assets}){
    frozen=true;
    recovery=await h.createDurableRecoveryJournal({
      backup:BACKUP,
-     preimages:[ASSETS[0].path,...LEGACY.map(x=>x.path),STAGING.path],
+     // Stage 1 owns issuer-policy rollback. Phase 2 must NEVER roll back to
+     // the legacy issuer policy, even if a later deployment step fails.
+     preimages:[...LEGACY.map(x=>x.path),STAGING.path],
+     readonly_expected:[{path:ASSETS[0].path,sha256:POLICY_REGISTERED.sha256}],
      initially_absent:[...ASSETS.slice(1).map(x=>x.path),CONFIG],
      action:ACTION
    });
@@ -148,6 +151,13 @@ async function applyFixedCutover({host,assets}){
      fail('durable_rollback_not_ready');
    recorded=true;
    stage='authorization';
+   // Close the preflight/consume race: trust boundary MUST still match after
+   // entrypoints have been frozen and the recovery journal is durable.
+   if(await h.attestRootFileSha256(ASSETS[0].path)!==POLICY_REGISTERED.sha256)
+     fail('registered_policy_changed_before_approval');
+   health(await h.getApprovalCenterHealth(),'before');
+   if(await h.getFixedToolDiscovery(ACTION)!==true)
+     fail('registered_action_disappeared_before_approval');
    // Existing host executor MUST independently verify an Ed25519 signature,
    // active typed scope, exact Git release and one-time consumption. A boolean
    // or a user-supplied confirmation string is NOT sufficient.
@@ -204,7 +214,10 @@ async function applyFixedCutover({host,assets}){
      try {
        restored=await h.restoreJournalAndReload(recovery)===true;
        if(restored){
-         health(await h.getApprovalCenterHealth(),'before');
+         // Restored state is the REGISTERED policy, never the legacy policy.
+         if(await h.attestRootFileSha256(ASSETS[0].path)!==POLICY_REGISTERED.sha256)
+           restored=false;
+         else health(await h.getApprovalCenterHealth(),'before');
          for(const old of LEGACY){
            const b=await h.readTrustedFile(old.path);
            if(!Buffer.isBuffer(b)||sha(b)!==old.sha256)restored=false;
