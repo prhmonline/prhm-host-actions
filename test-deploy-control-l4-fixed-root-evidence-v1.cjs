@@ -22,7 +22,12 @@ test('exact root targets include four owners, two old sudoers, one staging, help
 test('matching hashes alone NEVER authorize install or claim issuer, sudo, triggers or approval',()=>{
  const report=collector.gatherEvidence(observed);
  assert.equal(report.file_preimage_attested,true);
- assert.equal(report.blockers.length,0);
+ assert.deepEqual(report.blockers,['installer_refresh_state_helper_repair_pending']);
+ assert.equal(report.helper_repair_pending,true);
+ assert.equal(report.helper_state,'reviewed_preimage_repair_pending');
+ assert.equal(report.helper_preimage_sha256,collector.HELPER.preimage_sha256);
+ assert.equal(report.helper_postimage_sha256,collector.HELPER.postimage_sha256);
+ assert.equal(report.root_owner_preimage_attested,true);
  for(const key of ['installation_authorized','may_install','signed_level4_verified',
  'issuer_health_attested','external_deploy_triggers_attested',
  'effective_sudo_grants_attested','host_action_registered_attested',
@@ -36,7 +41,7 @@ test('reviewed helper SHA mismatch is a definite blocker, not repaired or repinn
   if(path===collector.HELPER.path)x.sha256=sha0;
   return x;
  });
- assert.ok(report.blockers.includes('reviewed_installer_helper_not_installed_or_drift'));
+ assert.ok(report.blockers.includes('installer_refresh_helper_preimage_drift'));
  assert.equal(report.may_install,false);
  assert.equal(report.files.find(x=>x.path===collector.HELPER.path).observed_sha256,sha0);
 });
@@ -67,7 +72,7 @@ test('writable helper rejected even with matching SHA and root uid',()=>{
   if(path===collector.HELPER.path)x.mode=0o666;
   return x;
  });
- assert.ok(report.blockers.includes('reviewed_installer_helper_not_installed_or_drift'));
+ assert.ok(report.blockers.includes('installer_refresh_helper_preimage_drift'));
  assert.equal(report.file_preimage_attested,false);
 });
 test('invalid untrusted observation shape is an error without failing open',()=>{
@@ -88,4 +93,24 @@ test('CLI refuses user-provided arbitrary arguments without reading root files',
  assert.equal(p.status,3);
  assert.match(p.stderr,/root_read_only_flag_required/);
  assert.doesNotMatch(p.stdout,/BEGIN PRIVATE KEY/);
+});
+test('observed target-postimage hash is NOT mistaken for a clean original baseline',()=>{
+ const report=collector.gatherEvidence(path=>{
+  const x=observed(path);
+  if(path===collector.HELPER.path)x.sha256=collector.HELPER.postimage_sha256;
+  return x;
+ });
+ assert.equal(report.helper_state,'postimage_present_unverified');
+ assert.equal(report.helper_repair_pending,false);
+ assert.equal(report.file_preimage_attested,false);
+ assert.ok(report.blockers.includes('installer_refresh_helper_preimage_drift'));
+ assert.equal(report.signed_level4_verified,false);
+ assert.equal(report.may_install,false);
+});
+test('reviewed preimage and postimage are different fixed 64-digit fingerprints',()=>{
+ assert.equal(collector.HELPER.preimage_sha256,
+  'b3b99e33fccb9122bcb5155cce64e4a6e9c73ce2404860d43aaa0def2a12db1e');
+ assert.equal(collector.HELPER.postimage_sha256,
+  'b80f1f75e1794b7ffd21a432564454a5da42245b533e1b8cae09c4c73113c2cb');
+ assert.notEqual(collector.HELPER.preimage_sha256,collector.HELPER.postimage_sha256);
 });
