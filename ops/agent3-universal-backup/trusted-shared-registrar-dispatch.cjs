@@ -59,8 +59,12 @@ function assertFixedManifest(bytes,path){
  });
 }
 /**
- * Root executor owns these capabilities.  They MUST NOT be constructed using
- * arguments from an MCP client. Bridge attests all 9 capabilities.
+ * Root executor owns these capabilities. They MUST NOT be constructed using
+ * arguments from an MCP client. Bridge attests nine core capabilities; the
+ * Agent 3 adapter additionally REQUIRES a root-owned durable exclusive claim.
+ * That claim must use a crash-safe O_EXCL + fsync journal keyed by request_id
+ * and immutable five-field argument digest, BEFORE the installer is invoked.
+ * An existing claim, even from a failed attempt, MUST deny another execution.
  *
  * Both calling this function and passing plausible callbacks are insufficient:
  * bridge.applyAfterConsumption calls the root-only verifier against the true
@@ -69,6 +73,8 @@ function assertFixedManifest(bytes,path){
 function boundRootCapabilities(input,rootCapabilities) {
  const request=registration.boundArgs(input);
  const root=bridge.attestExistingRoute(rootCapabilities);
+ if(typeof root.claimExecutionOnce!=='function')
+   stop('root_exclusive_claim_required');
  return Object.freeze({
   readPinnedGitManifest(query) {
    if(query.repo!==registration.EXPECTED_GIT_REPO||
@@ -96,7 +102,49 @@ function boundRootCapabilities(input,rootCapabilities) {
   },
   getInstaller(a) {
    if(a!==registration.INSTALL_ACTION)stop('untrusted_installer_dispatch');
-   return root.getInstaller(a);
+   // The shared bridge calls this callback only AFTER authenticating the
+   // Ed25519 JWS and the Approval Center consumed ledger in the trusted root
+   // executor. An exclusive durable claim prevents replay or concurrent runs
+   // of the *same* valid consumed approval.
+   return async ctx=>{
+    const approval=ctx?.approval;
+    const release=ctx?.release;
+    const digest=gateway.approvalBindingSha(request);
+    if(approval?.level!==4||approval?.risk!=='critical'||
+       approval?.operation!==gateway.OPERATION||
+       !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(approval?.request_id||'')||
+       approval?.arguments_sha256!==digest||
+       approval?.source_commit!==request.source_commit||
+       approval?.manifest_sha256!==request.manifest_sha256||
+       release?.source_commit!==request.source_commit||
+       release?.manifest_commit!==request.manifest_commit||
+       release?.manifest_sha256!==request.manifest_sha256||
+       release?.normalized?.project!==registration.PROJECT||
+       release?.normalized?.action!==registration.INSTALL_ACTION)
+      stop('unbound_verified_approval_context');
+    const claimInput=Object.freeze({
+      request_id:approval.request_id,
+      arguments_sha256:digest,
+      project:registration.PROJECT,
+      action:registration.REGISTRY_ACTION,
+      target_action:registration.INSTALL_ACTION,
+      source_commit:request.source_commit,
+      manifest_commit:request.manifest_commit,
+      manifest_sha256:request.manifest_sha256
+    });
+    const claim=await root.claimExecutionOnce(claimInput);
+    if(!claim||Object.keys(claim).sort().join('|')!==
+       ['claimed','durable','exclusive','request_id','arguments_sha256'].sort().join('|')||
+       claim.claimed!==true||claim.durable!==true||claim.exclusive!==true||
+       claim.request_id!==approval.request_id||
+       claim.arguments_sha256!==digest)
+      stop('durable_exclusive_execution_claim_denied');
+    const installer=root.getInstaller(a);
+    if(typeof installer!=='function')stop('root_installer_not_callable');
+    // Never retry the claim or installer after an exception. The root journal
+    // remains consumed even when rollback restores original owner bytes.
+    return installer(ctx);
+   };
   },
   getRollback(a) {
    if(a!==registration.INSTALL_ACTION)stop('untrusted_rollback_dispatch');
