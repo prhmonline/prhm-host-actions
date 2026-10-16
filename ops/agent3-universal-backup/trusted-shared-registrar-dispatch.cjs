@@ -66,18 +66,14 @@ function assertFixedManifest(bytes,path){
  * bridge.applyAfterConsumption calls the root-only verifier against the true
  * Approval Center Ed25519 public key and persisted once-only ledger.
  */
-async function dispatch({input,approvalToken,rootCapabilities}={}) {
+function boundRootCapabilities(input,rootCapabilities) {
  const request=registration.boundArgs(input);
- if(!request.manifest_commit||!request.manifest_sha256)
-   stop('immutable_manifest_required');
- if(typeof approvalToken!=='string'||approvalToken.length<120)
-   stop('signed_approval_required');
  const root=bridge.attestExistingRoute(rootCapabilities);
- const narrowed=Object.freeze({
+ return Object.freeze({
   readPinnedGitManifest(query) {
    if(query.repo!==registration.EXPECTED_GIT_REPO||
       query.source_commit!==registration.SOURCE_COMMIT||
-      query.manifest_commit!==input.manifest_commit||
+      query.manifest_commit!==request.manifest_commit||
       query.project!==registration.PROJECT)stop('untrusted_manifest_query');
    const result=root.readPinnedGitManifest(query);
    assertFixedManifest(result?.bytes,result?.path);
@@ -125,6 +121,14 @@ async function dispatch({input,approvalToken,rootCapabilities}={}) {
    return root.writeMetadataAudit(record);
   }
  });
+}
+async function dispatch({input,approvalToken,rootCapabilities}={}) {
+ const request=registration.boundArgs(input);
+ if(!request.manifest_commit||!request.manifest_sha256)
+   stop('immutable_manifest_required');
+ if(typeof approvalToken!=='string'||approvalToken.length<120)
+   stop('signed_approval_required');
+ const narrowed=boundRootCapabilities(request,rootCapabilities);
  return bridge.applyAfterConsumption({
   input:request,approvalToken,capabilities:narrowed
  });
@@ -134,5 +138,5 @@ if(require.main===module){
  process.exitCode=78;
 }
 module.exports=Object.freeze({
- SOURCE,DEST,OWNERS,assertFixedManifest,dispatch
+ SOURCE,DEST,OWNERS,assertFixedManifest,boundRootCapabilities,dispatch
 });
