@@ -5,7 +5,7 @@
  * NO mutation, registration, approval request, service restart or code execute.
  * Only the four exact SHA-pinned owner paths from the prior green live
  * preflight are read via O_NOFOLLOW, and output contains bounded, redacted
- * source anchor context, never full owner files or credentials.
+ * source anchor positions/hashes only, never source excerpts or credentials.
  *
  * This is diagnostic evidence, NOT an installable bootstrap or permission.
  */
@@ -13,7 +13,7 @@ const crypto=require('node:crypto');
 const check=require('./four-owner-live-patch-preflight.cjs');
 const ownerPins=require('./production-registration-contract.json');
 const KEYS=Object.freeze(['base','executor','policy','mcp']);
-const MAX_SOURCE_LINE=220;
+const MAX_SOURCE_LINE=0; // legacy exported constant; source excerpts prohibited
 const MAX_WINDOW_HITS=3;
 const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
 
@@ -59,8 +59,9 @@ function scan(key,buffer){
     if(found.length<MAX_WINDOW_HITS){
      found.push(Object.freeze({
       line:i+1,
-      source_sha256:sha(Buffer.from(lines[i])),
-      excerpt:redact(lines[i])
+      source_sha256:sha(Buffer.from(lines[i]))
+      // Never return source excerpts, even those matching an anchor:
+      // approval request lines may contain unknown secret-like literals.
      }));
     }
    }
