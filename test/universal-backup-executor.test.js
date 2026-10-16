@@ -7,6 +7,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const {createPlanner}=require('../lib/universal-backup-policy');
 const {executeFileBackup}=require('../lib/universal-backup-executor.prototype');
+const {verifyIsolatedRestore}=require('../lib/universal-backup-restore-verifier.prototype');
 test('executor creates read-back verified file-only archive without modifying source', async () => {
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'backup-exec-'));
   try {
@@ -21,9 +22,12 @@ test('executor creates read-back verified file-only archive without modifying so
     assert.equal(evidence.file_count,1);
     assert.equal(evidence.archive_readback_ok,true);
     assert.equal(evidence.atomic_commit_ok,false);
+    assert.deepEqual(await verifyIsolatedRestore(evidence.archive_path,evidence.manifest_path),{verified:true,file_count:1,archive_sha256:evidence.archive_sha256});
     assert.equal(crypto.createHash('sha256').update(fs.readFileSync(source)).digest('hex'),before);
     assert.equal(crypto.createHash('sha256').update(fs.readFileSync(evidence.archive_path)).digest('hex'),evidence.archive_sha256);
     assert.equal(JSON.parse(fs.readFileSync(evidence.manifest_path,'utf8')).files[0].sha256,before);
     await assert.rejects(executeFileBackup(plan),/EEXIST/);
+    fs.appendFileSync(evidence.archive_path,'tamper');
+    await assert.rejects(verifyIsolatedRestore(evidence.archive_path,evidence.manifest_path),/archive_hash_mismatch/);
   } finally {fs.rmSync(dir,{recursive:true,force:true});}
 });
