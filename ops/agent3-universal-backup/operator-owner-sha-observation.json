@@ -1,0 +1,23 @@
+{
+  "schema": "prhm.agent3.operator-readonly-observation.v1",
+  "evidence_type": "operator_supplied_terminal_output",
+  "target_host": "prhm-production",
+  "owner_sha256": {
+    "base": "4c29d01a248d59ee85754dfa5a59e8132fe22e6b34ef04324228c16c88727406",
+    "executor": "410406ba0965ef3a5cad6da6306a85335e38acc3637fb6ed60fa42200a10c2e0",
+    "policy": "148fe2a724befc15cd8c731b0195d83e254d39215792a5084b70dd5b5c178174",
+    "mcp": "bd768f992dab75710558e3f47187c311c2ee5b5ec6f5751a74e0bbfa64729166"
+  },
+  "services": {
+    "prhm-agent-selfmaint.service": "active",
+    "prhm-agent-selfmaint-exec.service": "active",
+    "prhm-agent-mcp-blue.service": "active",
+    "prhm-agent-mcp-green.service": "active"
+  },
+  "operator_reported_only": true,
+  "authenticated_host_attestation": false,
+  "execution_time_recheck_required": true,
+  "approval_consumed": false,
+  "installation_completed": false,
+  "report": "All four read-only sha256sum values and four systemctl is-active values were supplied in the conversation and match current pinned candidate; installer must re-read all four live file descriptors and validate service state before a fresh signed Level-4 request and execution."
+}
