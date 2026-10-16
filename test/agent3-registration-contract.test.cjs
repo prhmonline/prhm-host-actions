@@ -29,19 +29,46 @@ test('ignore forged approval flags and refuse arbitrary enrollment',()=>{
   {...args(),manifest_sha256:'not-a-sha'}
  ])assert.throws(()=>c.dryRunApprovalRequest(wrong));
 });
-test('preinstall gate distinguishes code readiness from installed shared registrar',()=>{
+test('preinstall gate distinguishes source readiness from a registered action',()=>{
  const live=c.status({gitAttested:true,allFourServicesHealthy:true});
  assert.equal(live.ready,false);
  assert.ok(live.gaps.includes('TRUSTED_REGISTRAR_NOT_INSTALLED'));
  assert.ok(live.gaps.includes('APPROVAL_ROUTE_NOT_REGISTERED'));
- assert.ok(live.gaps.includes('TARGET_INSTALL_ACTION_NOT_REGISTERED'));
- assert.ok(live.gaps.includes('BACKUP_KEY_NOT_PROVISIONED'));
+ assert.equal(live.gaps.includes('TARGET_INSTALL_ACTION_NOT_REGISTERED'),false);
+ assert.equal(live.gaps.includes('BACKUP_KEY_NOT_PROVISIONED'),false);
  assert.equal(live.owner_count,4);
  const all=c.status({gitAttested:true,sharedRegistrarVisible:true,
   typedApprovalRouteVisible:true,fourOwnerRollbackVerified:true,
-  allFourServicesHealthy:true,liveInstallerRegistered:true,pinnedServiceKeyReady:true});
+  allFourServicesHealthy:true,liveInstallerRegistered:false,pinnedServiceKeyReady:false});
  assert.equal(all.ready,true);
- assert.equal(all.phase,'preinstall'); // NOT authorized or installed yet!
+ assert.equal(all.registrar_preinstall_ready,true);
+ assert.equal(all.engine_active,false);
+ assert.equal(all.phase,'preinstall');
+});
+test('authorized and active phases must fail closed without consumed L4, discovery and encryption key',()=>{
+ const shared={gitAttested:true,sharedRegistrarVisible:true,
+  typedApprovalRouteVisible:true,fourOwnerRollbackVerified:true,
+  allFourServicesHealthy:true};
+ const pre=c.status(shared);
+ assert.equal(pre.ready,true);
+ const pending=c.status({...shared,phase:'authorized'});
+ assert.equal(pending.ready,false);
+ assert.deepEqual(pending.gaps,['SIGNED_L4_RECEIPT_NOT_CONSUMED']);
+ const authorized=c.status({...shared,phase:'authorized',signedL4Consumed:true});
+ assert.equal(authorized.ready,true);
+ assert.equal(authorized.engine_active,false);
+ const noTool=c.status({...shared,phase:'active',signedL4Consumed:true});
+ assert.equal(noTool.ready,false);
+ assert.ok(noTool.gaps.includes('TARGET_TOOL_NOT_REGISTERED'));
+ assert.ok(noTool.gaps.includes('BACKUP_KEY_NOT_PROVISIONED'));
+ const noKey=c.status({...shared,phase:'active',signedL4Consumed:true,
+  liveInstallerRegistered:true});
+ assert.deepEqual(noKey.gaps,['BACKUP_KEY_NOT_PROVISIONED']);
+ const active=c.status({...shared,phase:'active',signedL4Consumed:true,
+  liveInstallerRegistered:true,pinnedServiceKeyReady:true});
+ assert.equal(active.ready,true);
+ assert.equal(active.engine_active,true);
+ assert.throws(()=>c.status({phase:'untrusted'}),/invalid_readiness_phase/);
 });
 test('only explicitly reviewed manifest schema can match Agent3 installation action',()=>{
  const digest=v=>crypto.createHash('sha256').update(v).digest('hex');
