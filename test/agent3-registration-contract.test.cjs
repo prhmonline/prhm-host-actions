@@ -67,7 +67,12 @@ test('authorized and active phases must fail closed without consumed L4, discove
  const active=c.status({...shared,phase:'active',signedL4Consumed:true,
   liveInstallerRegistered:true,pinnedServiceKeyReady:true});
  assert.equal(active.ready,true);
- assert.equal(active.engine_active,true);
+ assert.equal(active.mode,'SOURCE_ONLY_DECLARED_READINESS');
+ assert.equal(active.evidence_authenticated,false);
+ assert.equal(active.signed_l4_consumption_verified,false);
+ assert.equal(active.registry_installed_verified,false);
+ assert.equal(active.production_activation_verified,false);
+ assert.equal(active.engine_active,false);
  assert.throws(()=>c.status({phase:'untrusted'}),/invalid_readiness_phase/);
 });
 test('only explicitly reviewed manifest schema can match Agent3 installation action',()=>{
