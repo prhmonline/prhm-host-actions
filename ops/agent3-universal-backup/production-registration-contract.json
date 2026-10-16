@@ -35,5 +35,8 @@
     "no email",
     "no production restore",
     "no reuse of honartik-specific installer"
-  ]
+  ],
+  "live_owner_sha_attestation": "PENDING_TRUSTED_READ_ONLY_VERIFICATION",
+  "attestation_warning": "The four SHA256 preimages are registration candidate pins, NOT proof of current live owner bytes. Before requesting Level-4 approval, run verify-pinned-owner-preimages.cjs --check through an authorized host route and independently attest four service states.",
+  "registration_can_apply": false
 }
