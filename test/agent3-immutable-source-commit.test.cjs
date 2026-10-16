@@ -29,6 +29,20 @@ test('five fixed backup installer assets hash exactly to same pinned immutable G
   assert.equal(sha(actual),expected,filename);
  }
 });
+test('immutable release includes reviewed exclusive claim protocol and root fsync journal',()=>{
+ const handler=git(['show',release.source_commit_sha+':'+expectedHandler]).toString('utf8');
+ const claimPath='ops/agent3-universal-backup/durable-execution-claim.cjs';
+ assert.equal(release.durable_claim_source_path,claimPath);
+ const journal=git(['show',release.source_commit_sha+':'+claimPath]).toString('utf8');
+ assert.match(handler,/root_exclusive_claim_required/);
+ assert.match(handler,/durable_exclusive_execution_claim_denied/);
+ assert.match(handler,/claimExecutionOnce/);
+ assert.match(journal,/O_EXCL/);
+ assert.match(journal,/fs\.fsyncSync\(fd\)/);
+ assert.match(journal,/fs\.fsyncSync\(directoryFd\)/);
+ assert.match(journal,/root_required/);
+ assert.match(journal,/EEXIST/);
+});
 test('canonical signed dispatcher exists at pinned source and superseded adapter is absent',()=>{
  const body=git(['show',release.source_commit_sha+':'+expectedHandler]).toString('utf8');
  assert.match(body,/function boundRootCapabilities/);
