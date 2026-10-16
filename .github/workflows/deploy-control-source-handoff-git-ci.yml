@@ -1,0 +1,81 @@
+name: Deploy Control Source Handoff Git Ancestry Contract
+
+on:
+  pull_request:
+    paths:
+      - 'deploy-control-source-handoff-v1.cjs'
+      - 'test-deploy-control-source-handoff-v1.cjs'
+      - 'manifests/deploy-control-l4-source-handoff-20261015.json'
+      - '.github/workflows/deploy-control-source-handoff-git-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  exact-two-commit-review-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SOURCE: e63045b04c796d3178737b61dbe67758a7809a53
+      MANIFEST: 51a630445731e9c4ebd97758fbcf73285f74d051
+      HANDOFF_PATH: manifests/deploy-control-l4-source-handoff-20261015.json
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify real Git graph and manifest-only follow-up commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git cat-file -e "${SOURCE}^{commit}"
+          git cat-file -e "${MANIFEST}^{commit}"
+          test "$(git merge-base "$SOURCE" "$MANIFEST")" = "$SOURCE"
+          test "$(git rev-list --count "$SOURCE..$MANIFEST")" -eq 1
+          test "$(git rev-parse "$MANIFEST^")" = "$SOURCE"
+          expected="$(printf 'A\t%s' "$HANDOFF_PATH")"
+          actual="$(git diff-tree --no-commit-id --name-status -r "$MANIFEST")"
+          test "$actual" = "$expected"
+          git cat-file -e "$MANIFEST:$HANDOFF_PATH"
+      - name: Prepare exact immutable Git-tree fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/prhm-cutover-source-fixtures/manifests"
+          node - <<'NODE'
+          'use strict';
+          const fs=require('node:fs'),path=require('node:path'),cp=require('node:child_process');
+          const base=path.join(process.env.RUNNER_TEMP,'prhm-cutover-source-fixtures');
+          const src=process.env.SOURCE,manifest=process.env.MANIFEST;
+          const file=process.env.HANDOFF_PATH;
+          const sources=[
+            'deploy-control-cutover-contract-v1.cjs',
+            'deploy-control-cutover-fixture-v1.cjs',
+            'deploy-control-cutover-temp-installer-v1.cjs',
+            'deploy-control-l4-registration-readiness-v1.cjs',
+            'deploy-control-l4-owner-preinstall-v1.cjs'
+          ];
+          function read(commit,p){
+            return cp.execFileSync('git',['show',commit+':'+p],{maxBuffer:1000000});
+          }
+          for(const p of sources)fs.writeFileSync(path.join(base,p),read(src,p));
+          fs.writeFileSync(path.join(base,file),read(manifest,file));
+          // This fixture is derived from the real Git graph, verified in the
+          // preceding step. No external approval or Production data is used.
+          fs.writeFileSync(path.join(base,'git-compare.json'),JSON.stringify({
+            status:'ahead',ahead_by:1,behind_by:0,total_commits:1,
+            base_commit:{sha:src},merge_base_commit:{sha:src},
+            commits:[{sha:manifest}],files:[{filename:file,status:'added'}]
+          }));
+          NODE
+      - name: Validate source-only two-commit contract with negative tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PRHM_HANDOFF_SOURCE_COMMIT="$SOURCE"
+          export PRHM_HANDOFF_MANIFEST_COMMIT="$MANIFEST"
+          export PRHM_HANDOFF_SOURCE_ROOT="$RUNNER_TEMP/prhm-cutover-source-fixtures"
+          export PRHM_HANDOFF_MANIFEST_FIXTURE="$RUNNER_TEMP/prhm-cutover-source-fixtures/$HANDOFF_PATH"
+          export PRHM_HANDOFF_COMPARE_FIXTURE="$RUNNER_TEMP/prhm-cutover-source-fixtures/git-compare.json"
+          node --check deploy-control-source-handoff-v1.cjs
+          node --check test-deploy-control-source-handoff-v1.cjs
+          node --test test-deploy-control-source-handoff-v1.cjs
