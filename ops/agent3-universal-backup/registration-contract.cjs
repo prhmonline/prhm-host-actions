@@ -89,8 +89,15 @@ function status(input={}){
  // Explicitly separate the three gates; a preliminary "ready" does not
  // imply approval, installation, key provisioning or usable backup.
  return Object.freeze({phase,ready:blockers.length===0,
+   mode:'SOURCE_ONLY_DECLARED_READINESS',
+   evidence_authenticated:false,
+   signed_l4_consumption_verified:false,
+   registry_installed_verified:false,
+   production_activation_verified:false,
    registrar_preinstall_ready:phase==='preinstall'&&blockers.length===0,
-   engine_active:phase==='active'&&blockers.length===0,
+   // Source-only status never proves the target is actually installed.
+   // A trusted root-owned on-host verification must attest that separately.
+   engine_active:false,
    action:INSTALL_ACTION,source_commit:SOURCE_COMMIT,source_ci:SOURCE_CI_RUN,
    request_schema:'action,project,source_commit,manifest_commit,manifest_sha256',
    approval:'new one-time Ed25519 Level-4, signed and ledger-consumed',
