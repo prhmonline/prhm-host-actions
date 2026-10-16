@@ -100,10 +100,14 @@ test('observed target-postimage hash is NOT mistaken for a clean original baseli
   if(path===collector.HELPER.path)x.sha256=collector.HELPER.postimage_sha256;
   return x;
  });
- assert.equal(report.helper_state,'postimage_present_unverified');
+ assert.equal(report.helper_state,'reviewed_postimage_signature_unattested');
  assert.equal(report.helper_repair_pending,false);
  assert.equal(report.file_preimage_attested,false);
- assert.ok(report.blockers.includes('installer_refresh_helper_preimage_drift'));
+ assert.equal(report.reviewed_file_state_attested,true);
+ assert.equal(report.helper_reviewed_postimage_attested,true);
+ assert.ok(report.blockers.includes('installer_refresh_helper_postimage_signed_l4_not_attested'));
+ assert.ok(!report.blockers.includes('installer_refresh_helper_preimage_drift'));
+ assert.equal(report.files.find(x=>x.path===collector.HELPER.path).match,true);
  assert.equal(report.signed_level4_verified,false);
  assert.equal(report.may_install,false);
 });
@@ -113,4 +117,23 @@ test('reviewed preimage and postimage are different fixed 64-digit fingerprints'
  assert.equal(collector.HELPER.postimage_sha256,
   'b80f1f75e1794b7ffd21a432564454a5da42245b533e1b8cae09c4c73113c2cb');
  assert.notEqual(collector.HELPER.preimage_sha256,collector.HELPER.postimage_sha256);
+});
+
+test('postimage mode or uid drift remains a blocker even when SHA is reviewed',()=>{
+ for(const kind of ['uid','mode']){
+   const report=collector.gatherEvidence(path=>{
+     const x=observed(path);
+     if(path===collector.HELPER.path){
+       x.sha256=collector.HELPER.postimage_sha256;
+       x[kind]=kind==='uid'?1000:0o666;
+     }
+     return x;
+   });
+   assert.equal(report.helper_reviewed_postimage_attested,false);
+   assert.equal(report.reviewed_file_state_attested,false);
+   assert.equal(report.helper_state,'missing_or_unreviewed_drift');
+   assert.ok(report.blockers.includes('installer_refresh_helper_preimage_drift'));
+   assert.equal(report.signed_level4_verified,false);
+   assert.equal(report.may_install,false);
+ }
 });
