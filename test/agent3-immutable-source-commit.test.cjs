@@ -99,3 +99,31 @@ test('immutable source contains native five-field registration guard and never t
  assert.throws(()=>git(['cat-file','-e',release.source_commit_sha+
    ':ops/agent3-universal-backup/registry-release-manifest.json']));
 });
+
+test('immutable native root pending store and entrypoints are byte-for-byte pinned',()=>{
+ const candidates=[
+  'ops/agent3-universal-backup/root-five-field-pending-store.cjs',
+  'ops/agent3-universal-backup/native-root-request-entrypoints.cjs'
+ ];
+ for(const target of candidates){
+  const atCommit=git(['show',release.source_commit_sha+':'+target]);
+  const current=require('node:fs').readFileSync(
+   require('node:path').join(__dirname,'..',target));
+  assert.equal(sha(atCommit),sha(current),
+   'Native root source must not drift from approved commit: '+target);
+ }
+ const store=git(['show',release.source_commit_sha+':'+candidates[0]]).toString('utf8');
+ assert.match(store,/O_EXCL/);
+ assert.match(store,/O_NOFOLLOW/);
+ assert.match(store,/fs\.fsyncSync\(fd\)/);
+ assert.match(store,/fs\.fsyncSync\(dfd\)/);
+ assert.match(store,/trusted_root_required/);
+ assert.match(store,/storeNativePending/);
+ assert.match(store,/loadNativePending/);
+ const handler=git(['show',release.source_commit_sha+':'+candidates[1]]).toString('utf8');
+ assert.match(handler,/loadNativePending\(body\.request_id\)/);
+ assert.match(handler,/native\.prepareApply/);
+ assert.match(handler,/root_required/);
+ assert.match(handler,/native\.applyFromTrustedNativeExecutor/);
+ assert.match(handler,/no CLI/);
+});
