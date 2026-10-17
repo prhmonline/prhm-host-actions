@@ -107,7 +107,20 @@ async function ownerState(d,j,key){
 async function recoverLocked({id,d,expected}){
   const j=await d.loadJournal(id);
   assertJournal(j,id,expected);
-  if(j.state==='ROLLED_BACK')return {ok:true,recovered:true,already:true};
+  if(j.state==='ROLLED_BACK'){
+    // A persisted rollback receipt is not sufficient evidence by itself.
+    // Prove all four owner digests AND metadata remain at the preimage.
+    for(const key of ORDER){
+      const s=await d.readOwner(key);
+      checkSnapshot(key,s,j.owners[key].before);
+      for(const field of ['uid','gid','mode'])
+        if(s[field]!==j.owners[key][field])
+          fail('rolled_back_receipt_metadata_drift_'+key);
+    }
+    const health=await d.verifyRuntime('rollback-recheck');
+    if(!health||health.ok!==true)fail('rolled_back_receipt_runtime_unhealthy');
+    return {ok:true,recovered:true,already:true};
+  }
   if(j.state==='COMMITTED')fail('committed_transaction_manual_review');
   const states={};
   for(const key of ORDER)states[key]=await ownerState(d,j,key);
