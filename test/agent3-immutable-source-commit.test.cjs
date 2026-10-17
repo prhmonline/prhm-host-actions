@@ -137,7 +137,7 @@ test('fixture-only four-owner rollback is present at pinned Git SHA without live
   'Rollback source must not drift from pinned immutable commit');
  const source=expected.toString('utf8');
  assert.match(source,/fixture_root_only/);
- assert.match(source,/production_or_cross_directory_owner_disallowed/);
+ assert.match(source,/production_or_noncanonical_owner_disallowed/);
  assert.match(source,/O_EXCL/);
  assert.match(source,/fs\.fsyncSync/);
  assert.match(source,/rollback_unverified/);
