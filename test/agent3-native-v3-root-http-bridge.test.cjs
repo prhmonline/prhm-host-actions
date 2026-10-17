@@ -54,6 +54,7 @@ function fixture(uid=0){
 function request(url=REQUEST,method='POST'){
  const req=new IncomingMessage(new Socket());
  req.socket.server=rootServer;
+ rootServer.emit('connection',req.socket);
  req.method=method;
  req.url=url;
  return req;
@@ -75,11 +76,12 @@ test('one root-owned binding reused across multiple incoming HTTP requests',asyn
  assert.equal(f.events.filter(x=>x[0]==='bind').length,1);
 });
 test('request peer identity is captured per async context, never from body or headers',async()=>{
- const f=fixture();const req1=request(),req2=request(EXECUTE);
+ const f=fixture();let req1,req2;
  const seen=[];
  const bound=f.bridge.bindRootHttp({rootServer,basePost:()=>({}),rootCapabilities:{},
   assertNativePeer:socket=>{seen.push(socket);return socket===req1.socket||socket===req2.socket;}
  });
+ req1=request();req2=request(EXECUTE);
  req1.headers={'x-peer-uid':'0'};
  await Promise.all([bound.handleRequest(req1,{uid:0,authenticated:true}),
   bound.handleRequest(req2,{uid:0,authenticated:true})]);
@@ -139,8 +141,7 @@ test('local-looking socket is not trusted without independent OS peer verifier',
 });
 test('async peer verification rejects replacement socket and rewritten request route',async()=>{
  const f=fixture();
- const req=request();
- const original=req.socket;
+ let req,original;
  let calls=0;
  const bound=f.bridge.bindRootHttp({rootServer,basePost:()=>({}),rootCapabilities:{},
   assertNativePeer:async socket=>{
@@ -151,12 +152,13 @@ test('async peer verification rejects replacement socket and rewritten request r
    return true;
   }
  });
+ req=request();original=req.socket;
  await assert.rejects(bound.handleRequest(req,{}),/peer_auth_not_confirmed/);
  assert.equal(calls,1);
  assert.equal(f.events.filter(x=>x[0]==='finish').length,0);
 
  const f2=fixture();
- const req2=request();
+ let req2;
  const bound2=f2.bridge.bindRootHttp({rootServer,basePost:()=>({}),rootCapabilities:{},
   assertNativePeer:async()=>{
    await Promise.resolve();
@@ -164,14 +166,16 @@ test('async peer verification rejects replacement socket and rewritten request r
    return true;
   }
  });
+ req2=request();
  await assert.rejects(bound2.handleRequest(req2,{}),/peer_auth_not_confirmed/);
  assert.equal(f2.events.filter(x=>x[0]==='finish').length,0);
 });
 test('closed peer and nonliteral asynchronous verifier response fail closed',async()=>{
- const f=fixture();const req=request();
+ const f=fixture();
  const bound=f.bridge.bindRootHttp({rootServer,basePost:()=>({}),rootCapabilities:{},
   assertNativePeer:async socket=>{socket.destroy();return true;}
  });
+ const req=request();
  await assert.rejects(bound.handleRequest(req,{}),/peer_auth_not_confirmed/);
  const other=fixture();
  const bound2=other.bridge.bindRootHttp({rootServer,basePost:()=>({}),rootCapabilities:{},
