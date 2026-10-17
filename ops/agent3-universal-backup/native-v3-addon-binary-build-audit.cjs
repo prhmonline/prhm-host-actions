@@ -15,6 +15,7 @@ const crypto=require('node:crypto');
 const root=path.resolve(__dirname,'..','..');
 const relativeSource='ops/agent3-universal-backup/native-linux-so-peercred-addon.c';
 const source=path.resolve(root,relativeSource);
+const lock=require('./native-v3-addon-ci-build-lock.json');
 const flags=Object.freeze([
  '-std=c11','-O2','-Wall','-Wextra','-Werror','-fPIC','-shared',
  '-fstack-protector-strong','-D_FORTIFY_SOURCE=2',
@@ -63,6 +64,53 @@ function compile(temp,name,headers){
  if(!fs.statSync(dest).isFile())deny('compiled_binary_missing');
  return Object.freeze({path:dest,sha256:sha(fs.readFileSync(dest))});
 }
+function verifyCIReviewLock(report,pinned=lock){
+ if(!pinned||pinned.schema!=='prhm.agent3.native-addon-reproducible-ci-lock.v1'||
+    pinned.status!=='CI_BINARY_REVIEW_ONLY_NOT_PRODUCTION'||
+    pinned.source_path!==relativeSource)
+  deny('missing_or_invalid_ci_review_lock');
+ if(!/^[0-9a-f]{40}$/.test(pinned.first_source_commit||''))
+  deny('invalid_first_source_commit');
+ const immutable=cp.execFileSync('git',[
+  'show',pinned.first_source_commit+':'+relativeSource
+ ],{
+  cwd:root,timeout:15000,maxBuffer:1024*1024,
+  stdio:['ignore','pipe','pipe']
+ });
+ if(sha(immutable)!==pinned.source_sha256)
+  deny('immutable_source_pin_mismatch');
+ const ancestry=cp.spawnSync('git',[
+  'merge-base','--is-ancestor',pinned.first_source_commit,report.git_head
+ ],{cwd:root,timeout:15000,stdio:'ignore'});
+ if(ancestry.error||ancestry.status!==0)
+  deny('reviewed_source_not_ancestor');
+ const expected={
+  source_sha256:pinned.source_sha256,
+  binary_sha256_in_this_toolchain:pinned.binary_sha256_for_this_toolchain,
+  node_version:pinned.node_version,
+  napi_version:pinned.napi_version,
+  node_header_sha256:pinned.node_header_sha256,
+  compiler_identification:pinned.compiler_identification,
+  platform:pinned.platform,
+  arch:pinned.arch
+ };
+ for(const [field,value] of Object.entries(expected))
+  if(report[field]!==value)
+   deny('ci_review_lock_drift:'+field);
+ if(!Array.isArray(pinned.compiler_flags)||
+    pinned.compiler_flags.join('\0')!==flags.join('\0'))
+  deny('ci_hardening_flags_drift');
+ for(const flag of ['production_binary_attested',
+   'production_node_fd_api_attested','production_root_listener_installed',
+   'approval_consumed','release_ready'])
+  if(pinned[flag]!==false)
+   deny('ci_lock_forged_production_ready');
+ if(report.production_binary_attested!==false||
+    report.production_node_fd_api_attested!==false||
+    report.release_ready!==false)
+  deny('ci_result_forged_production_ready');
+ return true;
+}
 function audit(){
  const info=preflight();
  const temp=fs.mkdtempSync(path.join(os.tmpdir(),'agent3-napi-audit-'));
@@ -79,7 +127,7 @@ function audit(){
   if(!failClosed)deny('native_negative_test_failed');
   const compiler=output('cc',['--version']).split('\n')[0].trim();
   const headerHash=sha(fs.readFileSync(path.join(info.headers,'node_api.h')));
-  return Object.freeze({
+  const report=Object.freeze({
    schema:'prhm.agent3.native-addon-reproducible-ci-review.v1',
    mode:'NONROOT_EPHEMERAL_CI_ONLY',
    git_head:info.head,
@@ -101,6 +149,8 @@ function audit(){
    production_mutation:false,
    release_ready:false
   });
+  verifyCIReviewLock(report);
+  return report;
  }finally{fs.rmSync(temp,{recursive:true,force:true});}
 }
 if(require.main===module){
@@ -115,4 +165,4 @@ if(require.main===module){
   }
  }
 }
-module.exports=Object.freeze({flags,sha,preflight,audit});
+module.exports=Object.freeze({flags,sha,preflight,verifyCIReviewLock,audit});
