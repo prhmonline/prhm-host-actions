@@ -76,7 +76,7 @@ test('non-POST and unauthenticated v3 routes fail closed before body reaches nat
  await assert.rejects(r.handle({method:'GET',url:f.adapter.REQUEST,body:{}}),/post_only/);
  await assert.rejects(r.handle({method:'POST',url:f.adapter.EXECUTE,body:{uid:0,approved:true}}),/unauthenticated_native_transport/);
  const rejective=bind(f,()=>{throw Error('peercred_missing')});
- await assert.rejects(rejective.handle({method:'POST',url:f.adapter.REQUEST}),/peercred_missing/);
+ await assert.rejects(rejective.handle({method:'POST',url:f.adapter.REQUEST,body:{}}),/peercred_missing/);
  assert.equal(f.calls.filter(x=>x[0]!=='root_bind').length,0);
 });
 test('caller forged peer identity cannot be passed into trusted authenticator',async()=>{
