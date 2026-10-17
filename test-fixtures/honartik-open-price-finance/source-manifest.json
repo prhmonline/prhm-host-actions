@@ -1,0 +1,33 @@
+{
+  "schema": "prhm.honartik.open-price.finance-isolated-source.v1",
+  "repository": "prhmonline/honar-back-new",
+  "source_commit": "4853dd39c43ca678b4bb29f00777c1b89c559757",
+  "production_access": false,
+  "synthetic_data_only": true,
+  "files": [
+    {
+      "path": "app/tests/integration/OpenPriceWalletAccountingTest.php",
+      "blob": "859170596cd0285215dc4e44d424cc3f997284e2"
+    },
+    {
+      "path": "app/modules/finance/Config.php",
+      "blob": "4a793e983161063f8e51b4dc83b51545ae4b79df"
+    },
+    {
+      "path": "app/modules/finance/models/FinanceTransactions.php",
+      "blob": "0a14d10fbec16ae40ae460ae11b56ea1b6e03cf2"
+    },
+    {
+      "path": "app/modules/finance/models/FinanceWallet.php",
+      "blob": "5b97b0fa9f93c40d86c052cb8d32e2766692b614"
+    },
+    {
+      "path": "app/modules/finance/services/OpenPriceAmount.php",
+      "blob": "5cfcc707162f7c3e78010fc823fec4bf2cc3a4a3"
+    },
+    {
+      "path": "app/modules/finance/services/OpenPriceLedger.php",
+      "blob": "fa3a88e54e23be653deb80941377158599a0cd64"
+    }
+  ]
+}
