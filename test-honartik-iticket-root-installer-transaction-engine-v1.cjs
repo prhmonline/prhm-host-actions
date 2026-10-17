@@ -239,3 +239,26 @@ test('post-rollback stage cleanup failure cannot disguise verified rollback',asy
   assert.equal(f.journals.get(id).state,'ROLLED_BACK');
   assertRestored(f);
 });
+
+test('stale rollback receipt with unexpected owner bytes must not certify recovery',async()=>{
+  const f=fixture({failAfterCommitAt:'exec'});
+  await assert.rejects(execute(params(f)),/installer_tx_failed_and_rolled_back/);
+  assert.equal(f.journals.get(id).state,'ROLLED_BACK');
+  f.owners.exec.bytes=Buffer.from('unexpected external mutation after rollback');
+  await assert.rejects(recover({mode:'isolated-fixture',id,adapter:f.adapter,
+    expected:f.expected}),/source_preimage_mismatch_exec/);
+  assert.notEqual(sha256(f.owners.exec.bytes),f.expected.exec);
+});
+test('stale rollback receipt with mismatched owner metadata must not certify recovery',async()=>{
+  const f=fixture({failAfterCommitAt:'base'});
+  await assert.rejects(execute(params(f)),/installer_tx_failed_and_rolled_back/);
+  f.owners.policy.mode=0o777;
+  await assert.rejects(recover({mode:'isolated-fixture',id,adapter:f.adapter,
+    expected:f.expected}),/rolled_back_receipt_metadata_drift_policy/);
+});
+test('stale rollback receipt must not pass with failed runtime health',async()=>{
+  const f=fixture({failAfterCommitAt:'exec',failHealthOn:'rollback-recheck'});
+  await assert.rejects(execute(params(f)),/installer_tx_failed_and_rolled_back/);
+  await assert.rejects(recover({mode:'isolated-fixture',id,adapter:f.adapter,
+    expected:f.expected}),/rolled_back_receipt_runtime_unhealthy/);
+});
