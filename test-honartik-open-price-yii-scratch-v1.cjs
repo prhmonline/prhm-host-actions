@@ -76,7 +76,7 @@ test('no network, live socket, live credentials or writable production DB accept
   {networkMode:'bridge'},{image:'mariadb:latest'},
   {productionDbSocketMounted:true},{productionDbCredentialsMounted:true},
   {separateScratchDatadir:false},{scrubbedScratchCredentials:false},
-  {liveDatabaseWritePermission:true},{scratchSourceOnly:false},{readOnly:false}
+  {liveDatabaseWritePermission:true},{liveDatabaseWritePermission:undefined},{scratchSourceOnly:false},{readOnly:false}
  ])assert.throws(()=>verifyPreflight({...preflight(),...mutation}));
 });
 test('approval must be one-time, trusted and bound to the exact SHA and action',()=>{
@@ -92,7 +92,7 @@ test('real migrated backup evidence must be complete and exact',()=>{
  for(const mutation of [
   {mariadbVersion:'11.8.6'}, {networkMode:'bridge'},
   {actualYiiClassesExecuted:false},{yiiFeaturesPassed:false},{yiiCapacityPassed:false},
-  {snapshotRestoredComplete:false},{snapshotManifestVerified:false},
+  {snapshotRestoredComplete:false},{snapshotManifestVerified:false},{readOnlyProduction:false},{readOnlyProduction:undefined},
   {allEightFeatureColumnsVerified:false},{payingAmountBigintVerified:false},
   {financialCountAndSumsUnchanged:false},
   {capacityRetryIdempotentBeforeFeatures:false},
