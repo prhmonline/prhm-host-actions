@@ -105,12 +105,13 @@ async function runIsolatedFourOwnerTransaction({
   deny('exact_four_owner_contract_required');
  if(typeof journalRoot!=='string')deny('journal_root_required');
  rootDir(journalRoot);
- const base=path.dirname(ownerPaths.base);
- rootDir(base);
- if(Object.values(ownerPaths).some(f=>typeof f!=='string'||
-    !Object.keys(gateway.OWNER_PATHS).length||
+ // Reject known Production paths BEFORE *any* stat, realpath or file access.
+ // This guard deliberately fails even on CI hosts without those paths.
+ const base=typeof ownerPaths.base==='string'?path.dirname(ownerPaths.base):'';
+ if(!base||Object.values(ownerPaths).some(f=>typeof f!=='string'||
     Object.values(gateway.OWNER_PATHS).includes(f)||path.dirname(f)!==base))
   deny('production_or_cross_directory_owner_disallowed');
+ rootDir(base);
  // Disallow even a privately mounted alias of the production owner files.
  const unique=new Set(Object.values(ownerPaths));
  if(unique.size!==4)deny('duplicate_owner_target');
