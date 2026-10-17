@@ -1,0 +1,33 @@
+name: Honartik iTicket SHA-bound Release Action Contract
+
+on:
+  pull_request:
+    paths:
+      - 'honartik-iticket-sha-bound-release-v1.cjs'
+      - 'test-honartik-iticket-sha-bound-release-v1.cjs'
+      - 'docs/runbooks/honartik-iticket-sha-bound-release-v1.md'
+      - 'docs/manifests/honartik-iticket-release-v1.json'
+      - '.github/workflows/honartik-iticket-sha-bound-release-v1.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release_contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate fixed source and rollback state machine
+        run: |
+          set -euo pipefail
+          node --check honartik-iticket-sha-bound-release-v1.cjs
+          node --check test-honartik-iticket-sha-bound-release-v1.cjs
+          node --test test-honartik-iticket-sha-bound-release-v1.cjs
+      - name: Prevent CI from ever modifying Production
+        run: |
+          set -euo pipefail
+          # Contract is source-only; no host SSH keys, bank tokens or deployment credentials.
+          test -f docs/runbooks/honartik-iticket-sha-bound-release-v1.md
+          ! grep -Eq '(DEPLOYHQ_TOKEN|SSH_PRIVATE_KEY|ITICKET_API_ACCESS_TOKEN=)' honartik-iticket-sha-bound-release-v1.cjs
