@@ -70,10 +70,14 @@ function prepareApply({body,persistedRequest}={}){
    deny('native_persisted_record_required');
  if(persistedRequest.request_id!==body.request_id||
     persistedRequest.status!=='pending'||
-    typeof persistedRequest.expires_at!=='string'||
-    !Number.isFinite(Date.parse(persistedRequest.expires_at)))
+    typeof persistedRequest.expires_at!=='string')
    deny('request_not_pending_or_id_mismatch');
- // Expiry MUST also be checked by the native executor against its own clock.
+ // Use this process's clock, NEVER a caller-supplied timestamp. The native
+ // executor must repeat this check immediately before Approval Center consume.
+ const expiry=Date.parse(persistedRequest.expires_at);
+ const now=Date.now();
+ if(!Number.isFinite(expiry)||expiry<=now||expiry>now+180000)
+   deny('native_request_expired_or_excessive_ttl');
  const input=Object.fromEntries(REQUEST_FIELDS.map(k=>[k,body[k]]));
  const binding=continuity.compareApplyBinding({
    persistedRequest:{
