@@ -34,7 +34,6 @@ const RELEASE_BLOCKERS = Object.freeze([
 
 const sha256 = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 function fail(why) { throw new Error('installer_base_rebind_' + why); }
-function assertSha(value) { if (!/^[a-f0-9]{64}$/.test(value || '')) fail('invalid_sha'); }
 
 /**
  * Pure, zero-side-effect source transformation.
@@ -81,16 +80,6 @@ function makeCandidate({installerBytes, baseBytes} = {}) {
   // This earlier one-owner proof may still be inspected through rebindSource(),
   // but must never produce a root-installable artifact.
   fail('four_owner_release_blocked');
-  return Object.freeze({
-    action: ACTION,
-    installer_before_sha256: INSTALLER_SHA,
-    live_base_sha256: LIVE_BASE_SHA,
-    installer_after_sha256: sha256(candidate),
-    candidate_bytes: candidate,
-    production_mutation: false,
-    approval_issued: false,
-    rollback_required: true,
-  });
 }
 
 module.exports = Object.freeze({
