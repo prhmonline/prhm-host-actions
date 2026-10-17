@@ -67,3 +67,12 @@ The backend feature branch now has `OpenPriceRefundLedger` and `OpenPriceCancell
 - Fixture artifacts are under `test-fixtures/honartik-open-price-finance`, with a distinct `refund-source-manifest.json`. These contain synthetic data only and no customer or production database credentials.
 
 **Not yet verified:** actual `common/models/Reserve::afterSave` seat state changes in the full schema, bank payment/refund reconciliation, actual seller settlement and production migration/deploy. Public open-price flags OFF; do not consider financial safety UAT complete merely because synthetic isolated DB tests passed.
+
+
+## 2026-10-18: exact real seat and seller approval DB contracts green
+
+The source-only `OpenPriceCancellationService` now locks and validates all SOLD seats joined to `reserve_item`, and verifies the **actual Reserve::afterSave()** released all of those same seats before committing the symmetrical base/extra wallet refund. Unexpected seat state, duplicate, missing item or incomplete seat release fails closed and rolls back the wallet/seat state.
+
+Actual source-pinned real `Reserve`, `ReserveItem`, `ScheduleSeat`, `Schedule`, `Venue` and `AccountSettlement` model behaviors and real finance models/services were executed against an isolated nonnetwork MariaDB 10.6 fixture. Only Event owner lookup and Jalali UI display formatting used minimal sandbox replacements. All tests [CI #39074125609](https://github.com/prhmonline/prhm-host-actions/actions/runs/39074125609) PASS, including reserve seat release, wallet-insert-induced seat rollback, reassigned seat hold, **real AccountSettlement financial approval hold** for unallocated excess, untouched approval path for ordinary producer and container cleanup.
+
+This is not an actual SEP refund, a seller bank payout, historic Finance reconciliation, or an authorization to deploy. The installed typed Agent root registrar still lacks `honartik_open_price_yii_scratch_v1`. Both branches remain unmerged until separate reviewed signed release gates and owner pilot.
