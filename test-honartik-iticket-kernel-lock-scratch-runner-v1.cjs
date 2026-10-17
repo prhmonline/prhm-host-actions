@@ -106,3 +106,17 @@ test('synthetic kernel adapter never identifies as signed live root installer',(
     "mode:'production'",'host_action_v2_apply('])
     assert.equal(src.includes(str),false,'production primitive in scratch runner: '+str);
 });
+
+test('security: forged inherited fd without flock is rejected as unlocked',t=>{
+  const p=setup(t);
+  const fd=fs.openSync(runner.lockFile(p.root),'r');
+  let result;
+  try{
+    result=require('node:child_process').spawnSync(process.execPath,[
+      require.resolve('./honartik-iticket-kernel-lock-scratch-runner-v1.cjs'),
+      '--worker','probe',p.root
+    ],{stdio:['ignore','pipe','pipe',fd],encoding:'utf8',timeout:5000});
+  }finally{fs.closeSync(fd);}
+  assert.equal(result.status,65,'forged unlocked FD must fail: '+result.stderr);
+  assert.match(result.stderr,/kernel_lock_fd_not_inherited/);
+});
