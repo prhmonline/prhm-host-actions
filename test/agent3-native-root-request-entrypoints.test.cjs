@@ -60,12 +60,13 @@ function stubRoot({uid=0}={}){
 }
 test('only real typed issuer metadata is persisted with fixed root store',()=>{
  const {api,calls}=stubRoot();
- const out=api.persistIssuedNativeRequest({input:args(),issued:issued()});
+ const receipt=issued();
+ const out=api.persistIssuedNativeRequest({input:args(),issued:receipt});
  assert.equal(out.durable,true);
  assert.equal(out.approved,false);
  assert.equal(calls.persist.length,1);
  assert.deepEqual(JSON.parse(JSON.stringify(calls.persist[0])),{
-  requestId:ID,expiresAt:issued().expires_at,
+  requestId:ID,expiresAt:receipt.expires_at,
   arguments:args()
  });
 });
