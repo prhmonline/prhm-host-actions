@@ -5,7 +5,9 @@ const fs=require('node:fs');
 const path=require('node:path');
 const vm=require('node:vm');
 const child=require('node:child_process');
-const {IncomingMessage,Server}=require('node:http');
+const http=require('node:http');
+const os=require('node:os');
+const {IncomingMessage,Server}=http;
 const rootServer=new Server();
 Object.defineProperty(rootServer,'listening',{value:true});
 Object.defineProperty(rootServer,'address',{value:()=>'/run/prhm-root-http-test.sock',writable:true});
@@ -207,6 +209,55 @@ test('foreign accepted socket and listener switch fail before peer verifier',asy
   await assert.rejects(bound.handleRequest(request(),{}),/native_local_socket_required/);
   assert.equal(verifies,0);
  }finally{rootServer.address=serverAddress;}
+});
+test('real temporary AF_UNIX HTTP listener routes only through explicitly injected verifier',async()=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'prhm-v3-unix-'));
+ const socketPath=path.join(dir,'server.sock');
+ const f=fixture();
+ let bridge;
+ let permitted=false,verified=0;
+ const server=http.createServer((req,res)=>{
+  bridge.handleRequest(req,{}).then(out=>{
+   res.writeHead(200);res.end(String(out.handled));
+  }).catch(e=>{
+   res.writeHead(403);res.end(String(e.message));
+  });
+ });
+ try{
+  await new Promise((resolve,reject)=>{
+   server.once('error',reject);
+   server.listen(socketPath,resolve);
+  });
+  assert.equal(server.listening,true);
+  assert.equal(server.address(),socketPath);
+  bridge=f.bridge.bindRootHttp({
+   rootServer:server,basePost:async()=>({}),rootCapabilities:{},
+   // Fixture-only boolean test: NOT Linux SO_PEERCRED or Production proof.
+   assertNativePeer:socket=>{verified++;assert.equal(socket.server,server);return permitted;}
+  });
+  async function send(){
+   return new Promise((resolve,reject)=>{
+    const req=http.request({socketPath,path:REQUEST,method:'POST'},res=>{
+     let body='';res.setEncoding('utf8');
+     res.on('data',chunk=>{body+=chunk;});
+     res.on('end',()=>resolve({status:res.statusCode,body}));
+    });
+    req.on('error',reject);
+    req.end();
+   });
+  }
+  const denied=await send();
+  assert.equal(denied.status,403);
+  assert.match(denied.body,/peer_auth_not_confirmed/);
+  permitted=true;
+  const allowed=await send();
+  assert.equal(allowed.status,200);
+  assert.equal(allowed.body,'true');
+  assert.equal(verified,4);
+ }finally{
+  await new Promise(resolve=>server.close(()=>resolve()));
+  fs.rmSync(dir,{recursive:true,force:true});
+ }
 });
 test('root-only source has no listener, installer or independent approval function',()=>{
  const f=fixture(1001);
