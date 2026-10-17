@@ -279,6 +279,20 @@ final class ReservePaymentFinalizer
             );
     }
 
+    /** Once the bank has ALREADY reversed, do not reject local reconciliation
+     * due to the time window for issuing a new reversal. The bank is never
+     * contacted again on that path.
+     */
+    private static function automaticReverseWindowExpired(
+        int $createdAt,
+        int $now,
+        bool $alreadyReversedByGateway
+    ): bool {
+        return !$alreadyReversedByGateway
+            && $createdAt > 0
+            && $createdAt < $now - (50 * 60);
+    }
+
     private function loadOrCreateState(int $transactionId, int $reserveId): array
     {
         $now = time();
@@ -902,7 +916,7 @@ final class ReservePaymentFinalizer
         string $reason,
         bool $alreadyReversedByGateway = false
     ): array {
-        $prepared = $this->prepareReverseState($transaction, $reserve, $reason);
+        $prepared = $this->prepareReverseState($transaction, $reserve, $reason, $alreadyReversedByGateway);
         if (!$prepared['ok']) {
             if (($prepared['state'] ?? '') === self::STATE_TICKET_ISSUED) {
                 return $this->completeAccounting($transaction, $reserve);
@@ -1243,7 +1257,8 @@ final class ReservePaymentFinalizer
     private function prepareReverseState(
         FinanceTransactions $transaction,
         Reserve $reserve,
-        string $reason
+        string $reason,
+        bool $alreadyReversedByGateway = false
     ): array {
         $db = Yii::$app->db;
         $tx = $db->beginTransaction();
@@ -1305,7 +1320,11 @@ final class ReservePaymentFinalizer
              * Do not fire an automatic financial action after that window.
              */
             $createdAt = (int)($transaction->created_at ?? 0);
-            if ($createdAt > 0 && $createdAt < time() - (50 * 60)) {
+            if (self::automaticReverseWindowExpired(
+                $createdAt,
+                time(),
+                $alreadyReversedByGateway
+            )) {
                 $this->setManualReviewLocked(
                     (int)$transaction->id,
                     'automatic_reverse_window_expired',
