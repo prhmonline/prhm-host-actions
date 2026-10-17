@@ -83,9 +83,11 @@ function pinnedState(){
   manifest_preimage_pins_match:manifestAssessment.preimages_matched,
   registration_candidate_not_applied:contract.status==='registration_candidate_not_applied',
   release_status_candidate_not_installed:lock.status==='candidate_not_installed',
-  // A source-only patch proposal that inserts a V2 action spec but no
-  // callable Root dispatcher must never be mistaken for release-ready.
-  native_root_dispatch_reviewed:contract.registration_can_apply===true
+  // A mutable Git JSON flag can never attest the running trusted Root
+  // dispatcher, Linux peer credentials, or a signed independent review.
+  // The live verifier is not integrated; reject any claimed apply enablement.
+  native_root_dispatch_reviewed:false,
+  untrusted_registration_can_apply_claim:contract.registration_can_apply===true
  });
 }
 function assess(facts){
@@ -110,6 +112,8 @@ function assess(facts){
   blockers.push('FOUR_OWNER_PREIMAGE_PIN_MISMATCH');
  if(facts.native_root_dispatch_reviewed!==true)
   blockers.push('TRUSTED_NATIVE_ROOT_DISPATCH_NOT_REVIEWED');
+ if(facts.untrusted_registration_can_apply_claim===true)
+  blockers.push('UNVERIFIED_ROOT_DISPATCH_CONFIGURATION_CLAIM');
  if(!facts.registration_candidate_not_applied||
     !facts.release_status_candidate_not_installed)
   blockers.push('UNEXPECTED_LIVE_STATUS_CLAIM');
