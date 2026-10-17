@@ -1,0 +1,87 @@
+name: Honartik open-price real wallet accounting (synthetic MariaDB)
+on:
+  push:
+    paths:
+      - '.github/workflows/honartik-open-price-finance-fixture.yml'
+      - 'test-fixtures/honartik-open-price-finance/**'
+  pull_request:
+    paths:
+      - '.github/workflows/honartik-open-price-finance-fixture.yml'
+      - 'test-fixtures/honartik-open-price-finance/**'
+
+permissions:
+  contents: read
+
+jobs:
+  real-wallet-accounting:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup isolated PHP runtime
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_mysql, mbstring, intl
+          coverage: none
+          tools: composer:v2
+      - name: Validate immutable finance source and syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=test-fixtures/honartik-open-price-finance
+          test "$(jq -r .source_commit "$root/source-manifest.json")" = 4853dd39c43ca678b4bb29f00777c1b89c559757
+          test "$(jq -r .synthetic_data_only "$root/source-manifest.json")" = true
+          test "$(jq -r .production_access "$root/source-manifest.json")" = false
+          while IFS=$'\t' read -r rel expected; do
+            actual=$(git hash-object "$root/$rel")
+            test "$actual" = "$expected" || { echo "::error::Blob mismatch: $rel"; exit 1; }
+            php -l "$root/$rel"
+          done < <(jq -r '.files[] | [.path,.blob] | @tsv' "$root/source-manifest.json")
+      - name: Install real Yii2 (scratch vendor only)
+        working-directory: test-fixtures/honartik-open-price-finance/app
+        shell: bash
+        run: |
+          set -euo pipefail
+          composer install --no-interaction --prefer-dist --no-progress --no-scripts --no-dev
+          php -r 'require "vendor/autoload.php"; require "vendor/yiisoft/yii2/Yii.php"; echo "ISOLATED_YII2_BOOTSTRAP=PASS\n";'
+      - name: Run private MariaDB 10.6 over a non-network Unix socket
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e /tmp/honartik-ledger.sock
+          docker run --rm -d --pull always \
+            --name honartik-price-ledger-fixture \
+            --network none --memory 768m --cpus 1 --pids-limit 128 \
+            -e MARIADB_ALLOW_EMPTY_ROOT_PASSWORD=1 \
+            -v /tmp:/tmp:rw \
+            mariadb:10.6 \
+            --skip-networking --socket=/tmp/honartik-ledger.sock --pid-file=/tmp/honartik-ledger.pid
+          test "$(docker inspect -f '{{.HostConfig.NetworkMode}}' honartik-price-ledger-fixture)" = none
+          ready=NO
+          for attempt in $(seq 1 90); do
+            if docker exec honartik-price-ledger-fixture mariadb -uroot \
+              --socket=/tmp/honartik-ledger.sock -Nse 'SELECT @@skip_networking' 2>/dev/null | grep -qx 1; then
+              ready=YES; break
+            fi
+            sleep 2
+          done
+          test "$ready" = YES || { docker logs honartik-price-ledger-fixture --tail 50; exit 1; }
+          docker exec honartik-price-ledger-fixture mariadb -uroot \
+            --socket=/tmp/honartik-ledger.sock \
+            -e 'CREATE DATABASE honartik_finance_fixture CHARACTER SET utf8mb4'
+      - name: Execute exact FinanceTransactions::setPayVerified integration
+        shell: bash
+        env:
+          HONARTIK_OPEN_PRICE_FIXTURE: 'YES'
+          HONARTIK_OPEN_PRICE_FIXTURE_SOCKET: '/tmp/honartik-ledger.sock'
+        run: |
+          set -euo pipefail
+          php test-fixtures/honartik-open-price-finance/app/tests/integration/OpenPriceWalletAccountingTest.php
+      - name: Remove isolated database and validate cleanup
+        if: always()
+        shell: bash
+        run: |
+          docker rm -f honartik-price-ledger-fixture >/dev/null 2>&1 || true
+          test ! -e /tmp/honartik-ledger.sock || rm -f /tmp/honartik-ledger.sock
+          echo 'PRIVATE_WALLET_FIXTURE_CLEANUP=PASS'
