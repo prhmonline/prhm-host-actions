@@ -2,7 +2,7 @@
   "schema": "prhm.agent3.universal-backup.release-lock.v1",
   "status": "candidate_not_installed",
   "source_commit_sha": "dc8448e547ab8187a886f3cb876406a668825540",
-  "verified_ci_run": "PENDING_AGENT3_CRASH_RECOVERY_CI",
+  "verified_ci_run": "https://github.com/prhmonline/prhm-host-actions/actions/runs/39028249502",
   "fixed_action": "agent3_universal_backup_engine_install_v1",
   "approval_level": 4,
   "target_host": "prhm-production",
