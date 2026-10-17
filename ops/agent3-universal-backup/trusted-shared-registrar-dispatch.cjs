@@ -184,15 +184,17 @@ function rootWithFixedJournal(rootCapabilities){
    stop('untrusted_execution_claim_override');
  return Object.freeze({...rootCapabilities,claimExecutionOnce:durableClaim.claimExecutionOnce});
 }
-async function dispatch({input,approvalToken,rootCapabilities}={}) {
+async function dispatch({input,approvalToken,rootCapabilities,expectedRequestId}={}) {
  const request=registration.boundArgs(input);
  if(!request.manifest_commit||!request.manifest_sha256)
    stop('immutable_manifest_required');
  if(typeof approvalToken!=='string'||approvalToken.length<120)
    stop('signed_approval_required');
+ if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(expectedRequestId||''))
+   stop('trusted_native_request_id_required');
  const narrowed=boundRootCapabilities(request,rootWithFixedJournal(rootCapabilities));
  return bridge.applyAfterConsumption({
-  input:request,approvalToken,capabilities:narrowed
+  input:request,approvalToken,capabilities:narrowed,expectedRequestId
  });
 }
 if(require.main===module){
