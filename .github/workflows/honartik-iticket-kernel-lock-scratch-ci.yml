@@ -1,0 +1,40 @@
+name: Honartik Real Kernel Advisory Lock Scratch Crash Recovery
+on:
+  push:
+    branches:
+      - feat/honartik-iticket-sha-bound-release-v1-20261015
+    paths:
+      - 'honartik-iticket-kernel-lock-scratch-runner-v1.cjs'
+      - 'test-honartik-iticket-kernel-lock-scratch-runner-v1.cjs'
+      - 'honartik-iticket-root-installer-transaction-engine-v1.cjs'
+      - 'honartik-iticket-root-installer-disk-fixture-v1.cjs'
+      - '.github/workflows/honartik-iticket-kernel-lock-scratch-ci.yml'
+  pull_request:
+    paths:
+      - 'honartik-iticket-kernel-lock-scratch-runner-v1.cjs'
+      - 'test-honartik-iticket-kernel-lock-scratch-runner-v1.cjs'
+      - 'honartik-iticket-root-installer-transaction-engine-v1.cjs'
+      - 'honartik-iticket-root-installer-disk-fixture-v1.cjs'
+      - '.github/workflows/honartik-iticket-kernel-lock-scratch-ci.yml'
+permissions:
+  contents: read
+jobs:
+  kernel_flock_scratch_only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check util-linux flock, isolated temp disk and crash recovery
+        run: |
+          set -Eeuo pipefail
+          /usr/bin/flock --version
+          node --check honartik-iticket-kernel-lock-scratch-runner-v1.cjs
+          node --check test-honartik-iticket-kernel-lock-scratch-runner-v1.cjs
+          node --test test-honartik-iticket-kernel-lock-scratch-runner-v1.cjs
+          echo 'KERNEL_LOCK_AND_CRASH_RECOVERY_SCRATCH=PASS'
+          echo 'ROOT_PRODUCTION_ADAPTER_EXISTS=NO'
+          echo 'PRODUCTION_MUTATION=NO'
+          echo 'SIGNED_L4_INSTALL_AUTHORIZED=NO'
