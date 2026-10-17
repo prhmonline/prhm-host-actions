@@ -37,6 +37,7 @@ function fixture(uid=0){
   require:name=>{
    if(name==='node:async_hooks')return {AsyncLocalStorage};
    if(name==='node:http')return {IncomingMessage};
+   if(name==='node:net')return {Socket};
    if(name==='./native-v3-root-route-binding.cjs')return mock;
    throw Error('unexpected_require:'+name);
   },
@@ -100,6 +101,35 @@ test('denied or missing live peer verification fails closed with no false approv
  });
  await assert.rejects(bound.handleRequest(request(),{approved:true}),
   /peer_auth_not_confirmed/);
+});
+test('TCP, forged socket and destroyed native socket fail before calling peer verifier',async()=>{
+ const f=fixture();let peerCalls=0;
+ const bound=f.bridge.bindRootHttp({basePost:async()=>({}),
+  rootCapabilities:{},assertNativePeer:()=>{peerCalls++;return true;}
+ });
+ for(const [field,value] of [
+  ['remoteAddress','127.0.0.1'],['remotePort',32768],
+  ['remoteFamily','IPv4']
+ ]){
+  const req=request();
+  Object.defineProperty(req.socket,field,{value,configurable:true});
+  await assert.rejects(bound.handleRequest(req,{}),/native_local_socket_required/);
+ }
+ const forged=request();
+ forged.socket={destroyed:false,remoteAddress:undefined,remotePort:undefined};
+ await assert.rejects(bound.handleRequest(forged,{}),/native_local_socket_required/);
+ const stale=request();stale.socket.destroy();
+ await assert.rejects(bound.handleRequest(stale,{}),/native_local_socket_required/);
+ assert.equal(peerCalls,0);
+ assert.equal(f.events.filter(x=>x[0]==='start').length,0);
+});
+test('local-looking socket is not trusted without independent OS peer verifier',async()=>{
+ const f=fixture();let calls=0;
+ const bound=f.bridge.bindRootHttp({basePost:()=>({}),rootCapabilities:{},
+  assertNativePeer:()=>{calls++;return false;}
+ });
+ await assert.rejects(bound.handleRequest(request(),{}),/peer_auth_not_confirmed/);
+ assert.equal(calls,2);
 });
 test('root-only source has no listener, installer or independent approval function',()=>{
  const f=fixture(1001);
