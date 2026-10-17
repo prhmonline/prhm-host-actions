@@ -13,7 +13,9 @@ function state(){
     pinnedSourceObjectVerified:true,pinnedSourceTreeVerified:true
   });
   return {backend:item('backend'),frontend:item('frontend'),
-    currentFinancialReleaseFlagsOff:true,mysql8ConnectionVerified:true,
+    currentFinancialReleaseFlagsOff:true,databaseEngine:'MariaDB',
+    databaseVersion:'10.6.21-MariaDB',databaseSchemaName:'honartik_db',
+    mariadb106ConnectionVerified:true,
     releaseOperatorRegistered:true};
 }
 function mock(options={}){
@@ -40,7 +42,9 @@ function mock(options={}){
     testIsolated:async()=>{trace.push('tests');return {
       backendTarget:PINS.backend.target,frontendTarget:PINS.frontend.target,
       backendContractExit:0,backendPassMarkers:83,frontendContractPassed:true,
-      mysql8Yii2IntegrationPassed:true,concurrentCallbackIdempotencyPassed:true,
+      mariadb106Yii2IntegrationPassed:true,
+      iticketMigrationOnRestoredMariaDb106Passed:true,
+      concurrentCallbackIdempotencyPassed:true,
       seatPaymentReconciliationPassed:true,...(options.tests||{})
     };},
     consumeApproval:async(operation)=>{
@@ -96,7 +100,12 @@ test('pinned server inventory must be exact and known customer files preserved',
     x=>x.frontend.dirtyTracked.push('src/app/page.tsx'),
     x=>x.frontend.untracked=[],
     x=>x.currentFinancialReleaseFlagsOff=false,
-    x=>x.mysql8ConnectionVerified=false,
+    x=>x.mariadb106ConnectionVerified=false,
+    x=>x.databaseEngine='MySQL',
+    x=>x.databaseVersion='8.0.44',
+    x=>x.databaseVersion='10.5.28-MariaDB',
+    x=>x.databaseVersion='10.11.9-MariaDB',
+    x=>x.databaseSchemaName='another_database',
     x=>x.releaseOperatorRegistered=false,
     x=>x.backend.root='/tmp/lookalike'
   ];
@@ -114,13 +123,16 @@ test('no unsigned, wrong-SHA or non-consumed production approvals',()=>{
     assert.throws(()=>verifyApproval({...base,...patch},base.operation));
   }
 });
-test('test markers alone cannot substitute for real MySQL/Yii2 E2E',()=>{
+test('test markers cannot substitute for real MariaDB 10.6/Yii2 and restored-schema E2E',()=>{
   const x={backendTarget:PINS.backend.target,frontendTarget:PINS.frontend.target,
     backendContractExit:0,backendPassMarkers:83,frontendContractPassed:true,
-    mysql8Yii2IntegrationPassed:true,concurrentCallbackIdempotencyPassed:true,
+    mariadb106Yii2IntegrationPassed:true,
+    iticketMigrationOnRestoredMariaDb106Passed:true,
+    concurrentCallbackIdempotencyPassed:true,
     seatPaymentReconciliationPassed:true};
   assert.equal(verifyTests(x),true);
-  for(const k of ['mysql8Yii2IntegrationPassed','concurrentCallbackIdempotencyPassed',
+  for(const k of ['mariadb106Yii2IntegrationPassed','iticketMigrationOnRestoredMariaDb106Passed',
+    'concurrentCallbackIdempotencyPassed',
     'seatPaymentReconciliationPassed','frontendContractPassed']){
     assert.throws(()=>verifyTests({...x,[k]:false}));
   }
@@ -143,7 +155,7 @@ test('preflight rejects missing source without requesting money, DDL or approval
   assert.deepEqual(x.trace,['read_state','inspect']);
 });
 test('incomplete real MySQL integration blocks before approval or mutation',async()=>{
-  const x=mock({tests:{mysql8Yii2IntegrationPassed:false}}),c=createReleaseCoordinator(x.ops);
+  const x=mock({tests:{mariadb106Yii2IntegrationPassed:false}}),c=createReleaseCoordinator(x.ops);
   await c.preflight();
   await assert.rejects(c.darkDeploy(),/isolated_release_tests_incomplete/);
   assert.ok(!x.trace.includes('backup'));
