@@ -68,6 +68,9 @@ function fixture(overrides={}){
   consumeSignedLevel4:async(_pins,b)=>{events.push('l4');return approval(b);},
   holdMaintenance:async()=>{events.push('maintenance');return {
     held:true,ownerSignedRequest:'d432784a-a4cf-4672-9a73-a71825145f95'};},
+  recheckPreDDL:async()=>{events.push('recheck');return {
+    preimage:base(),quiescence:frozen(),backup:backup(),
+    signedRequestId:'d432784a-a4cf-4672-9a73-a71825145f95'};},
   executeExactCapacity:async()=>{events.push('ddl_capacity');return capacity();},
   verifyCapacityCheckpoint:async()=>{events.push('capacity_checkpoint');return capacity();},
   executeExactFeatures:async()=>{events.push('ddl_features');return complete();},
@@ -143,7 +146,7 @@ test('trusted simulation exact order, one-time, writes only after signed consume
  assert.equal(result.publicFreePriceEnabled,false);
  assert.equal(result.applicationDeployed,false);
  assert.deepEqual(events,[
-  'preflight','freeze','quiescent','backup','l4','maintenance',
+  'preflight','freeze','quiescent','backup','l4','maintenance','recheck',
   'ddl_capacity','capacity_checkpoint','ddl_features','final_checkpoint','audit','resume'
  ]);
  await assert.rejects(c.execute(),/one_time_coordinator_reused/);
@@ -177,4 +180,24 @@ test('cannot silently resume if public flag is enabled',async()=>{
  const f=fixture({releaseMaintenanceOnSuccess:async()=>({
    writersSafelyResumed:true,openPricePublicFlagOff:false})});
  await assert.rejects(makeCoordinator(f.adapter).execute(),/safe_resume_not_proven/);
+});
+
+test('final signed pre-DDL recheck blocks live schema drift before any financial DDL',async()=>{
+ const f=fixture({recheckPreDDL:async()=>{
+   return {preimage:{...base(),targetHistoryCount:1},
+     quiescence:frozen(),backup:backup(),
+     signedRequestId:'d432784a-a4cf-4672-9a73-a71825145f95'};
+ }});
+ await assert.rejects(makeCoordinator(f.adapter).execute(),/production_preimage_mismatch/);
+ assert.equal(f.events.includes('ddl_capacity'),false);
+ assert.equal(f.events.at(-1),'audit');
+});
+test('pre-DDL backup identity cannot diverge from the signed snapshot',async()=>{
+ const f=fixture({recheckPreDDL:async()=>({
+  preimage:base(),quiescence:frozen(),
+  backup:{...backup(),snapshotId:'20261018T021500Z'},
+  signedRequestId:'d432784a-a4cf-4672-9a73-a71825145f95'
+ })});
+ await assert.rejects(makeCoordinator(f.adapter).execute(),/immediate_pre_ddl_binding_drift/);
+ assert.equal(f.events.includes('ddl_capacity'),false);
 });
