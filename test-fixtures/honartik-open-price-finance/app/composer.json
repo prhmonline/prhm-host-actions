@@ -1,0 +1,18 @@
+{
+  "name": "prhmonline/honartik-open-price-finance-fixture",
+  "type": "project",
+  "require": {
+    "yiisoft/yii2": "2.0.55"
+  },
+  "repositories": [
+    {
+      "type": "composer",
+      "url": "https://asset-packagist.org"
+    }
+  ],
+  "config": {
+    "allow-plugins": {
+      "yiisoft/yii2-composer": true
+    }
+  }
+}
