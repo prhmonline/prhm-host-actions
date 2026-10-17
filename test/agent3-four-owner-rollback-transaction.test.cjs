@@ -153,7 +153,7 @@ test('Production owner paths and arbitrary rooted outside-fixture targets are re
      base:'/opt/prhm-agent-selfmaint/server.js'}
   };
   await assert.rejects(transaction.runIsolatedFourOwnerTransaction(prod),
-   /production_or_cross_directory_owner_disallowed/);
+   /production_or_noncanonical_owner_disallowed/);
   const nonPrivate={...input(f),journalRoot:path.dirname(f.tmp)};
   await assert.rejects(transaction.runIsolatedFourOwnerTransaction(nonPrivate),
    /private_fixture_directory_required|fixture_root_only/);
