@@ -175,10 +175,17 @@ function createNativeAdapter(trusted) {
         child.stdout.on('data',cap);
         child.stderr.on('data',chunk=>{stderr+=chunk.toString();if(stderr.length>32000)
           child.kill('SIGTERM');});
-        const timer=setTimeout(()=>child.kill('SIGTERM'),1500000);
-        child.once('error',e=>{clearTimeout(timer);reject(e);});
+        let killTimer=null;
+        const timer=setTimeout(()=>{
+          child.kill('SIGTERM');
+          // The following ensures a stuck child cannot hold a privileged
+          // approval indefinitely; cleanup still verifies its container.
+          killTimer=setTimeout(()=>child.kill('SIGKILL'),15000);
+          killTimer.unref();
+        },1500000);
+        child.once('error',e=>{clearTimeout(timer);if(killTimer)clearTimeout(killTimer);reject(e);});
         child.once('close',code=>{
-          clearTimeout(timer);
+          clearTimeout(timer);if(killTimer)clearTimeout(killTimer);
           if(code!==0)reject(new GateError('isolated_yii_script_failed'));
           else resolve(stdout);
         });
