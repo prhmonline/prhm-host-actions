@@ -72,6 +72,7 @@ function exclusiveFile(file,bytes,mode=0o600){
    if(count<=0)deny('write_short');
    off+=count;
   }
+  fs.fchmodSync(fd,mode&0o777);
   fs.fsyncSync(fd);
  }finally{fs.closeSync(fd);}
 }
@@ -130,22 +131,23 @@ async function runIsolatedFourOwnerTransaction({
  catch(e){if(e.code==='EEXIST')deny('existing_or_stale_transaction_lock');throw e;}
  const tx=crypto.randomUUID(),backupDir=path.join(journalRoot,'txn-'+tx);
  const updated=[];
- let committed=false;
+ let committed=false,rollbackVerified=false;
  try{
   fs.mkdirSync(backupDir,{mode:0o700});
   for(const k of KEYS)exclusiveFile(path.join(backupDir,k+'.preimage'),
     snapshot[k].bytes);
   const manifest={schema:'prhm.agent3.four-owner-rollback-evidence.v1',
    txn:tx,mode:'FIXTURE_ONLY_NOT_PRODUCTION',owners:Object.fromEntries(
-    KEYS.map(k=>[k,{before_sha256:beforeSha[k],after_sha256:afterSha[k]}])),
+    KEYS.map(k=>[k,{path:ownerPaths[k],mode:snapshot[k].mode,
+     before_sha256:beforeSha[k],after_sha256:afterSha[k]}])),
    before_mutation_backups_fsynced:true};
   exclusiveFile(path.join(backupDir,'manifest.json'),
    Buffer.from(JSON.stringify(manifest)+'\n'));
   fsyncDir(backupDir);fsyncDir(journalRoot);
   observer({phase:'durable_preimages',completed:0});
   for(const k of KEYS){
+   updated.push(k); // Track even a failure AFTER rename but BEFORE verification.
    replaceChecked(ownerPaths[k],base,afterBuffers[k],beforeSha[k],snapshot[k].mode,tx);
-   updated.push(k);
    observer({phase:'owner_replaced',key:k,completed:updated.length});
   }
   const health=await healthProbe({phase:'postinstall',ownerCount:4});
@@ -164,6 +166,9 @@ async function runIsolatedFourOwnerTransaction({
    try{
     const backup=ownerRead(path.join(backupDir,k+'.preimage'),backupDir);
     if(backup.sha!==beforeSha[k])deny('escrow_drift:'+k);
+    const live=ownerRead(ownerPaths[k],base);
+    if(live.sha===beforeSha[k])continue; // No rename occurred.
+    if(live.sha!==afterSha[k])deny('concurrent_owner_drift_during_rollback:'+k);
     replaceChecked(ownerPaths[k],base,backup.bytes,afterSha[k],snapshot[k].mode,tx+'-rb');
    }catch(err){errors.push(k+':'+String(err.message||err).slice(0,95));}
   }
@@ -178,6 +183,7 @@ async function runIsolatedFourOwnerTransaction({
        verified.services_active!==4)errors.push('rollback_services_unhealthy');
    }catch(err){errors.push('rollback_probe_failed');}
   }
+  rollbackVerified=errors.length===0;
   if(errors.length)throw Error('agent3_four_owner_txn_rollback_unverified:'+
     errors.join('|').slice(0,600));
   throw Error('agent3_four_owner_txn_failed_rollback_verified:'+
@@ -192,10 +198,7 @@ async function runIsolatedFourOwnerTransaction({
    // Keep evidence and failed crash markers if recovery was not verified.
    // A JS exception can be safely unlocked ONLY after commit or verified
    // rollback, never after an ambiguous recovery.
-   if(committed||KEYS.every(k=>{
-     try{return ownerRead(ownerPaths[k],base).sha===beforeSha[k];}
-     catch{return false;}
-   })){
+   if(committed||rollbackVerified){
     fs.unlinkSync(lockPath);fsyncDir(journalRoot);
    }
   }
