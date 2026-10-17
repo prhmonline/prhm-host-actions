@@ -6,7 +6,7 @@
 
 | Component | Repository | Baseline Production | Candidate Git SHA |
 | --- | --- | --- | --- |
-| Backend (Yii2) | `prhmonline/honar-back-new` | `502376d0360a338f9522e4a2be5f9dccc91408d7` | `13064921115b857762bb2545c45c6d5340f46999` |
+| Backend (Yii2) | `prhmonline/honar-back-new` | `502376d0360a338f9522e4a2be5f9dccc91408d7` | `da84941ec7048ced20c5c2d6d2bd01e058e66d64` |
 | Frontend (Next.js) | `prhmonline/Honar-front-new` | `87580ce105eff53d7142d0ca1d5267d0f4097bb2` | `faa9762cdca0ff189989f06da7a0c20ca9d7fa68` |
 
 Pinned roots:
@@ -65,4 +65,8 @@ The actual Yii2 `MultiLocationMigrationsController` lookup in `honar-back-new/co
 
 ### 2026-10-17 — release candidate retains production seat-row selection
 
-The backed iTicket PR #21 candidate now contains the approved free-seat-only bulk row selector and keyboard accessibility, byte-identical to `honar-back-new/main` Git blob `6331ba181080979a488423ce9faaacc4d1eef70d`; additionally includes the same `AdminReserveRowSelection.test.cjs` and associated CI workflow plus `AGENTS.md` technical map policy (all verified against main at `8b0aafa7f872ae38f2f4c7d0da3aeb9b612e6e83`). Do not overwrite local Production row selection or remove protected XLSX exports. Source SHA pinned to `13064921115b857762bb2545c45c6d5340f46999`. Deployment remains unapproved while tracked working tree dirty and MariaDB restore/financial E2E incomplete.
+The backed iTicket PR #21 candidate now contains the approved free-seat-only bulk row selector and keyboard accessibility, byte-identical to `honar-back-new/main` Git blob `6331ba181080979a488423ce9faaacc4d1eef70d`; additionally includes the same `AdminReserveRowSelection.test.cjs` and associated CI workflow plus `AGENTS.md` technical map policy (all verified against main at `8b0aafa7f872ae38f2f4c7d0da3aeb9b612e6e83`). Do not overwrite local Production row selection or remove protected XLSX exports. Source SHA pinned to `da84941ec7048ced20c5c2d6d2bd01e058e66d64`. Deployment remains unapproved while tracked working tree dirty and MariaDB restore/financial E2E incomplete.
+
+### 2026-10-17 — final owner directive: no Honartik web Staging
+
+The owner confirms Honartik web Staging environments no longer exist. For future tasks do not probe or attempt to recreate `honartik_front_staging`, `honartik_admin_staging`, `honartik-staging.prhm.ir`, or `honartik-api-staging.prhm.ir`. The requested destination is **direct controlled Production**. This does not bypass the distinct signed L4 authorization, exact Git SHAs, preserved local files, DB preimage and rollback evidence, or tests of the iTicket migrations on an independently isolated restored MariaDB 10.6 database (not a web Staging site). Deploy code with checkout/financial feature flags OFF; pilot and public enablement remain separately authorized gates. This source instruction was recorded in backend and frontend `AGENTS.md` and the Honartik central technical map. **DO NOT BUY until verified dark release and trusted seller/bank/Samfa pilot evidence.**
