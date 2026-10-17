@@ -76,3 +76,10 @@ The source-only `OpenPriceCancellationService` now locks and validates all SOLD 
 Actual source-pinned real `Reserve`, `ReserveItem`, `ScheduleSeat`, `Schedule`, `Venue` and `AccountSettlement` model behaviors and real finance models/services were executed against an isolated nonnetwork MariaDB 10.6 fixture. Only Event owner lookup and Jalali UI display formatting used minimal sandbox replacements. All tests [CI #39074125609](https://github.com/prhmonline/prhm-host-actions/actions/runs/39074125609) PASS, including reserve seat release, wallet-insert-induced seat rollback, reassigned seat hold, **real AccountSettlement financial approval hold** for unallocated excess, untouched approval path for ordinary producer and container cleanup.
 
 This is not an actual SEP refund, a seller bank payout, historic Finance reconciliation, or an authorization to deploy. The installed typed Agent root registrar still lacks `honartik_open_price_yii_scratch_v1`. Both branches remain unmerged until separate reviewed signed release gates and owner pilot.
+
+
+## 2026-10-18: second producer-payout request entry guarded
+
+`SoldEvent::markAsSettledByEventIds()` directly sets `STATUS_REQUESTED` through `updateAll` and therefore bypasses `AccountSettlement::beforeSave`. The current source-only feature now verifies the exact event-ID scope against published opt-in `Reserve` price snapshots and completed-bank amount fields using `OpenPriceSettlementGuard`; any unmatched snapshot or unallocated extra blocks the whole batch, while ordinary producer requests continue. This marks **request status only**, not a completed bank payout.
+
+The actual model and MariaDB 10.6 synthetic no-network fixture verify mixed producer hold, ordinary unaffected, open-price extra hold and malformed ID rejection: [CI #39075438109](https://github.com/prhmonline/prhm-host-actions/actions/runs/39075438109) PASS. The same CI reran the real `AccountSettlement`, `Reserve::afterSave` and wallet rollback controls. No live SQL, SEP API or payment was performed. Arbitrary database-level `UPDATE` outside the guarded source may still bypass it; production requires separate authorization and validation.
