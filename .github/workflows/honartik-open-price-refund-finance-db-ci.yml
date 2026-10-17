@@ -67,6 +67,31 @@ jobs:
         run: |
           set -euo pipefail
           php test-fixtures/honartik-open-price-finance/app/tests/integration/OpenPriceCancellationFixtureTest.php
+      - name: Verify real ticketing ActiveRecord sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=test-fixtures/honartik-open-price-finance
+          test "$(jq -r .production_access "$root/real-seat-source-manifest.json")" = false
+          while IFS=        shell: bash
+        if: always()
+        run: |
+          docker rm -f honartik-open-price-refund-fixture >/dev/null 2>&1 || true
+          sudo rm -f -- /tmp/honartik-ledger-refund.sock /tmp/honartik-ledger-refund.pid
+          test ! -e /tmp/honartik-ledger-refund.sock
+          echo 'ATOMIC_REFUND_DB_FIXTURE_CLEANUP=PASS'
+\t' read -r rel sha; do
+            test "$(git hash-object "$root/$rel")" = "$sha"
+            php -l "$root/$rel"
+          done < <(jq -r '.files[] | [.path,.blob] | @tsv' "$root/real-seat-source-manifest.json")
+      - name: Execute real Reserve afterSave seat and financial rollback contract
+        shell: bash
+        env:
+          HONARTIK_OPEN_PRICE_FIXTURE: 'YES'
+          HONARTIK_OPEN_PRICE_FIXTURE_SOCKET: '/tmp/honartik-ledger-refund.sock'
+        run: |
+          set -euo pipefail
+          php test-fixtures/honartik-open-price-finance/app/tests/integration/OpenPriceActualReserveSeatTest.php
       - name: Cleanup isolated container and socket
         shell: bash
         if: always()
