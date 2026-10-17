@@ -12,7 +12,7 @@ const PINS = Object.freeze({
     repo: 'prhmonline/honar-back-new',
     root: '/home/honartik/domains/dashboard.honartik.ir/public_html',
     previous: '502376d0360a338f9522e4a2be5f9dccc91408d7',
-    target: '5440bdd98731e17d847be777c664e54069f50884'
+    target: '13064921115b857762bb2545c45c6d5340f46999'
   }),
   frontend: Object.freeze({
     repo: 'prhmonline/Honar-front-new',
