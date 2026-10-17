@@ -6,7 +6,7 @@
 
 | Component | Repository | Baseline Production | Candidate Git SHA |
 | --- | --- | --- | --- |
-| Backend (Yii2) | `prhmonline/honar-back-new` | `502376d0360a338f9522e4a2be5f9dccc91408d7` | `5440bdd98731e17d847be777c664e54069f50884` |
+| Backend (Yii2) | `prhmonline/honar-back-new` | `502376d0360a338f9522e4a2be5f9dccc91408d7` | `13064921115b857762bb2545c45c6d5340f46999` |
 | Frontend (Next.js) | `prhmonline/Honar-front-new` | `87580ce105eff53d7142d0ca1d5267d0f4097bb2` | `faa9762cdca0ff189989f06da7a0c20ca9d7fa68` |
 
 Pinned roots:
@@ -62,3 +62,7 @@ The canonical Honartik technical map and actual operator database evidence ident
 ### 2026-10-17 — Yii migration lookup correction (Git-only)
 
 The actual Yii2 `MultiLocationMigrationsController` lookup in `honar-back-new/console/config/web.php` includes `@app/migrations/db`, NOT `app/migrations` root. The three iTicket buyer-finance migrations were byte-identically moved to `app/migrations/db/m261014_*.php` in backend PR #21, and the original unregistered locations removed. All three original Git Blob IDs are retained: `fb17ded1c072802af4c45af23f3205755b7da2a6`, `531ebff7d9d55e5eda26dd7ab15d5932bd96ab7d`, `ff591156a5553af7c9898217972903ca70d807c3`. The isolated Yii2 runner, lint list, CI triggers and a fail-closed discovery guard are updated. Backend source head is pinned above. Its hosted CI fails **before executing test steps**; do NOT treat it as validated full app. Never run migration in Production until authorized restore/preflight.
+
+### 2026-10-17 — release candidate retains production seat-row selection
+
+The backed iTicket PR #21 candidate now contains the approved free-seat-only bulk row selector and keyboard accessibility, byte-identical to `honar-back-new/main` Git blob `6331ba181080979a488423ce9faaacc4d1eef70d`; additionally includes the same `AdminReserveRowSelection.test.cjs` and associated CI workflow plus `AGENTS.md` technical map policy (all verified against main at `8b0aafa7f872ae38f2f4c7d0da3aeb9b612e6e83`). Do not overwrite local Production row selection or remove protected XLSX exports. Source SHA pinned to `13064921115b857762bb2545c45c6d5340f46999`. Deployment remains unapproved while tracked working tree dirty and MariaDB restore/financial E2E incomplete.
