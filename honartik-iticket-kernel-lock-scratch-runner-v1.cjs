@@ -68,7 +68,17 @@ function lockInherited(root){
   if(!fs.existsSync(dir))fail('proc_fd_required');
   for(const ent of fs.readdirSync(dir)){
     if(!/^\d+$/.test(ent))continue;
-    try{const f=fs.fstatSync(Number(ent));if(f.dev===st.dev&&f.ino===st.ino)return true;}
+    try{
+      const f=fs.fstatSync(Number(ent));
+      if(f.dev===st.dev&&f.ino===st.ino){
+        // A matching open fd is not proof that a kernel lock was acquired.
+        // A separate, exact /usr/bin/true contender MUST fail to lock.
+        const probe=cp.spawnSync(FLOCK,['-n','-x','-E','73',lockFile(root),'/usr/bin/true'],
+          {stdio:['ignore','pipe','pipe'],timeout:3000});
+        if(probe.error)fail('lock_probe_execution_failed');
+        return probe.status===73;
+      }
+    }
     catch{}
   }
   return false;
