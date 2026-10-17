@@ -141,7 +141,7 @@ test('fixture-only four-owner rollback is present at pinned Git SHA without live
  assert.match(source,/O_EXCL/);
  assert.match(source,/fs\.fsyncSync/);
  assert.match(source,/rollback_unverified/);
- assert.match(source,/rootDir\(base\)/);
+ assert.match(source,/for\(const parent of new Set\(Object\.values\(parents\)\)\)rootDir\(parent\)/);
  assert.match(source,/if\(committed\|\|rollbackVerified\)/);
  assert.match(source,/fixture-only rollback rehearsal/);
  assert.match(source,/function recoverIsolatedFourOwnerTransaction/);
