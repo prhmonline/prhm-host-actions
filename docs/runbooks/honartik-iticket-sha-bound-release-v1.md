@@ -6,7 +6,7 @@
 
 | Component | Repository | Baseline Production | Candidate Git SHA |
 | --- | --- | --- | --- |
-| Backend (Yii2) | `prhmonline/honar-back-new` | `502376d0360a338f9522e4a2be5f9dccc91408d7` | `91f11681d1689ca0a042ecca32fd82c93a0da88b` |
+| Backend (Yii2) | `prhmonline/honar-back-new` | `502376d0360a338f9522e4a2be5f9dccc91408d7` | `5440bdd98731e17d847be777c664e54069f50884` |
 | Frontend (Next.js) | `prhmonline/Honar-front-new` | `87580ce105eff53d7142d0ca1d5267d0f4097bb2` | `faa9762cdca0ff189989f06da7a0c20ca9d7fa68` |
 
 Pinned roots:
@@ -58,3 +58,7 @@ Success must include signed consumed approval IDs, commit SHA and root for each 
 ## 2026-10-17 — live database engine alignment (source-only fix)
 
 The canonical Honartik technical map and actual operator database evidence identify the live `honartik_db` container as **MariaDB 10.6**, not MySQL 8. A release preflight asserting only `mysql8ConnectionVerified` is incompatible with Production and could not meaningfully attest its actual database. The fixed coordinator now requires `databaseEngine='MariaDB'`, a `10.6.x` version, exact `databaseSchemaName='honartik_db'` and independently verified `mariadb106ConnectionVerified=true`. Tests additionally require `mariadb106Yii2IntegrationPassed=true` and `iticketMigrationOnRestoredMariaDb106Passed=true` for all three exact iTicket DDL migrations on an independent restored authorized backup, before any dark deploy. Offline mock tests are **not** this evidence. Never set these trusted-attestation flags from caller JSON; obtain them only from the registered host adapter after read-only database introspection and isolated fixture/restore execution. No production DB connection or migration was performed by this source change. Release remains DRAFT / NOT INSTALLED / DO NOT BUY.
+
+### 2026-10-17 — Yii migration lookup correction (Git-only)
+
+The actual Yii2 `MultiLocationMigrationsController` lookup in `honar-back-new/console/config/web.php` includes `@app/migrations/db`, NOT `app/migrations` root. The three iTicket buyer-finance migrations were byte-identically moved to `app/migrations/db/m261014_*.php` in backend PR #21, and the original unregistered locations removed. All three original Git Blob IDs are retained: `fb17ded1c072802af4c45af23f3205755b7da2a6`, `531ebff7d9d55e5eda26dd7ab15d5932bd96ab7d`, `ff591156a5553af7c9898217972903ca70d807c3`. The isolated Yii2 runner, lint list, CI triggers and a fail-closed discovery guard are updated. Backend source head is pinned above. Its hosted CI fails **before executing test steps**; do NOT treat it as validated full app. Never run migration in Production until authorized restore/preflight.
