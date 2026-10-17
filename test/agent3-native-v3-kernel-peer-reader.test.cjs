@@ -81,7 +81,11 @@ test('native addon rejects invalid descriptor, non-FD and fractional or listener
   assert.throws(()=>native.readPeerCredentials(-1),/peercred_integer_fd_required|peercred_socket_fd_required/);
   assert.throws(()=>native.readPeerCredentials('7'),/peercred_integer_fd_required/);
   assert.throws(()=>native.readPeerCredentials(3.5),/peercred_integer_fd_required/);
-  assert.throws(()=>native.readPeerCredentials(1),/peercred_socket_fd_required/);
+  const regularFd=fs.openSync(path.join(dir,'regular.txt'),'w');
+  try{
+   assert.throws(()=>native.readPeerCredentials(regularFd),
+    /peercred_socket_fd_required/);
+  }finally{fs.closeSync(regularFd);}
   assert.throws(()=>native.readPeerCredentials(),/peercred_exactly_one_fd_required/);
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
