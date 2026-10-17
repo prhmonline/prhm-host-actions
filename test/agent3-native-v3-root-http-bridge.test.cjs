@@ -11,6 +11,8 @@ const {IncomingMessage,Server}=http;
 const rootServer=new Server();
 Object.defineProperty(rootServer,'listening',{value:true});
 Object.defineProperty(rootServer,'address',{value:()=>'/run/prhm-root-http-test.sock',writable:true});
+// The synthetic suite binds several independent fixture bridges to one server.
+rootServer.setMaxListeners(0);
 const {Socket}=require('node:net');
 const {AsyncLocalStorage}=require('node:async_hooks');
 const file=path.resolve(__dirname,'../ops/agent3-universal-backup/native-v3-root-http-bridge.cjs');
@@ -203,6 +205,11 @@ test('foreign accepted socket and listener switch fail before peer verifier',asy
  const bound=f.bridge.bindRootHttp({rootServer,basePost:()=>({}),
   rootCapabilities:{},assertNativePeer:()=>{verifies++;return true;}
  });
+ const forgedNotAccepted=new IncomingMessage(new Socket());
+ forgedNotAccepted.socket.server=rootServer;
+ forgedNotAccepted.method='POST';forgedNotAccepted.url=REQUEST;
+ await assert.rejects(bound.handleRequest(forgedNotAccepted,{}),
+  /native_local_socket_required/);
  const foreign=request();
  foreign.socket.server=new Server();
  await assert.rejects(bound.handleRequest(foreign,{}),/native_local_socket_required/);
