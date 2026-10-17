@@ -59,16 +59,24 @@ function bindRootHttp({basePost,rootCapabilities,assertNativePeer,rootServer}={}
     Array.isArray(rootCapabilities)||!rootUnixListener(rootServer))
   deny('fixed_root_dependencies_required');
  const context=new AsyncLocalStorage();
+ // Only a connection event from the fixed root-owned listener records a
+ // socket as accepted. A writable socket.server property is not provenance.
+ const acceptedSockets=new WeakSet();
+ rootServer.on('connection',socket=>{
+  if(nativeServerSocket(rootServer,socket))acceptedSockets.add(socket);
+ });
  const route=native.bind({
   basePost,rootCapabilities,
   assertAuthenticatedTransport:async()=>{
    const ctx=context.getStore();
-   if(!contextStillNative(ctx,rootServer))return false;
+   if(!contextStillNative(ctx,rootServer)||
+      !acceptedSockets.has(ctx.socket))return false;
    // The trusted OS verifier must return literal true, and neither the
    // request nor its socket may change during asynchronous verification.
    // The bridge itself does NOT implement SO_PEERCRED or install a listener.
    const verified=await assertNativePeer(ctx.socket);
-   return verified===true && contextStillNative(ctx,rootServer);
+   return verified===true && contextStillNative(ctx,rootServer) &&
+     acceptedSockets.has(ctx.socket);
   }
  });
  if(!route||typeof route.handle!=='function'||!Array.isArray(route.paths))
@@ -81,7 +89,8 @@ function bindRootHttp({basePost,rootCapabilities,assertNativePeer,rootServer}={}
    return Object.freeze({handled:false});
   if(serverRequest.method!=='POST')deny('post_only');
   if(serverRequest.destroyed===true ||
-     !nativeServerSocket(rootServer,serverRequest.socket))
+     !nativeServerSocket(rootServer,serverRequest.socket) ||
+     !acceptedSockets.has(serverRequest.socket))
    deny('native_local_socket_required');
   // The only context passed into the trust callback is a native socket
   // owned by the authenticated root server, not a JSON peer assertion.
