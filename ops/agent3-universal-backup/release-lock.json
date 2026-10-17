@@ -1,8 +1,8 @@
 {
   "schema": "prhm.agent3.universal-backup.release-lock.v1",
   "status": "candidate_not_installed",
-  "source_commit_sha": "22ffa3fa8c2dca45bb1df1e86415adda552ad63a",
-  "verified_ci_run": "https://github.com/prhmonline/prhm-host-actions/actions/runs/38984820057",
+  "source_commit_sha": "855b596a6822e34117a5219bd365ecf8092c77ca",
+  "verified_ci_run": "https://github.com/prhmonline/prhm-host-actions/actions/runs/38984967806",
   "fixed_action": "agent3_universal_backup_engine_install_v1",
   "approval_level": 4,
   "target_host": "prhm-production",
@@ -30,5 +30,6 @@
   "durable_claim_source_path": "ops/agent3-universal-backup/durable-execution-claim.cjs",
   "durable_claim_requirement": "trusted root executor must provision the fixed 0700 claim directory and install its O_EXCL+fsync once-only callback before activation",
   "fixed_journal_binding": "trusted-shared-registrar-dispatch.cjs:rootWithFixedJournal -> durable-execution-claim.cjs:claimExecutionOnce",
-  "eager_root_installer_preclaim_required": true
+  "eager_root_installer_preclaim_required": true,
+  "native_request_identity_binding": "expectedRequestId must equal Ed25519 JWS request_id and consumed ledger request_id before any installer"
 }
