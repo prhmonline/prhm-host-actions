@@ -23,6 +23,12 @@ test('release source is a real immutable ancestor commit, not a mutable branch n
  assert.equal(git(['rev-parse','--verify',release.source_commit_sha+'^{commit}']).toString().trim(),
   release.source_commit_sha);
 });
+test('candidate source and release lock refer to the same exact reviewed CI evidence',()=>{
+ assert.equal(registration.SOURCE_CI_RUN,release.verified_ci_run);
+ assert.match(registration.SOURCE_CI_RUN,
+  /^https:\/\/github\.com\/prhmonline\/prhm-host-actions\/actions\/runs\/[0-9]+$/);
+ assert.equal(release.status,'candidate_not_installed');
+});
 test('five fixed backup installer assets hash exactly to same pinned immutable Git commit',()=>{
  for(const [filename,expected] of Object.entries(release.expected_sha256)){
   const actual=git(['show',release.source_commit_sha+':'+filename]);
