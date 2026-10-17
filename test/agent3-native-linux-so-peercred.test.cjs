@@ -189,7 +189,7 @@ test('SO_PEERCRED distinguishes separate Linux client processes despite forged h
     " res.on('end',()=>process.stdout.write(JSON.stringify({status:res.statusCode,body:out})));});",
     "r.on('error',e=>{console.error(e.message);process.exitCode=1;});",
     "r.end(JSON.stringify({uid:0,gid:0,pid:1,approved:true}));"
-   ].join('\\n');
+   ].join('\n');
    const child=cp.spawn(process.execPath,['-e',client,sock],
     {stdio:['ignore','pipe','pipe']});
    let out='',err='';
