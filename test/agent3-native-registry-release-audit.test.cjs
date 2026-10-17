@@ -19,7 +19,8 @@ function validFacts(){
   manifest_schema_valid:true,manifest_preimage_pins_match:true,
   registration_candidate_not_applied:true,
   release_status_candidate_not_installed:true,
-  native_root_dispatch_reviewed:true
+  native_root_dispatch_reviewed:true,
+  untrusted_registration_can_apply_claim:false
  };
 }
 test('reviewed native v3 source is pinned while manifest and root dispatcher remain unavailable',()=>{
@@ -30,6 +31,7 @@ test('reviewed native v3 source is pinned while manifest and root dispatcher rem
  assert.equal(facts.pin_is_ancestor,true);
  assert.equal(facts.manifest_committed,false);
  assert.equal(facts.native_root_dispatch_reviewed,false);
+ assert.equal(facts.untrusted_registration_can_apply_claim,false);
  assert.equal(result.source_candidate_complete,false);
  assert.equal(result.production_install_authorized,false);
  assert.equal(result.production_mutation,false);
@@ -60,7 +62,9 @@ test('fail closed on source lock, asset, owner and immutable ancestry drift',()=
   {manifest_committed:false,reason:'FOUR_OWNER_RELEASE_MANIFEST_MISSING'},
   {manifest_schema_valid:false,reason:'FOUR_OWNER_RELEASE_MANIFEST_INVALID'},
   {manifest_preimage_pins_match:false,reason:'FOUR_OWNER_PREIMAGE_PIN_MISMATCH'},
-  {native_root_dispatch_reviewed:false,reason:'TRUSTED_NATIVE_ROOT_DISPATCH_NOT_REVIEWED'}
+  {native_root_dispatch_reviewed:false,reason:'TRUSTED_NATIVE_ROOT_DISPATCH_NOT_REVIEWED'},
+  {untrusted_registration_can_apply_claim:true,
+   reason:'UNVERIFIED_ROOT_DISPATCH_CONFIGURATION_CLAIM'}
  ];
  for(const item of cases){
   const {reason,...change}=item;
@@ -69,6 +73,17 @@ test('fail closed on source lock, asset, owner and immutable ancestry drift',()=
   assert.ok(result.source_blockers.includes(reason),reason);
   assert.equal(result.production_install_authorized,false);
  }
+});
+test('a Git configuration flag alone cannot assert a reviewed Root dispatcher',()=>{
+ const facts=audit.pinnedState();
+ assert.equal(facts.native_root_dispatch_reviewed,false);
+ const forged={...validFacts(),native_root_dispatch_reviewed:false,
+  untrusted_registration_can_apply_claim:true};
+ const result=audit.assess(forged);
+ assert.equal(result.source_candidate_complete,false);
+ assert.equal(result.production_install_authorized,false);
+ assert.ok(result.source_blockers.includes('UNVERIFIED_ROOT_DISPATCH_CONFIGURATION_CLAIM'));
+ assert.ok(result.source_blockers.includes('TRUSTED_NATIVE_ROOT_DISPATCH_NOT_REVIEWED'));
 });
 test('reviewed manifest is schema validated and bound to four pinned preimages',()=>{
  const keys=['base','executor','policy','mcp'];
