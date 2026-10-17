@@ -164,23 +164,28 @@ function createNativeAdapter(trusted) {
       const out=await new Promise((resolve,reject)=>{
         const child=cp.spawn('/bin/bash',[entry,PINS.sourceSha],{
           cwd:runtimeDir,shell:false,
-          detached:false,
-          env:{PATH:'/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'},
+          detached:true,
+          env:{PATH:'/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+            HONARTIK_YII_ACTION_SCRATCH_PARENT:runtimeDir},
           stdio:['ignore','pipe','pipe']
         });
         childPid=child.pid;
         let stdout='',stderr='';
         const cap=chunk=>{stdout+=chunk.toString();if(stdout.length>262143)
-          child.kill('SIGTERM');};
+          terminateGroup('SIGTERM');};
         child.stdout.on('data',cap);
         child.stderr.on('data',chunk=>{stderr+=chunk.toString();if(stderr.length>32000)
-          child.kill('SIGTERM');});
+          terminateGroup('SIGTERM');});
         let killTimer=null;
+        const terminateGroup=(signal)=>{
+          try{process.kill(-child.pid,signal);}
+          catch{try{child.kill(signal);}catch{}}
+        };
         const timer=setTimeout(()=>{
-          child.kill('SIGTERM');
+          terminateGroup('SIGTERM');
           // The following ensures a stuck child cannot hold a privileged
           // approval indefinitely; cleanup still verifies its container.
-          killTimer=setTimeout(()=>child.kill('SIGKILL'),15000);
+          killTimer=setTimeout(()=>terminateGroup('SIGKILL'),15000);
           killTimer.unref();
         },1500000);
         child.once('error',e=>{clearTimeout(timer);if(killTimer)clearTimeout(killTimer);reject(e);});
