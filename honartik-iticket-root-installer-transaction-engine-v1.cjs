@@ -136,8 +136,12 @@ async function recoverLocked({id,d,expected}){
   if(!health||health.ok!==true)fail('rollback_runtime_unhealthy');
   j.state='ROLLED_BACK';j.inflight=null;j.recovered=true;
   await writeJournal(d,j);
-  if(typeof d.cleanupStages==='function')await d.cleanupStages(id);
-  return {ok:true,recovered:true,already:false};
+  let cleanupComplete=true;
+  if(typeof d.cleanupStages==='function'){
+    try{await d.cleanupStages(id);}
+    catch{cleanupComplete=false;}
+  }
+  return {ok:true,recovered:true,already:false,cleanupComplete};
 }
 async function recover({mode,id,adapter,expected}={}){
   assertFixture(mode);assertId(id);assertAdapter(adapter);assertExpected(expected);
@@ -189,8 +193,12 @@ async function execute({mode,id,adapter,candidates,expected}={}){
     if(!health||health.ok!==true)fail('runtime_health_failed');
     j.state='COMMITTED';j.inflight=null;
     await writeJournal(d,j);
-    if(typeof d.cleanupStages==='function')await d.cleanupStages(id);
-    return {ok:true,id,fixture_only:true,owner_postimages:Object.fromEntries(
+    let cleanupComplete=true;
+    if(typeof d.cleanupStages==='function'){
+      try{await d.cleanupStages(id);}
+      catch{cleanupComplete=false;}
+    }
+    return {ok:true,id,fixture_only:true,cleanupComplete,owner_postimages:Object.fromEntries(
       ORDER.map(key=>[key,owners[key].after])),
       signed_install_authorized:false};
   }catch(err){
