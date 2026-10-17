@@ -61,7 +61,7 @@ test('fixed view bounds reject extremely large yet independently pinned data',()
  // 250 unredacted source lines, each below sensitive per-line limits,
  // cumulatively violate bounded terminal exposure without altering pins.
  const l=files.executor.toString().split('\n');
- for(let i=970;i<1080;i++)l[i]='const innocuousLine'+i+' = "'+'a+'.'.repeat(5900)+'";';
+ for(let i=970;i<1080;i++)l[i]='const innocuousLine'+i+' = "'+'a.'.repeat(3000)+'";';
  files.executor=Buffer.from(l.join('\n'));
  pins.executor=sha(files.executor);
  assert.throws(()=>mod.inspect(files,pins),/output_too_large/);
