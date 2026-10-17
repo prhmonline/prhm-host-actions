@@ -4,11 +4,15 @@ on:
     paths:
       - 'honartik-open-price-yii-scratch-v1.cjs'
       - 'test-honartik-open-price-yii-scratch-v1.cjs'
+      - 'honartik-open-price-yii-native-adapter-v1.cjs'
+      - 'test-honartik-open-price-yii-native-adapter-v1.cjs'
       - '.github/workflows/honartik-open-price-yii-scratch-v1.yml'
   pull_request:
     paths:
       - 'honartik-open-price-yii-scratch-v1.cjs'
       - 'test-honartik-open-price-yii-scratch-v1.cjs'
+      - 'honartik-open-price-yii-native-adapter-v1.cjs'
+      - 'test-honartik-open-price-yii-native-adapter-v1.cjs'
       - '.github/workflows/honartik-open-price-yii-scratch-v1.yml'
 permissions:
   contents: read
@@ -23,4 +27,6 @@ jobs:
           node-version: '22'
       - run: node --check honartik-open-price-yii-scratch-v1.cjs
       - run: node --check test-honartik-open-price-yii-scratch-v1.cjs
-      - run: node --test test-honartik-open-price-yii-scratch-v1.cjs
+      - run: node --check honartik-open-price-yii-native-adapter-v1.cjs
+      - run: node --check test-honartik-open-price-yii-native-adapter-v1.cjs
+      - run: node --test test-honartik-open-price-yii-scratch-v1.cjs test-honartik-open-price-yii-native-adapter-v1.cjs
