@@ -26,7 +26,8 @@ function analyzeExcerpt({base,executor,mcp}={}){
  const actionOnly=base.includes("['action', 'approval_token'].includes(k)")||
    base.includes('["action", "approval_token"].includes(k)');
  const actionOnlyHash=/argumentsSha256\s*\(\s*\{\s*action\s*:\s*HOST_ACTION_NAME\s*\}\s*\)/.test(base);
- const executorLegacy=executor.includes('hostActionV2Spec(action)')&&
+ const executorLegacy=/function\s+hostActionV2Spec\s*\(action\)/.test(executor)&&
+  /(?:async\s+)?function\s+applyHostActionV2\s*\(action\)/.test(executor)&&
   executor.includes('HOST_ACTION_V2_SPECS');
  const mcpLegacy=mcp.includes("mcp.registerTool('host_action_v2_request'")&&
   mcp.includes("mcp.registerTool('host_action_v2_apply'");
