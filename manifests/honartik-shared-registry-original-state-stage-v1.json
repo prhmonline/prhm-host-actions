@@ -1,0 +1,22 @@
+{
+  "schema": "prhm.shared-registry.original-state-stage.v1",
+  "repo": "prhmonline/prhm-host-actions",
+  "source_commit": "fd834bbffa57f39bc2561c4fb53ecc3f4e64b910",
+  "asset": {
+    "git_path": "prhm-action-registry-root-original-state-v1.cjs",
+    "git_blob_sha1": "1e2450508db6c18a33a087f47e9cea2d920fd68a",
+    "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v1/prhm-action-registry-root-original-state-v1.cjs"
+  },
+  "dependencies": [
+    "prhm-action-registry-gateway-v1.cjs",
+    "prhm-action-registry-root-pinned-readers-v1.cjs",
+    "manifests/honartik-config-center-registry-release-v1.json"
+  ],
+  "status": "NOT_STAGED",
+  "production_mutation": false,
+  "source_only": true,
+  "requires_fresh_l4": true,
+  "live_original_state_verified_this_turn": false,
+  "mcp_discovery": "PENDING",
+  "original_state_verification": "FOUR_PINNED_OWNERS_AND_FIVE_ABSENT_ASSETS"
+}

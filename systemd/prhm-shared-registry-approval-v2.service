@@ -1,0 +1,51 @@
+# PRHM Honartik Config Center shared-registry approval V2
+# Reviewed source artifact only. DO NOT enable/start until a separate
+# SHA-bound, Ed25519-authorized Level-4 root bootstrap has attested the
+# exact immutable runtime closure, credential/ledger permissions and rollback.
+# No owner file, service or production policy may be changed by CI.
+[Unit]
+Description=PRHM Honartik Config Center V2 isolated approval sidecar
+After=network.target
+StartLimitBurst=1
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=root
+Group=root
+UMask=0077
+WorkingDirectory=/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2
+ExecStart=/usr/local/bin/prhm-node20 /opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-isolated-socket-v1.cjs
+Restart=no
+TimeoutStartSec=15
+TimeoutStopSec=10
+KillMode=control-group
+RuntimeDirectory=prhm-shared-registry-v2
+RuntimeDirectoryMode=0700
+RuntimeDirectoryPreserve=no
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictSUIDSGID=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_INET
+IPAddressDeny=any
+IPAddressAllow=localhost
+CapabilityBoundingSet=CAP_DAC_READ_SEARCH
+AmbientCapabilities=
+ReadWritePaths=/run/prhm-shared-registry-v2 /var/lib/prhm-agent-selfmaint-exec/registry-approval-v2
+ReadOnlyPaths=/var/lib/prhm-company-approval/consumed /var/lib/prhm-company-approval/ed25519-public.pem /etc/prhm-company-control-plane/approval-client.env
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=prhm-shared-registry-approval-v2
+
+# Deliberately no [Install] section: the trusted signed bootstrap must
+# establish all paths and explicitly manage the isolated unit.

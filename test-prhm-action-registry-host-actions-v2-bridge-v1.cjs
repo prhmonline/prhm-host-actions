@@ -16,7 +16,9 @@ function fixture(project='honartik'){
  const action=project+'_config_center_readonly_enroll_v1';
  const source='a'.repeat(40);
  const manifest={
-  schema_version:'prhm.action-registry.release.v1',git_path:'manifests/'+project+'-registration.json',
+  schema_version:'prhm.action-registry.release.v1',git_path:project==='honartik'?
+    'manifests/honartik-config-center-registry-release-v1.json':
+    'manifests/'+project+'-registration.json',
   project,action,source_commit:source,risk:'critical',approval_level:4,
   rollback_required:true,
   registry_owners:Object.fromEntries(Object.keys(g.OWNER_PATHS).map(x=>
@@ -37,7 +39,10 @@ function fixture(project='honartik'){
     source_commit===source&&source_path==='sample-action-v1.cjs'?ASSET_BYTES:null,
   getInstaller:()=>async()=>{calls.installer++;return{ok:true,rollback:'not_needed',installedAssets:1,updatedOwners:4}},
   getRollback:()=>async()=>({verified:true}),
+  claimOnce:async()=>({request_id:'x',arguments_sha256:'0'.repeat(64),exclusive:true,durable:true}),
   verifyOriginalState:async()=>true,
+  restartService:()=>true,
+  checkServiceHealth:()=>true,
   getToolDiscovery:async()=>true,
   writeMetadataAudit:async()=>{calls.audit++}
  };
@@ -114,4 +119,61 @@ test('missing or fabricated signed token never invokes installer',async()=>{
   input:f.input,approvalToken:'approved',capabilities:f.trusted
  }),/signed_l4_token_missing/);
  assert.equal(f.calls.installer,0);
+});
+
+test('reviewed Honartik handoff carries the original token and immutable Git manifest',()=>{
+ const f=fixture();const token='x'.repeat(160);let captured;
+ const projectManifest=Buffer.from(JSON.stringify(f.manifest));
+ const cap={...f.trusted,readPinnedGitSource:spec=>
+  spec.source_path==='honartik-config-center-install-manifest-v1.json'?
+    projectManifest:f.trusted.readPinnedGitSource(spec)};
+ const result=bridge.invokeHonartikReviewedInstaller({
+  input:f.input,release:bridge.immutableManifest(f.input,f.trusted),
+  approvalToken:token,cap,
+  installer:params=>{captured=params;return {delivered:true}}
+ });
+ assert.equal(result.delivered,true);
+ assert.equal(captured.approvalToken,token);
+ assert.deepEqual(captured.args,f.input);
+ assert.deepEqual(captured.readPinnedManifest(f.input.source_commit,
+   'honartik-config-center-install-manifest-v1.json'),projectManifest);
+ assert.equal(captured.restart('prhm-agent-selfmaint.service'),true);
+ assert.equal(captured.health('prhm-agent-mcp-green.service'),true);
+ assert.throws(()=>captured.restart('ssh.service'),/service_not_allowlisted/);
+ assert.throws(()=>captured.readPinnedManifest(f.input.source_commit,
+   '../etc/passwd'),/honartik_source_manifest_unbound/);
+});
+test('cross-project attempt and missing systemd verification fail closed',()=>{
+ const f=fixture(),other=fixture('moeinshow'),token='x'.repeat(160);
+ const getOpts=(src,cap=f.trusted)=>({
+  input:src.input,release:bridge.immutableManifest(src.input,src.trusted),
+  approvalToken:token,installer:()=>({installed:true}),cap
+ });
+ assert.throws(()=>bridge.invokeHonartikReviewedInstaller(getOpts(other)),
+   /honartik_adapter_binding/);
+ let called=0;
+ const params=getOpts(f,{...f.trusted,checkServiceHealth:()=>false});
+ params.installer=arg=>{called++;arg.health('prhm-agent-mcp-green.service')};
+ assert.throws(()=>bridge.invokeHonartikReviewedInstaller(params),
+   /service_health_verification_failed/);
+ assert.equal(called,1);
+ assert.throws(()=>bridge.invokeHonartikReviewedInstaller({
+   ...getOpts(f),approvalToken:'approved'
+ }),/honartik_adapter_binding/);
+});
+
+test('source and manifest must be distinct pinned Git commits before L4 request',()=>{
+ const f=fixture();
+ assert.throws(()=>bridge.strictRequest({...f.input,
+   manifest_commit:f.input.source_commit}),
+   /source_and_manifest_commits_must_differ/);
+});
+test('a different Honartik manifest path cannot be accepted as the release',()=>{
+ const f=fixture();
+ const altered={...f.manifest,git_path:'manifests/unreviewed-release.json'};
+ const bytes=Buffer.from(JSON.stringify(altered));
+ const input={...f.input,manifest_sha256:g.sha(bytes)};
+ assert.throws(()=>bridge.immutableManifest(input,{
+   ...f.trusted,readPinnedGitManifest:()=>({path:altered.git_path,bytes})
+ }),/honartik_release_manifest_path_or_sha_unexpected/);
 });

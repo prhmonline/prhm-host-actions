@@ -1,0 +1,198 @@
+{
+  "schema": "prhm.honartik.agent3.dev-test-source-closure.v1",
+  "status": "GIT_ONLY_REVIEWED_SOURCE_NOT_INSTALLED",
+  "source_repository": "prhmonline/prhm-host-actions",
+  "source_commit": "d174b949f1715e33e3b66674f344d471f2c50a68",
+  "test_entrypoint": "test-honartik-staging-privilege-boundary-install-v1.js",
+  "bootstrap_entrypoint": "bootstrap-host-actions-honartik-staging-privilege-boundary-install-v1.js",
+  "purpose": "Pin transitive local-require closure for the real Honartik isolated Agent 3 Bootstrap test; fail closed when an allowed staging profile lacks dependencies.",
+  "source_file_count": 18,
+  "host_fixed_allowlist": [
+    "honartik-staging-privilege-boundary-install-v1.js",
+    "test-honartik-staging-privilege-boundary-install-v1.js",
+    "bootstrap-host-actions-honartik-staging-privilege-boundary-install-v1.js"
+  ],
+  "host_not_explicitly_staged": [
+    "manifests/honartik-config-center-registry-release-v2.json",
+    "manifests/honartik-shared-registry-pinned-release-v2.json",
+    "manifests/honartik-shared-registry-v2-reviewed-runtime-stage-v1.json",
+    "prhm-action-registry-gateway-v1.cjs",
+    "prhm-action-registry-host-actions-v2-bridge-v1.cjs",
+    "prhm-action-registry-v2-approval-http-adapter-v1.cjs",
+    "prhm-action-registry-v2-five-field-approval-gate-v1.cjs",
+    "prhm-action-registry-v2-independent-runner-contract-v1.cjs",
+    "prhm-action-registry-v2-isolated-socket-v1.cjs",
+    "prhm-action-registry-v2-root-approval-transport-v1.cjs",
+    "prhm-action-registry-v2-root-attestation-v1.cjs",
+    "prhm-action-registry-v2-root-bootstrap-layout-v1.cjs",
+    "prhm-action-registry-v2-root-consumed-receipt-v1.cjs",
+    "prhm-action-registry-v2-root-sealed-token-vault-v1.cjs",
+    "prhm-action-registry-v2-trusted-base-capabilities-v1.cjs"
+  ],
+  "requires_separately_reviewed_fixed_scope_update": true,
+  "host_tool_currently_can_stage_full_closure": false,
+  "approved_for_production": false,
+  "may_request_level4": false,
+  "may_charge_or_release_tickets": false,
+  "files": [
+    {
+      "path": "bootstrap-host-actions-honartik-staging-privilege-boundary-install-v1.js",
+      "git_blob_sha1": "c3a8d9aed0b246c01c12a0e2a5dc082d054121f4",
+      "utf8_bytes": 7953,
+      "local_requires": [
+        "honartik-staging-privilege-boundary-install-v1.js",
+        "prhm-action-registry-v2-root-bootstrap-layout-v1.cjs"
+      ]
+    },
+    {
+      "path": "honartik-staging-privilege-boundary-install-v1.js",
+      "git_blob_sha1": "8189f838d7acdb600b3388deebddbe81bfeb464a",
+      "utf8_bytes": 6259,
+      "local_requires": []
+    },
+    {
+      "path": "manifests/honartik-config-center-registry-release-v2.json",
+      "git_blob_sha1": "36d7451f238c68ae39fa3b1c505064d611f1970d",
+      "utf8_bytes": 3090,
+      "local_requires": []
+    },
+    {
+      "path": "manifests/honartik-shared-registry-pinned-release-v2.json",
+      "git_blob_sha1": "1656955e9a9927a13a5b8ced2b6ee2cddd53ea3f",
+      "utf8_bytes": 5064,
+      "local_requires": []
+    },
+    {
+      "path": "manifests/honartik-shared-registry-v2-reviewed-runtime-stage-v1.json",
+      "git_blob_sha1": "5e98876da1121dae41cc8d8fd64ed604d011af47",
+      "utf8_bytes": 9345,
+      "local_requires": []
+    },
+    {
+      "path": "prhm-action-registry-gateway-v1.cjs",
+      "git_blob_sha1": "2c20453a91cb55c305a8901217e4b2d2cc22e9f9",
+      "utf8_bytes": 19571,
+      "local_requires": []
+    },
+    {
+      "path": "prhm-action-registry-host-actions-v2-bridge-v1.cjs",
+      "git_blob_sha1": "166d9253634df48624aaa75da719253dc1e21508",
+      "utf8_bytes": 9217,
+      "local_requires": [
+        "prhm-action-registry-gateway-v1.cjs"
+      ]
+    },
+    {
+      "path": "prhm-action-registry-v2-approval-http-adapter-v1.cjs",
+      "git_blob_sha1": "a4fc61d424c2209ddde7858cb6146d19b4823c97",
+      "utf8_bytes": 7757,
+      "local_requires": [
+        "prhm-action-registry-v2-five-field-approval-gate-v1.cjs",
+        "prhm-action-registry-gateway-v1.cjs",
+        "manifests/honartik-config-center-registry-release-v2.json"
+      ]
+    },
+    {
+      "path": "prhm-action-registry-v2-five-field-approval-gate-v1.cjs",
+      "git_blob_sha1": "78001c5d059d26be55fa53adcf5d2d6c84cb6181",
+      "utf8_bytes": 5605,
+      "local_requires": [
+        "prhm-action-registry-gateway-v1.cjs",
+        "prhm-action-registry-host-actions-v2-bridge-v1.cjs",
+        "manifests/honartik-shared-registry-pinned-release-v2.json"
+      ]
+    },
+    {
+      "path": "prhm-action-registry-v2-independent-runner-contract-v1.cjs",
+      "git_blob_sha1": "0f9c09a80b6bd0f20850dad1a2aef032abf491c2",
+      "utf8_bytes": 7744,
+      "local_requires": [
+        "manifests/honartik-shared-registry-pinned-release-v2.json",
+        "prhm-action-registry-gateway-v1.cjs",
+        "manifests/honartik-config-center-registry-release-v2.json",
+        "prhm-action-registry-host-actions-v2-bridge-v1.cjs"
+      ]
+    },
+    {
+      "path": "prhm-action-registry-v2-isolated-socket-v1.cjs",
+      "git_blob_sha1": "c07efd813f6807f4f7f370edf8e3cb39156629ce",
+      "utf8_bytes": 5381,
+      "local_requires": [
+        "prhm-action-registry-v2-approval-http-adapter-v1.cjs",
+        "prhm-action-registry-v2-five-field-approval-gate-v1.cjs",
+        "prhm-action-registry-v2-trusted-base-capabilities-v1.cjs"
+      ]
+    },
+    {
+      "path": "prhm-action-registry-v2-root-approval-transport-v1.cjs",
+      "git_blob_sha1": "5b750894e73a5eee13d33a0f2ad414ab9fff7b38",
+      "utf8_bytes": 6612,
+      "local_requires": [
+        "prhm-action-registry-v2-five-field-approval-gate-v1.cjs"
+      ]
+    },
+    {
+      "path": "prhm-action-registry-v2-root-attestation-v1.cjs",
+      "git_blob_sha1": "0f716df0242e982e4df57bf6f1f5fd4ba5d39166",
+      "utf8_bytes": 6024,
+      "local_requires": [
+        "manifests/honartik-shared-registry-v2-reviewed-runtime-stage-v1.json",
+        "manifests/honartik-config-center-registry-release-v2.json"
+      ]
+    },
+    {
+      "path": "prhm-action-registry-v2-root-bootstrap-layout-v1.cjs",
+      "git_blob_sha1": "12691b6b1f57a9def5cdef2441246d1dc5cdc724",
+      "utf8_bytes": 6323,
+      "local_requires": [
+        "prhm-action-registry-v2-independent-runner-contract-v1.cjs",
+        "manifests/honartik-config-center-registry-release-v2.json",
+        "manifests/honartik-shared-registry-v2-reviewed-runtime-stage-v1.json",
+        "prhm-action-registry-v2-root-sealed-token-vault-v1.cjs",
+        "prhm-action-registry-v2-isolated-socket-v1.cjs"
+      ]
+    },
+    {
+      "path": "prhm-action-registry-v2-root-consumed-receipt-v1.cjs",
+      "git_blob_sha1": "a5ea90ba6681ee23d9cfe09080ce585b217638b2",
+      "utf8_bytes": 4647,
+      "local_requires": [
+        "prhm-action-registry-gateway-v1.cjs",
+        "prhm-action-registry-v2-five-field-approval-gate-v1.cjs",
+        "prhm-action-registry-v2-root-sealed-token-vault-v1.cjs"
+      ]
+    },
+    {
+      "path": "prhm-action-registry-v2-root-sealed-token-vault-v1.cjs",
+      "git_blob_sha1": "66222251e2734a0003a420209195f22e164160f2",
+      "utf8_bytes": 5556,
+      "local_requires": [
+        "prhm-action-registry-gateway-v1.cjs",
+        "prhm-action-registry-v2-five-field-approval-gate-v1.cjs"
+      ]
+    },
+    {
+      "path": "prhm-action-registry-v2-trusted-base-capabilities-v1.cjs",
+      "git_blob_sha1": "4812b3da7227d7200620e81194e771ebe74e46f7",
+      "utf8_bytes": 5731,
+      "local_requires": [
+        "prhm-action-registry-v2-root-approval-transport-v1.cjs",
+        "prhm-action-registry-v2-root-sealed-token-vault-v1.cjs",
+        "prhm-action-registry-v2-root-consumed-receipt-v1.cjs",
+        "prhm-action-registry-v2-root-attestation-v1.cjs",
+        "prhm-action-registry-v2-approval-http-adapter-v1.cjs",
+        "prhm-action-registry-v2-isolated-socket-v1.cjs",
+        "prhm-action-registry-v2-five-field-approval-gate-v1.cjs"
+      ]
+    },
+    {
+      "path": "test-honartik-staging-privilege-boundary-install-v1.js",
+      "git_blob_sha1": "3b0554e521b2e952e952e8505b3648d38a0d6dfa",
+      "utf8_bytes": 27557,
+      "local_requires": [
+        "honartik-staging-privilege-boundary-install-v1.js",
+        "bootstrap-host-actions-honartik-staging-privilege-boundary-install-v1.js"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,188 @@
+'use strict';
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const boundary=require('./honartik-staging-privilege-boundary-install-v1.js');
+const PINNED_OFFLINE_MANIFEST_BYTES=Object.freeze({"runner":"{\n  \"schema\": \"prhm.honartik.registry-v2.independent-root-launcher-stage.v2\",\n  \"repo\": \"prhmonline/prhm-host-actions\",\n  \"project\": \"honartik\",\n  \"root\": \"/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2\",\n  \"status\": \"REVIEWED_SOURCE_ONLY_NOT_STAGED\",\n  \"source_closure_schema\": \"prhm.honartik.shared-registry-v2.unified-root-closure.v1\",\n  \"manifest_blob_sha1\": \"679fbeab0500620b40b648197974e7abc002f9b9\",\n  \"declared_runtime_source_count\": 28,\n  \"locked_root_capability_count\": 12,\n  \"reviewed_code\": [\n    {\n      \"source_path\": \"prhm-action-registry-host-actions-v2-bridge-v1.cjs\",\n      \"source_commit\": \"6b038d7618f2ec27ecb44e8fc92f3c4a5979836b\",\n      \"git_blob_sha1\": \"166d9253634df48624aaa75da719253dc1e21508\",\n      \"destination\": \"/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-host-actions-v2-bridge-v1.cjs\"\n    },\n    {\n      \"source_path\": \"prhm-action-registry-gateway-v1.cjs\",\n      \"source_commit\": \"aa267202d11784f0ac0a957e0d8ba911a6b07734\",\n      \"git_blob_sha1\": \"2c20453a91cb55c305a8901217e4b2d2cc22e9f9\",\n      \"destination\": \"/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-gateway-v1.cjs\"\n    },\n    {\n      \"source_path\": \"prhm-action-registry-one-time-fence-v1.cjs\",\n      \"source_commit\": \"aa267202d11784f0ac0a957e0d8ba911a6b07734\",\n      \"git_blob_sha1\": \"ccae1d7c7715c87bef4665c4b600fcdd500b9d8d\",\n      \"destination\": \"/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-one-time-fence-v1.cjs\"\n    },\n    {\n      \"source_path\": \"prhm-action-registry-v2-durable-recovery-v1.cjs\",\n      \"source_commit\": \"cf505af78c9cae02b37e2bbc38a05fbd9516e629\",\n      \"git_blob_sha1\": \"51b6224c24ef6d4ec27c1da092dfe5aafbf65ec6\",\n      \"destination\": \"/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-durable-recovery-v1.cjs\"\n    },\n    {\n      \"source_path\": \"honartik-config-center-atomic-registration-installer-v1.cjs\",\n      \"source_commit\": \"aa267202d11784f0ac0a957e0d8ba911a6b07734\",\n      \"git_blob_sha1\": \"24ab998249eb4dad71c515e3bacf4cf2e4129724\",\n      \"destination\": \"/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/honartik-config-center-atomic-registration-installer-v1.cjs\"\n    },\n    {\n      \"source_path\": \"honartik-config-center-registration-candidate-v1.cjs\",\n      \"source_commit\": \"aa267202d11784f0ac0a957e0d8ba911a6b07734\",\n      \"git_blob_sha1\": \"edd6d8c1e0833c7016aaeab59bde806d20662c52\",\n      \"destination\": \"/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/honartik-config-center-registration-candidate-v1.cjs\"\n    },\n    {\n      \"source_path\": \"honartik-config-center-signed-registration-approval-v1.cjs\",\n      \"source_commit\": \"aa267202d11784f0ac0a957e0d8ba911a6b07734\",\n      \"git_blob_sha1\": \"0b1f1b4ede057d4eba6228d455df75dfacc626ec\",\n      \"destination\": \"/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/honartik-config-center-signed-registration-approval-v1.cjs\"\n    },\n    {\n      \"source_path\": \"honartik-config-center-enrollment-action-v1.cjs\",\n      \"source_commit\": \"aa267202d11784f0ac0a957e0d8ba911a6b07734\",\n      \"git_blob_sha1\": \"725bd719b278bd3fa43a8b84e2a10b34aaf966ef\",\n      \"destination\": \"/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/honartik-config-center-enrollment-action-v1.cjs\"\n    },\n    {\n      \"source_path\": \"honartik-config-center-trusted-adapter-v1.cjs\",\n      \"source_commit\": \"aa267202d11784f0ac0a957e0d8ba911a6b07734\",\n      \"git_blob_sha1\": \"592fad0bf9cbd0d5698dcba1ba0ffb7ea7a49813\",\n      \"destination\": \"/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/honartik-config-center-trusted-adapter-v1.cjs\"\n    },\n    {\n      \"source_path\": \"honartik-config-center-privileged-runner-v1.cjs\",\n      \"source_commit\": \"aa267202d11784f0ac0a957e0d8ba911a6b07734\",\n      \"git_blob_sha1\": \"38846dd829768dc780801dc9689585781445429c\",\n      \"destination\": \"/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/honartik-config-center-privileged-runner-v1.cjs\"\n    },\n    {\n      \"source_path\": \"honartik-config-center-install-manifest-v1.json\",\n      \"source_commit\": \"aa267202d11784f0ac0a957e0d8ba911a6b07734\",\n      \"git_blob_sha1\": \"97b6a197cbf1516931a34a73695bbf0110c3b084\",\n      \"destination\": \"/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/honartik-config-center-install-manifest-v1.json\"\n    },\n    {\n      \"source_path\": \"manifests/honartik-config-center-registry-release-v2.json\",\n      \"source_commit\": \"d1a8b26da238d1a86b7a5d96f69185e7d25f1430\",\n      \"git_blob_sha1\": \"36d7451f238c68ae39fa3b1c505064d611f1970d\",\n      \"destination\": \"/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/manifests/honartik-config-center-registry-release-v2.json\"\n    },\n    {\n      \"source_path\": \"prhm-action-registry-v2-root-pinned-readers-v1.cjs\",\n      \"source_commit\": \"6b038d7618f2ec27ecb44e8fc92f3c4a5979836b\",\n      \"git_blob_sha1\": \"a88c417b8cc2dbfb0f345b11d1a54429cb8e823c\",\n      \"destination\": \"/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-root-pinned-readers-v1.cjs\"\n    },\n    {\n      \"source_path\": \"prhm-action-registry-v2-independent-runner-contract-v1.cjs\",\n      \"source_commit\": \"b0d99fba530e6780bf230a6f10908f547068c86d\",\n      \"git_blob_sha1\": \"0f9c09a80b6bd0f20850dad1a2aef032abf491c2\",\n      \"destination\": \"/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-independent-runner-contract-v1.cjs\"\n    },\n    {\n      \"source_path\": \"prhm-action-registry-v2-fixed-systemd-bridge-v1.cjs\",\n      \"source_commit\": \"6b038d7618f2ec27ecb44e8fc92f3c4a5979836b\",\n      \"git_blob_sha1\": \"0ed8e849c3748f0642fd275c914840b0d1a7d701\",\n      \"destination\": \"/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-fixed-systemd-bridge-v1.cjs\"\n    },\n    {\n      \"source_path\": \"prhm-action-registry-v2-independent-runner-entry-v1.cjs\",\n      \"source_commit\": \"0a8fca5bbe59c607c4f96c1f75e80979124afaa8\",\n      \"git_blob_sha1\": \"8dd786829aad356c5d207365258cb4c9dd61b95d\",\n      \"destination\": \"/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-independent-runner-entry-v1.cjs\"\n    },\n    {\n      \"source_path\": \"manifests/honartik-shared-registry-pinned-release-v2.json\",\n      \"source_commit\": \"6b038d7618f2ec27ecb44e8fc92f3c4a5979836b\",\n      \"git_blob_sha1\": \"1656955e9a9927a13a5b8ced2b6ee2cddd53ea3f\",\n      \"destination\": \"/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/manifests/honartik-shared-registry-pinned-release-v2.json\"\n    },\n    {\n      \"source_path\": \"prhm-action-registry-v2-mcp-discovery-v1.cjs\",\n      \"source_commit\": \"4c448583a1759fcccb2cf44dbd94ad19ec309037\",\n      \"git_blob_sha1\": \"c47456483b529226184415e4d6107ed44099051d\",\n      \"destination\": \"/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-mcp-discovery-v1.cjs\"\n    },\n    {\n      \"source_path\": \"prhm-action-registry-v2-five-field-approval-gate-v1.cjs\",\n      \"source_commit\": \"e0c608c24990e1e75a6af06449b59b59664edb40\",\n      \"git_blob_sha1\": \"78001c5d059d26be55fa53adcf5d2d6c84cb6181\",\n      \"destination\": \"/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-five-field-approval-gate-v1.cjs\"\n    },\n    {\n      \"source_path\": \"prhm-action-registry-v2-approval-http-adapter-v1.cjs\",\n      \"source_commit\": \"db632ebd75b4e7b9e543b7cfc7d0f9f381cbe376\",\n      \"git_blob_sha1\": \"a4fc61d424c2209ddde7858cb6146d19b4823c97\",\n      \"destination\": \"/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-approval-http-adapter-v1.cjs\"\n    },\n    {\n      \"source_path\": \"prhm-action-registry-v2-root-accountability-v1.cjs\",\n      \"source_commit\": \"5a79c43749c09cbe1f8066ef9c8cfecf6b4fb1eb\",\n      \"git_blob_sha1\": \"fb4c6e04577d912beeda2c06e61e03da50a6d6c4\",\n      \"destination\": \"/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-root-accountability-v1.cjs\"\n    },\n    {\n      \"source_path\": \"prhm-action-registry-v2-root-runner-bindings-v1.cjs\",\n      \"source_commit\": \"81ccf813fc9e6482b28c48c45d8fc0b654f0b368\",\n      \"git_blob_sha1\": \"7789953b66f5d93a6316174d931e000bb594ab83\",\n      \"destination\": \"/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-root-runner-bindings-v1.cjs\"\n    },\n    {\n      \"source_path\": \"prhm-action-registry-v2-root-live-mcp-v1.cjs\",\n      \"source_commit\": \"14c6a77c47be8bc081a0dccef977fa989d0fb820\",\n      \"git_blob_sha1\": \"a8135d30353f3fe2b27d907a7d90721fa462b336\",\n      \"destination\": \"/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-root-live-mcp-v1.cjs\"\n    },\n    {\n      \"source_path\": \"prhm-action-registry-v2-root-recovery-io-v1.cjs\",\n      \"source_commit\": \"ca817eb2397946e4f160c1e2e2d469c71b17e4aa\",\n      \"git_blob_sha1\": \"a3d3f1836de58dbf02a6cba42140e3f655c93ddc\",\n      \"destination\": \"/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-root-recovery-io-v1.cjs\"\n    },\n    {\n      \"source_path\": \"prhm-action-registry-v2-root-complete-capabilities-v1.cjs\",\n      \"source_commit\": \"d9618b0691bc0a337ecf4217b04969e41db296c5\",\n      \"git_blob_sha1\": \"606629b1ac6f708096073dedeebb6c12a1cbc330\",\n      \"destination\": \"/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-root-complete-capabilities-v1.cjs\"\n    },\n    {\n      \"source_path\": \"prhm-action-registry-v2-durable-recovery-locksafe-v1.cjs\",\n      \"source_commit\": \"073cc8242630a8936f835cb9535b73ffee940fd7\",\n      \"git_blob_sha1\": \"5940be35daa1ae676f30c3f505a1a2c3e254d452\",\n      \"destination\": \"/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-durable-recovery-locksafe-v1.cjs\"\n    },\n    {\n      \"source_path\": \"prhm-action-registry-v2-independent-root-launcher-v1.cjs\",\n      \"source_commit\": \"4e6a3532c0d1ec9e8761aece5ed04e1acbb25045\",\n      \"git_blob_sha1\": \"85a1bd1598f2e874a359a29d5a40398bb8d2e09a\",\n      \"destination\": \"/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-independent-root-launcher-v1.cjs\"\n    },\n    {\n      \"source_path\": \"manifests/honartik-shared-registry-v2-unified-root-closure-v1.json\",\n      \"source_commit\": \"a3eb6026d9128e90cc50446faefd091240cb2e7b\",\n      \"git_blob_sha1\": \"679fbeab0500620b40b648197974e7abc002f9b9\",\n      \"destination\": \"/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/manifests/honartik-shared-registry-v2-unified-root-closure-v1.json\"\n    }\n  ],\n  \"standalone_execution_authorized\": false,\n  \"root_staged\": false,\n  \"approval_center_ledger_verified\": false,\n  \"sealed_mcp_bearer_verified\": false,\n  \"signed_l4_issued\": false,\n  \"signed_l4_consumed\": false,\n  \"production_modified\": false,\n  \"requires_external_signed_root_stage\": true,\n  \"host_preflight_verified\": false,\n  \"explicit_trust_boundary\": {\n    \"runtime_sources\": 26,\n    \"launcher_sources\": 1,\n    \"root_manifest_sources\": 1,\n    \"launcher_blob_expected\": \"85a1bd1598f2e874a359a29d5a40398bb8d2e09a\",\n    \"manifest_blob_expected\": \"679fbeab0500620b40b648197974e7abc002f9b9\"\n  }\n}\n","sidecar":"{\n  \"schema\": \"prhm.honartik.shared-registry-v2.root-capability-provider-stage.v1\",\n  \"repo\": \"prhmonline/prhm-host-actions\",\n  \"project\": \"honartik\",\n  \"status\": \"NOT_STAGED\",\n  \"installation_authorized\": false,\n  \"requires_fresh_signed_l4\": true,\n  \"production_mutation\": false,\n  \"root_capabilities_installed\": false,\n  \"independent_sidecar_installed\": false,\n  \"real_consumed_evidence_reader_installed\": false,\n  \"independent_root_launcher_installed\": false,\n  \"dual_mcp_discovery_verified\": false,\n  \"real_recovery_verified\": false,\n  \"runtime_manifest\": \"manifests/honartik-shared-registry-v2-reviewed-runtime-stage-v1.json\",\n  \"expected_immutable_runtime_files\": 20,\n  \"additional_root_files\": 7,\n  \"destination_root\": \"/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2\",\n  \"source\": {\n    \"path\": \"prhm-action-registry-v2-trusted-base-capabilities-v1.cjs\",\n    \"source_commit\": \"947c89b007f7d1956e3036587c12eb4196e27d6e\",\n    \"git_blob_sha1\": \"4812b3da7227d7200620e81194e771ebe74e46f7\"\n  },\n  \"test\": {\n    \"path\": \"test-prhm-action-registry-v2-trusted-base-capabilities-v1.cjs\",\n    \"source_commit\": \"da4c1686c2397856d5700b4b62ab017606ba6db1\",\n    \"git_blob_sha1\": \"fcbc38a7f439fb45bf999593d0110889bde683e4\"\n  },\n  \"files\": [\n    {\n      \"source_path\": \"prhm-action-registry-v2-trusted-base-capabilities-v1.cjs\",\n      \"source_commit\": \"947c89b007f7d1956e3036587c12eb4196e27d6e\",\n      \"git_blob_sha1\": \"4812b3da7227d7200620e81194e771ebe74e46f7\",\n      \"destination\": \"/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-trusted-base-capabilities-v1.cjs\"\n    },\n    {\n      \"source_path\": \"prhm-action-registry-v2-isolated-socket-v1.cjs\",\n      \"source_commit\": \"d4266dc0ed6e5d1fb1010a433ae50ed617bfc3ea\",\n      \"git_blob_sha1\": \"c07efd813f6807f4f7f370edf8e3cb39156629ce\",\n      \"destination\": \"/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-isolated-socket-v1.cjs\"\n    },\n    {\n      \"source_path\": \"prhm-action-registry-v2-root-approval-transport-v1.cjs\",\n      \"source_commit\": \"d4266dc0ed6e5d1fb1010a433ae50ed617bfc3ea\",\n      \"git_blob_sha1\": \"5b750894e73a5eee13d33a0f2ad414ab9fff7b38\",\n      \"destination\": \"/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-root-approval-transport-v1.cjs\"\n    },\n    {\n      \"source_path\": \"prhm-action-registry-v2-root-sealed-token-vault-v1.cjs\",\n      \"source_commit\": \"d4266dc0ed6e5d1fb1010a433ae50ed617bfc3ea\",\n      \"git_blob_sha1\": \"66222251e2734a0003a420209195f22e164160f2\",\n      \"destination\": \"/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-root-sealed-token-vault-v1.cjs\"\n    },\n    {\n      \"source_path\": \"prhm-action-registry-v2-root-attestation-v1.cjs\",\n      \"source_commit\": \"d4266dc0ed6e5d1fb1010a433ae50ed617bfc3ea\",\n      \"git_blob_sha1\": \"0f716df0242e982e4df57bf6f1f5fd4ba5d39166\",\n      \"destination\": \"/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-root-attestation-v1.cjs\"\n    },\n    {\n      \"source_path\": \"manifests/honartik-shared-registry-v2-reviewed-runtime-stage-v1.json\",\n      \"source_commit\": \"d4266dc0ed6e5d1fb1010a433ae50ed617bfc3ea\",\n      \"git_blob_sha1\": \"5e98876da1121dae41cc8d8fd64ed604d011af47\",\n      \"destination\": \"/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/manifests/honartik-shared-registry-v2-reviewed-runtime-stage-v1.json\"\n    },\n    {\n      \"source_path\": \"prhm-action-registry-v2-root-consumed-receipt-v1.cjs\",\n      \"source_commit\": \"541d0b49988b3159f36bcab2294a85e8b6a3bc23\",\n      \"git_blob_sha1\": \"a5ea90ba6681ee23d9cfe09080ce585b217638b2\",\n      \"destination\": \"/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-root-consumed-receipt-v1.cjs\"\n    }\n  ],\n  \"consumed_ledger_reader_implemented_in_source\": true,\n  \"consumed_ledger_reader_installed\": false,\n  \"consumed_receipt_test\": {\n    \"path\": \"test-prhm-action-registry-v2-root-consumed-receipt-v1.cjs\",\n    \"source_commit\": \"54de0ebaf317f7838f7c6d47694d67639b31b265\",\n    \"git_blob_sha1\": \"53371efdadd267cbf253c8cd208f8bc5a372f13a\"\n  }\n}\n","unit":"{\n  \"schema\": \"prhm.honartik.shared-registry-v2.sidecar-unit-stage.v1\",\n  \"repo\": \"prhmonline/prhm-host-actions\",\n  \"project\": \"honartik\",\n  \"status\": \"NOT_STAGED\",\n  \"dedicated_unit\": \"prhm-shared-registry-approval-v2.service\",\n  \"destination\": \"/etc/systemd/system/prhm-shared-registry-approval-v2.service\",\n  \"source_units\": [\n    {\n      \"source_path\": \"systemd/prhm-shared-registry-approval-v2.service\",\n      \"source_commit\": \"cb0b0aef1ce3c9556cb60cab6b48c3fb175af40c\",\n      \"git_blob_sha1\": \"dc87ad2937b63ab965944cef081f55a6a0984cdd\"\n    },\n    {\n      \"source_path\": \"prhm-action-registry-v2-sidecar-unit-review-v1.cjs\",\n      \"source_commit\": \"27710b95e1e6b62fc986338adf185f4dfd593ded\",\n      \"git_blob_sha1\": \"5244533f1562a3f5042e09b066746bcff079a1e1\"\n    },\n    {\n      \"source_path\": \"test-prhm-action-registry-v2-sidecar-unit-review-v1.cjs\",\n      \"source_commit\": \"2561bd49da465d1010f9aa6d855acdefd207af33\",\n      \"git_blob_sha1\": \"abc20edfa8726bca16b164c578d7194f8ce51abc\"\n    }\n  ],\n  \"reviewed_runtime_closure_count\": 27,\n  \"non_installable_without_signed_five_field_bootstrap\": true,\n  \"installed\": false,\n  \"enabled\": false,\n  \"service_started\": false,\n  \"production_mutation\": false,\n  \"l4_requested\": false,\n  \"l4_consumed\": false,\n  \"operational_private_receipt_access_attested\": false,\n  \"authenticated_blue_green_discovery_attested\": false,\n  \"independent_runner_12_capability_installed\": false,\n  \"review_status\": \"GIT_AND_CI_ONLY\"\n}\n"});
+// This test runs both from PR #190 and from the authorized isolated
+// development worktree, which may not check out the reviewed manifest branch.
+function fixture(){
+ const manifestBytes=Object.fromEntries(Object.entries(boundary.PINS).map(
+  ([k,x])=>[k,fs.existsSync(path.join(__dirname,x.path))?
+   fs.readFileSync(path.join(__dirname,x.path)):
+   Buffer.from(PINNED_OFFLINE_MANIFEST_BYTES[k],'utf8')]));
+ return {manifestBytes,observedOwnerSha256:{...boundary.OWNERS}};
+}
+test('standalone Honartik development boundary reviews 35 pinned root files and unit, never approves an install',()=>{
+ const r=boundary.inspectReview(fixture());
+ assert.equal(r.stage_source_count,35);
+ assert.equal(r.stage_sources.length,35);
+ assert.equal(r.source_repo,'prhmonline/prhm-host-actions');
+ assert.equal(r.signed_unit.destination,boundary.UNIT);
+ assert.equal(r.signed_unit.git_blob_sha1,
+  'dc87ad2937b63ab965944cef081f55a6a0984cdd');
+ assert.equal(r.required_action,'prhm_action_registry_install_v1');
+ for(const field of ['trusted_host_attested','root_staged',
+  'signed_l4_approved','installation_authorized','action_registered',
+  'production_mutated','can_request_l4','can_execute']){
+  assert.equal(r[field],false,field);
+ }
+ assert.equal(new Set(r.stage_sources.map(f=>f.destination)).size,35);
+ assert.ok(r.stage_sources.every(f=>/^[a-f0-9]{40}$/.test(f.git_blob_sha1)));
+});
+test('every supplied manifest is independently immutable Git-blob pinned',()=>{
+ for(const key of Object.keys(boundary.PINS)){
+  const f=fixture();
+  const x=f.manifestBytes[key];const corrupted=Buffer.from(x);
+  corrupted[Math.floor(corrupted.length/2)]^=1;
+  f.manifestBytes[key]=corrupted;
+  assert.throws(()=>boundary.inspectReview(f),
+   new RegExp('manifest_sha_drift_'+key),key);
+ }
+});
+test('forbid an added fourth manifest or an omitted reviewed manifest',()=>{
+ const f=fixture();
+ f.manifestBytes.rogue=Buffer.from('x');
+ assert.throws(()=>boundary.inspectReview(f),/manifest_set/);
+ const g=fixture();delete g.manifestBytes.unit;
+ assert.throws(()=>boundary.inspectReview(g),/manifest_set/);
+});
+test('protected owner SHA mismatch blocks review before signed bootstrap',()=>{
+ for(const kind of Object.keys(boundary.OWNERS)){
+  const f=fixture();
+  f.observedOwnerSha256[kind]='0'.repeat(64);
+  assert.throws(()=>boundary.inspectReview(f),
+   new RegExp('owner_sha_drift_'+kind),kind);
+ }
+});
+test('owner set cannot be expanded to an arbitrary destination',()=>{
+ const f=fixture();
+ f.observedOwnerSha256['root_extra']='0'.repeat(64);
+ assert.throws(()=>boundary.inspectReview(f),/owner_set/);
+});
+test('only bytes of the actual reviewed three manifest blobs are accepted',()=>{
+ for(const key of Object.keys(boundary.PINS)){
+  const f=fixture();f.manifestBytes[key]=Buffer.from('not-json');
+  assert.throws(()=>boundary.inspectReview(f),/manifest_bytes_missing/);
+ }
+});
+test('no executable or signed stage capability exposed from development source',()=>{
+ assert.deepEqual(Object.keys(boundary).sort(),
+  ['PINS','OWNERS','ROOT','UNIT','blob','inspectReview','install'].sort());
+ assert.throws(()=>boundary.install(),/trusted_signed_root_bootstrap_required/);
+ assert.equal(typeof boundary.execute,'undefined');
+ assert.equal(typeof boundary.requestApproval,'undefined');
+});
+
+
+const bootstrap=require('./bootstrap-host-actions-honartik-staging-privilege-boundary-install-v1.js');
+
+function observedFixture(stage){
+ const target_states=Object.fromEntries(stage.operations
+  .filter(op=>op.kind==='create_exclusive_pinned_git_file')
+  .map(op=>[op.destination,'absent']));
+ const directory_states=Object.fromEntries(bootstrap.DIRECTORIES
+  .map(d=>[d,'absent']));
+ const parent_states=Object.fromEntries(Object.values(stage.fixed_directory_parents)
+  .map(d=>[d,bootstrap.DIRECTORIES.includes(d)?'absent':'secure_root_parent']));
+ return {owner_sha256:{...boundary.OWNERS},target_states,directory_states,
+  parent_states,unit_load_state:'not-found',journal_absent:true,
+  lock_absent:true,socket_absent:true};
+}
+
+test('bootstrap stages exactly 35 immutable source files plus fixed systemd unit, never overwrites',()=>{
+ const stage=bootstrap.plan(fixture());
+ assert.equal(stage.schema,'prhm.honartik.root-bootstrap-staging-plan.v1');
+ assert.equal(stage.action,'prhm_action_registry_install_v1');
+ assert.equal(stage.source_file_count,35);
+ assert.equal(stage.unit_count,1);
+ assert.equal(stage.directory_count,10);
+ assert.equal(stage.operations.length,46);
+ assert.equal(stage.rollback_operations.length,stage.operations.length);
+ assert.deepEqual(stage.operations.filter(x=>x.kind==='create_exclusive_pinned_git_file')
+  .map(x=>x.destination).length,36);
+ assert.equal(new Set(stage.operations.map(x=>x.destination)).size,46);
+ assert.equal(stage.operations.at(-1).destination,bootstrap.UNIT);
+ assert.equal(stage.operations.at(-1).mode,'0644');
+ assert.equal(stage.operations[10].mode,'0600');
+ assert.ok(bootstrap.DIRECTORIES.includes(
+  '/var/lib/prhm-agent-selfmaint-exec/registry-approval-v2'));
+ assert.ok(bootstrap.DIRECTORIES.includes('/run/prhm-shared-registry-v2'));
+ assert.ok(bootstrap.DIRECTORIES.includes(
+  '/var/lib/prhm-agent-selfmaint-exec/registry-recovery-lock-v1'));
+ assert.ok(bootstrap.DIRECTORIES.includes(
+  '/var/backups/prhm-honartik-config-center-registration-v1'));
+ assert.equal(stage.fixed_directory_parents[
+  '/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/manifests'],
+  '/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2');
+ assert.ok(stage.operations.slice(0,10).every(x=>x.mode==='0700'));
+ assert.equal(stage.preexisting_directory_policy,
+  'exact_secure_root_owned_0700_or_absent');
+ assert.equal(stage.write_precondition,'independently_authenticated_signed_l4_and_durable_lock');
+ assert.equal(stage.no_overwrite_existing_targets,true);
+ assert.equal(stage.no_protected_owner_rewrites,true);
+ for(const field of ['installs','executes','production_mutation',
+  'safe_to_request_l4','verified_on_real_host'])assert.equal(stage[field],false,field);
+});
+
+test('rollback is reverse-order and cannot remove unowned original files',()=>{
+ const stage=bootstrap.plan(fixture());
+ assert.deepEqual(stage.rollback_operations.map(x=>x.destination),
+  stage.operations.map(x=>x.destination).reverse());
+ assert.equal(stage.rollback_operations[0].destination,bootstrap.UNIT);
+ assert.ok(stage.rollback_operations.every(x=>
+  ['unlink_only_if_created_by_current_verified_journal',
+   'rmdir_if_created_and_verified_empty'].includes(x.kind)));
+ assert.equal(stage.does_not_remove_unowned_files,true);
+ assert.equal(stage.root_approval_not_issued,true);
+});
+
+test('observed host metadata can be consistent but cannot authorize Stage or L4',()=>{
+ const stage=bootstrap.plan(fixture());
+ const review=bootstrap.assessObserved(stage,observedFixture(stage));
+ assert.equal(review.reported_conditions_clear,true);
+ assert.deepEqual(review.blockers,[]);
+ for(const k of ['independently_root_attested','authorized','installation_approved',
+  'can_stage','can_request_l4','production_mutation'])
+  assert.equal(review[k],false,k);
+});
+
+test('fail closed on occupied file, unsafe directory, journal, lock and unit',()=>{
+ const stage=bootstrap.plan(fixture());
+ let r=observedFixture(stage);
+ r.target_states[stage.operations[10].destination]='present';
+ assert.ok(bootstrap.assessObserved(stage,r).blockers.includes('TARGET_NOT_ABSENT'));
+ r=observedFixture(stage);r.directory_states[bootstrap.DIRECTORIES[0]]='unsafe_or_unknown';
+ assert.ok(bootstrap.assessObserved(stage,r).blockers.includes('UNSAFE_STAGE_DIR'));
+ r=observedFixture(stage);r.unit_load_state='loaded';
+ assert.ok(bootstrap.assessObserved(stage,r).blockers.includes('UNIT_ALREADY_REGISTERED'));
+ r=observedFixture(stage);r.journal_absent=false;
+ assert.ok(bootstrap.assessObserved(stage,r).blockers.includes('FOREIGN_OR_UNKNOWN_JOURNAL'));
+ r=observedFixture(stage);r.lock_absent=false;
+ assert.ok(bootstrap.assessObserved(stage,r).blockers.includes('FOREIGN_OR_UNKNOWN_LOCK'));
+ r=observedFixture(stage);r.socket_absent=false;
+ assert.ok(bootstrap.assessObserved(stage,r).blockers.includes('FOREIGN_OR_UNKNOWN_SOCKET'));
+ r=observedFixture(stage);
+ r.parent_states['/var/lib/prhm-agent-selfmaint-exec']='absent';
+ assert.ok(bootstrap.assessObserved(stage,r).blockers.includes('UNSAFE_OR_MISSING_PARENT'));
+ r=observedFixture(stage);
+ r.parent_states['/var/backups']='unsafe_or_unknown';
+ assert.ok(bootstrap.assessObserved(stage,r).blockers.includes('UNSAFE_OR_MISSING_PARENT'));
+});
+
+test('reject forged observation fields, unknown paths and privileged execute',()=>{
+ const stage=bootstrap.plan(fixture());
+ let r=observedFixture(stage);r.target_states['/etc/sudoers']='absent';
+ assert.throws(()=>bootstrap.assessObserved(stage,r),/target_set/);
+ r=observedFixture(stage);r.directory_states['/root']='absent';
+ assert.throws(()=>bootstrap.assessObserved(stage,r),/directory_set/);
+ r=observedFixture(stage);r.parent_states['/root']='secure_root_parent';
+ assert.throws(()=>bootstrap.assessObserved(stage,r),/parent_set/);
+ r=observedFixture(stage);r.owner_sha256.executor='0'.repeat(64);
+ assert.ok(bootstrap.assessObserved(stage,r).blockers.includes('OWNER_DRIFT_executor'));
+ r=observedFixture(stage);r.approved=true;
+ assert.throws(()=>bootstrap.assessObserved(stage,r),/observation_schema/);
+ assert.throws(()=>bootstrap.execute(),/signed_root_host_adapter_missing/);
+ assert.equal(typeof bootstrap.install,'undefined');
+});
