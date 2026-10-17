@@ -14,7 +14,7 @@
  * AsyncLocalStorage isolates each peer-auth check to its HTTP request.
  */
 const {AsyncLocalStorage}=require('node:async_hooks');
-const {IncomingMessage}=require('node:http');
+const {IncomingMessage,Server}=require('node:http');
 const {Socket}=require('node:net');
 const native=require('./native-v3-root-route-binding.cjs');
 function deny(code){throw Error('agent3_root_http_bridge_denied:'+code);}
@@ -31,30 +31,43 @@ function eligibleNativeLocalSocket(socket){
    socket.remotePort===undefined &&
    socket.remoteFamily===undefined;
 }
-function contextStillNative(ctx){
+// An unattached Socket() is not proof of a local OS transport.
+// The root process must provide the very Server instance accepting requests.
+// Server.address() MUST identify a filesystem AF_UNIX listener, not TCP,
+// abstract socket, or a caller-supplied path/UID from HTTP.
+function rootUnixListener(server){
+ const addr=server?.address?.();
+ return server instanceof Server && typeof addr==='string' &&
+   addr.startsWith('/') && addr.length>1 && !addr.includes('\\0');
+}
+function nativeServerSocket(server,socket){
+ return rootUnixListener(server) &&
+   eligibleNativeLocalSocket(socket) && socket.server===server;
+}
+function contextStillNative(ctx,server){
  const req=ctx?.request;
  return req instanceof IncomingMessage &&
    req.socket===ctx.socket &&
    req.method===ctx.method && req.url===ctx.url &&
-   req.destroyed!==true && eligibleNativeLocalSocket(ctx.socket);
+   req.destroyed!==true && nativeServerSocket(server,ctx.socket);
 }
-function bindRootHttp({basePost,rootCapabilities,assertNativePeer}={}){
+function bindRootHttp({basePost,rootCapabilities,assertNativePeer,rootServer}={}){
  rootOnly();
  if(typeof basePost!=='function'||typeof assertNativePeer!=='function'||
     !rootCapabilities||typeof rootCapabilities!=='object'||
-    Array.isArray(rootCapabilities))
+    Array.isArray(rootCapabilities)||!rootUnixListener(rootServer))
   deny('fixed_root_dependencies_required');
  const context=new AsyncLocalStorage();
  const route=native.bind({
   basePost,rootCapabilities,
   assertAuthenticatedTransport:async()=>{
    const ctx=context.getStore();
-   if(!contextStillNative(ctx))return false;
+   if(!contextStillNative(ctx,rootServer))return false;
    // The trusted OS verifier must return literal true, and neither the
    // request nor its socket may change during asynchronous verification.
    // The bridge itself does NOT implement SO_PEERCRED or install a listener.
    const verified=await assertNativePeer(ctx.socket);
-   return verified===true && contextStillNative(ctx);
+   return verified===true && contextStillNative(ctx,rootServer);
   }
  });
  if(!route||typeof route.handle!=='function'||!Array.isArray(route.paths))
@@ -67,7 +80,7 @@ function bindRootHttp({basePost,rootCapabilities,assertNativePeer}={}){
    return Object.freeze({handled:false});
   if(serverRequest.method!=='POST')deny('post_only');
   if(serverRequest.destroyed===true ||
-     !eligibleNativeLocalSocket(serverRequest.socket))
+     !nativeServerSocket(rootServer,serverRequest.socket))
    deny('native_local_socket_required');
   // The only context passed into the trust callback is a native socket
   // owned by the authenticated root server, not a JSON peer assertion.
