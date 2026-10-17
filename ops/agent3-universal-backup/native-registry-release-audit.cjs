@@ -34,6 +34,24 @@ function git(args) {
  if(r.error||r.signal||r.status!==0)return null;
  return Buffer.from(r.stdout);
 }
+function validateManifest(bytes){
+ if(!Buffer.isBuffer(bytes))
+  return Object.freeze({schema_valid:false,preimages_matched:false});
+ try{
+  // Presence is not provenance. Verify the complete shared manifest schema
+  // and the four current, independently pinned Root owner preimages.
+  const {release}=registration.verifyReviewedManifest({bytes,gitPath:MANIFEST});
+  const pins=contract.preimage_sha256||{};
+  const keys=['base','executor','policy','mcp'];
+  return Object.freeze({
+   schema_valid:true,
+   preimages_matched:keys.every(key=>
+    release.owners[key]?.before_sha256===pins[key])
+  });
+ }catch{
+  return Object.freeze({schema_valid:false,preimages_matched:false});
+ }
+}
 function pinnedState(){
  const commit=lock.source_commit_sha;
  const head=git(['rev-parse','--verify','HEAD']);
@@ -53,13 +71,16 @@ function pinnedState(){
   return {path:name,present_in_immutable_source:!!atPin,
    matches_current:!!atPin&&sha(atPin)===sha(current)};
  });
- const manifestAtHead=git(['cat-file','-e','HEAD:'+MANIFEST])!==null;
+ const manifestAtHead=git(['show','HEAD:'+MANIFEST]);
+ const manifestAssessment=validateManifest(manifestAtHead);
  return Object.freeze({
   head:head?.toString('utf8').trim()||null,
   pinned_source_commit:commit,
   pin_is_ancestor:ancestor,
   source_lock_matches_registrar:sourceMatchesContract,
-  assets,native,manifest_committed:manifestAtHead,
+  assets,native,manifest_committed:Buffer.isBuffer(manifestAtHead),
+  manifest_schema_valid:manifestAssessment.schema_valid,
+  manifest_preimage_pins_match:manifestAssessment.preimages_matched,
   registration_candidate_not_applied:contract.status==='registration_candidate_not_applied',
   release_status_candidate_not_installed:lock.status==='candidate_not_installed',
   // A source-only patch proposal that inserts a V2 action spec but no
@@ -83,6 +104,10 @@ function assess(facts){
  }
  if(!facts.manifest_committed)
   blockers.push('FOUR_OWNER_RELEASE_MANIFEST_MISSING');
+ else if(facts.manifest_schema_valid!==true)
+  blockers.push('FOUR_OWNER_RELEASE_MANIFEST_INVALID');
+ else if(facts.manifest_preimage_pins_match!==true)
+  blockers.push('FOUR_OWNER_PREIMAGE_PIN_MISMATCH');
  if(facts.native_root_dispatch_reviewed!==true)
   blockers.push('TRUSTED_NATIVE_ROOT_DISPATCH_NOT_REVIEWED');
  if(!facts.registration_candidate_not_applied||
@@ -111,4 +136,4 @@ if(require.main===module){
   process.exitCode=78;
  }
 }
-module.exports=Object.freeze({FILES,MANIFEST,pinnedState,assess});
+module.exports=Object.freeze({FILES,MANIFEST,validateManifest,pinnedState,assess});
