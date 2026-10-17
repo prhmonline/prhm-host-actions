@@ -40,7 +40,9 @@ test('permissive DAC, new account and non-root MCP still cannot assert authoriza
  data.units['prhm-agent-mcp-blue'].user='prhm-mcp';
  data.units['prhm-agent-mcp-green'].user='prhm-mcp';
  data.paths.plugin.mode=0o640;
+ data.paths.workspace.uid=1005;
  data.paths.workspace.mode=0o750;
+ data.paths.runDirectory.uid=1005;
  data.paths.runDirectory.gid=1005;
  data.paths.socket.gid=1005;
  const out=audit.evaluate(data);
