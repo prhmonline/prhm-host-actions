@@ -37,7 +37,7 @@
     },
     {
       "path": "app/tests/integration/OpenPriceActualReserveSeatTest.php",
-      "blob": "db7e1d61099de11d3c92cca55a1a127f4658da9e"
+      "blob": "02d6de189738e5a84ddb4a30c0ada6b9d61684f9"
     },
     {
       "path": "app/tests/integration/fixtures/OpenPriceSettlementEventStub.php",
@@ -46,6 +46,10 @@
     {
       "path": "common/models/AccountSettlement.php",
       "blob": "c91d2c1c5a6693744b6e47ed2523786de29b1733"
+    },
+    {
+      "path": "common/models/SoldEvent.php",
+      "blob": "fcf38b89da9de6c6f140ebe527d4be922b7d10b4"
     }
   ]
 }
