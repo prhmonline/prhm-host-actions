@@ -16,7 +16,7 @@ function input(){
 function fixture(){
  const prepared=route.prepareRequest(input());
  const record={request_id:REQUEST_ID,status:'pending',
-   expires_at:'2099-01-01T00:00:00.000Z',...prepared.storage_shape};
+   expires_at:new Date(Date.now()+90000).toISOString(),...prepared.storage_shape};
  const body={request_id:REQUEST_ID,
   second_confirmation:'CONFIRM_LEVEL_4_CRITICAL',...input()};
  return {prepared,record,body};
@@ -79,7 +79,9 @@ test('apply rejects missing or altered five fields, bad status or false confirma
   {body:f.body,record:{...f.record,arguments_sha256:'0'.repeat(64)}},
   {body:f.body,record:{...f.record,request_hash:'0'.repeat(64)}},
   {body:f.body,record:{...f.record,approved:true}},
-  {body:f.body,record:{...f.record,expires_at:'bad'}}
+  {body:f.body,record:{...f.record,expires_at:'bad'}},
+  {body:f.body,record:{...f.record,expires_at:'2020-01-01T00:00:00Z'}},
+  {body:f.body,record:{...f.record,expires_at:new Date(Date.now()+360000).toISOString()}}
  ];
  for(const t of negatives)
   assert.throws(()=>route.prepareApply({body:t.body,persistedRequest:t.record}),
