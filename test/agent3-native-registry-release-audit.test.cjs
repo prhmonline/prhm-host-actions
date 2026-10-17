@@ -35,6 +35,7 @@ test('reviewed native v3 source is pinned while manifest and root dispatcher rem
  assert.equal(result.source_candidate_complete,false);
  assert.equal(result.production_install_authorized,false);
  assert.equal(result.production_mutation,false);
+ assert.ok(audit.FILES.includes('ops/agent3-universal-backup/native-v3-dedicated-unix-boundary.cjs'));
  assert.ok(facts.native.every(item=>item.present_in_immutable_source&&item.matches_current));
  assert.equal(result.source_blockers.some(x=>x.startsWith('NATIVE_SOURCE_ABSENT_AT_RELEASE_PIN:')),false);
  assert.ok(result.source_blockers.includes('FOUR_OWNER_RELEASE_MANIFEST_MISSING'));
