@@ -38,6 +38,7 @@ foreach ([
 require $root . '/modules/finance/services/OpenPriceCancellationService.php';
 require __DIR__ . '/fixtures/OpenPriceSettlementEventStub.php';
 require $root . '/../common/models/AccountSettlement.php';
+require $root . '/../common/models/SoldEvent.php';
 
 use app\modules\finance\models\FinanceTransactions;
 use app\modules\finance\models\FinanceWallet;
@@ -46,6 +47,7 @@ use app\modules\finance\services\OpenPriceCancellationService;
 use common\models\Reserve;
 use common\models\Schedule;
 use common\models\AccountSettlement;
+use common\models\SoldEvent;
 
 $db = new \yii\db\Connection([
     'dsn'=>'mysql:unix_socket='.$socket.';dbname=honartik_finance_fixture',
@@ -95,6 +97,10 @@ foreach ([
       status INT NOT NULL, min_date DATE NULL, max_date DATE NULL,
       created_at BIGINT NULL, updated_at BIGINT NULL,
       created_by BIGINT NULL, updated_by BIGINT NULL
+    ) ENGINE=InnoDB',
+    'CREATE TABLE IF NOT EXISTS sold_event (
+      id BIGINT PRIMARY KEY AUTO_INCREMENT,
+      event_id BIGINT NOT NULL, settlement_status INT NOT NULL
     ) ENGINE=InnoDB',
     'CREATE TABLE IF NOT EXISTS venue (
       id BIGINT PRIMARY KEY AUTO_INCREMENT, place_id BIGINT NOT NULL
@@ -157,7 +163,7 @@ foreach ($fixtureColumns as $table => $columns) {
         }
     }
 }
-foreach (['reserve_item','schedule_seat','reserve','schedule','venue','account_settlement','event','coupon_use','finance_wallet','finance_transactions'] as $table)
+foreach (['reserve_item','schedule_seat','reserve','schedule','venue','account_settlement','sold_event','event','coupon_use','finance_wallet','finance_transactions'] as $table)
     $db->createCommand('DELETE FROM '.$table)->execute();
 
 // Insert venue/schedule directly: the unrelated real template-provisioning
@@ -349,4 +355,30 @@ if (!$normal->save(false) ||
     throw new RuntimeException('Ordinary producer settlement unexpectedly blocked');
 }
 echo "REAL_NON_OPTIN_SETTLEMENT_UNAFFECTED=PASS\n";
+$db->createCommand()->insert('sold_event',[
+  'id'=>501, 'event_id'=>77,
+  'settlement_status'=>SoldEvent::STATUS_NOT_SETTLED
+])->execute();
+$db->createCommand()->insert('sold_event',[
+  'id'=>502, 'event_id'=>88,
+  'settlement_status'=>SoldEvent::STATUS_NOT_SETTLED
+])->execute();
+// Combined batch is all-or-none: do not request the ordinary producer
+// alongside an event that contains an unallocated contribution.
+if (SoldEvent::markAsSettledByEventIds([77,88])!==0 ||
+    (int)$db->createCommand('SELECT COUNT(*) FROM sold_event WHERE settlement_status=1')->queryScalar()!==0)
+    throw new RuntimeException('Producer batch bypassed the unallocated-extra guard');
+echo "REAL_SOLDEVENT_BULK_MIXED_PRODUCERS_HELD=PASS\n";
+if (SoldEvent::markAsSettledByEventIds([88])!==1 ||
+    (int)$db->createCommand('SELECT settlement_status FROM sold_event WHERE event_id=88')->queryScalar()!==SoldEvent::STATUS_REQUESTED)
+    throw new RuntimeException('Ordinary producer bulk request wrongly blocked');
+echo "REAL_SOLDEVENT_ORDINARY_PRODUCER_PASS=PASS\n";
+if (SoldEvent::markAsSettledByEventIds([77])!==0 ||
+    (int)$db->createCommand('SELECT settlement_status FROM sold_event WHERE event_id=77')->queryScalar()!==SoldEvent::STATUS_NOT_SETTLED)
+    throw new RuntimeException('Extra producer request was marked requested');
+echo "REAL_SOLDEVENT_OPEN_PRICE_EXTRA_HELD=PASS\n";
+if (SoldEvent::markAsSettledByEventIds(['77 OR 1=1'])!==0)
+    throw new RuntimeException('Invalid producer request ID accepted');
+echo "REAL_SOLDEVENT_INVALID_SCOPE_REJECTED=PASS\n";
+
 echo "ACTUAL_RESERVE_SEAT_AND_REFUND_DB_CONTRACT=PASS\n";
