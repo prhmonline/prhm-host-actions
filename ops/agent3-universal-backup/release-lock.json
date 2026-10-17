@@ -1,8 +1,8 @@
 {
   "schema": "prhm.agent3.universal-backup.release-lock.v1",
   "status": "candidate_not_installed",
-  "source_commit_sha": "4a782d1c8cb0adff6ac170479a1db44436de3575",
-  "verified_ci_run": "https://github.com/prhmonline/prhm-host-actions/actions/runs/38982673000",
+  "source_commit_sha": "e0fab22230dbfc8a70ee31b99a06ed2a2112b3cc",
+  "verified_ci_run": "https://github.com/prhmonline/prhm-host-actions/actions/runs/38984501772",
   "fixed_action": "agent3_universal_backup_engine_install_v1",
   "approval_level": 4,
   "target_host": "prhm-production",
@@ -29,5 +29,6 @@
   "canonical_registry_handler_path": "ops/agent3-universal-backup/trusted-shared-registrar-dispatch.cjs",
   "durable_claim_source_path": "ops/agent3-universal-backup/durable-execution-claim.cjs",
   "durable_claim_requirement": "trusted root executor must provision the fixed 0700 claim directory and install its O_EXCL+fsync once-only callback before activation",
-  "fixed_journal_binding": "trusted-shared-registrar-dispatch.cjs:rootWithFixedJournal -> durable-execution-claim.cjs:claimExecutionOnce"
+  "fixed_journal_binding": "trusted-shared-registrar-dispatch.cjs:rootWithFixedJournal -> durable-execution-claim.cjs:claimExecutionOnce",
+  "eager_root_installer_preclaim_required": true
 }
