@@ -121,7 +121,9 @@ async function applyTrustedRegistration(cap) {
     attempted=true;
     for(const key of ORDER){
       const item=plan.files[key];
-      await cap.writeExact(item.path,item.bytes,{sha256:digests[key],owner:'root',mode:key==='policy'?0o644:0o600});
+      const mode=({base:0o644,executor:0o755,mcp:0o600,policy:0o644,
+        coordinator:0o600,nativeAdapter:0o600})[key];
+      await cap.writeExact(item.path,item.bytes,{sha256:digests[key],owner:'root',mode});
       await cap.verifyFile(item.path,digests[key]);
     }
     const verified=await cap.verifyRegistration({
