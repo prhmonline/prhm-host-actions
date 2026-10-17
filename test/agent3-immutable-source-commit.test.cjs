@@ -35,6 +35,12 @@ test('immutable release includes reviewed exclusive claim protocol and root fsyn
  assert.equal(release.durable_claim_source_path,claimPath);
  const journal=git(['show',release.source_commit_sha+':'+claimPath]).toString('utf8');
  assert.match(handler,/root_exclusive_claim_required/);
+ assert.equal(release.eager_root_installer_preclaim_required,true);
+ const installerCheck=handler.indexOf("const installer=root.getInstaller(a);");
+ const consumeClaim=handler.indexOf("const claim=await root.claimExecutionOnce(claimInput);");
+ assert.ok(installerCheck>=0 && consumeClaim>installerCheck,
+  'Pinned trusted root installer must be verified before consuming durable claim');
+ assert.match(handler,/if\(typeof installer!=='function'\)stop\('root_installer_not_callable'\)/);
  assert.match(handler,/durable_exclusive_execution_claim_denied/);
  assert.match(handler,/claimExecutionOnce/);
  assert.match(handler,/function rootWithFixedJournal/);
