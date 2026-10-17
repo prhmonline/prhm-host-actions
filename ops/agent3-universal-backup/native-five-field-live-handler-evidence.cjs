@@ -49,7 +49,7 @@ function sanitizeLine(line){
  return Object.freeze({redacted:cleaned!==line,sha256:digest,chars:line.length,
    source:cleaned});
 }
-function project(buffers){
+function project(buffers,expectedPins=pins.preimage_sha256){
  if(!buffers||typeof buffers!=='object'||Array.isArray(buffers)||
     Object.keys(buffers).sort().join('|')!==NAMES.slice().sort().join('|'))
   deny('exact_four_buffers_required');
@@ -57,7 +57,7 @@ function project(buffers){
  let total=0,redacted=0;
  for(const name of NAMES){
   const b=buffers[name];
-  if(!Buffer.isBuffer(b)||sha(b)!==pins.preimage_sha256[name])
+  if(!Buffer.isBuffer(b)||!expectedPins||sha(b)!==expectedPins[name])
    deny('owner_sha_mismatch:'+name);
   const lines=b.toString('utf8').split(/\r?\n/);
   if(lines.length<MIN_LINES[name])deny('insufficient_owner_lines:'+name);
