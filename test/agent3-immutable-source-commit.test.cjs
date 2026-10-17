@@ -63,3 +63,21 @@ test('canonical signed dispatcher exists at pinned source and superseded adapter
  assert.match(body,/untrusted_owner_path/);
  assert.throws(()=>git(['cat-file','-e',release.source_commit_sha+':'+goneHandler]));
 });
+
+test('immutable source contains native five-field registration guard and never treats it as installed',()=>{
+ const native='ops/agent3-universal-backup/five-field-native-route-contract.cjs';
+ const source=git(['show',release.source_commit_sha+':'+native]).toString('utf8');
+ const current=require('node:fs').readFileSync(
+  require('node:path').join(__dirname,'..',native),'utf8');
+ assert.equal(source,current,'Pinned route code must exactly equal current reviewed route code');
+ assert.match(source,/function prepareRequest\(body\)/);
+ assert.match(source,/function prepareApply\(/);
+ assert.match(source,/function applyFromTrustedNativeExecutor/);
+ assert.match(source,/native_request_expired_or_excessive_ttl/);
+ assert.match(source,/dispatcher\.dispatch/);
+ assert.match(source,/signed_approval_verified:false/);
+ assert.match(source,/ready_to_invoke_root_dispatch:false/);
+ // The manifest is deliberately absent because no native production bootstrap exists.
+ assert.throws(()=>git(['cat-file','-e',release.source_commit_sha+
+   ':ops/agent3-universal-backup/registry-release-manifest.json']));
+});
