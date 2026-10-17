@@ -39,7 +39,7 @@ function crash(f,count=2){
   "const afterBuffers=Object.fromEntries(Object.entries(data.afterBuffers).map(([k,v])=>[k,Buffer.from(v,'base64')]));",
   't.runIsolatedFourOwnerTransaction({...data,afterBuffers,',
   ' healthProbe:async()=>({ok:true,owners_verified:true,services_active:4}),',
-  " observer:p=>{if(p.phase==='owner_replaced'&&p.completed===data.count)process.exit(79);}",
+  " observer:p=>{if(p.phase==='owner_replaced'&&p.completed===data.count)process.kill(process.pid,'SIGKILL');}",
   '}).then(()=>process.exit(21)).catch(()=>process.exit(22));'
  ].join('\n');
  return cp.spawnSync(process.execPath,['-e',script,modulePath,args],{
@@ -55,7 +55,7 @@ test('hard process exit after two actual renames leaves a durable lock tied to e
  const f=create();
  try{
   const proc=crash(f,2);
-  assert.equal(proc.status,79,proc.stderr);
+  assert.equal(proc.signal,'SIGKILL',proc.stderr);
   const lock=lockRecord(f);
   assert.equal(lock.schema,'prhm.agent3.four-owner-fixture-lock.v1');
   assert.equal(lock.mode,'FIXTURE_ONLY_NOT_PRODUCTION');
@@ -82,7 +82,7 @@ test('hard process exit after two actual renames leaves a durable lock tied to e
 test('foreign SHA after SIGKILL fails BEFORE any recovery mutation',async()=>{
  const f=create();
  try{
-  assert.equal(crash(f,2).status,79);
+  assert.equal(crash(f,2).signal,'SIGKILL');
   fs.writeFileSync(f.ownerPaths.executor,'third-party source change',{mode:0o600});
   await assert.rejects(transaction.recoverIsolatedFourOwnerTransaction({
    ownerPaths:f.ownerPaths,journalRoot:f.journalRoot,healthProbe:f.healthProbe
@@ -95,7 +95,7 @@ test('foreign SHA after SIGKILL fails BEFORE any recovery mutation',async()=>{
 test('corrupt escrow before recovery aborts without changing an installed owner',async()=>{
  const f=create();
  try{
-  assert.equal(crash(f,2).status,79);
+  assert.equal(crash(f,2).signal,'SIGKILL');
   fs.writeFileSync(path.join(escrowDir(f),'base.preimage'),'tampered',{mode:0o600});
   await assert.rejects(transaction.recoverIsolatedFourOwnerTransaction({
    ownerPaths:f.ownerPaths,journalRoot:f.journalRoot,healthProbe:f.healthProbe
@@ -106,7 +106,7 @@ test('corrupt escrow before recovery aborts without changing an installed owner'
 test('recovery runs only once, never clears an already existing recovery lock',async()=>{
  const f=create();
  try{
-  assert.equal(crash(f,2).status,79);
+  assert.equal(crash(f,2).signal,'SIGKILL');
   const reLock=path.join(f.journalRoot,'.four-owner-recovery.lock');
   fs.writeFileSync(reLock,'stale',{flag:'wx',mode:0o600});
   await assert.rejects(transaction.recoverIsolatedFourOwnerTransaction({
@@ -119,7 +119,7 @@ test('recovery runs only once, never clears an already existing recovery lock',a
 test('unhealthy services after byte-perfect crash recovery retain audit lock and escrow',async()=>{
  const f=create();
  try{
-  assert.equal(crash(f,2).status,79);
+  assert.equal(crash(f,2).signal,'SIGKILL');
   await assert.rejects(transaction.recoverIsolatedFourOwnerTransaction({
    ownerPaths:f.ownerPaths,journalRoot:f.journalRoot,
    healthProbe:async()=>({ok:false,owners_verified:true,services_active:0})
@@ -143,4 +143,24 @@ test('malformed lock or real production owner is refused before any mutation',as
   }),/recovery_production_owner_disallowed/);
   assert.equal(f.pristine(),true);
  }finally{f.dispose();}
+});
+
+test('real SIGKILL after owner 1, 3 or 4 recovers exactly that durable prefix',async()=>{
+ for(const n of [1,3,4]){
+  const f=create();
+  try{
+   const result=crash(f,n);
+   assert.equal(result.signal,'SIGKILL',result.stderr);
+   const preimages=KEYS.slice(n),postimages=KEYS.slice(0,n);
+   for(const k of preimages)
+    assert.equal(sha(fs.readFileSync(f.ownerPaths[k])),f.beforeSha[k]);
+   for(const k of postimages)
+    assert.equal(sha(fs.readFileSync(f.ownerPaths[k])),f.afterSha[k]);
+   const out=await transaction.recoverIsolatedFourOwnerTransaction({
+    ownerPaths:f.ownerPaths,journalRoot:f.journalRoot,healthProbe:f.healthProbe
+   });
+   assert.equal(out.restored_count,n);
+   assert.equal(f.pristine(),true);
+  }finally{f.dispose();}
+ }
 });
