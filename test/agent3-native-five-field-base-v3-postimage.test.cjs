@@ -32,7 +32,6 @@ function harness(input,mode={}) {
    level:4,risk:'critical',one_time_use:true};
  const token=['a'.repeat(44),'b'.repeat(80),'c'.repeat(88)].join('.');
  const ctx={
-  APPROVAL_CLIENT_ENV:'/fixed-fixture-approval-client.env',
   readBody:async()=>input,
   readEnvFile:()=>({APPROVAL_REQUEST_TOKEN:'private',APPROVAL_DECISION_TOKEN:'private'}),
   argumentsSha256:gateway.approvalBindingSha,
@@ -53,7 +52,9 @@ function harness(input,mode={}) {
   },
   send:(res,code,data)=>({code,data})
  };
- const server=vm.runInNewContext(base.inject(fake()),ctx,{timeout:5000});
+ const server=vm.runInNewContext(
+  "const APPROVAL_CLIENT_ENV='/fixed-fixture-approval-client.env';\n"+
+  base.inject(fake()),ctx,{timeout:5000});
  return {server,logs,token};
 }
 test('Base proposal remains source-only SHA-bound and cannot accept untrusted bytes',()=>{
