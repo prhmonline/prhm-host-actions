@@ -101,7 +101,7 @@ test('pinned source change, duplicate insertion, missing legacy tool and bad JS 
   const f=fixture({mcp});
   assert.throws(()=>f.api.mcpCandidate(f.bytes.mcp));
  }
- const tampered=fixture({policy:'not valid json'});
+ const tampered=fixture({policy:'this is deliberately malformed json '.repeat(8)});
  assert.throws(()=>tampered.api.policyCandidate(tampered.bytes.policy),
   /policy_not_json/);
 });
