@@ -160,13 +160,27 @@ function openFixture(root,{failBefore,failAfter,failRollback,failHealth}={}){
       key=fixedKey(key);fixedId(id);
       if(stage!==path.join(root,'stages',id+'-'+key+'.stage'))fail('stage_path_mismatch');
       if(failBefore===key)throw Error('fault_before_rename_'+key);
-      regular(stage);regular(owner(key));
+      const j=JSON.parse(fs.readFileSync(journal(id),'utf8'));
+      if(j.state!=='APPLYING'||j.inflight!==key)fail('intent_journal_not_current');
+      const current=existingSnapshot(owner(key));
+      if(sha256(current.bytes)!==j.owners[key].before)fail('owner_cas_drift_'+key);
+      for(const field of ['uid','gid','mode'])
+        if(current[field]!==j.owners[key][field])fail('owner_cas_metadata_drift_'+key);
+      const candidate=existingSnapshot(stage);
+      if(sha256(candidate.bytes)!==j.owners[key].after)fail('stage_postimage_drift_'+key);
+      for(const field of ['uid','gid','mode'])
+        if(candidate[field]!==j.owners[key][field])fail('stage_metadata_drift_'+key);
       fs.renameSync(stage,owner(key));
       directorySync(path.dirname(owner(key)));
       if(failAfter===key)throw Error('fault_after_rename_'+key);
     },
     async restoreBackup(id,key,snap){
       if(failRollback===key)throw Error('fault_rollback_'+key);
+      const j=JSON.parse(fs.readFileSync(journal(id),'utf8'));
+      if(j.state!=='APPLYING'||!j.owners[key])fail('restore_journal_untrusted');
+      if(sha256(snap.bytes)!==j.owners[key].before)fail('restore_backup_sha_drift_'+key);
+      const current=existingSnapshot(owner(key));
+      if(sha256(current.bytes)!==j.owners[key].after)fail('restore_cas_drift_'+key);
       // atomic itself uses stage+rename and fsyncs parent owner directory
       atomic(owner(key),snap.bytes,snap);
     },
