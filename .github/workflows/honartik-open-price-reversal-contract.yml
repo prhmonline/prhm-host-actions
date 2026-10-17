@@ -25,7 +25,7 @@ jobs:
         run: |
           set -euo pipefail
           root=test-fixtures/honartik-open-price-reversal
-          test "$(jq -r .source_commit "$root/source-manifest.json")" = 1350cf1c8778e4fa83c1cf4254f3e288446d085d
+          test "$(jq -r .source_commit "$root/source-manifest.json")" = 9262aa829b33cbca2e70075d747a45ce9d3d4b3c
           while IFS=$'\t' read -r file blob; do
             test "$(git hash-object "$root/$file")" = "$blob"
             php -l "$root/$file"
