@@ -59,7 +59,10 @@ function pinnedState(){
   source_lock_matches_registrar:sourceMatchesContract,
   assets,native,manifest_committed:manifestAtHead,
   registration_candidate_not_applied:contract.status==='registration_candidate_not_applied',
-  release_status_candidate_not_installed:lock.status==='candidate_not_installed'
+  release_status_candidate_not_installed:lock.status==='candidate_not_installed',
+  // A source-only patch proposal that inserts a V2 action spec but no
+  // callable Root dispatcher must never be mistaken for release-ready.
+  native_root_dispatch_reviewed:contract.registration_can_apply===true
  });
 }
 function assess(facts){
@@ -78,6 +81,8 @@ function assess(facts){
  }
  if(!facts.manifest_committed)
   blockers.push('FOUR_OWNER_RELEASE_MANIFEST_MISSING');
+ if(facts.native_root_dispatch_reviewed!==true)
+  blockers.push('TRUSTED_NATIVE_ROOT_DISPATCH_NOT_REVIEWED');
  if(!facts.registration_candidate_not_applied||
     !facts.release_status_candidate_not_installed)
   blockers.push('UNEXPECTED_LIVE_STATUS_CLAIM');
