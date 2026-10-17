@@ -9,7 +9,7 @@
     },
     {
       "path": "app/modules/finance/services/OpenPriceCancellationService.php",
-      "blob": "cec9be61b8bef51dacf15520e836941a0b4add56"
+      "blob": "70f32e215670d59e9a5c8ca8a8b89e6ecc0de572"
     },
     {
       "path": "app/modules/finance/services/OpenPriceSettlementGuard.php",
@@ -17,11 +17,11 @@
     },
     {
       "path": "app/tests/integration/OpenPriceCancellationFixtureTest.php",
-      "blob": "e43f1d49ae25fb9229fd90bbc0770dfe85934bb3"
+      "blob": "40e9aac7a0c019fb9d930adfda916b6fa5fb0e5b"
     },
     {
       "path": "app/tests/integration/fixtures/OpenPriceCancellationFixtureModels.php",
-      "blob": "47a2897cc5dcb9fa4789961032669ad9a5813a1a"
+      "blob": "914f57d5da661f488005da8dbb6f6da7ca9a9ba3"
     }
   ]
 }
