@@ -83,5 +83,7 @@ jobs:
         shell: bash
         run: |
           docker rm -f honartik-price-ledger-fixture >/dev/null 2>&1 || true
-          test ! -e /tmp/honartik-ledger.sock || rm -f /tmp/honartik-ledger.sock
+          sudo rm -f -- /tmp/honartik-ledger.sock /tmp/honartik-ledger.pid
+          test ! -e /tmp/honartik-ledger.sock
+          test ! -e /tmp/honartik-ledger.pid
           echo 'PRIVATE_WALLET_FIXTURE_CLEANUP=PASS'
