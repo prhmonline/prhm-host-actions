@@ -1,0 +1,39 @@
+name: Honartik open-price refund safety (source-pinned, no bank)
+on:
+  push:
+    paths:
+      - '.github/workflows/honartik-open-price-refund-contract.yml'
+      - 'test-fixtures/honartik-open-price-refund/**'
+  pull_request:
+    paths:
+      - '.github/workflows/honartik-open-price-refund-contract.yml'
+      - 'test-fixtures/honartik-open-price-refund/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  financial-refund-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+      - name: Verify exact source snapshots and PHP syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=test-fixtures/honartik-open-price-refund
+          while IFS=$'\t' read -r file blob; do
+            test "$(git hash-object "$root/$file")" = "$blob"
+            php -l "$root/$file"
+          done < <(jq -r '.files[] | [.path,.blob] | @tsv' "$root/source-manifest.json")
+      - name: Run actual PHP refund symmetry and cancellation route contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          php test-fixtures/honartik-open-price-refund/app/tests/contract/OpenPriceRefundLedgerTest.php
