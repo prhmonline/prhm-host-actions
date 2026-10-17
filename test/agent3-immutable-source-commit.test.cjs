@@ -127,3 +127,22 @@ test('immutable native root pending store and entrypoints are byte-for-byte pinn
  assert.match(handler,/native\.applyFromTrustedNativeExecutor/);
  assert.match(handler,/no CLI/);
 });
+
+test('fixture-only four-owner rollback is present at pinned Git SHA without live Production apply',()=>{
+ const modulePath='ops/agent3-universal-backup/four-owner-rollback-transaction.cjs';
+ const expected=git(['show',release.source_commit_sha+':'+modulePath]);
+ const actual=require('node:fs').readFileSync(
+  require('node:path').join(__dirname,'..',modulePath));
+ assert.equal(sha(expected),sha(actual),
+  'Rollback source must not drift from pinned immutable commit');
+ const source=expected.toString('utf8');
+ assert.match(source,/fixture_root_only/);
+ assert.match(source,/production_or_cross_directory_owner_disallowed/);
+ assert.match(source,/O_EXCL/);
+ assert.match(source,/fs\.fsyncSync/);
+ assert.match(source,/rollback_unverified/);
+ assert.match(source,/rootDir\(base\)/);
+ assert.match(source,/if\(committed\|\|rollbackVerified\)/);
+ assert.match(source,/fixture-only rollback rehearsal/);
+ assert.doesNotMatch(source,/exports\.installProduction/);
+});
