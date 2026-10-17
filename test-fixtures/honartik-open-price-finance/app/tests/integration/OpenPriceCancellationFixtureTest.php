@@ -79,6 +79,14 @@ foreach ([
       id BIGINT PRIMARY KEY AUTO_INCREMENT, date DATE NOT NULL,
       start_at TIME NOT NULL, is_cancel_able TINYINT NOT NULL
     ) ENGINE=InnoDB',
+    'CREATE TABLE IF NOT EXISTS schedule_seat (
+      id BIGINT PRIMARY KEY AUTO_INCREMENT, schedule_id BIGINT NOT NULL,
+      status INT NOT NULL, user_lock BIGINT NULL, last_lock_time INT NULL
+    ) ENGINE=InnoDB',
+    'CREATE TABLE IF NOT EXISTS reserve_item (
+      id BIGINT PRIMARY KEY AUTO_INCREMENT, reserve_id BIGINT NOT NULL,
+      schedule_seats_id BIGINT NOT NULL
+    ) ENGINE=InnoDB',
     'CREATE TABLE IF NOT EXISTS reserve (
       id BIGINT PRIMARY KEY AUTO_INCREMENT, user_id BIGINT NOT NULL,
       schedule_id BIGINT NOT NULL, transaction_id BIGINT NOT NULL,
@@ -92,7 +100,7 @@ foreach ([
       gid VARCHAR(64) NULL
     ) ENGINE=InnoDB',
 ] as $sql) $db->createCommand($sql)->execute();
-foreach (['reserve','schedule','coupon_use','finance_wallet','finance_transactions'] as $table)
+foreach (['reserve_item','schedule_seat','reserve','schedule','coupon_use','finance_wallet','finance_transactions'] as $table)
     $db->createCommand('DELETE FROM '.$table)->execute();
 
 $schedule = new Schedule();
@@ -136,6 +144,15 @@ $create = static function (int $extra, int $settlementId=0) use ($schedule): arr
     $reserve->code='SYNTHETIC';
     $reserve->gid=null;
     if (!$reserve->save(false))throw new RuntimeException('Reserve setup failed');
+    $db = \Yii::$app->db;
+    $db->createCommand()->insert('schedule_seat',[
+      'schedule_id'=>(int)$schedule->id,'status'=>3,
+      'user_lock'=>42,'last_lock_time'=>time()
+    ])->execute();
+    $seatId=(int)$db->getLastInsertID();
+    $db->createCommand()->insert('reserve_item',[
+      'reserve_id'=>(int)$reserve->id,'schedule_seats_id'=>$seatId
+    ])->execute();
     return [$bank,$reserve];
 };
 
