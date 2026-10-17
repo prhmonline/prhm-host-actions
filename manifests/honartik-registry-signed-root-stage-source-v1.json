@@ -1,0 +1,56 @@
+{
+  "schema_version": "prhm.honartik.registry-signed-root-stage-source.v1",
+  "status": "SOURCE_ONLY_NOT_INSTALLED",
+  "action": "honartik_shared_registry_v2_fixed_root_stage_v1",
+  "source_repository": "prhmonline/prhm-host-actions",
+  "source_commit": "fa540997e73b08d770753f4aef8299fab1b5ae96",
+  "base_pr": 190,
+  "parent_pr": 211,
+  "operation_count": 46,
+  "directory_count": 10,
+  "source_file_count": 35,
+  "unit_count": 1,
+  "root_approval_installed": false,
+  "trusted_external_root_bridge_installed": false,
+  "root_stage_executed": false,
+  "production_modified": false,
+  "approved_for_production": false,
+  "approved_signed_l4_consumed": false,
+  "systemd_service_enabled": false,
+  "protected_owners": {
+    "base": "4c29d01a248d59ee85754dfa5a59e8132fe22e6b34ef04324228c16c88727406",
+    "executor": "410406ba0965ef3a5cad6da6306a85335e38acc3637fb6ed60fa42200a10c2e0",
+    "policy": "148fe2a724befc15cd8c731b0195d83e254d39215792a5084b70dd5b5c178174",
+    "mcp": "bd768f992dab75710558e3f47187c311c2ee5b5ec6f5751a74e0bbfa64729166"
+  },
+  "source_assets": [
+    {
+      "path": "honartik-registry-signed-root-stage-v1.cjs",
+      "git_blob_sha1": "60866a94a3bfe592ef6c51bfa10fce12158bc6fc",
+      "sha256": "442ac2b93773df89b18a3cd3951f17d11302a3d2af4f36f96f5b569adeeb6b39"
+    },
+    {
+      "path": "test-honartik-registry-signed-root-stage-v1.cjs",
+      "git_blob_sha1": "da92f4ab89d36d4e97273cbf8b624c31acddc9aa",
+      "sha256": "83b91f36cecdebeeadf0d892f6d351ff67cc8cc5c588cb9e6ae72d5a7b3631ef"
+    },
+    {
+      "path": "test-honartik-registry-signed-root-stage-manifest-v1.cjs",
+      "git_blob_sha1": "9ba192b59c378715d71890a0708428a201cb2372",
+      "sha256": "bf5165d60b6904a17e23b3e259f7de2b483c466a6b946e9dbbb88aef2dd70180"
+    },
+    {
+      "path": ".github/workflows/honartik-registry-signed-root-stage-ci.yml",
+      "git_blob_sha1": "db383affb342da92992712e7d61c50f69f559a8c",
+      "sha256": "ef0592384ac4139b70b57d4447e0e7fe69d41a97cd8338a5bb87d852f0bdaa01"
+    }
+  ],
+  "independent_runtime_requirements": [
+    "registered SHA-attested root launcher",
+    "verified consumed signed five-field Ed25519 Level-4 authorization",
+    "root owned O_EXCL fsync WAL capabilities",
+    "trusted Git pinned bytes service",
+    "verified isolated backup and recovery",
+    "authenticated dual MCP discovery after separate registry activation"
+  ]
+}
