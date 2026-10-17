@@ -8,7 +8,7 @@ const child=require('node:child_process');
 const {IncomingMessage,Server}=require('node:http');
 const rootServer=new Server();
 Object.defineProperty(rootServer,'listening',{value:true});
-Object.defineProperty(rootServer,'address',{value:()=>'/run/prhm-root-http-test.sock'});
+Object.defineProperty(rootServer,'address',{value:()=>'/run/prhm-root-http-test.sock',writable:true});
 const {Socket}=require('node:net');
 const {AsyncLocalStorage}=require('node:async_hooks');
 const file=path.resolve(__dirname,'../ops/agent3-universal-backup/native-v3-root-http-bridge.cjs');
