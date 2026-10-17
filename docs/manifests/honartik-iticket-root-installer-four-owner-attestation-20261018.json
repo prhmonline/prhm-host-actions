@@ -3,7 +3,7 @@
   "evidence_type": "OPERATOR_SUPPLIED_READ_ONLY_PRODUCTION_CONSOLE_OUTPUT",
   "observed_date": "2026-10-18",
   "host": "prhm-production",
-  "status": "CANDIDATE_SOURCE_PROOF_ONLY_NOT_INSTALLABLE",
+  "status": "BLOCKED_ANCHOR_DRIFT_AND_UNSAFE_ROLLBACK",
   "installer": {
     "path": "/opt/prhm-agent-selfmaint-exec/actions/host-action-v2-installer-v1.js",
     "original_sha256": "0f76d3ad65ba267c045dd545d249e0b2083f4aedf8983a109d3ee6446686fa1d",
@@ -50,10 +50,12 @@
     "https://github.com/prhmonline/prhm-host-actions/actions/runs/39071130467"
   ],
   "release_blockers": [
-    "Root-owned original installer full semantic diff and prospective owner postimages not independently reviewed",
-    "Current owner snapshots and verified rollback for this exact candidate not attested",
-    "Candidate digest bound into approved fixed host action and signed Level-4 request not registered",
-    "MariaDB 10.6 disposable migration test and financial provider real E2E not completed"
+    "Four of five actual root-owner patch anchors missing (operator verified): base, exec spec, exec dispatch, mcp enum",
+    "Original installer sequential rename rollback is unsafe on partial error; root production write blocked",
+    "Live owner source excerpts or trusted full-source in-memory dry-run required to design new anchors",
+    "Root owned signed crash-safe transactional adapter not installed",
+    "Policy critical/one-time/second confirmation enforcement requires independent review",
+    "Separate MariaDB10.6 and iTicket/SEP/SAMFA payment gates"
   ],
   "forbidden_operations_before_release": [
     "repeat_consumed_approval",
@@ -64,5 +66,35 @@
     "send_email"
   ],
   "production_mutation": false,
-  "bank_or_issuer_action": false
+  "bank_or_issuer_action": false,
+  "current_owner_anchor_preflight": {
+    "observed_date": "2026-10-18",
+    "observed_via": "privileged_operator_read_only_node_heredoc",
+    "verified_all_live_owner_sha256": true,
+    "base_anchor": {
+      "status": "FAIL",
+      "count": 0
+    },
+    "exec_spec_anchor": {
+      "status": "FAIL",
+      "count": 0
+    },
+    "exec_helper_anchor": {
+      "status": "PASS",
+      "count": 1
+    },
+    "exec_dispatch_anchor": {
+      "status": "FAIL",
+      "count": 0
+    },
+    "mcp_enum_anchor": {
+      "status": "FAIL",
+      "count": 0
+    },
+    "target_already_registered": false,
+    "helper_state_sha_match": true,
+    "overall": "BLOCKED",
+    "production_mutation": false,
+    "interpretation": "Only changing the four BASELINE hashes in the original installer does not make it compatible with current owner source. The four old literal edit sites do not exist in the four current owners. A new reviewed current-source-aware installer is required; also fix partial rename rollback and effective L4 policy."
+  }
 }
