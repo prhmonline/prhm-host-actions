@@ -143,8 +143,15 @@ async function recoverLocked({id,d,expected}){
     for(const prop of ['uid','gid','mode'])
       if(restored[prop]!==backup[key][prop])fail('rollback_metadata_verification_failed_'+key);
   }
-  for(const key of ORDER)if(await ownerState(d,j,key)!=='BEFORE')
-    fail('rollback_final_sha_mismatch_'+key);
+  for(const key of ORDER){
+    // A before-hash alone does not prove safe rollback; owners initially
+    // already at BEFORE may have been chmod/chown'd by another actor.
+    const current=await d.readOwner(key);
+    checkSnapshot(key,current,j.owners[key].before);
+    for(const field of ['uid','gid','mode'])
+      if(current[field]!==j.owners[key][field])
+        fail('rollback_final_metadata_mismatch_'+key);
+  }
   const health=await d.verifyRuntime('rollback');
   if(!health||health.ok!==true)fail('rollback_runtime_unhealthy');
   j.state='ROLLED_BACK';j.inflight=null;j.recovered=true;
