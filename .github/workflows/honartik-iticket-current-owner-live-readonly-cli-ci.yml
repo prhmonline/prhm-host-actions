@@ -29,6 +29,7 @@ jobs:
           node --check honartik-iticket-current-owner-live-readonly-cli-v1.cjs
           node --check test-honartik-iticket-current-owner-live-readonly-cli-v1.cjs
           node --test test-honartik-iticket-current-owner-live-readonly-cli-v1.cjs
+          sha256sum honartik-iticket-current-owner-live-readonly-cli-v1.cjs
           echo "SELF_CONTAINED_READONLY_CLI_FIXTURE=PASS"
           echo "ON_HOST_LIVE_SOURCE_ATTESTATION=NOT_YET_RUN"
           echo "PRODUCTION_MUTATION=NO"
