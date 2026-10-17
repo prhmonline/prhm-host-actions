@@ -3,6 +3,9 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const audit=require('../ops/agent3-universal-backup/native-registry-release-audit.cjs');
+const gateway=require('../prhm-action-registry-gateway-v1.cjs');
+const registration=require('../ops/agent3-universal-backup/registration-contract.cjs');
+const contract=require('../ops/agent3-universal-backup/production-registration-contract.json');
 
 function validFacts(){
  return {
@@ -13,6 +16,7 @@ function validFacts(){
    path,present_in_immutable_source:true,matches_current:true
   })),
   manifest_committed:true,
+  manifest_schema_valid:true,manifest_preimage_pins_match:true,
   registration_candidate_not_applied:true,
   release_status_candidate_not_installed:true,
   native_root_dispatch_reviewed:true
@@ -53,6 +57,9 @@ test('fail closed on source lock, asset, owner and immutable ancestry drift',()=
   {native:[{path:'root.cjs',present_in_immutable_source:true,matches_current:false}],
    reason:'NATIVE_SOURCE_DRIFT:root.cjs'},
   {registration_candidate_not_applied:false,reason:'UNEXPECTED_LIVE_STATUS_CLAIM'},
+  {manifest_committed:false,reason:'FOUR_OWNER_RELEASE_MANIFEST_MISSING'},
+  {manifest_schema_valid:false,reason:'FOUR_OWNER_RELEASE_MANIFEST_INVALID'},
+  {manifest_preimage_pins_match:false,reason:'FOUR_OWNER_PREIMAGE_PIN_MISMATCH'},
   {native_root_dispatch_reviewed:false,reason:'TRUSTED_NATIVE_ROOT_DISPATCH_NOT_REVIEWED'}
  ];
  for(const item of cases){
@@ -62,6 +69,47 @@ test('fail closed on source lock, asset, owner and immutable ancestry drift',()=
   assert.ok(result.source_blockers.includes(reason),reason);
   assert.equal(result.production_install_authorized,false);
  }
+});
+test('reviewed manifest is schema validated and bound to four pinned preimages',()=>{
+ const keys=['base','executor','policy','mcp'];
+ const owners=Object.fromEntries(keys.map((key,i)=>[key,{
+  path:gateway.OWNER_PATHS[key],
+  before_sha256:contract.preimage_sha256[key],
+  after_sha256:String(i+1).repeat(64)
+ }]));
+ const manifest={
+  schema_version:'prhm.action-registry.release.v1',
+  project:registration.PROJECT,action:registration.INSTALL_ACTION,
+  source_commit:registration.SOURCE_COMMIT,
+  risk:'critical',approval_level:4,
+  registry_owners:owners,
+  assets:[{
+   path:'/opt/prhm-agent-selfmaint-exec/actions/agent3-backup-installer.cjs',
+   source_path:'ops/agent3-universal-backup/install-candidate.js',
+   sha256:'a'.repeat(64)
+  }],
+  rollback_required:true,
+  health:{services:[
+   'prhm-agent-selfmaint.service','prhm-agent-selfmaint-exec.service',
+   'prhm-agent-mcp-blue.service','prhm-agent-mcp-green.service'
+  ],tool:registration.INSTALL_ACTION},
+  git_path:audit.MANIFEST
+ };
+ const encode=x=>Buffer.from(JSON.stringify(x)+'\\n');
+ assert.deepEqual(audit.validateManifest(encode(manifest)),
+  {schema_valid:true,preimages_matched:true});
+ const changed=JSON.parse(JSON.stringify(manifest));
+ changed.registry_owners.base.before_sha256='f'.repeat(64);
+ assert.deepEqual(audit.validateManifest(encode(changed)),
+  {schema_valid:true,preimages_matched:false});
+ const malicious=JSON.parse(JSON.stringify(manifest));
+ malicious.action='unrelated_root_action_v1';
+ assert.deepEqual(audit.validateManifest(encode(malicious)),
+  {schema_valid:false,preimages_matched:false});
+ assert.deepEqual(audit.validateManifest(Buffer.from('not-json')),
+  {schema_valid:false,preimages_matched:false});
+ assert.deepEqual(audit.validateManifest(null),
+  {schema_valid:false,preimages_matched:false});
 });
 test('auditor exposes no write/install/approval interfaces or shell execution',()=>{
  const src=fs.readFileSync(require.resolve('../ops/agent3-universal-backup/native-registry-release-audit.cjs'),'utf8');
