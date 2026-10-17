@@ -142,6 +142,40 @@ final class OpenPriceCancellationService
                 }
             }
 
+            // Lock the actual ticket seats and require unambiguous ownership
+            // before posting a wallet credit. Reserve::afterSave() only releases
+            // seats in SOLD/PENDING status; an unrelated or re-assigned seat
+            // must never result in a completed refund with a retained lock.
+            $seatRows = $db->createCommand(
+                'SELECT ss.id, ss.status, ss.schedule_id
+                   FROM {{%reserve_item}} ri
+                   INNER JOIN {{%schedule_seat}} ss
+                      ON ss.id=ri.schedule_seats_id
+                  WHERE ri.reserve_id=:rid
+                  ORDER BY ss.id FOR UPDATE',
+                [':rid' => $reserveId]
+            )->queryAll();
+            if (!$seatRows) {
+                throw new \RuntimeException('no_ticket_seats_to_refund');
+            }
+            $ownedSeatIds = [];
+            foreach ($seatRows as $seatRow) {
+                $seatId = (int)$seatRow['id'];
+                if (isset($ownedSeatIds[$seatId]) ||
+                    (int)$seatRow['status'] !== \common\models\ScheduleSeat::STATUS_SOLED ||
+                    (int)$seatRow['schedule_id'] !== (int)$reserve->schedule_id) {
+                    throw new \RuntimeException('ticket_seat_state_not_refundable');
+                }
+                $ownedSeatIds[$seatId] = true;
+            }
+            $itemCount = (int)$db->createCommand(
+                'SELECT COUNT(*) FROM {{%reserve_item}} WHERE reserve_id=:rid',
+                [':rid' => $reserveId]
+            )->queryScalar();
+            if ($itemCount !== count($seatRows)) {
+                throw new \RuntimeException('ticket_seat_item_missing_or_duplicate');
+            }
+
             $refundRows = OpenPriceRefundLedger::rows(
                 $minimum, $chosen, $buyerId, $ip, '', time()
             );
@@ -177,6 +211,27 @@ final class OpenPriceCancellationService
             $reserve->status = Reserve::STATUS_CANCEL;
             if (!$reserve->save(false)) {
                 throw new \RuntimeException('reserve_status_save_failed');
+            }
+            // Keep the refund, cancellation and actual seat release one
+            // transaction. A no-op/partial update in Reserve::afterSave()
+            // is never treated as success.
+            $released = $db->createCommand(
+                'SELECT ss.id, ss.status, ss.user_lock, ss.last_lock_time
+                   FROM {{%reserve_item}} ri
+                   INNER JOIN {{%schedule_seat}} ss
+                      ON ss.id=ri.schedule_seats_id
+                  WHERE ri.reserve_id=:rid FOR UPDATE',
+                [':rid' => $reserveId]
+            )->queryAll();
+            if (count($released) !== $itemCount) {
+                throw new \RuntimeException('released_seat_count_mismatch');
+            }
+            foreach ($released as $seat) {
+                if (!isset($ownedSeatIds[(int)$seat['id']]) ||
+                    (int)$seat['status'] !== \common\models\ScheduleSeat::STATUS_SELECTABLE ||
+                    $seat['user_lock'] !== null || $seat['last_lock_time'] !== null) {
+                    throw new \RuntimeException('seat_release_incomplete_refund_rolled_back');
+                }
             }
             $transaction->commit();
             return [
