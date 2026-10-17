@@ -1,0 +1,34 @@
+name: Honartik Root Installer Transaction Crash Rollback (Fixture Only)
+on:
+  push:
+    branches:
+      - feat/honartik-iticket-sha-bound-release-v1-20261015
+    paths:
+      - 'honartik-iticket-root-installer-transaction-engine-v1.cjs'
+      - 'test-honartik-iticket-root-installer-transaction-engine-v1.cjs'
+      - '.github/workflows/honartik-iticket-root-installer-transaction-fixture-ci.yml'
+  pull_request:
+    paths:
+      - 'honartik-iticket-root-installer-transaction-engine-v1.cjs'
+      - 'test-honartik-iticket-root-installer-transaction-engine-v1.cjs'
+      - '.github/workflows/honartik-iticket-root-installer-transaction-fixture-ci.yml'
+permissions:
+  contents: read
+jobs:
+  crash_recovery_fixture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Test partial writes, intent journal and idempotent recovery using RAM only
+        run: |
+          set -Eeuo pipefail
+          node --check honartik-iticket-root-installer-transaction-engine-v1.cjs
+          node --check test-honartik-iticket-root-installer-transaction-engine-v1.cjs
+          node --test test-honartik-iticket-root-installer-transaction-engine-v1.cjs
+          echo 'HONARTIK_ROOT_TX_ISOLATED_FIXTURE=YES'
+          echo 'PRODUCTION_MUTATION=NO'
+          echo 'SIGNED_LEVEL4_INSTALL=NOT_AUTHORIZED'
