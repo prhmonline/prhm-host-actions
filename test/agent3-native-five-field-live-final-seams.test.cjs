@@ -12,7 +12,8 @@ function fixture(){
  for(const key of mod.KEYS){
   const lines=Array.from({length:linesRequired[key]},(_,i)=>
    'const fixed_'+key+'_'+(i+1)+' = '+(i+1)+';');
-  lines[3]="const SECRET_OUTSIDE_REQUEST_WINDOW='NOEXPORT';";
+  // MCP includes lines 1–26; place the canary in its excluded gap 27–40.
+  lines[key==='mcp'?29:3]="const SECRET_OUTSIDE_REQUEST_WINDOW='NOEXPORT';";
   const first=mod.WINDOWS[key][0][0]-1;
   lines[first]="const requestAction='agent3_universal_backup_engine_install_v1';";
   lines[first+1]="const approval_token='small';";
