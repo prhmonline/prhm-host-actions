@@ -51,7 +51,7 @@ const PINS=Object.freeze({
 });
 const REQUIRED=Object.freeze([
   'readOnlyPreflight','freezeWriters','verifyQuiescence','verifyBackupRestore',
-  'consumeSignedLevel4','holdMaintenance','executeExactCapacity',
+  'consumeSignedLevel4','holdMaintenance','recheckPreDDL','executeExactCapacity',
   'verifyCapacityCheckpoint','executeExactFeatures','verifyFinalCheckpoint',
   'writeDurableAudit','releaseMaintenanceOnSuccess'
 ]);
@@ -168,11 +168,12 @@ function makeCoordinator(trusted){
       if(consumed)deny('one_time_coordinator_reused');
       consumed=true;
       let phase='initial', receiptId=null, maintenanceHeld=false;
-      let ddlStarted=false, success=false, outcome=null;
+      let ddlStarted=false, freezeAttempted=false, success=false, outcome=null;
       try{
         const preflight=await trusted.readOnlyPreflight(PINS);
         verifyPreflight(preflight);
         phase='preimage_verified';
+        freezeAttempted=true;
         verifyFreeze(await trusted.freezeWriters(PINS));
         verifyFreeze(await trusted.verifyQuiescence(PINS));
         phase='writers_quiescent';
@@ -189,6 +190,18 @@ function makeCoordinator(trusted){
            deny('maintenance_hold_unproven');
         maintenanceHeld=true;
         phase='maintenance_held';
+        // Close the approval/backup to first-DDL time-of-check gap. The
+        // trusted adapter must independently reacquire live schema, history
+        // and payment-writer quiescence AFTER consuming the signed grant.
+        const beforeDDL=await trusted.recheckPreDDL(PINS,proof,receiptId);
+        verifyPreflight(beforeDDL?.preimage);
+        verifyFreeze(beforeDDL?.quiescence);
+        verifyBackup(beforeDDL?.backup);
+        if(beforeDDL.backup.snapshotId!==proof.snapshotId ||
+           beforeDDL.backup.dumpSha256!==proof.dumpSha256 ||
+           beforeDDL.signedRequestId!==receiptId)
+             deny('immediate_pre_ddl_binding_drift');
+        phase='immediate_pre_ddl_verified';
         // Critical: each mutation is an exact, non-generalized *trusted*
         // adapter method, never an arbitrary command or caller-selected SQL.
         ddlStarted=true;
@@ -206,7 +219,7 @@ function makeCoordinator(trusted){
         outcome={ok:false,action:ACTION,phase,
           code:e?.code || 'trusted_adapter_exception',
           productionDatabaseMayBeModified:ddlStarted,
-          maintenanceMustRemainHeld:ddlStarted || maintenanceHeld,
+          maintenanceMustRemainHeld:freezeAttempted || ddlStarted || maintenanceHeld,
           manualFinancialRecoveryRequired:ddlStarted,
           applicationDeployed:false};
       }
