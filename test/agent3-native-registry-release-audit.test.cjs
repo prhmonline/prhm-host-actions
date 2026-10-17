@@ -95,7 +95,7 @@ test('reviewed manifest is schema validated and bound to four pinned preimages',
   ],tool:registration.INSTALL_ACTION},
   git_path:audit.MANIFEST
  };
- const encode=x=>Buffer.from(JSON.stringify(x)+'\\n');
+ const encode=x=>Buffer.from(JSON.stringify(x));
  assert.deepEqual(audit.validateManifest(encode(manifest)),
   {schema_valid:true,preimages_matched:true});
  const changed=JSON.parse(JSON.stringify(manifest));
