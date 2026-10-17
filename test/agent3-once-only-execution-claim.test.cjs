@@ -62,6 +62,32 @@ test('Agent 3 requires a root-provided exclusive durable claim; absent capabilit
   'getToolDiscovery','writeMetadataAudit'].sort());
  assert.equal(typeof bridge.attestExistingRoute(f.capabilities).getInstaller,'function');
 });
+test('missing reviewed root installer denies before claiming and preserves Level-4 request',async()=>{
+ const f=fixture();
+ let calls=0;
+ const root={...f.root,getInstaller(a){calls++;assert.equal(a,contract.INSTALL_ACTION);return undefined;}};
+ const caps=adapter.boundRootCapabilities(f.input,root);
+ assert.throws(()=>caps.getInstaller(contract.INSTALL_ACTION),/root_installer_not_callable/);
+ assert.equal(calls,1);
+ assert.equal(f.state.claims,0);
+ assert.equal(f.state.installs,0);
+});
+test('root installer lookup is resolved once before signed approval execution, not after claim',async()=>{
+ const f=fixture();
+ let finds=0;
+ const root={...f.root,getInstaller(a){
+  finds++;assert.equal(a,contract.INSTALL_ACTION);
+  return async()=>{f.state.installs++;return {ok:true};};
+ }};
+ const caps=adapter.boundRootCapabilities(f.input,root);
+ const installer=caps.getInstaller(contract.INSTALL_ACTION);
+ assert.equal(finds,1);
+ assert.equal(f.state.claims,0);
+ await installer({approval:f.approval,release:f.release});
+ assert.equal(finds,1);
+ assert.equal(f.state.claims,1);
+ assert.equal(f.state.installs,1);
+});
 test('first verified request may execute exactly once; a replay cannot invoke installer',async()=>{
  const f=fixture();
  assert.deepEqual(await f.installer({approval:f.approval,release:f.release}),{ok:true});
