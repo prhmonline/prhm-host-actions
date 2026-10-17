@@ -42,6 +42,10 @@
     {
       "path": "app/tests/integration/fixtures/OpenPriceSettlementEventStub.php",
       "blob": "f5d3f2b7436e585352117eb83edd9bfc8ac71d39"
+    },
+    {
+      "path": "common/models/AccountSettlement.php",
+      "blob": "c91d2c1c5a6693744b6e47ed2523786de29b1733"
     }
   ]
 }
