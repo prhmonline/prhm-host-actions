@@ -1,0 +1,36 @@
+name: Honartik signed Level-4 production DDL source contract
+on:
+  push:
+    paths:
+      - '.github/workflows/honartik-open-price-live-ddl-contract.yml'
+      - 'honartik-open-price-live-ddl-coordinator-v1.cjs'
+      - 'test-honartik-open-price-live-ddl-coordinator-v1.cjs'
+  pull_request:
+    paths:
+      - '.github/workflows/honartik-open-price-live-ddl-contract.yml'
+      - 'honartik-open-price-live-ddl-coordinator-v1.cjs'
+      - 'test-honartik-open-price-live-ddl-coordinator-v1.cjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  no-production-mutation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Node syntax of exact source
+        run: |
+          node --check honartik-open-price-live-ddl-coordinator-v1.cjs
+          node --check test-honartik-open-price-live-ddl-coordinator-v1.cjs
+      - name: Full safety and denial contract with mocked capabilities only
+        run: |
+          set -euo pipefail
+          node --test test-honartik-open-price-live-ddl-coordinator-v1.cjs
+          echo 'HONARTIK_L4_LIVE_DDL_SOURCE_CONTRACT=PASS'
+          echo 'REGISTERED_NATIVE_ACTION=NO'
+          echo 'PRODUCTION_DDL_EXECUTED=NO'
+          echo 'PRODUCTION_DEPLOYED=NO'
