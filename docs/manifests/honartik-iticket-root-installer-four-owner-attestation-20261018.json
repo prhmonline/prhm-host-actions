@@ -3,7 +3,7 @@
   "evidence_type": "OPERATOR_SUPPLIED_READ_ONLY_PRODUCTION_CONSOLE_OUTPUT",
   "observed_date": "2026-10-18",
   "host": "prhm-production",
-  "status": "BLOCKED_ANCHOR_DRIFT_AND_UNSAFE_ROLLBACK",
+  "status": "SOURCE_V2_FIXTURE_PASS_REAL_LIVE_ANCHORS_NOT_YET_ATTESTED_P0_ROLLBACK_REQUIRES_SIGNED_INSTALLER",
   "installer": {
     "path": "/opt/prhm-agent-selfmaint-exec/actions/host-action-v2-installer-v1.js",
     "original_sha256": "0f76d3ad65ba267c045dd545d249e0b2083f4aedf8983a109d3ee6446686fa1d",
@@ -50,12 +50,12 @@
     "https://github.com/prhmonline/prhm-host-actions/actions/runs/39071130467"
   ],
   "release_blockers": [
-    "Four of five actual root-owner patch anchors missing (operator verified): base, exec spec, exec dispatch, mcp enum",
-    "Original installer sequential rename rollback is unsafe on partial error; root production write blocked",
-    "Live owner source excerpts or trusted full-source in-memory dry-run required to design new anchors",
-    "Root owned signed crash-safe transactional adapter not installed",
-    "Policy critical/one-time/second confirmation enforcement requires independent review",
-    "Separate MariaDB10.6 and iTicket/SEP/SAMFA payment gates"
+    "Source-only V2 prototype has passed 16 fixture tests, but exact live four-owner in-memory transform/postimage hashes have not been attested",
+    "Original root installer sequential rename partial failure P0 still unmodified and unsafe",
+    "Proposed new worktree route intentionally disabled pending separate secure helper review/registration",
+    "Trusted Level-4 root filesystem adapter and crash recovery for current Control Plane not installed",
+    "Effective Approval Center critical, one-time and second confirmation behavior must be verified",
+    "Separate Honartik iTicket dark deployment, MariaDB and financial supplier gates"
   ],
   "forbidden_operations_before_release": [
     "repeat_consumed_approval",
@@ -96,5 +96,56 @@
     "overall": "BLOCKED",
     "production_mutation": false,
     "interpretation": "Only changing the four BASELINE hashes in the original installer does not make it compatible with current owner source. The four old literal edit sites do not exist in the four current owners. A new reviewed current-source-aware installer is required; also fix partial rename rollback and effective L4 policy."
+  },
+  "observed_current_owner_structure": {
+    "date": "2026-10-18",
+    "source": "OPERATOR_SUPPLIED_BOUNDED_ROOT_READ_ONLY_SNIPPETS",
+    "base": {
+      "host_action_v2_installer_v1_count": 3,
+      "host_action_spec_declared": true,
+      "level3_selection_exists": true
+    },
+    "exec": {
+      "host_action_v2_installer_v1_count": 5,
+      "applyHostActionV2Original_count": 2,
+      "active_dispatch_assignment_count": 1,
+      "host_action_spec_declared": true
+    },
+    "mcp": {
+      "host_action_v2_installer_v1_count": 1,
+      "z_enum_count": 1
+    },
+    "policy": {
+      "host_action.host_action_v2_installer_v1": {
+        "fields": [
+          "level"
+        ],
+        "level": 3
+      },
+      "host_action.agent_zero_downtime_bootstrap_v1": {
+        "fields": [
+          "level"
+        ],
+        "level": 3
+      }
+    },
+    "helper_state_sha_validated": true,
+    "no_secrets_exposed_from_root_output": true
+  },
+  "structural_preflight_v2": {
+    "path": "honartik-iticket-current-owner-structural-preflight-v2.cjs",
+    "commit": "6acdd4ec375c2331dbb0bdc5b5bd8d81c4f115f9",
+    "test_commit": "825bef22642cdd0667c4a56a867d174292f91402",
+    "ci_url": "https://github.com/prhmonline/prhm-host-actions/actions/runs/39077599468",
+    "tests_pass": 16,
+    "tests_fail": 0,
+    "restricted_to_offline_fixture": true,
+    "current_live_source_compatibility": "NOT_ATTESTED",
+    "new_handler_runtime": "INERT_REQUIRES_SEPARATE_SIGNED_HELPER_ACTIVATION",
+    "intended_new_level": 4,
+    "original_installer_level": 3,
+    "require_separately_reviewed_effective_policy": true,
+    "production_mutation": false,
+    "install_authorized": false
   }
 }
