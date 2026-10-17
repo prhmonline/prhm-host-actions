@@ -1,0 +1,34 @@
+name: Honartik Root Installer Exact Live Anchor Audit Source Contract
+on:
+  push:
+    branches:
+      - feat/honartik-iticket-sha-bound-release-v1-20261015
+    paths:
+      - 'honartik-iticket-root-owner-anchor-audit-v1.cjs'
+      - 'test-honartik-iticket-root-owner-anchor-audit-v1.cjs'
+      - '.github/workflows/honartik-iticket-root-owner-anchor-audit-ci.yml'
+  pull_request:
+    paths:
+      - 'honartik-iticket-root-owner-anchor-audit-v1.cjs'
+      - 'test-honartik-iticket-root-owner-anchor-audit-v1.cjs'
+      - '.github/workflows/honartik-iticket-root-owner-anchor-audit-ci.yml'
+permissions:
+  contents: read
+jobs:
+  offline_exact_anchors:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check exact operator-supplied installer anchors and fail-closed negative contracts
+        run: |
+          set -Eeuo pipefail
+          node --check honartik-iticket-root-owner-anchor-audit-v1.cjs
+          node --check test-honartik-iticket-root-owner-anchor-audit-v1.cjs
+          node --test test-honartik-iticket-root-owner-anchor-audit-v1.cjs
+          echo 'SOURCE_ANCHOR_FIXTURE_TESTS=PASS'
+          echo 'CURRENT_LIVE_ANCHORS_TESTED=NO'
+          echo 'PRODUCTION_MUTATION=NO'
