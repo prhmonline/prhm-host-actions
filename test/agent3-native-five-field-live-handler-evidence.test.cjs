@@ -56,12 +56,16 @@ test('redacts secret-bearing source lines, full private keys and long literals',
   'const password = "secret";',
   'const key = "-----BEGIN PRIVATE KEY-----"',
   "const token = 'sk-abcdef0123456789abcdef0123456789';",
-  'const cookie = "session-value";'
+  'const cookie = "session-value";',
+  "const token = 'short';",
+  "const approval_token='tiny';",
+  "const x={token:'short'};",
+  "const x={'approval_token':'tiny'};"
  ])assert.equal(evidence.sanitizeLine(s).redacted,true,s);
- const raw='const keyHash='+'a'.repeat(135)+';';
+ const raw='const keyHash='+'a'.repeat(64)+';';
  const info=evidence.sanitizeLine(raw);
  assert.equal(info.redacted,true);
- assert.equal(info.source.includes('a'.repeat(80)),false);
+ assert.equal(info.source.includes('a'.repeat(48)),false);
  assert.equal(info.sha256,sha(Buffer.from(raw)));
  const huge='z'.repeat(evidence.MAX_SOURCE_LINE+1);
  const denied=evidence.sanitizeLine(huge);
