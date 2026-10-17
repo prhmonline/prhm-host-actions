@@ -77,7 +77,7 @@ function mock(options={}){
   return {ops,trace,audits};
 }
 test('pinned production roots, base and release SHAs never diverge',()=>{
-  assert.equal(PINS.backend.target,'13064921115b857762bb2545c45c6d5340f46999');
+  assert.equal(PINS.backend.target,'da84941ec7048ced20c5c2d6d2bd01e058e66d64');
   assert.equal(PINS.frontend.target,'faa9762cdca0ff189989f06da7a0c20ca9d7fa68');
   assert.equal(PINS.backend.previous,'502376d0360a338f9522e4a2be5f9dccc91408d7');
   assert.equal(PINS.frontend.previous,'87580ce105eff53d7142d0ca1d5267d0f4097bb2');
