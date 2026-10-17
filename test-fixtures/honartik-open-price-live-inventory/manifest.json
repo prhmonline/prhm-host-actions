@@ -1,0 +1,9 @@
+{
+  "sourceRepo": "prhmonline/honar-back-new",
+  "sourceRef": "feature/open-price-schedules-20261016",
+  "sourceBlob": "29cd114b2cd2bf63e1fc5310e37fb6a54ed837a1",
+  "sourcePath": "scripts/open-price-live-migration-inventory-v1.php",
+  "expectedLiveBackendSha": "502376d0360a338f9522e4a2be5f9dccc91408d7",
+  "noProductionMutation": true,
+  "noDatabaseCredentials": true
+}
