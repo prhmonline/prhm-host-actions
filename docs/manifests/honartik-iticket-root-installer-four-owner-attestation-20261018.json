@@ -3,7 +3,7 @@
   "evidence_type": "OPERATOR_SUPPLIED_READ_ONLY_PRODUCTION_CONSOLE_OUTPUT",
   "observed_date": "2026-10-18",
   "host": "prhm-production",
-  "status": "INTEGRATED_SCRATCH_DISK_14_PASS_TRANSACTION_28_PASS_NO_ROOT_PRODUCTION_ADAPTER",
+  "status": "KERNEL_FLOCK_SCRATCH_8_PASS_NO_SIGNED_ROOT_INSTALLER",
   "installer": {
     "path": "/opt/prhm-agent-selfmaint-exec/actions/host-action-v2-installer-v1.js",
     "original_sha256": "0f76d3ad65ba267c045dd545d249e0b2083f4aedf8983a109d3ee6446686fa1d",
@@ -50,11 +50,11 @@
     "https://github.com/prhmonline/prhm-host-actions/actions/runs/39071130467"
   ],
   "release_blockers": [
-    "Production root trusted kernel-lock and signed four-owner durable transactional adapter not built or installed; existing helper remains P0 unsafe",
-    "Effective Approval Center action-specific Level4/Ed25519 single-use and second-confirmation behavior not attested",
-    "Proposed dispatcher intentionally inert; worktree action unregistered",
-    "Real financial iTicket release, migrations, Saman wallet SAMFA separate",
-    "Only in-memory live postimage SHA and scratch disk shape fixtures verified, not a live disk commit"
+    "No signed and fixed-path Root adapter has been implemented; actual on-host privileged owner files remain untouched",
+    "Real action-specific Approval Center issuer enforcement and Ed25519 single-use expiry/replay/second confirmation not attested",
+    "Root safe commit journal and bounded restart/health recovery have not been implemented in a permission-equivalent environment",
+    "New Honartik worktree executor dispatcher is still intentionally inert",
+    "Honartik iTicket settlement, banking, financial migration and SAMFA release remain separate and unverified"
   ],
   "forbidden_operations_before_release": [
     "repeat_consumed_approval",
@@ -197,5 +197,22 @@
     "production_installer_ready": false,
     "signed_install_authorized": false,
     "production_mutation": false
+  },
+  "kernel_lock_scratch_evidence": {
+    "date": "2026-10-18",
+    "verified_ci_url": "https://github.com/prhmonline/prhm-host-actions/actions/runs/39081016724",
+    "tests": 8,
+    "passes": 8,
+    "failures": 0,
+    "kernel_lock_tested": true,
+    "independent_contender_rejected": true,
+    "kill_releases_lock": true,
+    "forged_open_but_unlocked_fd_rejected": true,
+    "crash_after_second_disk_rename_recovered": true,
+    "third_party_drift_fail_closed": true,
+    "target": "self-created temp scratch files only",
+    "root_production_adapter_implemented": false,
+    "production_mutation": false,
+    "new_approval_consumed": false
   }
 }
