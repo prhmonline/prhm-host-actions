@@ -3,7 +3,7 @@
   "action": "honartik_iticket_sha_bound_release_v1",
   "project": "honartik",
   "source_repository": "prhmonline/prhm-host-actions",
-  "source_commit": "c84cbfbabf05e154d2e68bf4163db4c0ce199b35",
+  "source_commit": "44edec67753edfdb0429e70a4d92e528f6209b8e",
   "status": "git_source_candidate_registration_pending",
   "installed": false,
   "production_modified": false,
@@ -22,13 +22,13 @@
   "source_assets": [
     {
       "path": "honartik-iticket-sha-bound-release-v1.cjs",
-      "sha256": "65da08785fb9ce2e3e35f8f0b0a9f5dd88a41b8fce9b9da62ef78826024711c9",
-      "git_blob_sha": "c33b95e0ccaa77e107f4876c61a17023ae533b64"
+      "sha256": "a762c092734f4524df32f39f2b4366183fd21a621f8164c31d91829642274b16",
+      "git_blob_sha": "8e6e3d374a42b0f7d9533e97a0dd074c8dde82d4"
     },
     {
       "path": "test-honartik-iticket-sha-bound-release-v1.cjs",
-      "sha256": "de2334efa48d45e2d245a47c07eb4d79d1956895e3eb5e22753b35725ea822af",
-      "git_blob_sha": "1ca8c880f7f3030e8de2214d4cc02da553e7b960"
+      "sha256": "8f30b551706c66bb3ef3e68060a1bab817d4d13d1dc450b0b92a6d11785bf25c",
+      "git_blob_sha": "2f702811abe1878757e0af105772bff4a21cdc25"
     },
     {
       "path": ".github/workflows/honartik-iticket-sha-bound-release-v1.yml",
@@ -37,15 +37,15 @@
     },
     {
       "path": "docs/runbooks/honartik-iticket-sha-bound-release-v1.md",
-      "sha256": "dfcd01895adaf634ee0bfd29ddae5bf260c45f0200667d36f72e8acd38a60b7b",
-      "git_blob_sha": "d88aa9c8b92dc14b92cca125d8a502f85d7d87dc"
+      "sha256": "1f2e65fd5b2cdf6d66a8ee19db4a590cb238a91f44b8515a2f1fa797a19dabd0",
+      "git_blob_sha": "47e628f009ae8eaeb4ac8a18a2bfaf057a080d8f"
     }
   ],
   "pending_gates": [
     "attest_live_base_executor_policy_mcp_owner_sha256",
     "install_five_field_shared_registry_with_signed_L4",
     "install_three_fixed_honartik_release_actions",
-    "prove_mysql8_yii2_E2E",
+    "prove_mariadb106_yii2_E2E_and_iticket_migrations_on_isolated_restored_honartik_backup",
     "verify_real_SEP_provider_Samfa_pilot",
     "enable_public_checkout_with_separate_signed_approval"
   ]
