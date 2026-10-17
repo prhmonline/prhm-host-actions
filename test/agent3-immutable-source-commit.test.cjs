@@ -153,3 +153,29 @@ test('fixture-only four-owner rollback is present at pinned Git SHA without live
  assert.match(source,/recovery_services_unverified/);
  assert.doesNotMatch(source,/exports\.installProduction/);
 });
+
+test('native five-field MCP, Level-4 policy and Base v3 approval protocol match immutable reviewed source',()=>{
+ const modules=[
+  'ops/agent3-universal-backup/native-five-field-mcp-policy-patch.cjs',
+  'ops/agent3-universal-backup/native-v3-signed-approval-protocol.cjs'
+ ];
+ for(const p of modules){
+  const reviewed=git(['show',release.source_commit_sha+':'+p]);
+  const current=require('node:fs').readFileSync(
+   require('node:path').join(__dirname,'..',p));
+  assert.equal(sha(reviewed),sha(current),
+   'native registry candidate source drift from immutable reviewed commit: '+p);
+ }
+ const mcp=git(['show',release.source_commit_sha+':'+modules[0]]).toString('utf8');
+ assert.match(mcp,/prhm_action_registry_request_v1/);
+ assert.match(mcp,/prhm_action_registry_apply_v1/);
+ assert.match(mcp,/policy\.policy_version=gateway\.POLICY_VERSION/);
+ assert.match(mcp,/ready_for_registration:false/);
+ const approval=git(['show',release.source_commit_sha+':'+modules[1]]).toString('utf8');
+ assert.match(approval,/function issueEnvelope/);
+ assert.match(approval,/function decisionEnvelope/);
+ assert.match(approval,/function consumeEnvelope/);
+ assert.match(approval,/signature_verified:false/);
+ assert.match(approval,/ledger_consumed:false/);
+ assert.match(approval,/independently_authenticated:false/);
+});
