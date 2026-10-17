@@ -14,7 +14,8 @@ function validFacts(){
   })),
   manifest_committed:true,
   registration_candidate_not_applied:true,
-  release_status_candidate_not_installed:true
+  release_status_candidate_not_installed:true,
+  native_root_dispatch_reviewed:true
  };
 }
 test('current reviewed source audit detects source v3 pin drift and missing manifest',()=>{
@@ -24,12 +25,14 @@ test('current reviewed source audit detects source v3 pin drift and missing mani
  assert.equal(facts.source_lock_matches_registrar,true);
  assert.equal(facts.pin_is_ancestor,true);
  assert.equal(facts.manifest_committed,false);
+ assert.equal(facts.native_root_dispatch_reviewed,false);
  assert.equal(result.source_candidate_complete,false);
  assert.equal(result.production_install_authorized,false);
  assert.equal(result.production_mutation,false);
  assert.ok(result.source_blockers.some(s=>
   s.startsWith('NATIVE_SOURCE_ABSENT_AT_RELEASE_PIN:')));
  assert.ok(result.source_blockers.includes('FOUR_OWNER_RELEASE_MANIFEST_MISSING'));
+ assert.ok(result.source_blockers.includes('TRUSTED_NATIVE_ROOT_DISPATCH_NOT_REVIEWED'));
 });
 test('a complete synthetic source set still is not authorization to install',()=>{
  const result=audit.assess(validFacts());
@@ -49,7 +52,8 @@ test('fail closed on source lock, asset, owner and immutable ancestry drift',()=
    reason:'NATIVE_SOURCE_ABSENT_AT_RELEASE_PIN:root.cjs'},
   {native:[{path:'root.cjs',present_in_immutable_source:true,matches_current:false}],
    reason:'NATIVE_SOURCE_DRIFT:root.cjs'},
-  {registration_candidate_not_applied:false,reason:'UNEXPECTED_LIVE_STATUS_CLAIM'}
+  {registration_candidate_not_applied:false,reason:'UNEXPECTED_LIVE_STATUS_CLAIM'},
+  {native_root_dispatch_reviewed:false,reason:'TRUSTED_NATIVE_ROOT_DISPATCH_NOT_REVIEWED'}
  ];
  for(const item of cases){
   const {reason,...change}=item;
