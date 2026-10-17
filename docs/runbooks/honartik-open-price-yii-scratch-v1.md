@@ -7,8 +7,8 @@
 - Typed Host Action ID: `honartik_open_price_yii_scratch_v1`.
 - Trusted authorization operation: `host_action.honartik_open_price_yii_scratch_v1` (Ed25519, single use, signed and consumed by the trusted Control Plane; never accepted from browser payload).
 - Source repository: `prhmonline/honar-back-new`.
-- Source commit: `d18bccb29b6094bdefd3d114807bb79823d14ed8`.
-- Pinned script: `scripts/open-price-yii-isolated-restore-check.sh`, Git blob `fb4ed2d44a1e4cb6814ad6ac6ddd834d2a439e0b`.
+- Source commit: `4853dd39c43ca678b4bb29f00777c1b89c559757`.
+- Pinned script: `scripts/open-price-yii-isolated-restore-check.sh`, Git blob `83d30253d244e57320b3c539a8cde5f37c890ce4`.
 - Verified historical dump: `/var/backups/prhm-central/20261016T212759Z/db/prhm-mariadb/honartik_db.sql.gz`, checked against the immutable backup's SHA256SUMS.
 - Database identity: `honartik_db`. Real backup expected counts from previous isolated restore: finance_transactions 37,156; finance_wallet 50,543; reserve 36,738.
 - Pinned disposable image: `mariadb:10.6`, `--network none`; completely separate datadir, socket and root password. **No live MariaDB socket, credentials, network or data volume may be mounted.**
@@ -31,3 +31,7 @@ The official source-only contracts have **25/25 PASS** (16 coordinator plus 9 na
 The new host action is *rehearsal only*, not a release operator. After its real evidence is green, independently verify actual wallet/seller settlement and cancellation/refund accounting, complete app typecheck and preserved local edits, review/merge the two open Draft feature PRs and obtain a separately authorized SHA-pinned dark deploy. Keep `schedule.free_price_enabled=0` for all public sessions pending owner-run Saman SEP transaction/receipt/reconciliation UAT. No user email or SMS should be sent during rehearsal.
 
 **Failure behavior:** never infer green from a mock, CI test or an absent error. On failed preflight, authorization, migration, data audit, cleanup or durable audit, emit failure with no approval reuse and no Production mutation. Preserve historical DB evidence and do not roll back schema by destructive down-migrations.
+
+## 2026-10-17 forced-cleanup containment refinement
+
+The restored-data operator now supports a private and tightly checked scratch parent `HONARTIK_YII_ACTION_SCRATCH_PARENT`, restricted to a pre-created root-owned mode-0700 `/var/tmp/prhm-yii-action-*` directory. The source-only Native adapter binds this path itself, starts the fixed Bash process in a dedicated process group and sends SIGTERM then SIGKILL on time limit. It then removes the precise disposable container and the scratch root and refuses success without cleanup and durable audit receipts. **Only source-level implementation and isolated tests; native Agent installation is still not authorized or performed.**
