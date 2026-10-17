@@ -73,15 +73,15 @@ test('action-only requests, incorrect SHA and caller-injected fields fail before
   {...args(),source_commit:'0'.repeat(40)},
   {...args(),manifest_sha256:'bad'}
  ]){
-  await assert.rejects(d.dispatch({input,approvalToken:'x'.repeat(500),rootCapabilities:root}));
+  await assert.rejects(d.dispatch({input,expectedRequestId:'11111111-1111-4111-8111-111111111111',approvalToken:'x'.repeat(500),rootCapabilities:root}));
  }
  assert.equal(called,0);
 });
 test('boolean approval, missing root adapters and malformed signed receipts cannot execute',async()=>{
  const input=args();
- await assert.rejects(d.dispatch({input,approvalToken:'approved',rootCapabilities:{}}),
+ await assert.rejects(d.dispatch({input,expectedRequestId:'11111111-1111-4111-8111-111111111111',approvalToken:'approved',rootCapabilities:{}}),
    /signed_approval_required/);
- await assert.rejects(d.dispatch({input,approvalToken:'x'.repeat(140),rootCapabilities:{}}),
+ await assert.rejects(d.dispatch({input,expectedRequestId:'11111111-1111-4111-8111-111111111111',approvalToken:'x'.repeat(140),rootCapabilities:{}}),
    /trusted_capability_missing/);
 });
 test('trusted dispatcher independently rechecks owner SHA and refuses to install on drift',async()=>{
@@ -98,10 +98,21 @@ test('trusted dispatcher independently rechecks owner SHA and refuses to install
   getToolDiscovery:async()=>true,
   writeMetadataAudit:async()=>{}
  };
- await assert.rejects(d.dispatch({input,approvalToken:'x'.repeat(140),rootCapabilities:root}),
+ await assert.rejects(d.dispatch({input,expectedRequestId:'11111111-1111-4111-8111-111111111111',approvalToken:'x'.repeat(140),rootCapabilities:root}),
    /owner_sha_drift/);
  assert.equal(queryCount,1);
  assert.equal(installs,0);
+});
+test('native request id is mandatory before reading root capabilities or approval',async()=>{
+ const req=args(), token='x'.repeat(140);
+ const root={readPinnedGitManifest(){throw Error('root access forbidden')},
+  claimExecutionOnce(){throw Error('journal access forbidden')}};
+ await assert.rejects(d.dispatch({input:req,approvalToken:token,rootCapabilities:root}),
+  /trusted_native_request_id_required/);
+ await assert.rejects(d.dispatch({input:req,approvalToken:token,
+  expectedRequestId:'22222222-2222-4222-8222-222222222222',
+  rootCapabilities:{...root,claimExecutionOnce(){throw Error('override')}}}),
+  /untrusted_execution_claim_override/);
 });
 test('no CLI apply, separate signing route, or generic root command',()=>{
  const file=path.join(__dirname,'../ops/agent3-universal-backup/trusted-shared-registrar-dispatch.cjs');
@@ -171,7 +182,7 @@ test('production root journal is fixed-source; injected claim callback cannot re
  assert.equal(Object.isFrozen(root),true);
  assert.throws(()=>d.rootWithFixedJournal({...callbacks,claimExecutionOnce:()=>true}),
   /untrusted_execution_claim_override/);
- await assert.rejects(d.dispatch({input:args(),approvalToken:'x'.repeat(140),
+ await assert.rejects(d.dispatch({input:args(),expectedRequestId:'11111111-1111-4111-8111-111111111111',approvalToken:'x'.repeat(140),
   rootCapabilities:{...callbacks,claimExecutionOnce:()=>true}}),
   /untrusted_execution_claim_override/);
 });
