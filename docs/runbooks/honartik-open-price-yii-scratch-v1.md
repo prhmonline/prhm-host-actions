@@ -7,8 +7,8 @@
 - Typed Host Action ID: `honartik_open_price_yii_scratch_v1`.
 - Trusted authorization operation: `host_action.honartik_open_price_yii_scratch_v1` (Ed25519, single use, signed and consumed by the trusted Control Plane; never accepted from browser payload).
 - Source repository: `prhmonline/honar-back-new`.
-- Source commit: `f627c6e351c5b29c13261cfcbb54cf73cbd0b5f0`.
-- Pinned script: `scripts/open-price-yii-isolated-restore-check.sh`, Git blob `d72c32be8db344fc91b45f487b3742b1e3d6770c`.
+- Source commit: `d18bccb29b6094bdefd3d114807bb79823d14ed8`.
+- Pinned script: `scripts/open-price-yii-isolated-restore-check.sh`, Git blob `fb4ed2d44a1e4cb6814ad6ac6ddd834d2a439e0b`.
 - Verified historical dump: `/var/backups/prhm-central/20261016T212759Z/db/prhm-mariadb/honartik_db.sql.gz`, checked against the immutable backup's SHA256SUMS.
 - Database identity: `honartik_db`. Real backup expected counts from previous isolated restore: finance_transactions 37,156; finance_wallet 50,543; reserve 36,738.
 - Pinned disposable image: `mariadb:10.6`, `--network none`; completely separate datadir, socket and root password. **No live MariaDB socket, credentials, network or data volume may be mounted.**
@@ -16,15 +16,15 @@
 
 ## Trusted registration requirements
 
-This repository contains a **typed source contract and mock contract tests**, not an installed native executor. Registration must be performed by an authorized owner through a separately reviewed, SHA-verified Host Actions v2 installer and one-time Level-4 signed approval. The trusted adapter must implement precisely these methods: `preflight`, `consumeApproval`, `executeRestoredYiiRehearsal`, `cleanup`, `audit`. It cannot accept caller-provided paths, SHA, SQL, shell commands, environment strings, machine identity, credentials, arbitrary arguments or a production deploy operation.
+This repository contains a **typed source contract, a source-only native adapter candidate and tests**, not an installed native executor. Registration must be performed by an authorized owner through a separately reviewed, SHA-verified Host Actions v2 installer and one-time Level-4 signed approval. The trusted adapter must implement precisely these methods: `preflight`, `consumeApproval`, `executeRestoredYiiRehearsal`, `cleanup`, `audit`. It cannot accept caller-provided paths, SHA, SQL, shell commands, environment strings, machine identity, credentials, arbitrary arguments or a production deploy operation.
 
-The trusted adapter—not this repository's Node model—must independently prove backup SHA256, exact Git blob/commit, old SHA and resources, mount confinement, no network and no source writes before invoking the fixed migration rehearsal script. Its evidence must be generated from real commands and actual restored DB state, never accepted from client JSON or test mocks. Only register the immutable action after source review and implementation of this adapter. Do not repurpose the privileged GitHub deploy-control runner to evade the host approval requirement.
+The source-only `honartik-open-price-yii-native-adapter-v1.cjs` implements the fixed, non-shell native execution and evidence parsing **only when bound by a separately installed trusted registrar** providing `consumeBoundApproval`, `appendDurableAudit` and `registeredNativeAction`. The adapter validates the backup/manifest checksum, gzip integrity, exact Git blob and live HEAD, MariaDB image and resources; it requires the real Yii operator's post-restore JSON receipt (version, expected counts, three BIGINT columns, eight feature columns and identical financial SHA-256 digests) and exact completion/cleanup markers. It does **not** mint signed approvals or expose a standalone CLI. The trusted registration boundary must independently check the signer and bind callbacks; a caller-provided JSON `registeredNativeAction` value is not a grant. The trusted adapter—not this repository's mock test result—must prove real backup SHA256, old SHA and resources, mount confinement, no network and no source writes before invoking the fixed migration rehearsal script. Its evidence must be generated from real commands and actual restored DB state, never accepted from client JSON or test mocks. Only register the immutable action after source review and implementation of this adapter. Do not repurpose the privileged GitHub deploy-control runner to evade the host approval requirement.
 
 ## Acceptance
 
 A registered operation is green only after the trusted Control Plane authorizes it and the native adapter independently returns all fixed-schema evidence. The actual Yii2 classes `m261016_105000_open_price_money_capacity` and `m261016_110000_open_price_schedules` must run on restored MariaDB **10.6** with the complete historical dataset. Verify source hashes, exact row counts, existing financial totals and absolute totals before/after, three widened money columns, all eight feature columns, safe capacity retry ordering, duplicate feature fail-closed and scratch cleanup. Never call `safeDown` or downgrade money fields, and never run database writes against the production container.
 
-The existing synthetic integration was independently **PASS** against Yii2 2.0.55 / PHP 8.4 / synthetic MariaDB 11.8; that does **not** satisfy the restored MariaDB 10.6 acceptance.
+The official source-only contracts have **25/25 PASS** (16 coordinator plus 9 native parser tests), but do not execute the real backup. The existing synthetic integration was independently **PASS** against Yii2 2.0.55 / PHP 8.4 / synthetic MariaDB 11.8; that does **not** satisfy the restored MariaDB 10.6 acceptance.
 
 ## Subsequent release gates
 
