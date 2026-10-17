@@ -3,7 +3,7 @@
   "evidence_type": "OPERATOR_SUPPLIED_READ_ONLY_PRODUCTION_CONSOLE_OUTPUT",
   "observed_date": "2026-10-18",
   "host": "prhm-production",
-  "status": "LIVE_SHA_BOUND_IN_MEMORY_POSTIMAGES_ATTESTED_NOT_INSTALLABLE",
+  "status": "LEVEL4_STATIC_CONFIG_PASS_SIGNED_EXECUTION_NOT_ATTESTED",
   "installer": {
     "path": "/opt/prhm-agent-selfmaint-exec/actions/host-action-v2-installer-v1.js",
     "original_sha256": "0f76d3ad65ba267c045dd545d249e0b2083f4aedf8983a109d3ee6446686fa1d",
@@ -172,5 +172,15 @@
     "install_authorized": false,
     "production_mutation": false,
     "note": "All four POSTIMAGE values are prospective digests of in-memory transformation only, not SHA of files deployed to disk. No signed execution permitted."
+  },
+  "level4_structure_inspection_20261018": {
+    "evidence": "operator-supplied on-host read-only Node output",
+    "passes": 12,
+    "fails": 0,
+    "proposed_hardened_policy_sha256": "9a2c47db59211a638976ee181e8a5b246c79f082371d82a7396c6a07f646faa7",
+    "previous_policy_postimage_superseded": "be738cf7be1555d717558b51d560c381e2d4ed6bab87dabb701d712b6c2d9980",
+    "effective_issuer_enforcement": "NOT_ATTESTED",
+    "production_mutation": false,
+    "signed_install_authorized": false
   }
 }
