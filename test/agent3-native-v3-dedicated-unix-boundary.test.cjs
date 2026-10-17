@@ -16,7 +16,7 @@ const PATHS=Object.freeze([
 function fakeServer(address=SOCK){
  const server=new Server();
  Object.defineProperty(server,'listening',{value:true});
- Object.defineProperty(server,'address',{value:()=>address});
+ Object.defineProperty(server,'address',{value:()=>address,configurable:true});
  return server;
 }
 function fixture(uid=0,paths=PATHS){
