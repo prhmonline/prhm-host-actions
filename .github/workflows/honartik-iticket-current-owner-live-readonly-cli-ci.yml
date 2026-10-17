@@ -1,0 +1,34 @@
+name: Honartik Live Owner Read-only CLI Code Contract
+on:
+  push:
+    branches:
+      - feat/honartik-iticket-sha-bound-release-v1-20261015
+    paths:
+      - 'honartik-iticket-current-owner-live-readonly-cli-v1.cjs'
+      - 'test-honartik-iticket-current-owner-live-readonly-cli-v1.cjs'
+      - '.github/workflows/honartik-iticket-current-owner-live-readonly-cli-ci.yml'
+  pull_request:
+    paths:
+      - 'honartik-iticket-current-owner-live-readonly-cli-v1.cjs'
+      - 'test-honartik-iticket-current-owner-live-readonly-cli-v1.cjs'
+      - '.github/workflows/honartik-iticket-current-owner-live-readonly-cli-ci.yml'
+permissions:
+  contents: read
+jobs:
+  selfcontained_readonly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Pure mock owner code and mutation safety check
+        run: |
+          set -Eeuo pipefail
+          node --check honartik-iticket-current-owner-live-readonly-cli-v1.cjs
+          node --check test-honartik-iticket-current-owner-live-readonly-cli-v1.cjs
+          node --test test-honartik-iticket-current-owner-live-readonly-cli-v1.cjs
+          echo "SELF_CONTAINED_READONLY_CLI_FIXTURE=PASS"
+          echo "ON_HOST_LIVE_SOURCE_ATTESTATION=NOT_YET_RUN"
+          echo "PRODUCTION_MUTATION=NO"
