@@ -1,0 +1,71 @@
+{
+  "expectedProductionBackendHead": "502376d0360a338f9522e4a2be5f9dccc91408d7",
+  "backendBase": "502376d0360a338f9522e4a2be5f9dccc91408d7",
+  "backendFeatureHead": "506270fab97c15d5102e0859c7806ad3a291f7e0",
+  "frontendFeatureHead": "f5e2d245e2d57edb54ef304ce0199d95d46286c4",
+  "dirtyProductionTracked": [
+    "app/views/admin-reserve/_form.php"
+  ],
+  "untrackedProduction": [
+    "honartik-28000-refresh-905d3af8f914b0e4.xlsx"
+  ],
+  "sourceFiles": [
+    {
+      "path": "app/migrations/db/m261016_105000_open_price_money_capacity.php",
+      "blob": "453a4272d543cb622e041aa0248b7e3609d8650a"
+    },
+    {
+      "path": "app/migrations/db/m261016_110000_open_price_schedules.php",
+      "blob": "4601b591f18d99f7b1711ca089d9a6c24e780025"
+    }
+  ],
+  "backendChangedFiles": [
+    ".github/workflows/open-price-contract.yml",
+    ".github/workflows/open-price-dark-release-boundary.yml",
+    "app/controllers/AdminScheduleController.php",
+    "app/migrations/db/m261016_105000_open_price_money_capacity.php",
+    "app/migrations/db/m261016_110000_open_price_schedules.php",
+    "app/modules/api/controllers/ReserveController.php",
+    "app/modules/api/models/Reserve.php",
+    "app/modules/api/models/Schedule.php",
+    "app/modules/finance/services/CouponService.php",
+    "app/modules/finance/services/OpenPriceAmount.php",
+    "app/modules/finance/services/OpenPriceCancellationService.php",
+    "app/modules/finance/services/OpenPriceLedger.php",
+    "app/modules/finance/services/OpenPriceRefundLedger.php",
+    "app/modules/finance/services/OpenPriceSchemaGuard.php",
+    "app/modules/finance/services/OpenPriceSettlementGuard.php",
+    "app/modules/finance/services/PaymentStartIdempotencyService.php",
+    "app/modules/finance/services/ReservePaymentFinalizer.php",
+    "app/modules/finance/views/admin-transaction/_columns.php",
+    "app/modules/finance/views/admin-transaction/view.php",
+    "app/tests/contract/OpenPriceAmountTest.php",
+    "app/tests/contract/OpenPriceGatewayReplayTest.php",
+    "app/tests/contract/OpenPriceLedgerTest.php",
+    "app/tests/contract/OpenPriceMigrationPreflightTest.php",
+    "app/tests/contract/OpenPriceMoneyCapacityMigrationTest.php",
+    "app/tests/contract/OpenPricePreconfirmedReverseTest.php",
+    "app/tests/contract/OpenPriceRefundLedgerTest.php",
+    "app/tests/contract/OpenPriceSchemaGuardTest.php",
+    "app/tests/contract/OpenPriceSettlementGuardTest.php",
+    "app/tests/integration/OpenPriceActualReserveSeatTest.php",
+    "app/tests/integration/OpenPriceCancellationFixtureTest.php",
+    "app/tests/integration/OpenPriceWalletAccountingTest.php",
+    "app/tests/integration/fixtures/OpenPriceCancellationFixtureModels.php",
+    "app/tests/integration/fixtures/OpenPriceLocalityStub.php",
+    "app/tests/integration/fixtures/OpenPriceSettlementEventStub.php",
+    "app/views/admin-account-settlement/view.php",
+    "app/views/admin-reserve/view.php",
+    "app/views/admin-schedule/_form.php",
+    "common/models/AccountSettlement.php",
+    "common/models/Reserve.php",
+    "common/models/Schedule.php",
+    "common/models/SoldEvent.php",
+    "console/controllers/OpenPriceReadinessController.php",
+    "docs/OPEN_PRICE_RELEASE_RUNBOOK.md",
+    "scripts/open-price-yii-isolated-restore-check.sh"
+  ],
+  "flagsPublicDefaultOff": true,
+  "databaseReadinessVerified": false,
+  "productionDeploymentAuthorized": false
+}
