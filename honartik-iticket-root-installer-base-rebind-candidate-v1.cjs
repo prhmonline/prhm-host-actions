@@ -19,6 +19,18 @@ const ACTION = 'honartik_iticket_root_installer_base_rebind_candidate_v1';
 const INSTALLER_SHA = '0f76d3ad65ba267c045dd545d249e0b2083f4aedf8983a109d3ee6446686fa1d';
 const OLD_BASE_SHA = 'de924f7319f3656d788ba5d3f89ef2910bf4b0e3f0b8b074e7cd3a534441d5ea';
 const LIVE_BASE_SHA = '4c29d01a248d59ee85754dfa5a59e8132fe22e6b34ef04324228c16c88727406';
+const LIVE_EXECUTOR_SHA = '410406ba0965ef3a5cad6da6306a85335e38acc3637fb6ed60fa42200a10c2e0';
+const LIVE_POLICY_SHA = '148fe2a724befc15cd8c731b0195d83e254d39215792a5084b70dd5b5c178174';
+const OLD_POLICY_SHA = '2fedd70a182aa351e269df95a1b9d829f5a0b18defe8871cb4045106948d711a';
+const LIVE_MCP_SHA = 'bd768f992dab75710558e3f47187c311c2ee5b5ec6f5751a74e0bbfa64729166';
+const OLD_MCP_SHA = '048e2db190c5548f47967447b3b564eefd0b7203cf6df84beb73c520d481633d';
+const RELEASE_BLOCKERS = Object.freeze([
+  'policy_preimage_drift',
+  'mcp_preimage_drift',
+  'executor_expected_pin_unknown',
+  'full_live_source_and_semantic_contract_unreviewed',
+  'fresh_signed_install_and_rollback_not_authorized'
+]);
 
 const sha256 = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 function fail(why) { throw new Error('installer_base_rebind_' + why); }
@@ -65,8 +77,10 @@ function makeCandidate({installerBytes, baseBytes} = {}) {
   const source = installerBytes.toString('utf8');
   if (!Buffer.from(source, 'utf8').equals(installerBytes))
     fail('installer_not_utf8');
-  const candidate = Buffer.from(rebindSource(source), 'utf8');
-  assertSha(sha256(candidate));
+  // Fail CLOSED for the newly observed policy/MCP drift and unknown executor pin.
+  // This earlier one-owner proof may still be inspected through rebindSource(),
+  // but must never produce a root-installable artifact.
+  fail('four_owner_release_blocked');
   return Object.freeze({
     action: ACTION,
     installer_before_sha256: INSTALLER_SHA,
@@ -81,5 +95,7 @@ function makeCandidate({installerBytes, baseBytes} = {}) {
 
 module.exports = Object.freeze({
   ACTION, INSTALLER_SHA, OLD_BASE_SHA, LIVE_BASE_SHA,
+  LIVE_EXECUTOR_SHA, LIVE_POLICY_SHA, OLD_POLICY_SHA,
+  LIVE_MCP_SHA, OLD_MCP_SHA, RELEASE_BLOCKERS,
   sha256, rebindSource, makeCandidate,
 });
