@@ -93,6 +93,29 @@ test('tampered persisted hashes, request arguments or consumed digest fail close
   consumedArgumentsSha256:'f'.repeat(64)
  }),/consumed_hash_changed/);
 });
+test('persisted continuity record refuses forged approval flags or additional claims',()=>{
+ const good=stored();
+ assert.deepEqual(Object.keys(good).sort(),c.PERSISTED_FIELDS.slice().sort());
+ for(const forged of [
+  {...good,approved:true},
+  {...good,token:'signed-token-in-record'},
+  {...good,level:4},
+  {...good,request_id:'11111111-1111-4111-8111-111111111111'},
+  {...good,policy_version:'forged-policy'},
+  {...good,consumed:true},
+  {arguments:good.arguments,arguments_sha256:good.arguments_sha256},
+  Object.assign(Object.create(null),good,{extra:'unauthorized'})
+ ]){
+  assert.throws(()=>c.compareApplyBinding({
+   persistedRequest:forged,applyArguments:valid(),
+   consumedArgumentsSha256:good.arguments_sha256
+  }),/persisted_continuity_record_schema/);
+ }
+ assert.equal(c.compareApplyBinding({
+   persistedRequest:good,applyArguments:valid(),
+   consumedArgumentsSha256:good.arguments_sha256
+ }).approved_to_install,false);
+});
 test('no untrusted CLI or synthetic approval receipt can execute install',()=>{
  const f=path.join(__dirname,'../ops/agent3-universal-backup/five-field-request-continuity.cjs');
  const r=cp.spawnSync(process.execPath,[f,'--apply'],{encoding:'utf8',timeout:10000});
