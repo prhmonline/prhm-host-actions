@@ -23,6 +23,7 @@ const mcpSource=[
  "}"
 ].join('\n')+'\n';
 const originalPolicy=JSON.stringify({
+ policy_version:'2026-10-02.1-existing-production-policy',
  operations:{'host_action.legacy':{level:3}},
  typed_scopes:[{tool:'host_action_v2_apply',project:'control_plane',
   action:'legacy',risk:'high',operation:'host_action.legacy'}]
@@ -73,6 +74,9 @@ test('exact SHA-bound MPC/Policy candidate registers two independent five-field 
  const policy=JSON.parse(out.postimage_buffers.policy.toString());
  assert.deepEqual(policy.operations['host_action.legacy'],{level:3});
  assert.deepEqual(policy.operations[gateway.OPERATION],{level:4,risk:'critical'});
+ assert.equal(policy.policy_version,gateway.POLICY_VERSION);
+ assert.equal(JSON.parse(bytes.policy.toString()).policy_version,
+  '2026-10-02.1-existing-production-policy');
  const scope=policy.typed_scopes.find(t=>t.action===gateway.ACTION);
  assert.equal(scope.tool,'host_action_v2_apply');
  assert.equal(scope.project,'control_plane');
