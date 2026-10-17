@@ -71,7 +71,7 @@ function fixture(options={}){
       if(options.failHealthOn===phase)return {ok:false};
       return {ok:true};
     },
-    async cleanupStages(){stages.clear();}
+    async cleanupStages(){if(options.failCleanup)throw Error('cleanup_failed');stages.clear();}
   };
   return {adapter,owners,original,candidates,expected,backups,journals,calls,stages};
 }
@@ -222,4 +222,20 @@ test('transaction module does not read server paths or perform filesystem writes
   for(const x of ["require('fs')","require('node:fs')","child_process","process.argv","process.env",
     "fs.writeFileSync(","fs.renameSync(","systemctl","systemd-run","sudo "])
     assert.equal(source.includes(x),false,'dangerous primitive '+x);
+});
+
+test('post-commit stage cleanup failure reports warning but leaves valid COMMITTED receipt',async()=>{
+  const f=fixture({failCleanup:true});
+  const r=await execute(params(f));
+  assert.equal(r.ok,true);
+  assert.equal(r.cleanupComplete,false);
+  assert.equal(f.journals.get(id).state,'COMMITTED');
+  assert.deepEqual(f.calls.commits,ORDER);
+});
+
+test('post-rollback stage cleanup failure cannot disguise verified rollback',async()=>{
+  const f=fixture({failCleanup:true,failAfterCommitAt:'exec'});
+  await assert.rejects(execute(params(f)),/installer_tx_failed_and_rolled_back/);
+  assert.equal(f.journals.get(id).state,'ROLLED_BACK');
+  assertRestored(f);
 });
