@@ -101,8 +101,8 @@ function verifyFreeze(f) {
 function verifyBackup(b) {
   if(!b || b.complete!==true || b.manifestVerified!==true ||
     b.gzipVerified!==true || b.actualRestorePassed!==true ||
-    b.restoreIsolated===false || b.database!==PINS.database ||
-    b.migrationClassesExecutedExactly===false ||
+    b.restoreIsolated!==true || b.database!==PINS.database ||
+    b.migrationClassesExecutedExactly!==true ||
     b.beforeAfterFinanceIdentical!==true ||
     b.sameWindowLiveFinanceComparable!==true ||
     typeof b.ageSeconds!=='number' || !Number.isSafeInteger(b.ageSeconds) ||
