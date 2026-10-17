@@ -262,3 +262,22 @@ test('stale rollback receipt must not pass with failed runtime health',async()=>
   await assert.rejects(recover({mode:'isolated-fixture',id,adapter:f.adapter,
     expected:f.expected}),/rolled_back_receipt_runtime_unhealthy/);
 });
+
+test('rollback cannot certify untouched owner with concurrent chmod',async()=>{
+  const f=fixture({failAfterCommitAt:'base'});
+  const originalCommit=f.adapter.commitCandidate;
+  f.adapter.commitCandidate=async(...args)=>{
+    try{return await originalCommit(...args);}
+    catch(e){
+      if(args[1]==='base')f.owners.policy.mode=0o777;
+      throw e;
+    }
+  };
+  await assert.rejects(execute(params(f)),/installer_tx_recovery_required:.*rollback_final_metadata_mismatch_policy/);
+  assert.equal(f.journals.get(id).state,'APPLYING');
+  assert.equal(f.owners.policy.mode,0o777);
+  f.owners.policy.mode=f.original.policy.mode;
+  const result=await recover({mode:'isolated-fixture',id,adapter:f.adapter,expected:f.expected});
+  assert.equal(result.ok,true);
+  assertRestored(f);
+});
