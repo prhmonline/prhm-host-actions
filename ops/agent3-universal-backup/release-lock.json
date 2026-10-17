@@ -2,7 +2,7 @@
   "schema": "prhm.agent3.universal-backup.release-lock.v1",
   "status": "candidate_not_installed",
   "source_commit_sha": "063b029e8e77ee25c9b0933fddf3478431c09ee2",
-  "verified_ci_run": "PENDING_MULTIDIRECTORY_CI",
+  "verified_ci_run": "https://github.com/prhmonline/prhm-host-actions/actions/runs/39029248471",
   "fixed_action": "agent3_universal_backup_engine_install_v1",
   "approval_level": 4,
   "target_host": "prhm-production",
