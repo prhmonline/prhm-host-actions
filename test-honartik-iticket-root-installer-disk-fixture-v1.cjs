@@ -130,3 +130,52 @@ test('scratch disk adapter NEVER exposes a production install command',()=>{
       "require('node:child_process')",'CONFIRM_LEVEL_4_CRITICAL','approval_token'])
     assert.equal(src.includes(term),false,'unexpected production capability: '+term);
 });
+
+test('disk CAS refuses unexpected owner SHA injected between stage and rename',async t=>{
+  const f=setup(t);
+  const original=f.adapter.stageCandidate;
+  f.adapter.stageCandidate=async(id,key,bytes,metadata)=>{
+    const staged=await original(id,key,bytes,metadata);
+    if(key==='base')fs.writeFileSync(path.join(f.root,'owners','base.owner'),Buffer.from('UNEXPECTED_CONCURRENT_CHANGE'));
+    return staged;
+  };
+  await assert.rejects(execute(params(f)),/owner_cas_drift_base/);
+  assert.equal(journal(f).state,'RECOVERY_BLOCKED');
+  assert.equal(readState(f,'base').sha256,sha256(Buffer.from('UNEXPECTED_CONCURRENT_CHANGE')));
+});
+test('disk CAS rejects tampered stage postimage and restores all untouched owners',async t=>{
+  const f=setup(t);
+  const original=f.adapter.stageCandidate;
+  f.adapter.stageCandidate=async(id,key,bytes,meta)=>{
+    const staged=await original(id,key,bytes,meta);
+    if(key==='base')fs.writeFileSync(staged,Buffer.from('TAMPERED_STAGE'));
+    return staged;
+  };
+  await assert.rejects(execute(params(f)),/installer_tx_failed_and_rolled_back/);
+  assert.equal(journal(f).state,'ROLLED_BACK');
+  assertRestored(f);
+});
+test('disk CAS detects stage permission changed after staging',async t=>{
+  const f=setup(t);
+  const original=f.adapter.stageCandidate;
+  f.adapter.stageCandidate=async(id,key,bytes,meta)=>{
+    const staged=await original(id,key,bytes,meta);
+    if(key==='exec')fs.chmodSync(staged,0o777);
+    return staged;
+  };
+  await assert.rejects(execute(params(f)),/installer_tx_failed_and_rolled_back/);
+  assertRestored(f);
+});
+test('rollback CAS refuses concurrent third-party change after journal scan',async t=>{
+  const f=setup(t,{failAfter:'exec',failRollback:'exec'});
+  await assert.rejects(execute(params(f)),/installer_tx_recovery_required/);
+  const retry=openFixture(f.root);
+  const original=retry.restoreBackup;
+  retry.restoreBackup=async(id,key,snap)=>{
+    if(key==='exec')fs.writeFileSync(path.join(f.root,'owners','exec.owner'),Buffer.from('CONCURRENT_RESTORE_DRIFT'));
+    return original(id,key,snap);
+  };
+  await assert.rejects(recover({mode:'isolated-fixture',id:TX,adapter:retry,expected:f.expected}),/restore_cas_drift_exec/);
+  assert.equal(readState(f,'exec').sha256,sha256(Buffer.from('CONCURRENT_RESTORE_DRIFT')));
+  assert.equal(journal(f).state,'APPLYING');
+});
