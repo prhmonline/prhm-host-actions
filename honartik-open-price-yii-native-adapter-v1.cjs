@@ -15,7 +15,7 @@ const {PINS, GateError, makeCoordinator} = require('./honartik-open-price-yii-sc
 
 const execFile = promisify(cp.execFile);
 const LIVE = '/home/honartik/domains/dashboard.honartik.ir/public_html';
-const SNAP = path.dirname(path.dirname(PINS.snapshot));
+const SNAP = path.dirname(path.dirname(path.dirname(PINS.snapshot)));
 const TMP_PARENT = '/var/tmp';
 const MARKERS = Object.freeze([
   'RESOURCE_PREFLIGHT=PASS',
@@ -105,8 +105,8 @@ function createNativeAdapter(trusted) {
 
   async function captureGitState(){
     const [head,status]=await Promise.all([
-      runRead('git',['-C',LIVE,'rev-parse','HEAD']),
-      runRead('git',['-C',LIVE,'status','--porcelain=v1','-z'])
+      runRead('git',['-c','safe.directory='+LIVE,'-C',LIVE,'rev-parse','HEAD']),
+      runRead('git',['-c','safe.directory='+LIVE,'-C',LIVE,'status','--porcelain=v1','-z'])
     ]);
     return {head:head.trim(),status};
   }
@@ -117,7 +117,7 @@ function createNativeAdapter(trusted) {
       const before=await captureGitState();
       requireGate(before.head===PINS.prodBackendHead,'production_backend_sha_drift');
       baselineStatus=before.status;
-      const buf=await runRead('git',['-C',LIVE,'show',PINS.sourceSha+':'+PINS.sourcePath],
+      const buf=await runRead('git',['-c','safe.directory='+LIVE,'-C',LIVE,'show',PINS.sourceSha+':'+PINS.sourcePath],
         {encoding:'buffer'});
       scriptBuffer=Buffer.from(buf);
       const blob=crypto.createHash('sha1').update('blob '+scriptBuffer.length+'\0')
@@ -230,11 +230,15 @@ function createNativeAdapter(trusted) {
       };
     },
     async audit(record){
-      return trusted.appendDurableAudit(Object.freeze({...record,
+      const receipt=await trusted.appendDurableAudit(Object.freeze({...record,
         sourceBlobSha:PINS.sourceBlobSha,
         runCompleted,operator:'honartik_open_price_yii_scratch_v1',
         noProductionDeployment:true
       }));
+      requireGate(receipt && receipt.persisted===true &&
+        typeof receipt.receiptId==='string' && receipt.receiptId.length>=8,
+        'durable_audit_receipt_missing');
+      return receipt;
     }
   };
   return Object.freeze({run:()=>makeCoordinator(operations).execute()});
