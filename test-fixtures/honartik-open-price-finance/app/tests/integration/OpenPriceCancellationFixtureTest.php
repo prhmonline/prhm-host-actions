@@ -179,4 +179,27 @@ $before=$totals();
 if ($service->cancelPublished((int)$reserve3->id,42)['success']!==false ||
     $totals()!==$before)throw new RuntimeException('Tampered refund changed money rows');
 echo "TAMPERED_EXTRA_REFUND_HELD=PASS\n";
+[$bank4,$reserve4]=$create(600000);
+$before=$totals();
+// Fail the second refund posting (system reversal) after the buyer credit
+// would already have been written; the SQL transaction must undo the first.
+$db->createCommand(<<<'SQL'
+CREATE TRIGGER synthetic_refund_failure BEFORE INSERT ON finance_wallet
+FOR EACH ROW BEGIN
+  IF NEW.amount < 0 AND NEW.description LIKE 'اصلاح حساب%' THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='synthetic refund write failure';
+  END IF;
+END
+SQL)->execute();
+try {
+    $failure = $service->cancelPublished((int)$reserve4->id,42);
+} finally {
+    $db->createCommand('DROP TRIGGER synthetic_refund_failure')->execute();
+}
+$reserve4->refresh();
+if ($failure['success']!==false || $totals()!==$before ||
+    (int)$reserve4->status!==Reserve::STATUS_PUBLISH) {
+    throw new RuntimeException('Partial refund survived an injected DB write failure');
+}
+echo "INJECTED_WALLET_FAILURE_ATOMIC_ROLLBACK=PASS\\n";
 echo "ISOLATED_OPEN_PRICE_CANCELLATION_DB_CONTRACT=PASS\n";
