@@ -37,7 +37,8 @@ function eligibleNativeLocalSocket(socket){
 // abstract socket, or a caller-supplied path/UID from HTTP.
 function rootUnixListener(server){
  const addr=server?.address?.();
- return server instanceof Server && typeof addr==='string' &&
+ return server instanceof Server && server.listening===true &&
+   typeof addr==='string' &&
    addr.startsWith('/') && addr.length>1 && !addr.includes('\\0');
 }
 function nativeServerSocket(server,socket){
