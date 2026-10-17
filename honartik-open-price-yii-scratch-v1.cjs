@@ -43,7 +43,7 @@ function verifyPreflight(e) {
     e.networkMode!=='none' || e.image!=='mariadb:10.6' ||
     e.productionDbSocketMounted!==false || e.productionDbCredentialsMounted!==false ||
     e.separateScratchDatadir!==true ||
-    e.scrubbedScratchCredentials!==true || e.liveDatabaseWritePermission===true ||
+    e.scrubbedScratchCredentials!==true || e.liveDatabaseWritePermission!==false ||
     e.scratchSourceOnly!==true ||
     e.resourcePreflightPassed!==true)
      deny('isolated_preflight_not_proven');
@@ -58,7 +58,7 @@ function verifyApproval(a){
   return true;
 }
 function verifyResult(r){
-  if(!r || r.ok!==true || r.readOnlyProduction===false ||
+  if(!r || r.ok!==true || r.readOnlyProduction!==true ||
       r.executionSourceCommit!==PINS.sourceSha ||
       r.executionSourceBlobSha!==PINS.sourceBlobSha ||
       r.testedDatabase!==PINS.expectedDatabase ||
