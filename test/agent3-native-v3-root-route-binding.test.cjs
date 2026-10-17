@@ -46,17 +46,17 @@ test('root-only source binding rejects non-root bootstrap and absent trusted dep
  assert.equal(f.calls.length,0);
 });
 test('exact POST v3 routes call only the bound native executor after transport authentication',async()=>{
- const f=fixture(); const contexts=[];
- const router=bind(f,c=>{contexts.push(c);return c===Object(c)&&c.serverAuthenticated===true;});
+ const f=fixture(); const authArgs=[];
+ const router=bind(f,(...args)=>{authArgs.push(args);return args.length===0;});
  const body={action:'immutable-fixed-five-fields'};
- const peer=Object.freeze({serverAuthenticated:true});
- const request=await router.handle({method:'POST',url:f.adapter.REQUEST,body,transportContext:peer});
- const execute=await router.handle({method:'POST',url:f.adapter.EXECUTE,body,transportContext:peer});
+ const request=await router.handle({method:'POST',url:f.adapter.REQUEST,body});
+ const execute=await router.handle({method:'POST',url:f.adapter.EXECUTE,body});
  assert.equal(request.handled,true);
  assert.equal(request.response.request_id,'root-issued');
  assert.equal(request.response.installed,false);
  assert.equal(execute.response.signed_root_verified,true);
- assert.equal(contexts.length,2);
+ assert.equal(authArgs.length,2);
+ assert.equal(authArgs.every(args=>args.length===0),true);
  assert.deepEqual(f.calls.map(x=>x[0]),['root_bind','request','execute']);
  assert.equal(f.calls[1][1],body);
  assert.equal(f.calls[2][1],body);
@@ -77,6 +77,28 @@ test('non-POST and unauthenticated v3 routes fail closed before body reaches nat
  await assert.rejects(r.handle({method:'POST',url:f.adapter.EXECUTE,body:{uid:0,approved:true}}),/unauthenticated_native_transport/);
  const rejective=bind(f,()=>{throw Error('peercred_missing')});
  await assert.rejects(rejective.handle({method:'POST',url:f.adapter.REQUEST}),/peercred_missing/);
+ assert.equal(f.calls.filter(x=>x[0]!=='root_bind').length,0);
+});
+test('caller forged peer identity cannot be passed into trusted authenticator',async()=>{
+ const f=fixture();
+ let authInvoked=0;
+ const router=bind(f,()=>{authInvoked++;return true});
+ await assert.rejects(router.handle({
+  method:'POST',url:f.adapter.REQUEST,body:{},
+  transportContext:{serverAuthenticated:true,uid:0}
+ }),/caller_supplied_transport_context/);
+ await assert.rejects(router.handle({
+  method:'POST',url:f.adapter.EXECUTE,body:{},authenticated:true
+ }),/caller_supplied_transport_context/);
+ assert.equal(authInvoked,0);
+ assert.equal(f.calls.filter(x=>x[0]!=='root_bind').length,0);
+});
+test('transport verifier must return literal true; caller body flags cannot replace it',async()=>{
+ const f=fixture();
+ const router=bind(f,()=> 'true');
+ await assert.rejects(router.handle({
+  method:'POST',url:f.adapter.REQUEST,body:{approved:true,uid:0}
+ }),/unauthenticated_native_transport/);
  assert.equal(f.calls.filter(x=>x[0]!=='root_bind').length,0);
 });
 test('no dynamic route, standalone executable installer, or false production status',()=>{
