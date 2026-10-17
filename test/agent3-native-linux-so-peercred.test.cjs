@@ -143,3 +143,88 @@ test('real kernel SO_PEERCRED gates AF_UNIX request regardless of forged HTTP id
   fs.rmSync(temp,{recursive:true,force:true});
  }
 });
+
+test('SO_PEERCRED distinguishes separate Linux client processes despite forged headers', {
+ skip:process.platform!=='linux'
+},async()=>{
+ const temp=fs.mkdtempSync(path.join(os.tmpdir(),'prhm-cross-pid-test-'));
+ let server;
+ try{
+  const addon=compileNativeFixture(temp);
+  const sock=path.join(temp,'child.sock');
+  let expectedPid=-1;
+  const observed=[];
+  let bridge;
+  server=http.createServer((req,res)=>{
+   bridge.handleRequest(req,{}).then(()=>{
+    res.writeHead(200);res.end('accepted');
+   }).catch(e=>{
+    res.writeHead(403);res.end(e.message);
+   });
+  });
+  await new Promise((resolve,reject)=>{
+   server.once('error',reject);
+   server.listen(sock,resolve);
+  });
+  bridge=simulatedUnprivilegedBridge().bindRootHttp({
+   rootServer:server,rootCapabilities:Object.freeze({ci_only:true}),
+   basePost:async()=>({}),
+   assertNativePeer(socket){
+    const c=addon.readPeerCredentials(socket?._handle?.fd);
+    observed.push(c);
+    return c.pid===expectedPid && c.uid===process.getuid() &&
+      c.gid===process.getgid();
+   }
+  });
+  // Each child submits forged root identifiers. Neither the HTTP request
+  // payload nor the request headers are consulted by SO_PEERCRED.
+  function childRequest(){
+   const client=[
+    "const http=require('node:http');",
+    "const p=process.argv[1];",
+    "const options={socketPath:p,path:'/v3/agent3-registry/request',",
+    " method:'POST',headers:{'x-peer-uid':'0','x-peer-gid':'0','x-peer-pid':'1'}};",
+    "const r=http.request(options,res=>{let out='';",
+    " res.setEncoding('utf8');res.on('data',x=>out+=x);",
+    " res.on('end',()=>process.stdout.write(JSON.stringify({status:res.statusCode,body:out})));});",
+    "r.on('error',e=>{console.error(e.message);process.exitCode=1;});",
+    "r.end(JSON.stringify({uid:0,gid:0,pid:1,approved:true}));"
+   ].join('\\n');
+   const child=cp.spawn(process.execPath,['-e',client,sock],
+    {stdio:['ignore','pipe','pipe']});
+   let out='',err='';
+   child.stdout.setEncoding('utf8');
+   child.stderr.setEncoding('utf8');
+   child.stdout.on('data',chunk=>{out+=chunk;});
+   child.stderr.on('data',chunk=>{err+=chunk;});
+   const result=new Promise((resolve,reject)=>{
+    child.on('error',reject);
+    child.on('close',code=>{
+     if(code!==0)return reject(Error('child_failed:'+code+':'+err));
+     try{resolve(JSON.parse(out));}catch(e){reject(e);}
+    });
+   });
+   return {pid:child.pid,result};
+  }
+  const first=childRequest();
+  assert.ok(first.pid>0);
+  expectedPid=first.pid;
+  const allowed=await first.result;
+  assert.deepEqual(allowed,{status:200,body:'accepted'});
+  assert.equal(observed[0].pid,first.pid);
+  assert.equal(observed[0].uid,process.getuid());
+  const second=childRequest();
+  assert.ok(second.pid>0 && second.pid!==first.pid);
+  const blocked=await second.result;
+  assert.equal(blocked.status,403);
+  assert.match(blocked.body,/kernel_peer_credentials_rejected/);
+  assert.equal(observed[1].pid,second.pid);
+  assert.notEqual(observed[1].pid,expectedPid);
+  assert.equal(observed[1].uid,process.getuid());
+  assert.equal(observed.length,2);
+ }finally{
+  if(server?.listening)
+   await new Promise(resolve=>server.close(resolve));
+  fs.rmSync(temp,{recursive:true,force:true});
+ }
+});
