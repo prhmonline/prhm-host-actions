@@ -28,22 +28,29 @@ const MAX_COMPRESSED=1024*1024;
 const MAX_UNCOMPRESSED=20*1024*1024;
 const sum=b=>crypto.createHash('sha256').update(b).digest('hex');
 function deny(code){throw Error('agent3_private_archive_audit_denied:'+code);}
-function checkOwnerBlobs(names,blobs){
- if(!Array.isArray(names)||names.length!==4||
+// Pure testable parser: returned boolean has NO authorization semantics.
+// The root-only audit ALWAYS supplies hardcoded MEMBERS, never caller specs.
+function verifyMemberSet(names,blobs,spec){
+ if(!Array.isArray(spec)||spec.length!==4||
+    !Array.isArray(names)||names.length!==4||
     !blobs||typeof blobs!=='object'||Array.isArray(blobs)||
-    Object.keys(blobs).sort().join('|')!==MEMBERS.map(x=>x.key).sort().join('|'))
+    Object.keys(blobs).sort().join('|')!==spec.map(x=>x.key).sort().join('|'))
   deny('exact_four_members_required');
  // Fail closed on archive links, unexpected entries and duplicates. No tar
  // extraction to the filesystem is permitted, even in a temporary folder.
- const expected=MEMBERS.map(x=>x.name).sort();
+ const expected=spec.map(x=>x.name).sort();
  if(names.slice().sort().some((name,i)=>name!==expected[i]))
   deny('archive_member_set_drift');
- for(const item of MEMBERS){
+ for(const item of spec){
   const bytes=blobs[item.key];
   if(!Buffer.isBuffer(bytes)||bytes.length<1||bytes.length>MAX_UNCOMPRESSED)
    deny('invalid_member_bytes:'+item.key);
   if(sum(bytes)!==item.sha)deny('member_hash_mismatch:'+item.key);
  }
+ return true;
+}
+function checkOwnerBlobs(names,blobs){
+ verifyMemberSet(names,blobs,MEMBERS);
  return Object.freeze({
   ok:true,schema:'prhm.agent3.private-owner-archive-audit.v1',
   mode:'READ_ONLY_ROOT_PRIVATE_ARCHIVE',
@@ -126,4 +133,4 @@ if(require.main===module){
  }
 }
 module.exports=Object.freeze({ARCHIVE,ARCHIVE_SHA,MEMBERS,MAX_COMPRESSED,
- checkOwnerBlobs,auditPrivateArchive});
+ verifyMemberSet,checkOwnerBlobs,auditPrivateArchive});
