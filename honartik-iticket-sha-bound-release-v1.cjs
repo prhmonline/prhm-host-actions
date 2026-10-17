@@ -73,8 +73,15 @@ function verifyState(s) {
   }
   if (s.currentFinancialReleaseFlagsOff!==true)
     deny('financial_switches_not_closed');
-  if (s.mysql8ConnectionVerified!==true)
-    deny('mysql8_readiness_unproven');
+  // Production Honartik runs MariaDB 10.6, not MySQL 8. Require
+  // independently read live engine/version/schema evidence from trusted ops.
+  // Do not accept a simulated MySQL8 check as live DB readiness.
+  if (s.databaseEngine!=='MariaDB' ||
+      typeof s.databaseVersion!=='string' ||
+      !/^10\.6\.[0-9]+(?:[-+.][A-Za-z0-9_.-]+)?$/.test(s.databaseVersion) ||
+      s.databaseSchemaName!=='honartik_db' ||
+      s.mariadb106ConnectionVerified!==true)
+    deny('mariadb_106_live_schema_preflight_unproven');
   if (s.releaseOperatorRegistered!==true)
     deny('signed_host_action_not_registered');
   return true;
@@ -84,7 +91,8 @@ function verifyTests(result) {
       result.frontendTarget!==PINS.frontend.target ||
       result.backendContractExit!==0 || result.backendPassMarkers<83 ||
       result.frontendContractPassed!==true ||
-      result.mysql8Yii2IntegrationPassed!==true ||
+      result.mariadb106Yii2IntegrationPassed!==true ||
+      result.iticketMigrationOnRestoredMariaDb106Passed!==true ||
       result.concurrentCallbackIdempotencyPassed!==true ||
       result.seatPaymentReconciliationPassed!==true)
       deny('isolated_release_tests_incomplete');
