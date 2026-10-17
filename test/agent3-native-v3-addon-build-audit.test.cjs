@@ -29,3 +29,41 @@ test('audit hashes bytes and only exposes fixed C compiler hardening flags',()=>
  assert.match(source,/SO_ACCEPTCONN/);
  assert.match(source,/getpeername/);
 });
+
+test('CI-review binary pin refuses toolchain drift and forged production readiness',()=>{
+ const lock=require('../ops/agent3-universal-backup/native-v3-addon-ci-build-lock.json');
+ const head=require('node:child_process').execFileSync('git',
+  ['rev-parse','--verify','HEAD'],{
+   cwd:path.resolve(__dirname,'..'),encoding:'utf8'
+  }).trim();
+ const baseline={
+  git_head:head,
+  source_sha256:lock.source_sha256,
+  binary_sha256_in_this_toolchain:lock.binary_sha256_for_this_toolchain,
+  node_version:lock.node_version,
+  napi_version:lock.napi_version,
+  node_header_sha256:lock.node_header_sha256,
+  compiler_identification:lock.compiler_identification,
+  platform:lock.platform,
+  arch:lock.arch,
+  production_binary_attested:false,
+  production_node_fd_api_attested:false,
+  release_ready:false
+ };
+ assert.equal(audit.verifyCIReviewLock(baseline,lock),true);
+ assert.throws(()=>audit.verifyCIReviewLock({
+  ...baseline,binary_sha256_in_this_toolchain:'a'.repeat(64)
+ },lock),/ci_review_lock_drift:binary_sha256_in_this_toolchain/);
+ assert.throws(()=>audit.verifyCIReviewLock({
+  ...baseline,node_version:'20.0.0'
+ },lock),/ci_review_lock_drift:node_version/);
+ assert.throws(()=>audit.verifyCIReviewLock({
+  ...baseline,production_binary_attested:true
+ },lock),/ci_result_forged_production_ready/);
+ assert.throws(()=>audit.verifyCIReviewLock(baseline,{
+  ...lock,production_binary_attested:true
+ }),/ci_lock_forged_production_ready/);
+ assert.throws(()=>audit.verifyCIReviewLock(baseline,{
+  ...lock,compiler_flags:['-O0']
+ }),/ci_hardening_flags_drift/);
+});
