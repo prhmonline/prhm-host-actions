@@ -44,6 +44,24 @@ function rootDir(dir){
     (st.mode&0o077)!==0)deny('private_fixture_directory_required');
  return st;
 }
+
+/**
+ * Map each owner to its own private sandbox parent. Mirrors the four separate
+ * owner directories of Production but can never resolve outside /tmp.
+ * Exact live Production filenames are refused BEFORE any stat or realpath.
+ */
+function verifiedFixtureParents(ownerPaths){
+ if(!exact(ownerPaths,KEYS))deny('exact_owner_set_required');
+ const paths=KEYS.map(k=>ownerPaths[k]);
+ if(paths.some(p=>typeof p!=='string'||!path.isAbsolute(p)||
+      path.resolve(p)!==p||Object.values(gateway.OWNER_PATHS).includes(p)))
+  deny('production_or_noncanonical_owner_disallowed');
+ if(new Set(paths).size!==KEYS.length)deny('duplicate_owner_target');
+ const parents=Object.fromEntries(KEYS.map(k=>[k,path.dirname(ownerPaths[k])]));
+ for(const parent of new Set(Object.values(parents)))rootDir(parent);
+ return Object.freeze(parents);
+}
+
 function ownerRead(file,parent){
  if(!path.isAbsolute(file)||path.dirname(file)!==parent||
     fs.realpathSync(parent)!==parent)deny('owner_outside_fixture');
@@ -105,23 +123,15 @@ async function runIsolatedFourOwnerTransaction({
   deny('exact_four_owner_contract_required');
  if(typeof journalRoot!=='string')deny('journal_root_required');
  rootDir(journalRoot);
- // Reject known Production paths BEFORE *any* stat, realpath or file access.
- // This guard deliberately fails even on CI hosts without those paths.
- const base=typeof ownerPaths.base==='string'?path.dirname(ownerPaths.base):'';
- if(!base||Object.values(ownerPaths).some(f=>typeof f!=='string'||
-    Object.values(gateway.OWNER_PATHS).includes(f)||path.dirname(f)!==base))
-  deny('production_or_cross_directory_owner_disallowed');
- rootDir(base);
- // Disallow even a privately mounted alias of the production owner files.
- const unique=new Set(Object.values(ownerPaths));
- if(unique.size!==4)deny('duplicate_owner_target');
+ // Validate all four independent private fixture parents before any write.
+ const parents=verifiedFixtureParents(ownerPaths);
  const snapshot={};
  for(const k of KEYS){
   if(!SHA.test(beforeSha[k])||!SHA.test(afterSha[k])||
      !Buffer.isBuffer(afterBuffers[k])||afterBuffers[k].length<1||
      afterBuffers[k].length>MAX_BYTES||sha(afterBuffers[k])!==afterSha[k]||
      beforeSha[k]===afterSha[k])deny('unverified_candidate:'+k);
-  const current=ownerRead(ownerPaths[k],base);
+  const current=ownerRead(ownerPaths[k],parents[k]);
   if(current.sha!==beforeSha[k])deny('preimage_drift:'+k);
   snapshot[k]=current;
  }
@@ -157,7 +167,7 @@ async function runIsolatedFourOwnerTransaction({
   observer({phase:'durable_preimages',completed:0});
   for(const k of KEYS){
    updated.push(k); // Track even a failure AFTER rename but BEFORE verification.
-   replaceChecked(ownerPaths[k],base,afterBuffers[k],beforeSha[k],snapshot[k].mode,tx);
+   replaceChecked(ownerPaths[k],parents[k],afterBuffers[k],beforeSha[k],snapshot[k].mode,tx);
    observer({phase:'owner_replaced',key:k,completed:updated.length});
   }
   const health=await healthProbe({phase:'postinstall',ownerCount:4});
@@ -176,14 +186,14 @@ async function runIsolatedFourOwnerTransaction({
    try{
     const backup=ownerRead(path.join(backupDir,k+'.preimage'),backupDir);
     if(backup.sha!==beforeSha[k])deny('escrow_drift:'+k);
-    const live=ownerRead(ownerPaths[k],base);
+    const live=ownerRead(ownerPaths[k],parents[k]);
     if(live.sha===beforeSha[k])continue; // No rename occurred.
     if(live.sha!==afterSha[k])deny('concurrent_owner_drift_during_rollback:'+k);
-    replaceChecked(ownerPaths[k],base,backup.bytes,afterSha[k],snapshot[k].mode,tx+'-rb');
+    replaceChecked(ownerPaths[k],parents[k],backup.bytes,afterSha[k],snapshot[k].mode,tx+'-rb');
    }catch(err){errors.push(k+':'+String(err.message||err).slice(0,95));}
   }
   for(const k of KEYS){
-   try{if(ownerRead(ownerPaths[k],base).sha!==beforeSha[k])errors.push('not_restored:'+k);}
+   try{if(ownerRead(ownerPaths[k],parents[k]).sha!==beforeSha[k])errors.push('not_restored:'+k);}
    catch(err){errors.push('unreadable:'+k);}
   }
   if(!errors.length){
@@ -236,11 +246,7 @@ async function recoverIsolatedFourOwnerTransaction({ownerPaths,journalRoot,healt
     Object.values(gateway.OWNER_PATHS).includes(p)))
   deny('recovery_production_owner_disallowed');
  rootDir(journalRoot);
- const parent=path.dirname(ownerPaths.base);
- if(Object.values(ownerPaths).some(p=>path.dirname(p)!==parent)||
-    new Set(Object.values(ownerPaths)).size!==4)
-  deny('recovery_cross_directory_or_duplicate_owner');
- rootDir(parent);
+ const parents=verifiedFixtureParents(ownerPaths);
  const lockPath=path.join(journalRoot,'.four-owner-install.lock');
  const st=fs.lstatSync(lockPath);
  if(!st.isFile()||st.isSymbolicLink()||st.uid!==process.getuid?.()||
@@ -288,7 +294,7 @@ async function recoverIsolatedFourOwnerTransaction({ownerPaths,journalRoot,healt
     deny('recovery_manifest_owner_drift:'+k);
   const escrowFile=ownerRead(path.join(escrow,k+'.preimage'),escrow);
   if(escrowFile.sha!==claim.before_sha256)deny('recovery_escrow_tampered:'+k);
-  const live=ownerRead(ownerPaths[k],parent);
+  const live=ownerRead(ownerPaths[k],parents[k]);
   if(![claim.before_sha256,claim.after_sha256].includes(live.sha))
    deny('recovery_foreign_owner_change:'+k);
   if(live.sha===claim.before_sha256&&live.mode!==claim.mode)
@@ -307,11 +313,11 @@ async function recoverIsolatedFourOwnerTransaction({ownerPaths,journalRoot,healt
   for(const k of KEYS.slice().reverse()){
    if(!restorable[k])continue;
    const spec=manifest.owners[k];
-   replaceChecked(ownerPaths[k],parent,originals[k].bytes,
+   replaceChecked(ownerPaths[k],parents[k],originals[k].bytes,
     spec.after_sha256,spec.mode,lockRecord.txn+'-recover');
   }
   for(const k of KEYS){
-   const live=ownerRead(ownerPaths[k],parent);
+   const live=ownerRead(ownerPaths[k],parents[k]);
    if(live.sha!==manifest.owners[k].before_sha256||
       live.mode!==manifest.owners[k].mode)
     deny('recovery_postimage_invalid:'+k);
@@ -345,5 +351,5 @@ if(require.main===module){
  process.exitCode=78;
 }
 module.exports=Object.freeze({
- KEYS,MAX_BYTES,runIsolatedFourOwnerTransaction,recoverIsolatedFourOwnerTransaction
+ KEYS,MAX_BYTES,verifiedFixtureParents,runIsolatedFourOwnerTransaction,recoverIsolatedFourOwnerTransaction
 });
