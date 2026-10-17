@@ -16,8 +16,8 @@ const bridge=require('../../prhm-action-registry-host-actions-v2-bridge-v1.cjs')
 const INSTALL_ACTION='agent3_universal_backup_engine_install_v1';
 const REGISTRY_ACTION=gateway.ACTION;
 const PROJECT='agent3';
-const SOURCE_COMMIT='7b70b31878e83ae693c02c82977e6da7987c87e4';
-const SOURCE_CI_RUN='https://github.com/prhmonline/prhm-host-actions/actions/runs/39068823857';
+const SOURCE_COMMIT='e331c62c03e36bc4457e9b47f3c0786e5d0ad96c';
+const SOURCE_CI_RUN='https://github.com/prhmonline/prhm-host-actions/actions/runs/39069289534';
 const EXPECTED_MANIFEST_PATH='ops/agent3-universal-backup/registry-release-manifest.json';
 const EXPECTED_GIT_REPO='prhmonline/prhm-host-actions';
 function deny(reason){throw Error('agent3_registration_denied:'+reason);}
