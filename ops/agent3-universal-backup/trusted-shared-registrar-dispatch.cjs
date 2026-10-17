@@ -103,6 +103,12 @@ function boundRootCapabilities(input,rootCapabilities) {
   },
   getInstaller(a) {
    if(a!==registration.INSTALL_ACTION)stop('untrusted_installer_dispatch');
+   // Eagerly resolve and type-check the reviewed root installer *before*
+   // the bridge enters signed approval verification and the durable
+   // execution claim. A missing installer must NOT consume a one-time
+   // signed Level-4 request merely because we returned a wrapper.
+   const installer=root.getInstaller(a);
+   if(typeof installer!=='function')stop('root_installer_not_callable');
    // The shared bridge calls this callback only AFTER authenticating the
    // Ed25519 JWS and the Approval Center consumed ledger in the trusted root
    // executor. An exclusive durable claim prevents replay or concurrent runs
@@ -140,8 +146,6 @@ function boundRootCapabilities(input,rootCapabilities) {
        claim.request_id!==approval.request_id||
        claim.arguments_sha256!==digest)
       stop('durable_exclusive_execution_claim_denied');
-    const installer=root.getInstaller(a);
-    if(typeof installer!=='function')stop('root_installer_not_callable');
     // Never retry the claim or installer after an exception. The root journal
     // remains consumed even when rollback restores original owner bytes.
     return installer(ctx);
