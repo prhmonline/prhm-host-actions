@@ -46,6 +46,27 @@ foreach ($cases as [$name, $payload, $saman, $expect]) {
     $passed++;
 }
 
+// A confirmed bank reversal can be recorded even after the deadline for
+// STARTING a new reversal. Unconfirmed requests still obey the 50-minute limit.
+$window = new ReflectionMethod(ReservePaymentFinalizer::class, 'automaticReverseWindowExpired');
+$now = 2000000000;
+$timeCases = [
+    ['new_reverse_expired', $now - 3001, false, true],
+    ['new_reverse_boundary', $now - 3000, false, false],
+    ['new_reverse_in_window', $now - 2999, false, false],
+    ['new_reverse_without_date', 0, false, false],
+    ['bank_already_reversed_expired', $now - 100000, true, false],
+    ['bank_already_reversed_in_window', $now - 10, true, false],
+];
+foreach ($timeCases as [$name, $createdAt, $preconfirmed, $expected]) {
+    $actual = $window->invoke(null, $createdAt, $now, $preconfirmed);
+    if ($actual !== $expected) {
+        fwrite(STDERR, 'FAIL reverse time window: ' . $name . "\n");
+        exit(1);
+    }
+    $passed++;
+}
+
 // Source-level fail-closed regression: the only bank call in this method
 // must be in the explicit non-preconfirmed branch. The full DB behavior
 // is deliberately NOT claimed by this static structural assertion.
