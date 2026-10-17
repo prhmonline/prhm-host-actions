@@ -78,6 +78,33 @@ jobs:
         run: |
           set -euo pipefail
           php test-fixtures/honartik-open-price-finance/app/tests/integration/OpenPriceWalletAccountingTest.php
+      - name: Validate exact cancellation sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=test-fixtures/honartik-open-price-finance
+          test "$(jq -r .synthetic_data_only "$root/refund-source-manifest.json")" = true
+          test "$(jq -r .production_access "$root/refund-source-manifest.json")" = false
+          while IFS=        if: always()
+        shell: bash
+        run: |
+          docker rm -f honartik-price-ledger-fixture >/dev/null 2>&1 || true
+          sudo rm -f -- /tmp/honartik-ledger.sock /tmp/honartik-ledger.pid
+          test ! -e /tmp/honartik-ledger.sock
+          test ! -e /tmp/honartik-ledger.pid
+          echo 'PRIVATE_WALLET_FIXTURE_CLEANUP=PASS'
+\t' read -r rel expected; do
+            test "$(git hash-object "$root/$rel")" = "$expected"
+            php -l "$root/$rel"
+          done < <(jq -r '.files[] | [.path,.blob] | @tsv' "$root/refund-source-manifest.json")
+      - name: Execute actual atomic cancellation ledger on isolated MariaDB
+        shell: bash
+        env:
+          HONARTIK_OPEN_PRICE_FIXTURE: 'YES'
+          HONARTIK_OPEN_PRICE_FIXTURE_SOCKET: '/tmp/honartik-ledger.sock'
+        run: |
+          set -euo pipefail
+          php test-fixtures/honartik-open-price-finance/app/tests/integration/OpenPriceCancellationFixtureTest.php
       - name: Remove isolated database and validate cleanup
         if: always()
         shell: bash
