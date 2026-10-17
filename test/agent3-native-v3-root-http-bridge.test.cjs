@@ -5,7 +5,10 @@ const fs=require('node:fs');
 const path=require('node:path');
 const vm=require('node:vm');
 const child=require('node:child_process');
-const {IncomingMessage}=require('node:http');
+const {IncomingMessage,Server}=require('node:http');
+const rootServer=new Server();
+Object.defineProperty(rootServer,'listening',{value:true});
+Object.defineProperty(rootServer,'address',{value:()=>'/run/prhm-root-http-test.sock'});
 const {Socket}=require('node:net');
 const {AsyncLocalStorage}=require('node:async_hooks');
 const file=path.resolve(__dirname,'../ops/agent3-universal-backup/native-v3-root-http-bridge.cjs');
@@ -36,7 +39,7 @@ function fixture(uid=0){
   module:m,
   require:name=>{
    if(name==='node:async_hooks')return {AsyncLocalStorage};
-   if(name==='node:http')return {IncomingMessage};
+   if(name==='node:http')return {IncomingMessage,Server};
    if(name==='node:net')return {Socket};
    if(name==='./native-v3-root-route-binding.cjs')return mock;
    throw Error('unexpected_require:'+name);
@@ -48,13 +51,14 @@ function fixture(uid=0){
 }
 function request(url=REQUEST,method='POST'){
  const req=new IncomingMessage(new Socket());
+ req.socket.server=rootServer;
  req.method=method;
  req.url=url;
  return req;
 }
 test('one root-owned binding reused across multiple incoming HTTP requests',async()=>{
  const f=fixture();let calls=0;
- const bound=f.bridge.bindRootHttp({basePost:async()=>({}),
+ const bound=f.bridge.bindRootHttp({rootServer,basePost:async()=>({}),
   rootCapabilities:Object.freeze({readOnlyFixture:true}),
   assertNativePeer:socket=>{calls++;return socket instanceof Socket;}
  });
@@ -71,7 +75,7 @@ test('one root-owned binding reused across multiple incoming HTTP requests',asyn
 test('request peer identity is captured per async context, never from body or headers',async()=>{
  const f=fixture();const req1=request(),req2=request(EXECUTE);
  const seen=[];
- const bound=f.bridge.bindRootHttp({basePost:()=>({}),rootCapabilities:{},
+ const bound=f.bridge.bindRootHttp({rootServer,basePost:()=>({}),rootCapabilities:{},
   assertNativePeer:socket=>{seen.push(socket);return socket===req1.socket||socket===req2.socket;}
  });
  req1.headers={'x-peer-uid':'0'};
@@ -83,7 +87,7 @@ test('request peer identity is captured per async context, never from body or he
 });
 test('caller-constructed plain objects and unrelated routes cannot impersonate a root HTTP request',async()=>{
  const f=fixture();let peerCalls=0;
- const bound=f.bridge.bindRootHttp({basePost:()=>({}),rootCapabilities:{},
+ const bound=f.bridge.bindRootHttp({rootServer,basePost:()=>({}),rootCapabilities:{},
   assertNativePeer:()=>{peerCalls++;return true;}
  });
  await assert.rejects(bound.handleRequest({url:REQUEST,method:'POST',
@@ -94,9 +98,9 @@ test('caller-constructed plain objects and unrelated routes cannot impersonate a
 });
 test('denied or missing live peer verification fails closed with no false approval',async()=>{
  const f=fixture();
- assert.throws(()=>f.bridge.bindRootHttp({basePost:()=>({}),rootCapabilities:{}}),
+ assert.throws(()=>f.bridge.bindRootHttp({rootServer,basePost:()=>({}),rootCapabilities:{}}),
   /fixed_root_dependencies_required/);
- const bound=f.bridge.bindRootHttp({basePost:()=>({}),rootCapabilities:{},
+ const bound=f.bridge.bindRootHttp({rootServer,basePost:()=>({}),rootCapabilities:{},
   assertNativePeer:()=>false
  });
  await assert.rejects(bound.handleRequest(request(),{approved:true}),
@@ -104,7 +108,7 @@ test('denied or missing live peer verification fails closed with no false approv
 });
 test('TCP, forged socket and destroyed native socket fail before calling peer verifier',async()=>{
  const f=fixture();let peerCalls=0;
- const bound=f.bridge.bindRootHttp({basePost:async()=>({}),
+ const bound=f.bridge.bindRootHttp({rootServer,basePost:async()=>({}),
   rootCapabilities:{},assertNativePeer:()=>{peerCalls++;return true;}
  });
  for(const [field,value] of [
@@ -125,7 +129,7 @@ test('TCP, forged socket and destroyed native socket fail before calling peer ve
 });
 test('local-looking socket is not trusted without independent OS peer verifier',async()=>{
  const f=fixture();let calls=0;
- const bound=f.bridge.bindRootHttp({basePost:()=>({}),rootCapabilities:{},
+ const bound=f.bridge.bindRootHttp({rootServer,basePost:()=>({}),rootCapabilities:{},
   assertNativePeer:()=>{calls++;return false;}
  });
  await assert.rejects(bound.handleRequest(request(),{}),/peer_auth_not_confirmed/);
@@ -136,7 +140,7 @@ test('async peer verification rejects replacement socket and rewritten request r
  const req=request();
  const original=req.socket;
  let calls=0;
- const bound=f.bridge.bindRootHttp({basePost:()=>({}),rootCapabilities:{},
+ const bound=f.bridge.bindRootHttp({rootServer,basePost:()=>({}),rootCapabilities:{},
   assertNativePeer:async socket=>{
    calls++;
    assert.equal(socket,original);
@@ -151,7 +155,7 @@ test('async peer verification rejects replacement socket and rewritten request r
 
  const f2=fixture();
  const req2=request();
- const bound2=f2.bridge.bindRootHttp({basePost:()=>({}),rootCapabilities:{},
+ const bound2=f2.bridge.bindRootHttp({rootServer,basePost:()=>({}),rootCapabilities:{},
   assertNativePeer:async()=>{
    await Promise.resolve();
    req2.url=EXECUTE;
@@ -163,20 +167,50 @@ test('async peer verification rejects replacement socket and rewritten request r
 });
 test('closed peer and nonliteral asynchronous verifier response fail closed',async()=>{
  const f=fixture();const req=request();
- const bound=f.bridge.bindRootHttp({basePost:()=>({}),rootCapabilities:{},
+ const bound=f.bridge.bindRootHttp({rootServer,basePost:()=>({}),rootCapabilities:{},
   assertNativePeer:async socket=>{socket.destroy();return true;}
  });
  await assert.rejects(bound.handleRequest(req,{}),/peer_auth_not_confirmed/);
  const other=fixture();
- const bound2=other.bridge.bindRootHttp({basePost:()=>({}),rootCapabilities:{},
+ const bound2=other.bridge.bindRootHttp({rootServer,basePost:()=>({}),rootCapabilities:{},
   assertNativePeer:async()=>({verified:true})
  });
  await assert.rejects(bound2.handleRequest(request(),{}),/peer_auth_not_confirmed/);
  assert.equal(other.events.filter(x=>x[0]==='finish').length,0);
 });
+test('binding rejects missing, inactive or TCP HTTP listeners before native routing',()=>{
+ const f=fixture();
+ const args={basePost:()=>({}),rootCapabilities:{},assertNativePeer:()=>true};
+ const inactive=new Server();
+ const tcp=new Server();
+ Object.defineProperty(tcp,'listening',{value:true});
+ Object.defineProperty(tcp,'address',{value:()=>({address:'127.0.0.1',port:8123,family:'IPv4'})});
+ for(const invalid of [undefined,inactive,tcp,{},{
+   address:()=>'/run/forged.sock',listening:true
+ }])
+  assert.throws(()=>f.bridge.bindRootHttp({...args,rootServer:invalid}),
+   /fixed_root_dependencies_required/);
+ assert.equal(f.events.length,0);
+});
+test('foreign accepted socket and listener switch fail before peer verifier',async()=>{
+ const f=fixture();let verifies=0;
+ const bound=f.bridge.bindRootHttp({rootServer,basePost:()=>({}),
+  rootCapabilities:{},assertNativePeer:()=>{verifies++;return true;}
+ });
+ const foreign=request();
+ foreign.socket.server=new Server();
+ await assert.rejects(bound.handleRequest(foreign,{}),/native_local_socket_required/);
+ assert.equal(verifies,0);
+ const serverAddress=rootServer.address;
+ try{
+  rootServer.address=()=>({address:'127.0.0.1',port:8100,family:'IPv4'});
+  await assert.rejects(bound.handleRequest(request(),{}),/native_local_socket_required/);
+  assert.equal(verifies,0);
+ }finally{rootServer.address=serverAddress;}
+});
 test('root-only source has no listener, installer or independent approval function',()=>{
  const f=fixture(1001);
- assert.throws(()=>f.bridge.bindRootHttp({basePost:()=>({}),rootCapabilities:{},
+ assert.throws(()=>f.bridge.bindRootHttp({rootServer,basePost:()=>({}),rootCapabilities:{},
   assertNativePeer:()=>true}),/root_executor_only/);
  const trusted=fixture();
  assert.equal(typeof trusted.bridge.install,'undefined');
