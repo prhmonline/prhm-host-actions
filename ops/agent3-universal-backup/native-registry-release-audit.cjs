@@ -20,6 +20,7 @@ const FILES=Object.freeze([
  'ops/agent3-universal-backup/native-five-field-executor-v3-handlers.cjs',
  'ops/agent3-universal-backup/native-v3-root-route-binding.cjs',
  'ops/agent3-universal-backup/native-v3-root-http-bridge.cjs',
+ 'ops/agent3-universal-backup/native-v3-dedicated-unix-boundary.cjs',
  'ops/agent3-universal-backup/native-root-request-entrypoints.cjs',
  'ops/agent3-universal-backup/native-five-field-mcp-policy-patch.cjs',
  'ops/agent3-universal-backup/native-v3-signed-approval-protocol.cjs'
