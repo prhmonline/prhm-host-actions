@@ -116,6 +116,34 @@ foreach ([
       created_by BIGINT NULL, updated_by BIGINT NULL
     ) ENGINE=InnoDB',
 ] as $sql) $db->createCommand($sql)->execute();
+// The preceding synthetic wallet regression runs in the same temporary DB
+// and may have created the smaller schedule/reserve/seat fixture first.
+// Widen fixture-only tables, never a production table.
+$fixtureColumns = [
+  'schedule' => [
+    'venue_id' => 'BIGINT NOT NULL DEFAULT 1',
+    'sales_start_at' => 'BIGINT NULL',
+    'sales_end_at' => 'BIGINT NULL',
+  ],
+  'schedule_seat' => ['updated_at' => 'BIGINT NULL'],
+  'reserve' => [
+    'created_at'=>'BIGINT NULL', 'updated_at'=>'BIGINT NULL',
+    'created_by'=>'BIGINT NULL', 'updated_by'=>'BIGINT NULL',
+  ],
+];
+foreach ($fixtureColumns as $table => $columns) {
+    foreach ($columns as $col => $type) {
+        $count = (int)$db->createCommand(
+          'SELECT COUNT(*) FROM information_schema.COLUMNS
+           WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=:t AND COLUMN_NAME=:c',
+          [':t'=>$table, ':c'=>$col]
+        )->queryScalar();
+        if ($count === 0) {
+            $db->createCommand('ALTER TABLE ' . $table .
+                ' ADD COLUMN ' . $col . ' ' . $type)->execute();
+        }
+    }
+}
 foreach (['reserve_item','schedule_seat','reserve','schedule','venue','coupon_use','finance_wallet','finance_transactions'] as $table)
     $db->createCommand('DELETE FROM '.$table)->execute();
 
