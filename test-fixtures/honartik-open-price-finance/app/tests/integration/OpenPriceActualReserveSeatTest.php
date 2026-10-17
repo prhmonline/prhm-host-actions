@@ -36,6 +36,8 @@ foreach ([
   '/../common/models/Reserve.php',
 ] as $file) require $root . $file;
 require $root . '/modules/finance/services/OpenPriceCancellationService.php';
+require __DIR__ . '/fixtures/OpenPriceSettlementEventStub.php';
+require $root . '/../common/models/AccountSettlement.php';
 
 use app\modules\finance\models\FinanceTransactions;
 use app\modules\finance\models\FinanceWallet;
@@ -43,6 +45,7 @@ use app\modules\finance\services\OpenPriceLedger;
 use app\modules\finance\services\OpenPriceCancellationService;
 use common\models\Reserve;
 use common\models\Schedule;
+use common\models\AccountSettlement;
 
 $db = new \yii\db\Connection([
     'dsn'=>'mysql:unix_socket='.$socket.';dbname=honartik_finance_fixture',
@@ -84,6 +87,15 @@ foreach ([
       released_at INT NULL, release_reason VARCHAR(255) NULL,
       is_current TINYINT NOT NULL, updated_at INT NOT NULL
     ) ENGINE=InnoDB',
+    'CREATE TABLE IF NOT EXISTS event (
+      id BIGINT PRIMARY KEY AUTO_INCREMENT, manager_id BIGINT NOT NULL
+    ) ENGINE=InnoDB',
+    'CREATE TABLE IF NOT EXISTS account_settlement (
+      id BIGINT PRIMARY KEY AUTO_INCREMENT, user_id BIGINT NOT NULL,
+      status INT NOT NULL, min_date DATE NULL, max_date DATE NULL,
+      created_at BIGINT NULL, updated_at BIGINT NULL,
+      created_by BIGINT NULL, updated_by BIGINT NULL
+    ) ENGINE=InnoDB',
     'CREATE TABLE IF NOT EXISTS venue (
       id BIGINT PRIMARY KEY AUTO_INCREMENT, place_id BIGINT NOT NULL
     ) ENGINE=InnoDB',
@@ -121,6 +133,7 @@ foreach ([
 // Widen fixture-only tables, never a production table.
 $fixtureColumns = [
   'schedule' => [
+    'event_id' => 'BIGINT NULL',
     'venue_id' => 'BIGINT NOT NULL DEFAULT 1',
     'sales_start_at' => 'BIGINT NULL',
     'sales_end_at' => 'BIGINT NULL',
@@ -144,14 +157,16 @@ foreach ($fixtureColumns as $table => $columns) {
         }
     }
 }
-foreach (['reserve_item','schedule_seat','reserve','schedule','venue','coupon_use','finance_wallet','finance_transactions'] as $table)
+foreach (['reserve_item','schedule_seat','reserve','schedule','venue','account_settlement','event','coupon_use','finance_wallet','finance_transactions'] as $table)
     $db->createCommand('DELETE FROM '.$table)->execute();
 
 // Insert venue/schedule directly: the unrelated real template-provisioning
 // afterSave() is not part of cancellation and must not invoke other services.
+$db->createCommand()->insert('event',['id'=>77,'manager_id'=>9])->execute();
+$db->createCommand()->insert('event',['id'=>88,'manager_id'=>10])->execute();
 $db->createCommand()->insert('venue',['id'=>1,'place_id'=>10])->execute();
 $db->createCommand()->insert('schedule',[
-  'venue_id'=>1,'date'=>date('Y-m-d',time()+4*86400),
+  'venue_id'=>1,'event_id'=>77,'date'=>date('Y-m-d',time()+4*86400),
   'start_at'=>'18:00:00','is_cancel_able'=>1,
   'sales_start_at'=>time()-86400,'sales_end_at'=>time()+86400
 ])->execute();
@@ -304,4 +319,34 @@ if ($service->cancelPublished((int)$reserve5->id,42)['success']!==false ||
     (int)Reserve::findOne($reserve5->id)->status!==Reserve::STATUS_PUBLISH)
     throw new RuntimeException('Unsafe locked seat refund not held');
 echo "REASSIGNED_SEAT_REFUND_HELD=PASS\n";
+// Use REAL AccountSettlement::beforeSave and actual SQL ownership matching.
+// No payout is triggered; this validates only approval-time financial holds.
+$db->createCommand()->insert('account_settlement',[
+  'id'=>12345,'user_id'=>9,'status'=>AccountSettlement::STATUS_PENDING,
+  'min_date'=>date('Y-m-d', time()+3*86400),
+  'max_date'=>date('Y-m-d', time()+5*86400)
+])->execute();
+$settlement=AccountSettlement::findOne(12345);
+$moneyBefore=$totals();
+$settlement->status=AccountSettlement::STATUS_PUBLISH;
+if ($settlement->save(false)!==false ||
+    $totals()!==$moneyBefore ||
+    (int)AccountSettlement::findOne(12345)->status!==AccountSettlement::STATUS_PENDING) {
+    throw new RuntimeException('Actual AccountSettlement accepted unallocated extra');
+}
+echo "REAL_SELLER_SETTLEMENT_UNALLOCATED_EXTRA_HELD=PASS\n";
+
+// A normal non-opt-in producer with no open-price reservations is unaffected.
+$db->createCommand()->insert('account_settlement',[
+  'id'=>12346,'user_id'=>10,'status'=>AccountSettlement::STATUS_PENDING,
+  'min_date'=>date('Y-m-d',time()+3*86400),
+  'max_date'=>date('Y-m-d',time()+5*86400)
+])->execute();
+$normal=AccountSettlement::findOne(12346);
+$normal->status=AccountSettlement::STATUS_PUBLISH;
+if (!$normal->save(false) ||
+    (int)AccountSettlement::findOne(12346)->status!==AccountSettlement::STATUS_PUBLISH) {
+    throw new RuntimeException('Ordinary producer settlement unexpectedly blocked');
+}
+echo "REAL_NON_OPTIN_SETTLEMENT_UNAFFECTED=PASS\n";
 echo "ACTUAL_RESERVE_SEAT_AND_REFUND_DB_CONTRACT=PASS\n";
