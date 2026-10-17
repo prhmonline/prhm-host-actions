@@ -130,7 +130,8 @@ async function applyFromTrustedNativeExecutor({
     Array.isArray(rootCapabilities))
    deny('trusted_native_approval_and_capabilities_required');
  return dispatcher.dispatch({
-  input:precheck.arguments,approvalToken,rootCapabilities
+  input:precheck.arguments,approvalToken,rootCapabilities,
+  expectedRequestId:precheck.request_id
  });
 }
 if(require.main===module){
