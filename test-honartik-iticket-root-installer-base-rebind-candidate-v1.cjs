@@ -51,9 +51,24 @@ test('refuses synthetic installer and base bytes not validated to exact producti
 
 test('no CLI mutation path: only pure functions are exported',()=>{
   assert.deepEqual(Object.keys(mod).sort(),[
-    'ACTION','INSTALLER_SHA','LIVE_BASE_SHA','OLD_BASE_SHA','makeCandidate','rebindSource','sha256'
+    'ACTION','INSTALLER_SHA','LIVE_BASE_SHA','OLD_BASE_SHA',
+    'LIVE_EXECUTOR_SHA','LIVE_POLICY_SHA','OLD_POLICY_SHA',
+    'LIVE_MCP_SHA','OLD_MCP_SHA','RELEASE_BLOCKERS',
+    'makeCandidate','rebindSource','sha256'
   ].sort());
   const source=require('node:fs').readFileSync(require.resolve('./honartik-iticket-root-installer-base-rebind-candidate-v1.cjs'),'utf8');
   for(const s of ['systemctl restart','child_process','execSync(','spawnSync(','process.argv','chmodSync(','writeFileSync(','unlinkSync(','eval('])
     assert.equal(source.includes(s),false, 'forbidden side-effect substring '+s);
+});
+
+test('observed extra owner drifts block the one-SHA installer path',()=>{
+  assert.equal(mod.LIVE_POLICY_SHA,'148fe2a724befc15cd8c731b0195d83e254d39215792a5084b70dd5b5c178174');
+  assert.equal(mod.LIVE_MCP_SHA,'bd768f992dab75710558e3f47187c311c2ee5b5ec6f5751a74e0bbfa64729166');
+  assert.notEqual(mod.OLD_POLICY_SHA,mod.LIVE_POLICY_SHA);
+  assert.notEqual(mod.OLD_MCP_SHA,mod.LIVE_MCP_SHA);
+  assert.ok(mod.RELEASE_BLOCKERS.includes('executor_expected_pin_unknown'));
+  assert.ok(mod.RELEASE_BLOCKERS.includes('full_live_source_and_semantic_contract_unreviewed'));
+  const program=require('node:fs').readFileSync(require.resolve('./honartik-iticket-root-installer-base-rebind-candidate-v1.cjs'),'utf8');
+  assert.match(program,/fail\('four_owner_release_blocked'\)/);
+  assert.equal(/candidate_bytes\s*:/.test(program),false);
 });
