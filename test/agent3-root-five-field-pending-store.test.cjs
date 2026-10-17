@@ -63,14 +63,17 @@ test('repeated request ID, even for different SHA-pinned payload, cannot overwri
  });
 });
 test('concurrent pending creations cannot both win exclusive slot',async()=>{
- await withDir(async(dir,uid)=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'agent3-reg-pending-concurrency-'));
+ fs.chmodSync(dir,0o700);
+ const uid=process.getuid();
+ try{
   const results=await Promise.allSettled([
    Promise.resolve().then(()=>store.writeInVerifiedDirectory(req(),dir,uid)),
    Promise.resolve().then(()=>store.writeInVerifiedDirectory(req(),dir,uid))
   ]);
   assert.equal(results.filter(r=>r.status==='fulfilled').length,1);
   assert.equal(results.filter(r=>r.status==='rejected'&&r.reason?.code==='EEXIST').length,1);
- });
+ }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
 test('crash marker and corrupt JSON block the same request ID, never auto-delete',()=>{
  withDir((dir,uid)=>{
