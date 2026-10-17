@@ -51,6 +51,8 @@ function harness(o={}){
 test('contract pins exact immutable feature code and October snapshot',()=>{
  assert.match(PINS.sourceSha,/^[a-f0-9]{40}$/);
  assert.match(PINS.sourceBlobSha,/^[a-f0-9]{40}$/);
+ assert.equal(PINS.sourceSha,'d18bccb29b6094bdefd3d114807bb79823d14ed8');
+ assert.equal(PINS.sourceBlobSha,'fb4ed2d44a1e4cb6814ad6ac6ddd834d2a439e0b');
  assert.equal(PINS.network,'none');assert.equal(PINS.dbImage,'mariadb:10.6');
  assert.equal(PINS.expectedCounts.finance_transactions,37156);
  assert.equal(PINS.expectedCounts.finance_wallet,50543);
