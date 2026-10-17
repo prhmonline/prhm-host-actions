@@ -15,11 +15,21 @@
  */
 const {AsyncLocalStorage}=require('node:async_hooks');
 const {IncomingMessage}=require('node:http');
+const {Socket}=require('node:net');
 const native=require('./native-v3-root-route-binding.cjs');
 function deny(code){throw Error('agent3_root_http_bridge_denied:'+code);}
 function rootOnly(){
  if(typeof process.getuid!=='function'||process.getuid()!==0)
   deny('root_executor_only');
+}
+// Network sockets cannot be accepted even if the injected verifier is
+// accidentally configured to return true. This negative guard does NOT
+// establish AF_UNIX peer credentials: the trusted OS verifier is mandatory.
+function eligibleNativeLocalSocket(socket){
+ return socket instanceof Socket && socket.destroyed!==true &&
+   socket.remoteAddress===undefined &&
+   socket.remotePort===undefined &&
+   socket.remoteFamily===undefined;
 }
 function bindRootHttp({basePost,rootCapabilities,assertNativePeer}={}){
  rootOnly();
@@ -32,8 +42,8 @@ function bindRootHttp({basePost,rootCapabilities,assertNativePeer}={}){
   basePost,rootCapabilities,
   assertAuthenticatedTransport:()=>{
    const req=context.getStore();
-   if(!(req instanceof IncomingMessage)||
-      !req.socket||req.destroyed===true)return false;
+   if(!(req instanceof IncomingMessage)||req.destroyed===true||
+      !eligibleNativeLocalSocket(req.socket))return false;
    // assertNativePeer MUST be an already-reviewed native socket credential
    // verifier; boolean flags from headers/body/request are NOT accepted.
    return assertNativePeer(req.socket);
@@ -48,6 +58,9 @@ function bindRootHttp({basePost,rootCapabilities,assertNativePeer}={}){
   if(!route.paths.includes(serverRequest.url))
    return Object.freeze({handled:false});
   if(serverRequest.method!=='POST')deny('post_only');
+  if(serverRequest.destroyed===true ||
+     !eligibleNativeLocalSocket(serverRequest.socket))
+   deny('native_local_socket_required');
   // The only context passed into the trust callback is a native socket
   // owned by the authenticated root server, not a JSON peer assertion.
   return context.run(serverRequest,()=>
