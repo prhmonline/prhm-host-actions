@@ -52,6 +52,12 @@ function checkSnapshot(key,snap,digest){
   assertMetadata(snap);
   if(sha256(snap.bytes)!==digest)fail('source_preimage_mismatch_'+key);
 }
+function assertExpected(expected){
+  if(!expected||typeof expected!=='object'||Array.isArray(expected)||
+     Object.keys(expected).length!==ORDER.length)fail('expected_fixture_keys_invalid');
+  for(const key of ORDER)if(!/^[a-f0-9]{64}$/.test(expected[key]||''))
+    fail('expected_fixture_sha_invalid_'+key);
+}
 function assertCandidates(candidates){
   if(!candidates||typeof candidates!=='object'||Array.isArray(candidates)||
      Object.keys(candidates).length!==ORDER.length)fail('candidate_keys_invalid');
@@ -63,13 +69,13 @@ function assertCandidates(candidates){
 function requireDurable(receipt,phase){
   if(!receipt||receipt.durable!==true)fail('durability_not_attested_'+phase);
 }
-function assertJournal(j,id){
+function assertJournal(j,id,expected){
   if(!j||j.schema!==SCHEMA||j.id!==id||
      !['PREPARED','APPLYING','COMMITTED','ROLLED_BACK','RECOVERY_BLOCKED'].includes(j.state)||
      !j.owners||Object.keys(j.owners).length!==ORDER.length)fail('journal_invalid');
   for(const key of ORDER){
     const o=j.owners[key];
-    if(!o||o.before!==EXPECTED[key]||!/^[a-f0-9]{64}$/.test(o.after)||
+    if(!o||o.before!==expected[key]||!/^[a-f0-9]{64}$/.test(o.after)||
        !Number.isInteger(o.uid)||!Number.isInteger(o.gid)||
        !Number.isInteger(o.mode))fail('journal_owner_invalid_'+key);
   }
@@ -98,9 +104,9 @@ async function ownerState(d,j,key){
  * rename but before completion is recorded. It scans ALL four current owners.
  * An unexpected third-party SHA blocks writes; backup failure blocks writes.
  */
-async function recoverLocked({id,d}){
+async function recoverLocked({id,d,expected}){
   const j=await d.loadJournal(id);
-  assertJournal(j,id);
+  assertJournal(j,id,expected);
   if(j.state==='ROLLED_BACK')return {ok:true,recovered:true,already:true};
   if(j.state==='COMMITTED')fail('committed_transaction_manual_review');
   const states={};
@@ -133,15 +139,15 @@ async function recoverLocked({id,d}){
   if(typeof d.cleanupStages==='function')await d.cleanupStages(id);
   return {ok:true,recovered:true,already:false};
 }
-async function recover({mode,id,adapter}={}){
-  assertFixture(mode);assertId(id);assertAdapter(adapter);
+async function recover({mode,id,adapter,expected}={}){
+  assertFixture(mode);assertId(id);assertAdapter(adapter);assertExpected(expected);
   const d=adapter;
   await d.lock(id);
-  try{return await recoverLocked({id,d});}
+  try{return await recoverLocked({id,d,expected});}
   finally{await d.unlock(id);}
 }
-async function execute({mode,id,adapter,candidates}={}){
-  assertFixture(mode);assertId(id);assertAdapter(adapter);assertCandidates(candidates);
+async function execute({mode,id,adapter,candidates,expected}={}){
+  assertFixture(mode);assertId(id);assertAdapter(adapter);assertExpected(expected);assertCandidates(candidates);
   const d=adapter;
   await d.lock(id);
   let hasJournal=false;
@@ -150,16 +156,16 @@ async function execute({mode,id,adapter,candidates}={}){
     const owners={};const snapshots={};
     for(const key of ORDER){
       const snapshot=await d.readOwner(key);
-      checkSnapshot(key,snapshot,EXPECTED[key]);
+      checkSnapshot(key,snapshot,expected[key]);
       const after=sha256(candidates[key]);
-      if(after===EXPECTED[key])fail('candidate_identical_to_before_'+key);
-      owners[key]={before:EXPECTED[key],after,uid:snapshot.uid,gid:snapshot.gid,mode:snapshot.mode};
+      if(after===expected[key])fail('candidate_identical_to_before_'+key);
+      owners[key]={before:expected[key],after,uid:snapshot.uid,gid:snapshot.gid,mode:snapshot.mode};
       snapshots[key]=snapshot;
     }
     for(const key of ORDER){
       requireDurable(await d.writeBackupDurable(id,key,snapshots[key]),'backup_'+key);
       const confirmed=await d.readBackup(id,key);
-      checkSnapshot(key,confirmed,EXPECTED[key]);
+      checkSnapshot(key,confirmed,expected[key]);
       for(const prop of ['uid','gid','mode'])
         if(confirmed[prop]!==snapshots[key][prop])fail('backup_metadata_mismatch_'+key);
     }
@@ -190,7 +196,7 @@ async function execute({mode,id,adapter,candidates}={}){
   }catch(err){
     if(!hasJournal)throw err;
     try{
-      await recoverLocked({id,d});
+      await recoverLocked({id,d,expected});
       throw new Error('installer_tx_failed_and_rolled_back:'+String(err.message||err));
     }catch(recoveryError){
       if(String(recoveryError.message||'').startsWith('installer_tx_failed_and_rolled_back:'))throw recoveryError;
