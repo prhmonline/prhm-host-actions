@@ -29,8 +29,8 @@ const MAX_SOURCE_LINE=7500;
 const MAX_OUTPUT_CHARS=110000;
 const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
 function deny(reason){throw Error('agent3_native_handler_evidence_denied:'+reason);}
-const SENSITIVE=/(?:process\.env(?:\.|\[)|authorization\s*[:=]|Bearer\s+[A-Za-z0-9._-]{12,}|private[_-]?key|client[_-]?secret|password\s*[:=]|cookie\s*[:=]|secret\s*[:=]|-----BEGIN|(?:gh[pousr]_|sk-|AIza)[A-Za-z0-9_-]{16,})/i;
-const HIGH_ENTROPY=/\b(?:[A-Fa-f0-9]{96,}|[A-Za-z0-9+/_-]{120,}={0,2})\b/g;
+const SENSITIVE=/(?:process\.env(?:\.|\[)|authorization\s*[:=]|Bearer\s+[A-Za-z0-9._-]{12,}|private[_-]?key|client[_-]?secret|password\s*[:=]|cookie\s*[:=]|secret\s*[:=]|-----BEGIN|(?:gh[pousr]_|sk-|AIza)[A-Za-z0-9_-]{16,}|\b[A-Za-z_]*(?:token|secret|password|credential|api_?key)[A-Za-z_]*\s*[:=]\s*['"`]|['"][^'"\n]*(?:token|secret|password|credential|api_?key)['"]\s*:\s*['"])/i;
+const HIGH_ENTROPY=/\b(?:[A-Fa-f0-9]{48,}|[A-Za-z0-9+/_-]{64,}={0,2})\b/g;
 function sanitizeLine(line){
  if(typeof line!=='string')deny('invalid_line');
  const raw=Buffer.from(line,'utf8');
