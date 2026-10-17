@@ -17,6 +17,7 @@ const bridge=require('../../prhm-action-registry-host-actions-v2-bridge-v1.cjs')
 const FIELDS=Object.freeze([
  'action','project','source_commit','manifest_commit','manifest_sha256'
 ]);
+const PERSISTED_FIELDS=Object.freeze(['arguments','arguments_sha256','request_hash']);
 const SHA256=/^[a-f0-9]{64}$/;
 function deny(reason){throw Error('agent3_five_field_continuity_denied:'+reason);}
 function normalized(input){
@@ -79,6 +80,13 @@ function compareStoredRequest({storedArguments,storedArgumentsSha256,storedReque
 function compareApplyBinding({persistedRequest,applyArguments,consumedArgumentsSha256}={}){
  if(!persistedRequest||typeof persistedRequest!=='object'||Array.isArray(persistedRequest))
    deny('persisted_request_required');
+ // Require the exact trusted *continuity record* shape. In particular,
+ // boolean "approved" flags, tokens and caller-generated receipts are never
+ // valid persisted authority. The native root executor must separately
+ // retrieve and authenticate its own pending request record.
+ if(Object.keys(persistedRequest).sort().join('|')!==
+    PERSISTED_FIELDS.slice().sort().join('|'))
+   deny('persisted_continuity_record_schema');
  const base=compareStoredRequest({
   storedArguments:persistedRequest.arguments,
   storedArgumentsSha256:persistedRequest.arguments_sha256,
@@ -98,4 +106,4 @@ if(require.main===module){
  process.stderr.write('source-only continuity library; no CLI approval or apply\n');
  process.exitCode=78;
 }
-module.exports=Object.freeze({FIELDS,bind,compareStoredRequest,compareApplyBinding});
+module.exports=Object.freeze({FIELDS,PERSISTED_FIELDS,bind,compareStoredRequest,compareApplyBinding});
