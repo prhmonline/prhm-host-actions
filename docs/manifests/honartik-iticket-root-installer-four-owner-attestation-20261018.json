@@ -1,0 +1,68 @@
+{
+  "schema_version": "prhm.honartik.iticket.root-installer-four-owner-attestation.v1",
+  "evidence_type": "OPERATOR_SUPPLIED_READ_ONLY_PRODUCTION_CONSOLE_OUTPUT",
+  "observed_date": "2026-10-18",
+  "host": "prhm-production",
+  "status": "CANDIDATE_SOURCE_PROOF_ONLY_NOT_INSTALLABLE",
+  "installer": {
+    "path": "/opt/prhm-agent-selfmaint-exec/actions/host-action-v2-installer-v1.js",
+    "original_sha256": "0f76d3ad65ba267c045dd545d249e0b2083f4aedf8983a109d3ee6446686fa1d",
+    "review_candidate_sha256": "7849b1c458c71fce7a6aecc1696cead441a209cb515f191fc5d0fad61a53adcc",
+    "installed_candidate": false,
+    "original_installer_executed_in_this_check": false,
+    "actual_semantics_reviewed": false
+  },
+  "owners": {
+    "base": {
+      "path": "/opt/prhm-agent-selfmaint/server.js",
+      "old_pin": "de924f7319f3656d788ba5d3f89ef2910bf4b0e3f0b8b074e7cd3a534441d5ea",
+      "live_sha256": "4c29d01a248d59ee85754dfa5a59e8132fe22e6b34ef04324228c16c88727406"
+    },
+    "exec": {
+      "path": "/opt/prhm-agent-selfmaint-exec/server.js",
+      "old_pin": "6bba46890db31abc8eca7e7681753a4788c46170033a555a1106e05d0a7a66f9",
+      "live_sha256": "410406ba0965ef3a5cad6da6306a85335e38acc3637fb6ed60fa42200a10c2e0"
+    },
+    "policy": {
+      "path": "/opt/prhm-company-control-plane/config/approval-policy.json",
+      "old_pin": "2fedd70a182aa351e269df95a1b9d829f5a0b18defe8871cb4045106948d711a",
+      "live_sha256": "148fe2a724befc15cd8c731b0195d83e254d39215792a5084b70dd5b5c178174"
+    },
+    "mcp": {
+      "path": "/home/agent/ssh-mcp-server/src/plugins/hostActionsV2.js",
+      "old_pin": "048e2db190c5548f47967447b3b564eefd0b7203cf6df84beb73c520d481633d",
+      "live_sha256": "bd768f992dab75710558e3f47187c311c2ee5b5ec6f5751a74e0bbfa64729166"
+    }
+  },
+  "operator_observed_assertions": [
+    "BASE_PREIMAGE=PASS",
+    "EXEC_PREIMAGE=PASS",
+    "POLICY_PREIMAGE=PASS",
+    "MCP_PREIMAGE=PASS",
+    "EXACT_FOUR_SHA_CHANGE=PASS",
+    "CANDIDATE_JS_SYNTAX=PASS",
+    "INSTALLER_EXECUTED=NO",
+    "PRODUCTION_MUTATION=NO",
+    "SEMANTIC_INSTALL_APPROVAL=NOT_GRANTED"
+  ],
+  "related_ci": [
+    "https://github.com/prhmonline/prhm-host-actions/actions/runs/39070778796",
+    "https://github.com/prhmonline/prhm-host-actions/actions/runs/39071130467"
+  ],
+  "release_blockers": [
+    "Root-owned original installer full semantic diff and prospective owner postimages not independently reviewed",
+    "Current owner snapshots and verified rollback for this exact candidate not attested",
+    "Candidate digest bound into approved fixed host action and signed Level-4 request not registered",
+    "MariaDB 10.6 disposable migration test and financial provider real E2E not completed"
+  ],
+  "forbidden_operations_before_release": [
+    "repeat_consumed_approval",
+    "bypass_current_sha_guard",
+    "modify_production_owner_to_match_old_pin",
+    "run_unreviewed_installer",
+    "use_honartik_web_staging",
+    "send_email"
+  ],
+  "production_mutation": false,
+  "bank_or_issuer_action": false
+}
