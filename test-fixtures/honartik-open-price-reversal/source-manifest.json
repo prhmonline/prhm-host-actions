@@ -1,0 +1,20 @@
+{
+  "schema": "prhm.honartik.open-price-reversal-fixture.v1",
+  "source_repo": "prhmonline/honar-back-new",
+  "source_commit": "9262aa829b33cbca2e70075d747a45ce9d3d4b3c",
+  "scope": "pure-source-contract-no-database-no-network",
+  "files": [
+    {
+      "path": "app/modules/finance/services/ReservePaymentFinalizer.php",
+      "blob": "2aaae52b21c962907a3fafde9d04d019017c70e4"
+    },
+    {
+      "path": "app/tests/contract/OpenPricePreconfirmedReverseTest.php",
+      "blob": "d47c3a2c2e0279ddbb80ea83f25827b1b9cf0a23"
+    },
+    {
+      "path": "app/modules/finance/addons/SamanGateway.php",
+      "blob": "da8be59c6c10b622a81805a48c53af24ebc0c5c4"
+    }
+  ]
+}

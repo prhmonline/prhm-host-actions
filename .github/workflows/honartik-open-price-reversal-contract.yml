@@ -1,0 +1,37 @@
+name: Honartik SEP preconfirmed reversal contract (no bank/network)
+on:
+  push:
+    paths:
+      - '.github/workflows/honartik-open-price-reversal-contract.yml'
+      - 'test-fixtures/honartik-open-price-reversal/**'
+  pull_request:
+    paths:
+      - '.github/workflows/honartik-open-price-reversal-contract.yml'
+      - 'test-fixtures/honartik-open-price-reversal/**'
+permissions:
+  contents: read
+jobs:
+  prior-reversal-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+      - name: Verify immutable source blobs
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=test-fixtures/honartik-open-price-reversal
+          test "$(jq -r .source_commit "$root/source-manifest.json")" = 9262aa829b33cbca2e70075d747a45ce9d3d4b3c
+          while IFS=$'\t' read -r file blob; do
+            test "$(git hash-object "$root/$file")" = "$blob"
+            php -l "$root/$file"
+          done < <(jq -r '.files[] | [.path,.blob] | @tsv' "$root/source-manifest.json")
+      - name: Run true finalizer decision contract without bank access
+        shell: bash
+        run: |
+          set -euo pipefail
+          php test-fixtures/honartik-open-price-reversal/app/tests/contract/OpenPricePreconfirmedReverseTest.php
