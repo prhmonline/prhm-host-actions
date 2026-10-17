@@ -31,6 +31,13 @@ function eligibleNativeLocalSocket(socket){
    socket.remotePort===undefined &&
    socket.remoteFamily===undefined;
 }
+function contextStillNative(ctx){
+ const req=ctx?.request;
+ return req instanceof IncomingMessage &&
+   req.socket===ctx.socket &&
+   req.method===ctx.method && req.url===ctx.url &&
+   req.destroyed!==true && eligibleNativeLocalSocket(ctx.socket);
+}
 function bindRootHttp({basePost,rootCapabilities,assertNativePeer}={}){
  rootOnly();
  if(typeof basePost!=='function'||typeof assertNativePeer!=='function'||
@@ -40,13 +47,14 @@ function bindRootHttp({basePost,rootCapabilities,assertNativePeer}={}){
  const context=new AsyncLocalStorage();
  const route=native.bind({
   basePost,rootCapabilities,
-  assertAuthenticatedTransport:()=>{
-   const req=context.getStore();
-   if(!(req instanceof IncomingMessage)||req.destroyed===true||
-      !eligibleNativeLocalSocket(req.socket))return false;
-   // assertNativePeer MUST be an already-reviewed native socket credential
-   // verifier; boolean flags from headers/body/request are NOT accepted.
-   return assertNativePeer(req.socket);
+  assertAuthenticatedTransport:async()=>{
+   const ctx=context.getStore();
+   if(!contextStillNative(ctx))return false;
+   // The trusted OS verifier must return literal true, and neither the
+   // request nor its socket may change during asynchronous verification.
+   // The bridge itself does NOT implement SO_PEERCRED or install a listener.
+   const verified=await assertNativePeer(ctx.socket);
+   return verified===true && contextStillNative(ctx);
   }
  });
  if(!route||typeof route.handle!=='function'||!Array.isArray(route.paths))
@@ -63,8 +71,14 @@ function bindRootHttp({basePost,rootCapabilities,assertNativePeer}={}){
    deny('native_local_socket_required');
   // The only context passed into the trust callback is a native socket
   // owned by the authenticated root server, not a JSON peer assertion.
-  return context.run(serverRequest,()=>
-   route.handle({method:serverRequest.method,url:serverRequest.url,body}));
+  // Keep the original native socket and fixed route identity pinned
+  // throughout async callbacks; re-reading mutable req.socket is unsafe.
+  const ctx=Object.freeze({
+   request:serverRequest,socket:serverRequest.socket,
+   method:serverRequest.method,url:serverRequest.url
+  });
+  return context.run(ctx,()=>
+   route.handle({method:ctx.method,url:ctx.url,body}));
  }
  return Object.freeze({handleRequest,paths:route.paths});
 }
