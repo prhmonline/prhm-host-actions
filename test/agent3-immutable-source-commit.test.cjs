@@ -54,6 +54,24 @@ test('immutable release includes reviewed exclusive claim protocol and root fsyn
  assert.match(journal,/root_required/);
  assert.match(journal,/EEXIST/);
 });
+test('immutable source binds native pending request ID through signed Ed25519 and consumed ledger',()=>{
+ const paths={
+  gateway:'prhm-action-registry-gateway-v1.cjs',
+  bridge:'prhm-action-registry-host-actions-v2-bridge-v1.cjs',
+  dispatcher:'ops/agent3-universal-backup/trusted-shared-registrar-dispatch.cjs',
+  native:'ops/agent3-universal-backup/five-field-native-route-contract.cjs'
+ };
+ const source=Object.fromEntries(Object.entries(paths).map(([k,p])=>
+  [k,git(['show',release.source_commit_sha+':'+p]).toString('utf8')]));
+ assert.match(source.gateway,/c\.request_id===expectedRequestId/);
+ assert.match(source.gateway,/ledger\.request_id===c\.request_id/);
+ assert.match(source.gateway,/expectedRequestId,nowSec:Math\.floor\(Date\.now\(\)\/1000\)/);
+ assert.match(source.bridge,/signedApprovalToken:approvalToken,expectedRequestId/);
+ assert.match(source.dispatcher,/trusted_native_request_id_required/);
+ assert.match(source.dispatcher,/capabilities:narrowed,expectedRequestId/);
+ assert.match(source.native,/expectedRequestId:precheck\.request_id/);
+ assert.match(source.native,/native_request_expired_or_excessive_ttl/);
+});
 test('canonical signed dispatcher exists at pinned source and superseded adapter is absent',()=>{
  const body=git(['show',release.source_commit_sha+':'+expectedHandler]).toString('utf8');
  assert.match(body,/function boundRootCapabilities/);
