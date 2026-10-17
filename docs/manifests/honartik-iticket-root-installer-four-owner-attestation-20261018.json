@@ -3,7 +3,7 @@
   "evidence_type": "OPERATOR_SUPPLIED_READ_ONLY_PRODUCTION_CONSOLE_OUTPUT",
   "observed_date": "2026-10-18",
   "host": "prhm-production",
-  "status": "SOURCE_V2_FIXTURE_PASS_REAL_LIVE_ANCHORS_NOT_YET_ATTESTED_P0_ROLLBACK_REQUIRES_SIGNED_INSTALLER",
+  "status": "LIVE_SHA_BOUND_IN_MEMORY_POSTIMAGES_ATTESTED_NOT_INSTALLABLE",
   "installer": {
     "path": "/opt/prhm-agent-selfmaint-exec/actions/host-action-v2-installer-v1.js",
     "original_sha256": "0f76d3ad65ba267c045dd545d249e0b2083f4aedf8983a109d3ee6446686fa1d",
@@ -50,12 +50,12 @@
     "https://github.com/prhmonline/prhm-host-actions/actions/runs/39071130467"
   ],
   "release_blockers": [
-    "Source-only V2 prototype has passed 16 fixture tests, but exact live four-owner in-memory transform/postimage hashes have not been attested",
-    "Original root installer sequential rename partial failure P0 still unmodified and unsafe",
-    "Proposed new worktree route intentionally disabled pending separate secure helper review/registration",
-    "Trusted Level-4 root filesystem adapter and crash recovery for current Control Plane not installed",
-    "Effective Approval Center critical, one-time and second confirmation behavior must be verified",
-    "Separate Honartik iTicket dark deployment, MariaDB and financial supplier gates"
+    "Prospective postimage SHA digests verified by operator for current owner sources; no production owner mutation",
+    "MCP proposed ES Module postimage syntax not validated on host",
+    "Approval Center effective L4 critical/one-time/second confirmation enforcement and typed-scope semantics not attested",
+    "Proposed dispatcher is INERT and cannot run Honartik worktree helper",
+    "Unsafe existing original root installer partial-rename rollback must be replaced by reviewed crash-safe disk implementation",
+    "After root registration, iTicket dark deploy / MariaDB 10.6 / bank SEP / wallet / SAMFA require separate activation verification"
   ],
   "forbidden_operations_before_release": [
     "repeat_consumed_approval",
@@ -147,5 +147,30 @@
     "require_separately_reviewed_effective_policy": true,
     "production_mutation": false,
     "install_authorized": false
+  },
+  "live_in_memory_structural_preflight": {
+    "observed_date": "2026-10-18",
+    "observation_method": "operator executed SHA-verified read-only CLI as root on prhm-production",
+    "inspector_source_commit": "e52611a66976a7469c4c07a34ce3d18d5e3c3e65",
+    "inspector_sha256": "fc36085f9096b9676f72e5ba9c3aa70bdac3dfa386c7b43698460d458bcddc52",
+    "inspector_digest_check": "PASS",
+    "sha_base": "PASS",
+    "sha_exec": "PASS",
+    "sha_policy": "PASS",
+    "sha_mcp": "PASS",
+    "helper_sha": "PASS",
+    "computed_postimages": {
+      "base": "629212ae3052eab380ea1b3fc7c0b15395dfb23a251331762ebb781e1bbf1b2f",
+      "exec": "9dade5d2a9a9722c1dd1283a3a1002325da02e134804aca1ea6d673cf2de3e87",
+      "policy": "be738cf7be1555d717558b51d560c381e2d4ed6bab87dabb701d712b6c2d9980",
+      "mcp": "52d3c0c04cd3bb26815403e2c089f9a408047bd9d376536ae570df669a7fd2a3"
+    },
+    "structural_current_owner_preflight": "PASS",
+    "new_dispatch": "INERT",
+    "mcp_esm_syntax": "NOT_TESTED",
+    "effective_level4_policy": "NOT_ATTESTED",
+    "install_authorized": false,
+    "production_mutation": false,
+    "note": "All four POSTIMAGE values are prospective digests of in-memory transformation only, not SHA of files deployed to disk. No signed execution permitted."
   }
 }
