@@ -3,7 +3,7 @@
   "evidence_type": "OPERATOR_SUPPLIED_READ_ONLY_PRODUCTION_CONSOLE_OUTPUT",
   "observed_date": "2026-10-18",
   "host": "prhm-production",
-  "status": "LEVEL4_STATIC_CONFIG_PASS_SIGNED_EXECUTION_NOT_ATTESTED",
+  "status": "INTEGRATED_SCRATCH_DISK_14_PASS_TRANSACTION_28_PASS_NO_ROOT_PRODUCTION_ADAPTER",
   "installer": {
     "path": "/opt/prhm-agent-selfmaint-exec/actions/host-action-v2-installer-v1.js",
     "original_sha256": "0f76d3ad65ba267c045dd545d249e0b2083f4aedf8983a109d3ee6446686fa1d",
@@ -50,12 +50,11 @@
     "https://github.com/prhmonline/prhm-host-actions/actions/runs/39071130467"
   ],
   "release_blockers": [
-    "Prospective postimage SHA digests verified by operator for current owner sources; no production owner mutation",
-    "MCP proposed ES Module postimage syntax not validated on host",
-    "Approval Center effective L4 critical/one-time/second confirmation enforcement and typed-scope semantics not attested",
-    "Proposed dispatcher is INERT and cannot run Honartik worktree helper",
-    "Unsafe existing original root installer partial-rename rollback must be replaced by reviewed crash-safe disk implementation",
-    "After root registration, iTicket dark deploy / MariaDB 10.6 / bank SEP / wallet / SAMFA require separate activation verification"
+    "Production root trusted kernel-lock and signed four-owner durable transactional adapter not built or installed; existing helper remains P0 unsafe",
+    "Effective Approval Center action-specific Level4/Ed25519 single-use and second-confirmation behavior not attested",
+    "Proposed dispatcher intentionally inert; worktree action unregistered",
+    "Real financial iTicket release, migrations, Saman wallet SAMFA separate",
+    "Only in-memory live postimage SHA and scratch disk shape fixtures verified, not a live disk commit"
   ],
   "forbidden_operations_before_release": [
     "repeat_consumed_approval",
@@ -182,5 +181,21 @@
     "effective_issuer_enforcement": "NOT_ATTESTED",
     "production_mutation": false,
     "signed_install_authorized": false
+  },
+  "integrated_real_scratch_disk_rehearsal": {
+    "date": "2026-10-18",
+    "integrated_ci": "https://github.com/prhmonline/prhm-host-actions/actions/runs/39080329025",
+    "integration_test_count": 14,
+    "passed": 14,
+    "failed": 0,
+    "transaction_regression_ci": "https://github.com/prhmonline/prhm-host-actions/actions/runs/39080340805",
+    "transaction_test_count": 28,
+    "transaction_passed": 28,
+    "detailed_review": "docs/reviews/2026-10-18-honartik-four-owner-integrated-disk-rehearsal-and-root-gates.md",
+    "source_combines": "current-owner shape fixtures + hardened L4 policy + durable scratch disk engine",
+    "source_is_real_production_owner_bytes": false,
+    "production_installer_ready": false,
+    "signed_install_authorized": false,
+    "production_mutation": false
   }
 }
