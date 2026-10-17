@@ -125,3 +125,22 @@ test('no filesystem, execution, network, approval or install capabilities',()=>{
     "process.argv","process.env","systemctl restart","cp.execFileSync(","fs.writeFileSync(","fs.renameSync(","eval("])
     assert.equal(src.includes(token),false,'unexpected privileged capability '+token);
 });
+
+test('effective base policy metadata: original installer stays Level3, new action Level4',()=>{
+  const patched=p.patchBase(base());
+  const sandbox=vm.createContext({});
+  const metadata=vm.runInContext(patched+
+    "\n[hostActionV2ApprovalMeta('host_action_v2_installer_v1').level,"+
+    "hostActionV2ApprovalMeta('honartik_git_worktree_fixed_v1').level,"+
+    "hostActionV2ApprovalMeta('honartik_git_worktree_fixed_v1').spec.operation]",sandbox);
+  assert.deepEqual(Array.from(metadata),[3,4,'host_action.honartik_git_worktree_fixed_v1']);
+});
+test('effective executor dispatcher preserves old routes and blocks new worktree activation',async()=>{
+  const patched=p.patchExec(exec());
+  const sandbox=vm.createContext({});
+  vm.runInContext(patched,sandbox);
+  const oldResult=await vm.runInContext("applyHostActionV2('agent_zdt_source_sha_refresh_publisher_v1')",sandbox);
+  assert.equal(oldResult.ok,true);
+  await assert.rejects(vm.runInContext("applyHostActionV2('honartik_git_worktree_fixed_v1')",sandbox),
+    /requires_separate_signed_helper_activation/);
+});
