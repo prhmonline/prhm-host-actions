@@ -18,7 +18,7 @@ function validFacts(){
   native_root_dispatch_reviewed:true
  };
 }
-test('current reviewed source audit detects source v3 pin drift and missing manifest',()=>{
+test('reviewed native v3 source is pinned while manifest and root dispatcher remain unavailable',()=>{
  const facts=audit.pinnedState();
  const result=audit.assess(facts);
  assert.match(facts.pinned_source_commit,/^[a-f0-9]{40}$/);
@@ -29,8 +29,8 @@ test('current reviewed source audit detects source v3 pin drift and missing mani
  assert.equal(result.source_candidate_complete,false);
  assert.equal(result.production_install_authorized,false);
  assert.equal(result.production_mutation,false);
- assert.ok(result.source_blockers.some(s=>
-  s.startsWith('NATIVE_SOURCE_ABSENT_AT_RELEASE_PIN:')));
+ assert.ok(facts.native.every(item=>item.present_in_immutable_source&&item.matches_current));
+ assert.equal(result.source_blockers.some(x=>x.startsWith('NATIVE_SOURCE_ABSENT_AT_RELEASE_PIN:')),false);
  assert.ok(result.source_blockers.includes('FOUR_OWNER_RELEASE_MANIFEST_MISSING'));
  assert.ok(result.source_blockers.includes('TRUSTED_NATIVE_ROOT_DISPATCH_NOT_REVIEWED'));
 });
