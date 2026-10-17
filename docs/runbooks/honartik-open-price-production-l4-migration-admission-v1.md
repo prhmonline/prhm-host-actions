@@ -48,3 +48,18 @@ Owner-supplied complete console stdout: actual `NEW_BACKUP_MIGRATION_REHEARSAL=P
 Independent Agent 3 health subsequently confirmed the installed registry contains no `honartik_open_price_yii_scratch_v1` (and no dedicated live-open-price DDL action). Central deploy-control Runner read the on-host dispatcher and verified syntax/sha, but its user is blocked from central backups; run [39078821804](https://github.com/prhmonline/deploy-control/actions/runs/39078821804) intentionally failed read-only at `BACKUP_ROOT_VISIBILITY=BLOCKED_BY_PERMISSIONS`. The server owner verified the backup as root and ran the real isolated restoration, so this visibility failure must not be hidden or treated as a successful Runner production deployment permission.
 
 **Gate status:** `RESTORED_YII_SAFETY=PASS`; `SIGNED_PRODUCTION_L4_ACTION=ABSENT`; `DEPLOY_DRIVER_DIRTY_TREE_PROTECTION=UNVERIFIED`; `MIGRATION_PRODUCTION=HOLD`; `PRODUCTION_DEPLOY=HOLD`.
+
+
+## 2026-10-18: Source-only signed production DDL coordinator implemented and tested
+
+**Source file:** `honartik-open-price-live-ddl-coordinator-v1.cjs`, Git blob `f18b83a2266a38637e6b945ca4a75aee75f92145`.
+**Contract test:** `test-honartik-open-price-live-ddl-coordinator-v1.cjs`, Git blob `0483d5015f2c31d8b895caf00372aecf043643a9`.
+**CI:** [Honartik Level-4 source contract #39080371925](https://github.com/prhmonline/prhm-host-actions/actions/runs/39080371925) — Node 22 syntax PASS, **14/14** test cases PASS.
+
+This new `honartik_open_price_live_migrations_v1` action candidate has an *independent* ID and approval scope `host_action.honartik_open_price_live_migrations_v1`. It binds the exact pre-deploy production SHA, database, history table, two canonical migration names and their Git blobs. A separately installed and audited trusted on-host adapter must supply these methods: `readOnlyPreflight`, `freezeWriters`, `verifyQuiescence`, `verifyBackupRestore`, `consumeSignedLevel4`, `holdMaintenance`, `recheckPreDDL`, `executeExactCapacity`, `verifyCapacityCheckpoint`, `executeExactFeatures`, `verifyFinalCheckpoint`, `writeDurableAudit`, `releaseMaintenanceOnSuccess`.
+
+The coordinator intentionally imports no filesystem, shell, database, network, or approval issuer. No caller-provided script, SQL, user-supplied approval receipt, directory, path, or command is accepted. Mocked trusted adapter tests exercise correct phase sequencing and rejection of schema drift, changed backup/authorization scope, missing Level-4 consumed grant, inconsistent financial digest, broken capacity or feature checkpoint, replay, missing audit, public-flag accidental enable and immediate pre-DDL time-of-check drift. Any failure after DDL may require manual financial recovery; no automatic BIGINT downgrade or MySQL `ROLLBACK` claim is made.
+
+**Required next implementation:** independent trusted root-owned adapter and installer reviewed against on-host current SHA fingerprints, Ed25519 signature verification and one-time issuer state, writer quiescence/maintenance, exact Class A/B Yii2 execution and history once-only, same-window new backup, durable audit, fail-safe stop and recovery rehearsals. This coordinator is a *contract only*, NOT a real installed Host Action. **Do not call `host_action_v2_request` for this action until the trusted registry and policy explicitly authorize it; the existing restored-backup-only `honartik_open_price_yii_scratch_v1` cannot be substituted.**
+
+Evidence: `REGISTERED_NATIVE_ACTION=NO`, `PRODUCTION_DDL_EXECUTED=NO`, `PRODUCTION_DEPLOYED=NO`. The previous Oct-17 backup must be considered stale for any future financial maintenance window until a new backup is verified; its restored rehearsal remains valid technical evidence, not current-point-in-time financial recovery.
