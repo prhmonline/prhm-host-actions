@@ -131,6 +131,49 @@ test('local-looking socket is not trusted without independent OS peer verifier',
  await assert.rejects(bound.handleRequest(request(),{}),/peer_auth_not_confirmed/);
  assert.equal(calls,2);
 });
+test('async peer verification rejects replacement socket and rewritten request route',async()=>{
+ const f=fixture();
+ const req=request();
+ const original=req.socket;
+ let calls=0;
+ const bound=f.bridge.bindRootHttp({basePost:()=>({}),rootCapabilities:{},
+  assertNativePeer:async socket=>{
+   calls++;
+   assert.equal(socket,original);
+   await Promise.resolve();
+   req.socket=new Socket();
+   return true;
+  }
+ });
+ await assert.rejects(bound.handleRequest(req,{}),/peer_auth_not_confirmed/);
+ assert.equal(calls,1);
+ assert.equal(f.events.filter(x=>x[0]==='finish').length,0);
+
+ const f2=fixture();
+ const req2=request();
+ const bound2=f2.bridge.bindRootHttp({basePost:()=>({}),rootCapabilities:{},
+  assertNativePeer:async()=>{
+   await Promise.resolve();
+   req2.url=EXECUTE;
+   return true;
+  }
+ });
+ await assert.rejects(bound2.handleRequest(req2,{}),/peer_auth_not_confirmed/);
+ assert.equal(f2.events.filter(x=>x[0]==='finish').length,0);
+});
+test('closed peer and nonliteral asynchronous verifier response fail closed',async()=>{
+ const f=fixture();const req=request();
+ const bound=f.bridge.bindRootHttp({basePost:()=>({}),rootCapabilities:{},
+  assertNativePeer:async socket=>{socket.destroy();return true;}
+ });
+ await assert.rejects(bound.handleRequest(req,{}),/peer_auth_not_confirmed/);
+ const other=fixture();
+ const bound2=other.bridge.bindRootHttp({basePost:()=>({}),rootCapabilities:{},
+  assertNativePeer:async()=>({verified:true})
+ });
+ await assert.rejects(bound2.handleRequest(request(),{}),/peer_auth_not_confirmed/);
+ assert.equal(other.events.filter(x=>x[0]==='finish').length,0);
+});
 test('root-only source has no listener, installer or independent approval function',()=>{
  const f=fixture(1001);
  assert.throws(()=>f.bridge.bindRootHttp({basePost:()=>({}),rootCapabilities:{},
