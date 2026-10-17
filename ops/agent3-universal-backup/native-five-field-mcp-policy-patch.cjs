@@ -71,11 +71,17 @@ function policyCandidate(bytes){
  try{policy=JSON.parse(source);}catch{deny('policy_not_json');}
  if(!policy||typeof policy!=='object'||Array.isArray(policy)||
     !policy.operations||typeof policy.operations!=='object'||
-    !Array.isArray(policy.typed_scopes))deny('policy_contract_missing');
+    !Array.isArray(policy.typed_scopes)||
+    typeof policy.policy_version!=='string'||policy.policy_version.length<8)
+  deny('policy_contract_missing');
  if(Object.hasOwn(policy.operations,gateway.OPERATION)||
    policy.typed_scopes.some(r=>r?.operation===gateway.OPERATION||
      r?.action===gateway.ACTION))
    deny('already_registered');
+ // The root verifier pins the signed JWS policy_version exactly.
+ // Without this explicit revision, an otherwise correctly signed Level-4
+ // approval will be rejected after consumption.
+ policy.policy_version=gateway.POLICY_VERSION;
  policy.operations[gateway.OPERATION]={level:4,risk:'critical'};
  // The independent Ed25519 JWS verifier is pinned to this exact tool,
  // project and consumer. Do not silently change these without reviewing
