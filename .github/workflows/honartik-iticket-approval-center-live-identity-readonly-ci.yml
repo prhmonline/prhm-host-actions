@@ -1,0 +1,35 @@
+name: Honartik Approval Center Public Identity Read-only Contract
+on:
+  push:
+    branches: [feat/honartik-iticket-sha-bound-release-v1-20261015]
+    paths:
+      - 'honartik-iticket-approval-center-live-identity-readonly-v1.cjs'
+      - 'test-honartik-iticket-approval-center-live-identity-readonly-v1.cjs'
+      - '.github/workflows/honartik-iticket-approval-center-live-identity-readonly-ci.yml'
+  pull_request:
+    paths:
+      - 'honartik-iticket-approval-center-live-identity-readonly-v1.cjs'
+      - 'test-honartik-iticket-approval-center-live-identity-readonly-v1.cjs'
+      - '.github/workflows/honartik-iticket-approval-center-live-identity-readonly-ci.yml'
+permissions:
+  contents: read
+jobs:
+  public_fingerprint_policy_health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Negative protocol tests, synthetic Ed25519 public key and synthetic health only
+        run: |
+          set -Eeuo pipefail
+          node --check honartik-iticket-approval-center-live-identity-readonly-v1.cjs
+          node --check test-honartik-iticket-approval-center-live-identity-readonly-v1.cjs
+          node --test test-honartik-iticket-approval-center-live-identity-readonly-v1.cjs
+          sha256sum honartik-iticket-approval-center-live-identity-readonly-v1.cjs
+          echo 'LIVE_IDENTITY_INSPECTOR_FIXTURE=PASS'
+          echo 'ROOT_HOST_LIVE_APPROVAL_IDENTITY=NOT_YET_ATTESTED'
+          echo 'APPROVAL_CONSUMPTION=NO'
+          echo 'PRODUCTION_MUTATION=NO'
