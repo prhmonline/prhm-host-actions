@@ -1,0 +1,35 @@
+name: Honartik Actual Approval Center Signed Claims Contract (Offline)
+on:
+  push:
+    branches: [feat/honartik-iticket-sha-bound-release-v1-20261015]
+    paths:
+      - 'honartik-iticket-real-issuer-jws-readonly-contract-v1.cjs'
+      - 'test-honartik-iticket-real-issuer-jws-readonly-contract-v1.cjs'
+      - '.github/workflows/honartik-iticket-real-issuer-jws-readonly-contract-ci.yml'
+  pull_request:
+    paths:
+      - 'honartik-iticket-real-issuer-jws-readonly-contract-v1.cjs'
+      - 'test-honartik-iticket-real-issuer-jws-readonly-contract-v1.cjs'
+      - '.github/workflows/honartik-iticket-real-issuer-jws-readonly-contract-ci.yml'
+permissions:
+  contents: read
+jobs:
+  actual_wire_shape_test_keys_only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Validate real issuer EdDSA wire and claim shape with ephemeral test keys
+        run: |
+          set -Eeuo pipefail
+          node --check honartik-iticket-real-issuer-jws-readonly-contract-v1.cjs
+          node --check test-honartik-iticket-real-issuer-jws-readonly-contract-v1.cjs
+          node --test test-honartik-iticket-real-issuer-jws-readonly-contract-v1.cjs
+          echo 'GIT_SOURCE_ISSUER_PROTOCOL_OFFLINE=PASS'
+          echo 'LIVE_BINARY_IDENTITY=NOT_ATTESTED'
+          echo 'LIVE_ISSUER_KEY_PIN=NOT_ATTESTED'
+          echo 'LIVE_APPROVAL_CONSUMPTION=NOT_ATTESTED'
+          echo 'PRODUCTION_MUTATION=NO'
