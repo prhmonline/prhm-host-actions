@@ -1,0 +1,111 @@
+'use strict';
+/**
+ * SOURCE-ONLY registration proposal for the existing typed Host Actions v2.
+ * It is NOT an untrusted CLI/root installer; it never writes production files.
+ * A separately authenticated root-owned installer must inspect the four current
+ * owner sources, attest preimages, approve and atomically install candidates.
+ */
+const crypto = require('node:crypto');
+const ACTION = 'pbcinema_banners_release_install_v1';
+const OPERATION = 'host_action.' + ACTION;
+const POLICY_VERSION = '2026-10-19.1-pbcinema-banners-release-install-v1';
+const CURRENT_POLICY_VERSION = '2026-10-02.1-control-plane-current-owner-bootstrap-repair-v1';
+const ROLLBACK = 'host-action-v2:pbcinema-banners-release-install-v1:fixed-wrapper-and-sudoers-rollback';
+const PYTHON_HELPER_SHA256 = 'fc8e0af28407e52db5e46993e7be9fad5e76f26238d2f85349d4f89a6aaf787e';
+const PYTHON_HELPER_PATH = '/root/prhm-reviewed/pbcinema-banners-release-helper.py';
+const INSTALLER_PATH = '/root/prhm-reviewed/pbcinema-banners-root-installer.sh';
+const DEST = '/usr/local/libexec/deploy-control/pbcinema-banners-release';
+const POLICY_OWNER = '/opt/prhm-company-control-plane/config/approval-policy.json';
+const BASE_OWNER = '/opt/prhm-agent-selfmaint/server.js';
+const EXEC_OWNER = '/opt/prhm-agent-selfmaint-exec/server.js';
+const MCP_OWNER = '/home/agent/ssh-mcp-server/src/plugins/hostActionsV2.js';
+const FRONT_SHA = '7e926a28b3b16b475a492a6f180e74cc7ff6543f';
+const BACK_SHA = 'c5e8b58426892185c4ee95e662b6d2b641788510';
+const EXPECTED_PREIMAGES = Object.freeze({
+  // Historical hashes only; these MUST be freshly attested by trusted root.
+  // No caller-supplied new hash may implicitly replace these pins.
+  base:'4c29d01a248d59ee85754dfa5a59e8132fe22e6b34ef04324228c16c88727406',
+  exec:'410406ba0965ef3a5cad6da6306a85335e38acc3637fb6ed60fa42200a10c2e0',
+  policy:'148fe2a724befc15cd8c731b0195d83e254d39215792a5084b70dd5b5c178174',
+  mcp:'bd768f992dab75710558e3f47187c311c2ee5b5ec6f5751a74e0bbfa64729166',
+});
+function fail(code){ throw new Error('pbcinema_registration_'+code); }
+function sha(x){return crypto.createHash('sha256').update(x).digest('hex');}
+function replaceOnce(source,needle,replacement,label){
+  if(typeof source!=='string'||source.split(needle).length!==2)fail(label+'_anchor_not_unique');
+  return source.replace(needle,replacement);
+}
+function readPolicyCandidate(raw){
+  const policy=JSON.parse(raw);
+  if(policy.schema_version!=='prhm.approval-policy.v1' || policy.version!==CURRENT_POLICY_VERSION)fail('policy_version_not_attested');
+  if(!policy.operations || !Array.isArray(policy.typed_scopes))fail('policy_schema_incomplete');
+  if(policy.operations[OPERATION] || policy.typed_scopes.some(x=>x && x.action===ACTION))fail('duplicate_action');
+  policy.version=POLICY_VERSION;
+  policy.operations[OPERATION]={
+    level:4,risk:'critical',requires_second_confirmation:true,one_time_use:true,
+    requested_approver:'mohammad',expires_seconds:180,
+    policy_version:POLICY_VERSION,rollback_reference:ROLLBACK
+  };
+  policy.typed_scopes.push({
+    tool:'host_action_v2_apply',project:'control_plane',environment:'production',
+    action:ACTION,risk:'critical',operation:OPERATION,
+    principals:[{principal_id:'mohammad',roles:['mcp-operator']}]
+  });
+  return JSON.stringify(policy,null,2)+'\n';
+}
+function readBaseCandidate(source){
+  if(source.includes(ACTION))fail('base_action_already_present');
+  const anchor = "  agent_zdt_source_sha_refresh_publisher_v1: { operation: 'host_action.agent_zdt_source_sha_refresh_publisher_v1', rollback: 'host-action-v2:agent-zdt-source-sha-refresh-publisher-v1:action-backup-restore' }";
+  return replaceOnce(source,anchor,anchor+",\n  "+ACTION+": { operation: '"+OPERATION+"', rollback: '"+ROLLBACK+"' }",'base_registry');
+}
+function readMcpCandidate(source){
+  if(source.includes("'"+ACTION+"'"))fail('mcp_action_already_present');
+  const anchor="'control_plane_root_scripts_stage_transport_v1'";
+  return replaceOnce(source,anchor,anchor+",'"+ACTION+"'",'mcp_action_enum');
+}
+function executorDispatchSnippet(){
+  // Trusted root verifier must separately pin the installer script's SHA256.
+  // Until that happens, this action deliberately refuses installation:
+  // never execute scripts merely because they exist in a mutable root path.
+  return "\n"+
+    "function applyPbcinemaBannersReleaseInstallV1(){"+
+    "throw new Error('pbcinema_installer_source_sha_not_independently_attested');"+
+    "}\n";
+}
+function readExecCandidate(source){
+  if(source.includes(ACTION))fail('exec_action_already_present');
+  const anchor = "  agent_zdt_source_sha_refresh_publisher_v1:{operation:'host_action.agent_zdt_source_sha_refresh_publisher_v1',kind:'agent_zdt_source_sha_refresh_publisher_v1'}";
+  let out=replaceOnce(source,anchor,anchor+",\n  "+ACTION+":{operation:'"+OPERATION+"',kind:'"+ACTION+"'}",'exec_spec');
+  const apply = "applyHostActionV2=async function(action){";
+  out=replaceOnce(out,apply,executorDispatchSnippet()+apply+"if(action==='"+ACTION+"')return applyPbcinemaBannersReleaseInstallV1();",'exec_dispatch');
+  return out;
+}
+function attestSourcePreimages(sources){
+  const keys=['base','exec','policy','mcp'];
+  if(!sources||Object.keys(sources).sort().join(',')!==keys.sort().join(','))fail('owner_set_inexact');
+  for(const k of keys){
+    if(typeof sources[k]!=='string'||sha(Buffer.from(sources[k]))!==EXPECTED_PREIMAGES[k])fail('source_preimage_sha_mismatch_'+k);
+  }
+  return true;
+}
+function candidateBundle(sources){
+  attestSourcePreimages(sources);
+  const files={base:readBaseCandidate(sources.base),exec:readExecCandidate(sources.exec),
+    policy:readPolicyCandidate(sources.policy),mcp:readMcpCandidate(sources.mcp)};
+  return Object.freeze({
+    action:ACTION,operation:OPERATION,
+    requires_fresh_level4_approval:true,requires_second_confirmation:true,
+    live_install_allowed:false,
+    expected_python_helper_sha256:PYTHON_HELPER_SHA256,
+    owner_preimages:EXPECTED_PREIMAGES,
+    candidates:Object.freeze(files),
+    candidate_sha256:Object.freeze(Object.fromEntries(Object.entries(files).map(([k,v])=>[k,sha(Buffer.from(v))]))),
+  });
+}
+module.exports=Object.freeze({
+ ACTION,OPERATION,POLICY_VERSION,CURRENT_POLICY_VERSION,ROLLBACK,
+ FRONT_SHA,BACK_SHA,PYTHON_HELPER_SHA256,PYTHON_HELPER_PATH,INSTALLER_PATH,DEST,
+ POLICY_OWNER,BASE_OWNER,EXEC_OWNER,MCP_OWNER,EXPECTED_PREIMAGES,
+ sha,replaceOnce,readPolicyCandidate,readBaseCandidate,readMcpCandidate,
+ readExecCandidate,attestSourcePreimages,candidateBundle,executorDispatchSnippet
+});
