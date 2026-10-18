@@ -68,6 +68,27 @@ function verifyCandidate(files){
  * no caller JSON source. It owns owner patch generation, secret-free snapshots,
  * signer integration and one-time token storage.
  */
+/**
+ * Pure receipt acceptance boundary. Rejected receipts cannot reach owner writes.
+ * Trust in the issuer itself must still be enforced by the root-side capability;
+ * this only verifies the returned receipt matches that independently trusted grant.
+ */
+function verifyInstallReceipt(receipt,digests){
+ if(!exact(digests,KEYS) ||
+    !receipt || receipt.consumed!==true || receipt.issuerChecked!==true ||
+    receipt.oneTime!==true || receipt.liveDDLAuthorized!==false ||
+    receipt.level!==4 || receipt.risk!=='critical' ||
+    receipt.operation!==INSTALL_OP || receipt.action!==ACTION ||
+    !exact(receipt.candidateSha256,KEYS) ||
+    KEYS.some(k=>receipt.candidateSha256[k]!==digests[k]) ||
+    !exact(receipt.ownerSha256,Object.keys(OWNERS)) ||
+    Object.keys(OWNERS).some(k=>receipt.ownerSha256[k]!==OWNERS[k].sha256) ||
+    !exact(receipt.reviewedSourceBlobs,Object.keys(SOURCES)) ||
+    Object.keys(SOURCES).some(k=>receipt.reviewedSourceBlobs[k]!==SOURCES[k].gitBlob) ||
+    typeof receipt.requestId!=='string' || receipt.requestId.length<16)
+      fail('signed_install_scope_mismatch');
+ return true;
+}
 async function applyTrustedRegistration(cap){
  const methods=['readOwner','readPinnedSource','buildReviewedOwnerCandidate',
    'consumeSignedInstallLevel4','acquireRegistrationLock','snapshotOwners',
@@ -114,18 +135,7 @@ async function applyTrustedRegistration(cap){
    candidateSha256:digests,
    liveOperationIsNotGranted:true
  });
- if(!receipt || receipt.consumed!==true || receipt.level!==4 ||
-    receipt.operation!==INSTALL_OP || receipt.action!==ACTION ||
-    receipt.issuerChecked!==true || receipt.oneTime!==true ||
-    receipt.liveDDLAuthorized!==false ||
-    !exact(receipt.candidateSha256,KEYS) ||
-    KEYS.some(k=>receipt.candidateSha256[k]!==digests[k]) ||
-    !exact(receipt.ownerSha256,Object.keys(OWNERS)) ||
-    Object.keys(OWNERS).some(k=>receipt.ownerSha256[k]!==OWNERS[k].sha256) ||
-    !exact(receipt.reviewedSourceBlobs,Object.keys(SOURCES)) ||
-    Object.keys(SOURCES).some(k=>receipt.reviewedSourceBlobs[k]!==SOURCES[k].gitBlob) ||
-    typeof receipt.requestId!=='string' || receipt.requestId.length<16)
-      fail('signed_install_scope_mismatch');
+ verifyInstallReceipt(receipt,digests);
  const lock=await cap.acquireRegistrationLock(ACTION);
  let backup=null,attempted=false;
  try{
@@ -188,4 +198,4 @@ if(require.main===module){
  process.exitCode=2;
 }
 module.exports=Object.freeze({ACTION,INSTALL_OP,LIVE_OP,SOURCES,OWNERS,KEYS,
-  sha256,gitBlob,verifyCandidate,applyTrustedRegistration});
+  sha256,gitBlob,verifyCandidate,verifyInstallReceipt,applyTrustedRegistration});
