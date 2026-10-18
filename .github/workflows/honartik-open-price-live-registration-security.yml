@@ -1,0 +1,36 @@
+name: Honartik L4 installation receipt security gate
+on:
+  push:
+    paths:
+      - '.github/workflows/honartik-open-price-live-registration-security.yml'
+      - 'honartik-open-price-live-registration-v1.cjs'
+      - 'honartik-open-price-live-native-adapter-v1.cjs'
+      - 'test-honartik-open-price-live-registration-security-gate-v1.cjs'
+  pull_request:
+    paths:
+      - '.github/workflows/honartik-open-price-live-registration-security.yml'
+      - 'honartik-open-price-live-registration-v1.cjs'
+      - 'honartik-open-price-live-native-adapter-v1.cjs'
+      - 'test-honartik-open-price-live-registration-security-gate-v1.cjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  require-exact-L4-receipt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Parse candidate source
+        run: |
+          node --check honartik-open-price-live-registration-v1.cjs
+          node --check honartik-open-price-live-native-adapter-v1.cjs
+      - name: Reject install candidate until strict signed receipt binding is proven
+        run: |
+          set -euo pipefail
+          node --test test-honartik-open-price-live-registration-security-gate-v1.cjs
+          echo 'LIVE_L4_INSTALL_RECEIPT_BOUND=PASS'
+          echo 'PRODUCTION_DDL_EXECUTED=NO'
