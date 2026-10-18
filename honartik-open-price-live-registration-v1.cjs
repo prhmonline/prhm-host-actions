@@ -16,7 +16,7 @@ const SOURCES=Object.freeze({
     repository:'prhmonline/prhm-host-actions',
     path:'honartik-open-price-live-ddl-coordinator-v1.cjs',
     destination:'/opt/prhm-agent-selfmaint-exec/actions/honartik-open-price-live-ddl-coordinator-v1.cjs',
-    gitBlob:'f18b83a2266a38637e6b945ca4a75aee75f92145'
+    gitBlob:'a41caf2bfe8e4ea9a476aec3123606cbf1b92cbb'
   }),
   adapter:Object.freeze({
     repository:'prhmonline/prhm-host-actions',
