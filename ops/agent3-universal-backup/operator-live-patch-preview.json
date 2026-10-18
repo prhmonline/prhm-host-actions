@@ -1,0 +1,40 @@
+{
+  "schema": "prhm.agent3.operator-live-patch-preview.v1",
+  "capture_type": "user_supplied_server_terminal_output",
+  "target_host": "prhm-production",
+  "preflight_git_commit": "3fefc1fa50170c88c048844a7b35668054d5b454",
+  "preflight_entrypoint": "ops/agent3-universal-backup/four-owner-live-patch-preflight.cjs",
+  "observed_result": {
+    "ok": true,
+    "mode": "READ_ONLY_INCOMPLETE_PATCH_PREVIEW",
+    "action": "agent3_universal_backup_engine_install_v1",
+    "host": "prhm-production",
+    "owner_count": 4,
+    "live_services_verified": 4
+  },
+  "before_sha256": {
+    "base": "4c29d01a248d59ee85754dfa5a59e8132fe22e6b34ef04324228c16c88727406",
+    "executor": "410406ba0965ef3a5cad6da6306a85335e38acc3637fb6ed60fa42200a10c2e0",
+    "policy": "148fe2a724befc15cd8c731b0195d83e254d39215792a5084b70dd5b5c178174",
+    "mcp": "bd768f992dab75710558e3f47187c311c2ee5b5ec6f5751a74e0bbfa64729166"
+  },
+  "candidate_after_sha256": {
+    "base": "afa6b086d446d385d1cd95cad3e56b5c63dc7347ad9bd6edbc84b3124b32477d",
+    "executor": "1e3a8caab494573c2330aafb18c57b6d4690a68cd42f9d5e11a99000b4a40fed",
+    "policy": "0cb6f2e4a8faaba0780e2f6b2d607fae263c635df6dbedf0adba747f74fe6da4",
+    "mcp": "24d1e5c019312b2766dca250cfa9d6273b8542011b51bcdad31918629aa8156d"
+  },
+  "security_state": {
+    "original_owner_bytes_disclosed": false,
+    "candidate_bytes_disclosed": false,
+    "execution_adapter_reviewed": false,
+    "dispatcher_connected": false,
+    "ready_for_registration_manifest": false,
+    "approval_requested": false,
+    "approval_consumed": false,
+    "registry_mutation": false,
+    "production_mutation": false
+  },
+  "trust_statement": "User-provided terminal observation of a successful read-only preflight. It is not independently signed live host evidence, not approval, not installation, and not an installable four-file release. Re-read owners and verify final dispatcher postimages before any Level-4 authorization.",
+  "next_gate": "REVIEW_AND_BIND_TRUSTED_FIVE_FIELD_LEVEL4_EXECUTOR_BEFORE_MANIFEST"
+}

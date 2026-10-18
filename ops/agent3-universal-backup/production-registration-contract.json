@@ -1,0 +1,43 @@
+{
+  "schema": "prhm.agent3.universal-backup.registration-contract.v1",
+  "status": "registration_candidate_not_applied",
+  "action": "agent3_universal_backup_engine_install_v1",
+  "operation": "host_action.agent3_universal_backup_engine_install_v1",
+  "approval": {
+    "level": 4,
+    "risk": "critical",
+    "tool": "host_action_v2_apply",
+    "project": "control_plane",
+    "environment": "production",
+    "principal_id": "mohammad",
+    "role": "mcp-operator",
+    "one_time_signed_approval_required": true
+  },
+  "host": "prhm-production",
+  "preimage_sha256": {
+    "base": "4c29d01a248d59ee85754dfa5a59e8132fe22e6b34ef04324228c16c88727406",
+    "executor": "410406ba0965ef3a5cad6da6306a85335e38acc3637fb6ed60fa42200a10c2e0",
+    "policy": "148fe2a724befc15cd8c731b0195d83e254d39215792a5084b70dd5b5c178174",
+    "mcp": "bd768f992dab75710558e3f47187c311c2ee5b5ec6f5751a74e0bbfa64729166"
+  },
+  "release_lock": "ops/agent3-universal-backup/release-lock.json",
+  "installer": "ops/agent3-universal-backup/install-candidate.js",
+  "required_gates": [
+    "check preimages and staged source hashes",
+    "authenticate and consume Level-4 approval through trusted mediator",
+    "register operation in base, executor, policy, MCP atomically with rollback",
+    "stage restricted service identity and root-protected encryption key",
+    "health-check all affected services and rollback registration on failure"
+  ],
+  "prohibitions": [
+    "no standalone apply",
+    "no arbitrary shell",
+    "no email",
+    "no production restore",
+    "no reuse of honartik-specific installer"
+  ],
+  "live_owner_sha_attestation": "OPERATOR_REPORTED_4_OF_4_MATCH_PENDING_TRUSTED_EXECUTOR_RECHECK",
+  "attestation_warning": "Operator supplied sha256sum of all four live owner files on prhm-production and systemctl is-active results: 4/4 matching pinned preimages and 4/4 active. This observation is recorded in operator-owner-sha-observation.json and verified by CI, but it is not an independent signed host attestation. The approved installer must re-read exact live descriptors immediately before fresh Ed25519 Level-4 authorization/consumption.",
+  "registration_can_apply": false,
+  "operator_evidence_path": "ops/agent3-universal-backup/operator-owner-sha-observation.json"
+}

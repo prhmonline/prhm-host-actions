@@ -1,0 +1,35 @@
+{
+  "schema": "prhm.agent3.universal-backup.release-lock.v1",
+  "status": "candidate_not_installed",
+  "source_commit_sha": "80204eda74388f14ea85d8aa515cb4bc14d2d41a",
+  "verified_ci_run": "https://github.com/prhmonline/prhm-host-actions/actions/runs/39081954623",
+  "fixed_action": "agent3_universal_backup_engine_install_v1",
+  "approval_level": 4,
+  "target_host": "prhm-production",
+  "fixed_root": "/opt/prhm-agent3-universal-backup",
+  "service_identity": "prhm-backup",
+  "key_delivery": "systemd LoadCredentialEncrypted or root-protected CREDENTIALS_DIRECTORY/prhm-backup.key; never Git or request body",
+  "expected_sha256": {
+    "lib/agent3-confined-open.js": "fdd84a4e12ab428c9b57c313be49f470b3b9ba7bc0526aefad83e21886b4cefc",
+    "lib/universal-backup-policy.js": "db6b017f90add884833dc2592d7b291322afe0de66808a5a9fd0dc0957dcb2b1",
+    "lib/agent3-encrypted-bundle.candidate.js": "30ef584c709f0652231c3c4481fe658fbb0f4bbc742dd7ec309007d4c6202eec",
+    "lib/agent3-policy-broker.candidate.js": "fd12c2de52dbcd593e0d021833b9c4571e71908325e7f61c30707d607fc10127",
+    "ops/agent3-universal-backup/install-candidate.js": "8a2a76c16953d4d609cf8484a69da6c52b700e0538826f436775e4366d75ecd7"
+  },
+  "production_activation_requirements": [
+    "approved action registration",
+    "authenticated one-time Level-4 proof",
+    "root-managed 32-byte key",
+    "least-privilege service user",
+    "pinned file digests",
+    "registry rollback",
+    "post-install health and audit",
+    "isolated encrypted restore"
+  ],
+  "canonical_registry_handler_path": "ops/agent3-universal-backup/trusted-shared-registrar-dispatch.cjs",
+  "durable_claim_source_path": "ops/agent3-universal-backup/durable-execution-claim.cjs",
+  "durable_claim_requirement": "trusted root executor must provision the fixed 0700 claim directory and install its O_EXCL+fsync once-only callback before activation",
+  "fixed_journal_binding": "trusted-shared-registrar-dispatch.cjs:rootWithFixedJournal -> durable-execution-claim.cjs:claimExecutionOnce",
+  "eager_root_installer_preclaim_required": true,
+  "native_request_identity_binding": "expectedRequestId must equal Ed25519 JWS request_id and consumed ledger request_id before any installer"
+}
