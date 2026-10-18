@@ -17,13 +17,13 @@ const ENDPOINT='http://127.0.0.1:18133/health';
 const ORIGINAL_POLICY_SHA='148fe2a724befc15cd8c731b0195d83e254d39215792a5084b70dd5b5c178174';
 const sha=v=>crypto.createHash('sha256').update(v).digest('hex');
 function fail(x){throw Error('issuer_identity_readonly_blocked_'+x);}
-function validate({policyBytes,publicKeyBytes,health,policyMetadata,publicMetadata}={}){
+function validate({policyBytes,publicKeyBytes,health,policyMetadata,publicMetadata,expectedPolicySha=ORIGINAL_POLICY_SHA}={}){
   if(!Buffer.isBuffer(policyBytes)||!Buffer.isBuffer(publicKeyBytes))fail('bytes_missing');
   for(const [kind,stat] of [['policy',policyMetadata],['public',publicMetadata]]){
     if(!stat||stat.uid!==0||stat.nlink!==1||stat.isFile!==true||
        stat.isSymbolicLink===true||(stat.mode&0o022)!==0)fail('file_trust_'+kind);
   }
-  if(sha(policyBytes)!==ORIGINAL_POLICY_SHA)fail('original_policy_sha_drift');
+  if(sha(policyBytes)!==expectedPolicySha)fail('original_policy_sha_drift');
   let policy;
   try{policy=JSON.parse(policyBytes.toString('utf8'));}catch{fail('policy_json_invalid');}
   if(policy.schema_version!=='prhm.approval-policy.v1'||
@@ -42,7 +42,7 @@ function validate({policyBytes,publicKeyBytes,health,policyMetadata,publicMetada
     fail('health_policy_mismatch');
   return Object.freeze({
     status:'LIVE_HEALTH_PUBLIC_KEY_AND_POLICY_CONSISTENT',
-    source_policy_preimage_sha256:ORIGINAL_POLICY_SHA,
+    source_policy_preimage_sha256:expectedPolicySha,
     reported_policy_sha256:policyHash,
     key_spki_sha256:fingerprint,
     live_health_version:String(health.version||''),
