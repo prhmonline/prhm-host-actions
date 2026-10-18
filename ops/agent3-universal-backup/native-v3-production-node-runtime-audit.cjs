@@ -16,6 +16,13 @@ const fs=require('node:fs');
 const cp=require('node:child_process');
 const lock=require('./native-v3-addon-ci-build-lock.json');
 const SERVICE='prhm-agent-selfmaint-exec';
+const TRUSTED_EXECUTABLES=Object.freeze([
+ '/usr/local/bin/prhm-node', // Live production node (root:root 0755 as observed)
+ '/usr/local/bin/prhm-node20',
+ '/usr/local/bin/node',
+ '/usr/bin/node',
+ '/usr/bin/nodejs'
+]);
 const FIXED='process.stdout.write(JSON.stringify({node:process.versions.node,napi:process.versions.napi,modules:process.versions.modules,uv:process.versions.uv,platform:process.platform,arch:process.arch,glibc:(process.report&&typeof process.report.getReport==="function"?process.report.getReport().header.glibcVersionRuntime:null)}))';
 function deny(code){throw Error('agent3_prod_node_runtime_audit_denied:'+code);}
 function systemdPID(){
@@ -30,15 +37,33 @@ function systemdPID(){
   deny('service_not_running_or_invalid_pid');
  return pid;
 }
+function validateExecutableIdentity({target,stat,linked}={}){
+ if(typeof target!=='string'||!TRUSTED_EXECUTABLES.includes(target))
+  deny('unexpected_executable_identity');
+ if(!stat||!linked||!Number.isSafeInteger(stat.uid)||
+    !Number.isSafeInteger(stat.gid)||!Number.isSafeInteger(stat.mode)||
+    !Number.isSafeInteger(stat.dev)||!Number.isSafeInteger(stat.ino)||
+    !Number.isSafeInteger(linked.dev)||!Number.isSafeInteger(linked.ino))
+  deny('invalid_executable_metadata');
+ if(stat.uid!==0||stat.gid!==0||
+    (stat.mode&0o022)!==0||(stat.mode&0o111)===0)
+  deny('untrusted_executable_owner_or_permissions');
+ if(stat.dev!==linked.dev||stat.ino!==linked.ino)
+  deny('live_executable_path_inode_mismatch');
+ return true;
+}
 function inspectExecutable(pid){
  const exe='/proc/'+pid+'/exe';
- const st=fs.statSync(exe);
- if(!st.isFile())deny('process_exe_not_file');
+ const stat=fs.statSync(exe);
+ if(!stat.isFile())deny('process_exe_not_file');
  const target=fs.readlinkSync(exe);
- // Only an actual Node executable, not a wrapper or arbitrary server binary.
- if(!/(?:^|\/)(?:node|node\d+|prhm-node20)(?: \(deleted\))?$/.test(target))
+ // Exact absolute path allowlist, never a basename match. Reject deleted,
+ // replaced, unexpected or non-root/other-writable executable files.
+ if(!TRUSTED_EXECUTABLES.includes(target))
   deny('unexpected_executable_identity');
- return Object.freeze({path:exe,target,ino:st.ino,dev:st.dev});
+ const linked=fs.statSync(target);
+ validateExecutableIdentity({target,stat,linked});
+ return Object.freeze({path:exe,target,ino:stat.ino,dev:stat.dev});
 }
 function probe(pid,exe){
  const child=cp.execFileSync(exe.path,['--eval',FIXED],{
@@ -124,4 +149,4 @@ if(require.main===module){
   process.exitCode=78;
  }
 }
-module.exports=Object.freeze({SERVICE,assess,run});
+module.exports=Object.freeze({SERVICE,TRUSTED_EXECUTABLES,validateExecutableIdentity,assess,run});
