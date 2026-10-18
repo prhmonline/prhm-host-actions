@@ -97,3 +97,24 @@ Evidence for the current reviewed branch:
 - The native adapter and coordinator Git source blobs remain the immutable values already pinned in `SOURCES`, but the mutable installer registration candidate itself has changed and must receive fresh reviewer approval / exact committed source pin before *any* proposed on-host installation.
 
 **Caution: verified source contracts are not trusted issuer integration.** Host Agent 3 `selfmaint_health` reports `ok=true` but `honartik_open_price_live_migrations_v1` **is not registered**. A separately verified, root-owned production implementation of the abstract native capabilities, full signed Level-4 policy and installer owner candidate, lock and rollback evidence, integration with the actual on-host issuer, and a second independent critical approval for the live DB migration still remain required. No root owner files, policy, Production database, deploy or external payment were modified by these commits. Preserve the two existing owner files in the live backend worktree. Do not claim approval merely from a green CI run.
+
+
+## 2026-10-18: independent on-host owner proof + PRE-L4 writer freeze defect fixed
+
+An independent, **read-only**, directly executed GitHub Actions Runner audit was committed to `prhmonline/deploy-control` SHA `72abf7186dcb06255813a4a70d91766d835baa46` and run [#39127382947](https://github.com/prhmonline/deploy-control/actions/runs/39127382947) on the `prhm-production` self-hosted runner (`UID=1015`, deploy-runner). Results:
+- `executor`: UID 0, mode 755, exact pinned SHA256 **MATCH**.
+- `policy`: UID 0, mode 644, exact pinned SHA256 **MATCH**.
+- `mcp`: UID 0, mode 600, **NOT READABLE** to deploy-runner, SHA not attested.
+- `base`: **MISSING_OR_LINK** from the runner's restricted path test; this may mean an inaccessible parent path and is NOT independent evidence that the service's base is missing. SHA not attested.
+- `OWNER_PREIMAGE=NOT_ATTESTED`; job deliberately failed (exit 41). Never widen permissions on security-sensitive files to make this audit green.
+
+Independent Agent 3 `selfmaint_health` remains `ok=true`; existing unrelated fixed `control_plane_current_baseline_refresh_registration_installer_stage_preflight_v1` and `control_plane_installer_refresh_l4_binding_repair_preflight_v1` were `ok=true` read-only, **but neither installs or authorizes Honartik's live financial migration action**. Canonical and fallback SSH Agent control-plane SHA read tools returned no usable SHA evidence for the two protected owner files. Two root-only owner SHA checks remain outstanding, as does the real trusted installer/adaptor implementation.
+
+**Critical pre-approval side-effect corrected in source:** the earlier coordinator ordered `freezeWriters()` before `consumeSignedLevel4()`. Freezing payment callbacks/reservations may disrupt live Production, and is a mutation requiring the Level-4 grant. The candidate was NEVER installed, so no live service was frozen by this bug. Updated `honartik-open-price-live-ddl-coordinator-v1.cjs` Git blob `a41caf2bfe8e4ea9a476aec3123606cbf1b92cbb` now orders: read-only live preflight → read-only verified backup/restore → issuer-verified, one-time Level-4 consume → maintenance hold → freeze and drain writers → immediate second live schema/backup/quiescence recheck → exactly two migration checkpoints → mandatory durable audit → safe resume only after final verification. Denied grant or failed backup can no longer freeze writers. The installer `SOURCES.coordinator.gitBlob` and its regression pin were updated to the new reviewed blob; no on-host action is registered.
+
+Verified real GitHub CI:
+- [Production coordinator #39127683911](https://github.com/prhmonline/prhm-host-actions/actions/runs/39127683911): **16/16 PASS**, including pre-grant mutation denial and backup-failure freeze denial.
+- [L4 install receipt + native bridge #39127683946](https://github.com/prhmonline/prhm-host-actions/actions/runs/39127683946): **18/18 PASS** (12 strict installation-receipt, 6 native bridge).
+- **Total current source-only contract: 34/34 PASS**. No live financial DDL, Agent registry modification, root owner mutation, issuer request/token, deployment or SEP payment occurred.
+
+**Current gate remains HOLD.** Do not re-label generic installation preflights as specific live action installation. Trusted root-owned native implementations of the mocked capability functions and a separately independently signed installer candidate are required, using fresh 4/4 owner SHA attestation first. Snapshot `20261017T212022Z` passed *previous* isolated rehearsal; check current backup age and same-window financial counts again before any later DDL window.
