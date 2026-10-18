@@ -21,7 +21,7 @@ test('installer is source-only and has no direct CLI execution',()=>{
 });
 
 test('installer candidate pins exact reviewed source git blobs and root paths',()=>{
- assert.equal(reg.SOURCES.coordinator.gitBlob,'f18b83a2266a38637e6b945ca4a75aee75f92145');
+ assert.equal(reg.SOURCES.coordinator.gitBlob,'a41caf2bfe8e4ea9a476aec3123606cbf1b92cbb');
  assert.equal(reg.SOURCES.adapter.gitBlob,'447508cbeab5a39b1250f9492acd92f7b05e1142');
  const paths=Object.values(reg.OWNERS).map(o=>o.path);
  assert.equal(new Set(paths).size,4);
