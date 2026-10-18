@@ -26,6 +26,7 @@ const FILES=Object.freeze([
  'ops/agent3-universal-backup/native-linux-so-peercred-addon.c',
  'ops/agent3-universal-backup/native-v3-addon-binary-build-audit.cjs',
  'ops/agent3-universal-backup/native-v3-addon-ci-build-lock.json',
+ 'ops/agent3-universal-backup/native-v3-production-node-runtime-audit.cjs',
  'ops/agent3-universal-backup/native-root-request-entrypoints.cjs',
  'ops/agent3-universal-backup/native-five-field-mcp-policy-patch.cjs',
  'ops/agent3-universal-backup/native-v3-signed-approval-protocol.cjs'
