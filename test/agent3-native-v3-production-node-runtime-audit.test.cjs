@@ -69,3 +69,40 @@ test('direct execution rejects install arguments and does not run process inspec
  assert.match(out.stderr,/only --check is allowed/);
  assert.equal(out.stdout,'');
 });
+
+test('observed production prhm-node is permitted only at its fixed path as root-owned executable',()=>{
+ const target='/usr/local/bin/prhm-node';
+ const stat={uid:0,gid:0,mode:0o100755,dev:64516,ino:19651436};
+ assert.ok(audit.TRUSTED_EXECUTABLES.includes(target));
+ assert.equal(audit.validateExecutableIdentity({
+  target,stat,linked:{dev:64516,ino:19651436}
+ }),true);
+});
+test('lookalike executable names, deleted files, writable or replaced binaries are rejected',()=>{
+ const target='/usr/local/bin/prhm-node';
+ const stat={uid:0,gid:0,mode:0o100755,dev:64516,ino:19651436};
+ const linked={dev:64516,ino:19651436};
+ for(const fake of [
+  '/tmp/prhm-node','/home/agent/prhm-node',
+  '/usr/local/bin/prhm-node (deleted)',
+  '/usr/local/bin/prhm-node-fake','/opt/bin/node'
+ ])assert.throws(()=>audit.validateExecutableIdentity({
+  target:fake,stat,linked
+ }),/unexpected_executable_identity/);
+ for(const changed of [
+  {...stat,uid:1015},{...stat,gid:1016},
+  {...stat,mode:0o100777},{...stat,mode:0o100775},
+  {...stat,mode:0o100644}
+ ])assert.throws(()=>audit.validateExecutableIdentity({
+  target,stat:changed,linked
+ }),/untrusted_executable_owner_or_permissions/);
+ assert.throws(()=>audit.validateExecutableIdentity({
+  target,stat,linked:{dev:64516,ino:19651437}
+ }),/live_executable_path_inode_mismatch/);
+ assert.throws(()=>audit.validateExecutableIdentity({
+  target,stat,linked:{dev:64517,ino:19651436}
+ }),/live_executable_path_inode_mismatch/);
+ assert.throws(()=>audit.validateExecutableIdentity({
+  target,stat,linked:null
+ }),/invalid_executable_metadata/);
+});
