@@ -173,10 +173,9 @@ function makeCoordinator(trusted){
         const preflight=await trusted.readOnlyPreflight(PINS);
         verifyPreflight(preflight);
         phase='preimage_verified';
-        freezeAttempted=true;
-        verifyFreeze(await trusted.freezeWriters(PINS));
-        verifyFreeze(await trusted.verifyQuiescence(PINS));
-        phase='writers_quiescent';
+        // Pre-authorization work MUST be read-only. Freezing checkout,
+        // payment callbacks, reservations or writer processes is a live
+        // production mutation, even when no SQL DDL has yet been executed.
         const proof=await trusted.verifyBackupRestore(PINS);
         verifyBackup(proof);
         phase='backup_restored_verified';
@@ -190,6 +189,10 @@ function makeCoordinator(trusted){
            deny('maintenance_hold_unproven');
         maintenanceHeld=true;
         phase='maintenance_held';
+        freezeAttempted=true;
+        verifyFreeze(await trusted.freezeWriters(PINS));
+        verifyFreeze(await trusted.verifyQuiescence(PINS));
+        phase='writers_quiescent';
         // Close the approval/backup to first-DDL time-of-check gap. The
         // trusted adapter must independently reacquire live schema, history
         // and payment-writer quiescence AFTER consuming the signed grant.
