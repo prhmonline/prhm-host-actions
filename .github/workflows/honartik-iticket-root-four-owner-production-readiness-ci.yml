@@ -1,0 +1,34 @@
+name: Honartik Fixed Root Owner Production Readiness (No Writes)
+on:
+  push:
+    branches: [feat/honartik-iticket-sha-bound-release-v1-20261015]
+    paths:
+      - 'honartik-iticket-root-four-owner-production-readiness-v1.cjs'
+      - 'test-honartik-iticket-root-four-owner-production-readiness-v1.cjs'
+      - '.github/workflows/honartik-iticket-root-four-owner-production-readiness-ci.yml'
+  pull_request:
+    paths:
+      - 'honartik-iticket-root-four-owner-production-readiness-v1.cjs'
+      - 'test-honartik-iticket-root-four-owner-production-readiness-v1.cjs'
+      - '.github/workflows/honartik-iticket-root-four-owner-production-readiness-ci.yml'
+permissions:
+  contents: read
+jobs:
+  readonly_pinned_root_boundary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Readiness logic — mocked exact root paths, no write surface
+        run: |
+          set -Eeuo pipefail
+          node --check honartik-iticket-root-four-owner-production-readiness-v1.cjs
+          node --check test-honartik-iticket-root-four-owner-production-readiness-v1.cjs
+          node --test test-honartik-iticket-root-four-owner-production-readiness-v1.cjs
+          echo 'ROOT_OWNER_READINESS_NEGATIVE_BOUNDARY=PASS'
+          echo 'LIVE_PRODUCTION_OWNER_PARENT_TRUST=NOT_TESTED'
+          echo 'ROOT_TRANSACTION_SIGNED_ADAPTER=NOT_IMPLEMENTED'
+          echo 'PRODUCTION_MUTATION=NO'
