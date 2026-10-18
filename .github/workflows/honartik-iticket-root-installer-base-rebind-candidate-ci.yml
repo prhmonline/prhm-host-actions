@@ -1,0 +1,36 @@
+name: Honartik iTicket Root Installer Base Rebind Source-Only Contract
+
+on:
+  push:
+    branches:
+      - feat/honartik-iticket-sha-bound-release-v1-20261015
+    paths:
+      - 'honartik-iticket-root-installer-base-rebind-candidate-v1.cjs'
+      - 'test-honartik-iticket-root-installer-base-rebind-candidate-v1.cjs'
+      - '.github/workflows/honartik-iticket-root-installer-base-rebind-candidate-ci.yml'
+  pull_request:
+    paths:
+      - 'honartik-iticket-root-installer-base-rebind-candidate-v1.cjs'
+      - 'test-honartik-iticket-root-installer-base-rebind-candidate-v1.cjs'
+      - '.github/workflows/honartik-iticket-root-installer-base-rebind-candidate-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  candidate_contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Pure offline candidate tests; no production or installer access
+        run: |
+          set -Eeuo pipefail
+          node --check honartik-iticket-root-installer-base-rebind-candidate-v1.cjs
+          node --check test-honartik-iticket-root-installer-base-rebind-candidate-v1.cjs
+          node --test test-honartik-iticket-root-installer-base-rebind-candidate-v1.cjs
+          echo "ROOT_INSTALLER_CANDIDATE_SOURCE_ONLY=YES"
+          echo "ROOT_INSTALLER_PRODUCTION_MODIFIED=NO"

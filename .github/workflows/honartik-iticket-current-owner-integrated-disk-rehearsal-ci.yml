@@ -1,0 +1,40 @@
+name: Honartik Current-Owner Hardened L4 Integrated Disk Crash Rehearsal
+on:
+  push:
+    branches:
+      - feat/honartik-iticket-sha-bound-release-v1-20261015
+    paths:
+      - 'test-honartik-iticket-current-owner-integrated-disk-rehearsal-v1.cjs'
+      - 'honartik-iticket-current-owner-structural-preflight-v2.cjs'
+      - 'honartik-iticket-worktree-level4-policy-contract-v1.cjs'
+      - 'honartik-iticket-root-installer-transaction-engine-v1.cjs'
+      - 'honartik-iticket-root-installer-disk-fixture-v1.cjs'
+      - '.github/workflows/honartik-iticket-current-owner-integrated-disk-rehearsal-ci.yml'
+  pull_request:
+    paths:
+      - 'test-honartik-iticket-current-owner-integrated-disk-rehearsal-v1.cjs'
+      - 'honartik-iticket-current-owner-structural-preflight-v2.cjs'
+      - 'honartik-iticket-worktree-level4-policy-contract-v1.cjs'
+      - 'honartik-iticket-root-installer-transaction-engine-v1.cjs'
+      - 'honartik-iticket-root-installer-disk-fixture-v1.cjs'
+      - '.github/workflows/honartik-iticket-current-owner-integrated-disk-rehearsal-ci.yml'
+permissions:
+  contents: read
+jobs:
+  isolated_real_disk_integrated:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Validate real temp-disk commit, eight injected rename faults and child hard-exit recovery
+        run: |
+          set -Eeuo pipefail
+          node --check test-honartik-iticket-current-owner-integrated-disk-rehearsal-v1.cjs
+          node --test test-honartik-iticket-current-owner-integrated-disk-rehearsal-v1.cjs
+          echo 'CURRENT_OWNER_PLUS_HARDENED_L4_DISK_INTEGRATION=PASS'
+          echo 'REAL_LIVE_OWNER_BYTES_USED=NO'
+          echo 'PRODUCTION_MUTATION=NO'
+          echo 'SIGNED_INSTALL_AUTHORIZED=NO'

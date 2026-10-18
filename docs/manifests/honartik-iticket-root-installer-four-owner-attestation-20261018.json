@@ -1,0 +1,301 @@
+{
+  "schema_version": "prhm.honartik.iticket.root-installer-four-owner-attestation.v1",
+  "evidence_type": "OPERATOR_SUPPLIED_READ_ONLY_PRODUCTION_CONSOLE_OUTPUT",
+  "observed_date": "2026-10-18",
+  "host": "prhm-production",
+  "status": "ACTUAL_GIT_ISSUER_WIRE_RECONCILED_37_PASS_PUBLIC_IDENTITY_CI_21_PASS_HOST_PENDING",
+  "installer": {
+    "path": "/opt/prhm-agent-selfmaint-exec/actions/host-action-v2-installer-v1.js",
+    "original_sha256": "0f76d3ad65ba267c045dd545d249e0b2083f4aedf8983a109d3ee6446686fa1d",
+    "review_candidate_sha256": "7849b1c458c71fce7a6aecc1696cead441a209cb515f191fc5d0fad61a53adcc",
+    "installed_candidate": false,
+    "original_installer_executed_in_this_check": false,
+    "actual_semantics_reviewed": false
+  },
+  "owners": {
+    "base": {
+      "path": "/opt/prhm-agent-selfmaint/server.js",
+      "old_pin": "de924f7319f3656d788ba5d3f89ef2910bf4b0e3f0b8b074e7cd3a534441d5ea",
+      "live_sha256": "4c29d01a248d59ee85754dfa5a59e8132fe22e6b34ef04324228c16c88727406"
+    },
+    "exec": {
+      "path": "/opt/prhm-agent-selfmaint-exec/server.js",
+      "old_pin": "6bba46890db31abc8eca7e7681753a4788c46170033a555a1106e05d0a7a66f9",
+      "live_sha256": "410406ba0965ef3a5cad6da6306a85335e38acc3637fb6ed60fa42200a10c2e0"
+    },
+    "policy": {
+      "path": "/opt/prhm-company-control-plane/config/approval-policy.json",
+      "old_pin": "2fedd70a182aa351e269df95a1b9d829f5a0b18defe8871cb4045106948d711a",
+      "live_sha256": "148fe2a724befc15cd8c731b0195d83e254d39215792a5084b70dd5b5c178174"
+    },
+    "mcp": {
+      "path": "/home/agent/ssh-mcp-server/src/plugins/hostActionsV2.js",
+      "old_pin": "048e2db190c5548f47967447b3b564eefd0b7203cf6df84beb73c520d481633d",
+      "live_sha256": "bd768f992dab75710558e3f47187c311c2ee5b5ec6f5751a74e0bbfa64729166"
+    }
+  },
+  "operator_observed_assertions": [
+    "BASE_PREIMAGE=PASS",
+    "EXEC_PREIMAGE=PASS",
+    "POLICY_PREIMAGE=PASS",
+    "MCP_PREIMAGE=PASS",
+    "EXACT_FOUR_SHA_CHANGE=PASS",
+    "CANDIDATE_JS_SYNTAX=PASS",
+    "INSTALLER_EXECUTED=NO",
+    "PRODUCTION_MUTATION=NO",
+    "SEMANTIC_INSTALL_APPROVAL=NOT_GRANTED"
+  ],
+  "related_ci": [
+    "https://github.com/prhmonline/prhm-host-actions/actions/runs/39070778796",
+    "https://github.com/prhmonline/prhm-host-actions/actions/runs/39071130467"
+  ],
+  "release_blockers": [
+    "Public live issuer health/key/policy hash identity not yet measured on-host using verified read-only inspector",
+    "Actual running issuer source binary and Level4 second confirmation/replay decision enforcement not attested",
+    "No approved signed Root privileged four-owner adapter with continuous kernel lock, fsynced transaction journal and recovery",
+    "Worktree handler unregistered/inert; live iTicket purchase/payment release remains separate and blocked",
+    "Previously consumed failed old installer approval cannot be reused"
+  ],
+  "forbidden_operations_before_release": [
+    "repeat_consumed_approval",
+    "bypass_current_sha_guard",
+    "modify_production_owner_to_match_old_pin",
+    "run_unreviewed_installer",
+    "use_honartik_web_staging",
+    "send_email"
+  ],
+  "production_mutation": false,
+  "bank_or_issuer_action": false,
+  "current_owner_anchor_preflight": {
+    "observed_date": "2026-10-18",
+    "observed_via": "privileged_operator_read_only_node_heredoc",
+    "verified_all_live_owner_sha256": true,
+    "base_anchor": {
+      "status": "FAIL",
+      "count": 0
+    },
+    "exec_spec_anchor": {
+      "status": "FAIL",
+      "count": 0
+    },
+    "exec_helper_anchor": {
+      "status": "PASS",
+      "count": 1
+    },
+    "exec_dispatch_anchor": {
+      "status": "FAIL",
+      "count": 0
+    },
+    "mcp_enum_anchor": {
+      "status": "FAIL",
+      "count": 0
+    },
+    "target_already_registered": false,
+    "helper_state_sha_match": true,
+    "overall": "BLOCKED",
+    "production_mutation": false,
+    "interpretation": "Only changing the four BASELINE hashes in the original installer does not make it compatible with current owner source. The four old literal edit sites do not exist in the four current owners. A new reviewed current-source-aware installer is required; also fix partial rename rollback and effective L4 policy."
+  },
+  "observed_current_owner_structure": {
+    "date": "2026-10-18",
+    "source": "OPERATOR_SUPPLIED_BOUNDED_ROOT_READ_ONLY_SNIPPETS",
+    "base": {
+      "host_action_v2_installer_v1_count": 3,
+      "host_action_spec_declared": true,
+      "level3_selection_exists": true
+    },
+    "exec": {
+      "host_action_v2_installer_v1_count": 5,
+      "applyHostActionV2Original_count": 2,
+      "active_dispatch_assignment_count": 1,
+      "host_action_spec_declared": true
+    },
+    "mcp": {
+      "host_action_v2_installer_v1_count": 1,
+      "z_enum_count": 1
+    },
+    "policy": {
+      "host_action.host_action_v2_installer_v1": {
+        "fields": [
+          "level"
+        ],
+        "level": 3
+      },
+      "host_action.agent_zero_downtime_bootstrap_v1": {
+        "fields": [
+          "level"
+        ],
+        "level": 3
+      }
+    },
+    "helper_state_sha_validated": true,
+    "no_secrets_exposed_from_root_output": true
+  },
+  "structural_preflight_v2": {
+    "path": "honartik-iticket-current-owner-structural-preflight-v2.cjs",
+    "commit": "6acdd4ec375c2331dbb0bdc5b5bd8d81c4f115f9",
+    "test_commit": "825bef22642cdd0667c4a56a867d174292f91402",
+    "ci_url": "https://github.com/prhmonline/prhm-host-actions/actions/runs/39077599468",
+    "tests_pass": 16,
+    "tests_fail": 0,
+    "restricted_to_offline_fixture": true,
+    "current_live_source_compatibility": "NOT_ATTESTED",
+    "new_handler_runtime": "INERT_REQUIRES_SEPARATE_SIGNED_HELPER_ACTIVATION",
+    "intended_new_level": 4,
+    "original_installer_level": 3,
+    "require_separately_reviewed_effective_policy": true,
+    "production_mutation": false,
+    "install_authorized": false
+  },
+  "live_in_memory_structural_preflight": {
+    "observed_date": "2026-10-18",
+    "observation_method": "operator executed SHA-verified read-only CLI as root on prhm-production",
+    "inspector_source_commit": "e52611a66976a7469c4c07a34ce3d18d5e3c3e65",
+    "inspector_sha256": "fc36085f9096b9676f72e5ba9c3aa70bdac3dfa386c7b43698460d458bcddc52",
+    "inspector_digest_check": "PASS",
+    "sha_base": "PASS",
+    "sha_exec": "PASS",
+    "sha_policy": "PASS",
+    "sha_mcp": "PASS",
+    "helper_sha": "PASS",
+    "computed_postimages": {
+      "base": "629212ae3052eab380ea1b3fc7c0b15395dfb23a251331762ebb781e1bbf1b2f",
+      "exec": "9dade5d2a9a9722c1dd1283a3a1002325da02e134804aca1ea6d673cf2de3e87",
+      "policy": "be738cf7be1555d717558b51d560c381e2d4ed6bab87dabb701d712b6c2d9980",
+      "mcp": "52d3c0c04cd3bb26815403e2c089f9a408047bd9d376536ae570df669a7fd2a3"
+    },
+    "structural_current_owner_preflight": "PASS",
+    "new_dispatch": "INERT",
+    "mcp_esm_syntax": "NOT_TESTED",
+    "effective_level4_policy": "NOT_ATTESTED",
+    "install_authorized": false,
+    "production_mutation": false,
+    "note": "All four POSTIMAGE values are prospective digests of in-memory transformation only, not SHA of files deployed to disk. No signed execution permitted."
+  },
+  "level4_structure_inspection_20261018": {
+    "evidence": "operator-supplied on-host read-only Node output",
+    "passes": 12,
+    "fails": 0,
+    "proposed_hardened_policy_sha256": "9a2c47db59211a638976ee181e8a5b246c79f082371d82a7396c6a07f646faa7",
+    "previous_policy_postimage_superseded": "be738cf7be1555d717558b51d560c381e2d4ed6bab87dabb701d712b6c2d9980",
+    "effective_issuer_enforcement": "NOT_ATTESTED",
+    "production_mutation": false,
+    "signed_install_authorized": false
+  },
+  "integrated_real_scratch_disk_rehearsal": {
+    "date": "2026-10-18",
+    "integrated_ci": "https://github.com/prhmonline/prhm-host-actions/actions/runs/39080329025",
+    "integration_test_count": 14,
+    "passed": 14,
+    "failed": 0,
+    "transaction_regression_ci": "https://github.com/prhmonline/prhm-host-actions/actions/runs/39080340805",
+    "transaction_test_count": 28,
+    "transaction_passed": 28,
+    "detailed_review": "docs/reviews/2026-10-18-honartik-four-owner-integrated-disk-rehearsal-and-root-gates.md",
+    "source_combines": "current-owner shape fixtures + hardened L4 policy + durable scratch disk engine",
+    "source_is_real_production_owner_bytes": false,
+    "production_installer_ready": false,
+    "signed_install_authorized": false,
+    "production_mutation": false
+  },
+  "kernel_lock_scratch_evidence": {
+    "date": "2026-10-18",
+    "verified_ci_url": "https://github.com/prhmonline/prhm-host-actions/actions/runs/39081016724",
+    "tests": 8,
+    "passes": 8,
+    "failures": 0,
+    "kernel_lock_tested": true,
+    "independent_contender_rejected": true,
+    "kill_releases_lock": true,
+    "forged_open_but_unlocked_fd_rejected": true,
+    "crash_after_second_disk_rename_recovered": true,
+    "third_party_drift_fail_closed": true,
+    "target": "self-created temp scratch files only",
+    "root_production_adapter_implemented": false,
+    "production_mutation": false,
+    "new_approval_consumed": false
+  },
+  "production_owner_boundary_readonly_preflight": {
+    "date": "2026-10-18",
+    "source": "honartik-iticket-root-four-owner-production-readiness-v1.cjs",
+    "source_commit": "fbf777727653ba991be0c1ec9966c63f4eb63514",
+    "test_run": "https://github.com/prhmonline/prhm-host-actions/actions/runs/39082026725",
+    "tests": 16,
+    "passes": 16,
+    "failures": 0,
+    "fixed_four_owner_paths": true,
+    "pinned_original_and_hardened_postimage_sha": true,
+    "descriptor_nofollow_inode_verification_tested": true,
+    "root_directory_ancestry_trust_negative_tested": true,
+    "actual_live_production_parent_trust": "PASS_ALL_FOUR_ON_HOST",
+    "approved_production_signed_adapter": "NOT_IMPLEMENTED",
+    "production_mutation": false,
+    "install_authorized": false
+  },
+  "actual_root_directory_parent_trust_20261018": {
+    "observed_on": "prhm-production",
+    "method": "operator root read-only lstat each ancestor to '/'",
+    "base": "PASS",
+    "exec": "PASS",
+    "policy": "PASS",
+    "mcp": "PASS",
+    "criteria": "is directory, not symlink, root UID 0, no group/world write for each ancestor",
+    "production_mutation": false,
+    "caveat": "This parent-chain test alone does not attest descriptor O_NOFOLLOW and inode identity of final files, signed L4 issuer behavior, or transaction installation."
+  },
+  "proposed_signed_grant_contract_evidence": {
+    "checked_at_date": "2026-10-18",
+    "implementation": "honartik-iticket-root-four-owner-signed-grant-contract-v1.cjs",
+    "implementation_commit": "4c3898837eb5b7ee98f93bb22fa6147319f8f2f2",
+    "offline_ci": "https://github.com/prhmonline/prhm-host-actions/actions/runs/39124827273",
+    "tests": 31,
+    "passed": 31,
+    "failed": 0,
+    "proposed_grant_binds": [
+      "fixed action",
+      "fixed operation",
+      "critical level4",
+      "specified audience",
+      "rollback reference",
+      "four SHA preimages",
+      "four hardened SHA postimages",
+      "180-second maximum TTL",
+      "human approver and second confirmation"
+    ],
+    "disposable_generated_test_keys_only": true,
+    "live_issuer_public_key_attested": false,
+    "live_issuer_wire_protocol_attested": false,
+    "live_issuer_replay_consumption_attested": false,
+    "installation_authorized": false,
+    "production_mutation": false
+  },
+  "approval_center_actual_source_protocol_discovery": {
+    "source_repo": "prhmonline/prhm-company-control-plane",
+    "source_path": "approval/server.js",
+    "source_git_blob_sha": "62c4e3b565fb55c195efbde3b92a948fa68564bd",
+    "source_git_policy_version": "2026-10-12.1-policy-git-live-reconciliation-v1",
+    "previously_on_host_live_policy_version": "2026-10-02.1-control-plane-current-owner-bootstrap-repair-v1",
+    "source_wire_format": "3-segment base64url EdDSA header.payload.signature; raw signing bytes",
+    "previous_canonical_json_proposed_grant": "OBSOLETE_NOT_COMPATIBLE_WITH_SOURCE_WIRE",
+    "typed_request_arguments_sha256": "SHA256(canonicalJson(args except approval_token))",
+    "rollback_binding": "SHA256(rollback_reference) in signed claims",
+    "second_confirmation": "issuer request decision and stored record, NOT directly signed second_confirmation claim",
+    "consumption": "issuer /v1/consume checks signed token and protected records then exclusive wx consumed receipt",
+    "source_wires_offline_tests": "https://github.com/prhmonline/prhm-host-actions/actions/runs/39127477951",
+    "source_wires_tests_passed": 37,
+    "actual_running_binary_same_as_source": "NOT_ATTESTED",
+    "effective_replay_and_level4": "NOT_ATTESTED"
+  },
+  "approval_center_public_identity_inspector": {
+    "source": "honartik-iticket-approval-center-live-identity-readonly-v1.cjs",
+    "source_sha256": "afb869a0e5d5f4715142dcb609c0a1ac4dd0f5495f1e943de2c6050d14b8bddb",
+    "source_ref_commit": "2c5b9cc50c3e8ff0dc56b94bdc3b6a4410dbaf74",
+    "fixture_ci": "https://github.com/prhmonline/prhm-host-actions/actions/runs/39127739687",
+    "tests_passed": 21,
+    "checks": "fixed local public /health, public Ed25519 SPKI, exact pinned original policy and health policy hash",
+    "on_host_execution": "NOT_RUN",
+    "no_secrets": true,
+    "no_approval_consumed": true,
+    "production_mutation": false
+  }
+}

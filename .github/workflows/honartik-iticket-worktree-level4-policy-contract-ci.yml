@@ -1,0 +1,34 @@
+name: Honartik iTicket Critical Level4 Policy Contract (Offline)
+on:
+  push:
+    branches:
+      - feat/honartik-iticket-sha-bound-release-v1-20261015
+    paths:
+      - 'honartik-iticket-worktree-level4-policy-contract-v1.cjs'
+      - 'test-honartik-iticket-worktree-level4-policy-contract-v1.cjs'
+      - '.github/workflows/honartik-iticket-worktree-level4-policy-contract-ci.yml'
+  pull_request:
+    paths:
+      - 'honartik-iticket-worktree-level4-policy-contract-v1.cjs'
+      - 'test-honartik-iticket-worktree-level4-policy-contract-v1.cjs'
+      - '.github/workflows/honartik-iticket-worktree-level4-policy-contract-ci.yml'
+permissions:
+  contents: read
+jobs:
+  source_only_policy_contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Validate Level4 fail-closed structure on mock, never issue approvals
+        run: |
+          set -Eeuo pipefail
+          node --check honartik-iticket-worktree-level4-policy-contract-v1.cjs
+          node --check test-honartik-iticket-worktree-level4-policy-contract-v1.cjs
+          node --test test-honartik-iticket-worktree-level4-policy-contract-v1.cjs
+          echo 'LEVEL4_SOURCE_CONTRACT_FIXTURE=PASS'
+          echo 'EFFECTIVE_LIVE_POLICY_ATTESTATION=NOT_YET_DONE'
+          echo 'PRODUCTION_MUTATION=NO'

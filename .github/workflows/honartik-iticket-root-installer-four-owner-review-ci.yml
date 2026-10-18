@@ -1,0 +1,37 @@
+name: Honartik iTicket Four Owner Root Installer Review (No Install)
+
+on:
+  push:
+    branches:
+      - feat/honartik-iticket-sha-bound-release-v1-20261015
+    paths:
+      - 'honartik-iticket-root-installer-four-owner-review-v1.cjs'
+      - 'test-honartik-iticket-root-installer-four-owner-review-v1.cjs'
+      - '.github/workflows/honartik-iticket-root-installer-four-owner-review-ci.yml'
+  pull_request:
+    paths:
+      - 'honartik-iticket-root-installer-four-owner-review-v1.cjs'
+      - 'test-honartik-iticket-root-installer-four-owner-review-v1.cjs'
+      - '.github/workflows/honartik-iticket-root-installer-four-owner-review-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  offline_review_contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Offline source validation only; no servers or approvals
+        run: |
+          set -Eeuo pipefail
+          node --check honartik-iticket-root-installer-four-owner-review-v1.cjs
+          node --check test-honartik-iticket-root-installer-four-owner-review-v1.cjs
+          node --test test-honartik-iticket-root-installer-four-owner-review-v1.cjs
+          echo "FOUR_OWNER_REVIEW_ONLY=PASS"
+          echo "PRODUCTION_MUTATION=NO"
+          echo "INSTALL_AUTHORIZED=NO"

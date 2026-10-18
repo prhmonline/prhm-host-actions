@@ -1,0 +1,35 @@
+name: Honartik Current-Owner Registry Structural Preflight V2 (Source Only)
+on:
+  push:
+    branches:
+      - feat/honartik-iticket-sha-bound-release-v1-20261015
+    paths:
+      - 'honartik-iticket-current-owner-structural-preflight-v2.cjs'
+      - 'test-honartik-iticket-current-owner-structural-preflight-v2.cjs'
+      - '.github/workflows/honartik-iticket-current-owner-structural-preflight-ci.yml'
+  pull_request:
+    paths:
+      - 'honartik-iticket-current-owner-structural-preflight-v2.cjs'
+      - 'test-honartik-iticket-current-owner-structural-preflight-v2.cjs'
+      - '.github/workflows/honartik-iticket-current-owner-structural-preflight-ci.yml'
+permissions:
+  contents: read
+jobs:
+  current_structure_contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Offline current layout fixtures only - no privileged runtime access
+        run: |
+          set -Eeuo pipefail
+          node --check honartik-iticket-current-owner-structural-preflight-v2.cjs
+          node --check test-honartik-iticket-current-owner-structural-preflight-v2.cjs
+          node --test test-honartik-iticket-current-owner-structural-preflight-v2.cjs
+          echo 'STRUCTURAL_LAYOUT_SOURCE_ONLY=PASS'
+          echo 'REAL_CURRENT_OWNER_SOURCE_COMPATIBILITY=NOT_ATTESTED'
+          echo 'PRODUCTION_MUTATION=NO'
+          echo 'SIGNED_INSTALL_AUTHORIZED=NO'
