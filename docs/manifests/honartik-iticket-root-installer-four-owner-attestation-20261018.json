@@ -3,7 +3,7 @@
   "evidence_type": "OPERATOR_SUPPLIED_READ_ONLY_PRODUCTION_CONSOLE_OUTPUT",
   "observed_date": "2026-10-18",
   "host": "prhm-production",
-  "status": "REAL_ROOT_PARENT_TRUST_FOUR_PASS_SIGNED_ADAPTER_PENDING",
+  "status": "OWNER_PARENT_TRUST_LIVE_PASS_CRYPTO_PROPOSAL_31_PASS_REAL_ISSUER_PROTOCOL_PENDING",
   "installer": {
     "path": "/opt/prhm-agent-selfmaint-exec/actions/host-action-v2-installer-v1.js",
     "original_sha256": "0f76d3ad65ba267c045dd545d249e0b2083f4aedf8983a109d3ee6446686fa1d",
@@ -50,11 +50,11 @@
     "https://github.com/prhmonline/prhm-host-actions/actions/runs/39071130467"
   ],
   "release_blockers": [
-    "Final file descriptor nofollow/inode/identity continuous-check not yet executed on-host (preimage SHA previously PASS)",
-    "Real issuer Ed25519 Level4 action-specific approval, replay/expiry/second confirmation not attested",
-    "No signed trusted root transaction adapter with cross-service lock, journal/rollback, guarded health activation",
-    "New worktree handler still intentionally inert; no registration",
-    "iTicket Saman/SEP, wallet, SAMFA and financial migrations remain separately unverified"
+    "Actual Approval Center grant wire-format and authoritative Ed25519 public key pin must be inspected read-only",
+    "Issuer-enforced approval scope, second confirmation, expiry and one-time replay consumption not tested end-to-end",
+    "No trusted root privileged transaction adapter with restart/health gates and locked durable rollback; existing old installer unsafe",
+    "Worktree registration remains inert and no payment flow deploy occurred",
+    "Separate financial migrations, iTicket, Saman/SEP, wallet, SAMFA validation still required"
   ],
   "forbidden_operations_before_release": [
     "repeat_consumed_approval",
@@ -242,5 +242,31 @@
     "criteria": "is directory, not symlink, root UID 0, no group/world write for each ancestor",
     "production_mutation": false,
     "caveat": "This parent-chain test alone does not attest descriptor O_NOFOLLOW and inode identity of final files, signed L4 issuer behavior, or transaction installation."
+  },
+  "proposed_signed_grant_contract_evidence": {
+    "checked_at_date": "2026-10-18",
+    "implementation": "honartik-iticket-root-four-owner-signed-grant-contract-v1.cjs",
+    "implementation_commit": "4c3898837eb5b7ee98f93bb22fa6147319f8f2f2",
+    "offline_ci": "https://github.com/prhmonline/prhm-host-actions/actions/runs/39124827273",
+    "tests": 31,
+    "passed": 31,
+    "failed": 0,
+    "proposed_grant_binds": [
+      "fixed action",
+      "fixed operation",
+      "critical level4",
+      "specified audience",
+      "rollback reference",
+      "four SHA preimages",
+      "four hardened SHA postimages",
+      "180-second maximum TTL",
+      "human approver and second confirmation"
+    ],
+    "disposable_generated_test_keys_only": true,
+    "live_issuer_public_key_attested": false,
+    "live_issuer_wire_protocol_attested": false,
+    "live_issuer_replay_consumption_attested": false,
+    "installation_authorized": false,
+    "production_mutation": false
   }
 }
