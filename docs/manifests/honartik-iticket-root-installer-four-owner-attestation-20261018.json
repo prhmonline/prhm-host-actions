@@ -3,7 +3,7 @@
   "evidence_type": "OPERATOR_SUPPLIED_READ_ONLY_PRODUCTION_CONSOLE_OUTPUT",
   "observed_date": "2026-10-18",
   "host": "prhm-production",
-  "status": "OWNER_PARENT_TRUST_LIVE_PASS_CRYPTO_PROPOSAL_31_PASS_REAL_ISSUER_PROTOCOL_PENDING",
+  "status": "ACTUAL_GIT_ISSUER_WIRE_RECONCILED_37_PASS_PUBLIC_IDENTITY_CI_21_PASS_HOST_PENDING",
   "installer": {
     "path": "/opt/prhm-agent-selfmaint-exec/actions/host-action-v2-installer-v1.js",
     "original_sha256": "0f76d3ad65ba267c045dd545d249e0b2083f4aedf8983a109d3ee6446686fa1d",
@@ -50,11 +50,11 @@
     "https://github.com/prhmonline/prhm-host-actions/actions/runs/39071130467"
   ],
   "release_blockers": [
-    "Actual Approval Center grant wire-format and authoritative Ed25519 public key pin must be inspected read-only",
-    "Issuer-enforced approval scope, second confirmation, expiry and one-time replay consumption not tested end-to-end",
-    "No trusted root privileged transaction adapter with restart/health gates and locked durable rollback; existing old installer unsafe",
-    "Worktree registration remains inert and no payment flow deploy occurred",
-    "Separate financial migrations, iTicket, Saman/SEP, wallet, SAMFA validation still required"
+    "Public live issuer health/key/policy hash identity not yet measured on-host using verified read-only inspector",
+    "Actual running issuer source binary and Level4 second confirmation/replay decision enforcement not attested",
+    "No approved signed Root privileged four-owner adapter with continuous kernel lock, fsynced transaction journal and recovery",
+    "Worktree handler unregistered/inert; live iTicket purchase/payment release remains separate and blocked",
+    "Previously consumed failed old installer approval cannot be reused"
   ],
   "forbidden_operations_before_release": [
     "repeat_consumed_approval",
@@ -267,6 +267,35 @@
     "live_issuer_wire_protocol_attested": false,
     "live_issuer_replay_consumption_attested": false,
     "installation_authorized": false,
+    "production_mutation": false
+  },
+  "approval_center_actual_source_protocol_discovery": {
+    "source_repo": "prhmonline/prhm-company-control-plane",
+    "source_path": "approval/server.js",
+    "source_git_blob_sha": "62c4e3b565fb55c195efbde3b92a948fa68564bd",
+    "source_git_policy_version": "2026-10-12.1-policy-git-live-reconciliation-v1",
+    "previously_on_host_live_policy_version": "2026-10-02.1-control-plane-current-owner-bootstrap-repair-v1",
+    "source_wire_format": "3-segment base64url EdDSA header.payload.signature; raw signing bytes",
+    "previous_canonical_json_proposed_grant": "OBSOLETE_NOT_COMPATIBLE_WITH_SOURCE_WIRE",
+    "typed_request_arguments_sha256": "SHA256(canonicalJson(args except approval_token))",
+    "rollback_binding": "SHA256(rollback_reference) in signed claims",
+    "second_confirmation": "issuer request decision and stored record, NOT directly signed second_confirmation claim",
+    "consumption": "issuer /v1/consume checks signed token and protected records then exclusive wx consumed receipt",
+    "source_wires_offline_tests": "https://github.com/prhmonline/prhm-host-actions/actions/runs/39127477951",
+    "source_wires_tests_passed": 37,
+    "actual_running_binary_same_as_source": "NOT_ATTESTED",
+    "effective_replay_and_level4": "NOT_ATTESTED"
+  },
+  "approval_center_public_identity_inspector": {
+    "source": "honartik-iticket-approval-center-live-identity-readonly-v1.cjs",
+    "source_sha256": "afb869a0e5d5f4715142dcb609c0a1ac4dd0f5495f1e943de2c6050d14b8bddb",
+    "source_ref_commit": "2c5b9cc50c3e8ff0dc56b94bdc3b6a4410dbaf74",
+    "fixture_ci": "https://github.com/prhmonline/prhm-host-actions/actions/runs/39127739687",
+    "tests_passed": 21,
+    "checks": "fixed local public /health, public Ed25519 SPKI, exact pinned original policy and health policy hash",
+    "on_host_execution": "NOT_RUN",
+    "no_secrets": true,
+    "no_approval_consumed": true,
     "production_mutation": false
   }
 }
