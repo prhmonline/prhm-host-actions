@@ -63,3 +63,23 @@ The coordinator intentionally imports no filesystem, shell, database, network, o
 **Required next implementation:** independent trusted root-owned adapter and installer reviewed against on-host current SHA fingerprints, Ed25519 signature verification and one-time issuer state, writer quiescence/maintenance, exact Class A/B Yii2 execution and history once-only, same-window new backup, durable audit, fail-safe stop and recovery rehearsals. This coordinator is a *contract only*, NOT a real installed Host Action. **Do not call `host_action_v2_request` for this action until the trusted registry and policy explicitly authorize it; the existing restored-backup-only `honartik_open_price_yii_scratch_v1` cannot be substituted.**
 
 Evidence: `REGISTERED_NATIVE_ACTION=NO`, `PRODUCTION_DDL_EXECUTED=NO`, `PRODUCTION_DEPLOYED=NO`. The previous Oct-17 backup must be considered stale for any future financial maintenance window until a new backup is verified; its restored rehearsal remains valid technical evidence, not current-point-in-time financial recovery.
+
+
+## 2026-10-18: independent registration security audit — INSTALL BLOCKED
+
+**Do not register, install or request/consume Level-4 approval for the current production migration registration candidate.** An independent, executable **red gate** was added on the draft source branch:
+
+- `test-honartik-open-price-live-registration-security-gate-v1.cjs`
+- `.github/workflows/honartik-open-price-live-registration-security.yml`
+- [actual CI run #39081174471](https://github.com/prhmonline/prhm-host-actions/actions/runs/39081174471): **2 PASS / 4 FAIL**, as expected for the insecure, uninstalled candidate. PHP, application database and server files were not touched.
+
+Precise unresolved failures of `honartik-open-price-live-registration-v1.cjs`:
+
+1. `receipt.oneTime===false` is the only explicit rejection; `undefined` or other values (e.g. `null`) are accepted. Require **strict positive proof** `oneTime===true`.
+2. `receipt.liveDDLAuthorized===true` is the only explicit rejection; an omitted property is accepted. Require **strict explicit** `liveDDLAuthorized===false` for installation-only approval.
+3. The installation **request** includes `ownerSha256` but the **returned signed issuer receipt** is not matched against exactly the four root owner SHA256 preimages.
+4. The installation **request** includes `reviewedSourceBlobs` but the **returned signed issuer receipt** is not matched against exactly the two pinned coordinator and native adapter Git blobs.
+
+The first two source-only test cases (no CLI; fixed source/root paths) passed. The four security tests must all pass after a separately approved change before trusted registration is contemplated. Do not weaken or skip the new tests to make CI green. The previous 14/14 source coordinator tests are separate and **do not attest the installation receipt**.
+
+A write attempt to tighten these specific rules was rejected by a tool safety gate. Do not route around that refusal with a different executor or host action. Keep the current source branch Draft; no production mutation, root installation, signed approval, DDL, payment, notification or deploy is authorized by this audit.
