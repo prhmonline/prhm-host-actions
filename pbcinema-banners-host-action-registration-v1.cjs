@@ -11,17 +11,17 @@ const OPERATION = 'host_action.' + ACTION;
 const POLICY_VERSION = '2026-10-19.1-pbcinema-banners-release-install-v1';
 const CURRENT_POLICY_VERSION = '2026-10-02.1-control-plane-current-owner-bootstrap-repair-v1';
 const ROLLBACK = 'host-action-v2:pbcinema-banners-release-install-v1:fixed-wrapper-and-sudoers-rollback';
-const PYTHON_HELPER_SHA256 = 'fa2ace165fb8d0bd635f09125e1a558a3e42347fc6e7a3bf22b45f841f869c83';
+const PYTHON_HELPER_SHA256 = '8d348315a99fdfcc9d3934f39b18996761d777d90e1fac3a37475b08be1f0b69';
 const PYTHON_HELPER_PATH = '/root/prhm-reviewed/pbcinema-banners-release-helper.py';
 const INSTALLER_PATH = '/root/prhm-reviewed/pbcinema-banners-root-installer.sh';
-const INSTALLER_SHA256 = 'c9303556e96e7e01f3fa1f44e814ae3e83d1b900ecaeb9babb2634dd757e53ae';
+const INSTALLER_SHA256 = '572b7f0057c19ade7ff49bd4234dcd4a667018273e0b90099ac93f7f95d8b43f';
 const DEST = '/usr/local/libexec/deploy-control/pbcinema-banners-release';
 const POLICY_OWNER = '/opt/prhm-company-control-plane/config/approval-policy.json';
 const BASE_OWNER = '/opt/prhm-agent-selfmaint/server.js';
 const EXEC_OWNER = '/opt/prhm-agent-selfmaint-exec/server.js';
 const MCP_OWNER = '/home/agent/ssh-mcp-server/src/plugins/hostActionsV2.js';
-const FRONT_SHA = '7e926a28b3b16b475a492a6f180e74cc7ff6543f';
-const BACK_SHA = 'fda4ca6f0b43670cee92ce59876dc172b86f08e9';
+const FRONT_SHA = 'dd2f7db0d8ba473290d9499fcb43ebf306592a40';
+const BACK_SHA = 'f1f49142f93a4c9fc8d42af01e7441bfeea3d7b4';
 const EXPECTED_PREIMAGES = Object.freeze({
   // Historical hashes only; these MUST be freshly attested by trusted root.
   // No caller-supplied new hash may implicitly replace these pins.
@@ -65,7 +65,7 @@ function readMcpCandidate(source){
   return replaceOnce(source,anchor,anchor+",'"+ACTION+"'",'mcp_action_enum');
 }
 function executorDispatchSnippet(){
-  return "\nfunction applyPbcinemaBannersReleaseInstallV1(){\n  const fs = require('node:fs');\n  const cp = require('node:child_process');\n  const crypto = require('node:crypto');\n  const dir='/root/prhm-reviewed';\n  const installer=dir+'/pbcinema-banners-root-installer.sh';\n  const helper=dir+'/pbcinema-banners-release-helper.py';\n  const dest='/usr/local/libexec/deploy-control/pbcinema-banners-release';\n  const expectedInstaller='c9303556e96e7e01f3fa1f44e814ae3e83d1b900ecaeb9babb2634dd757e53ae';\n  const expectedHelper='fa2ace165fb8d0bd635f09125e1a558a3e42347fc6e7a3bf22b45f841f869c83';\n  function hash(p){return crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex')}\n  function strictFile(p,expected){\n    const st=fs.lstatSync(p);\n    if(!st.isFile()||st.isSymbolicLink()||st.uid!==0||(st.mode&0o022)!==0||hash(p)!==expected)\n      throw new Error('pbcinema_root_stage_invalid_'+p.split('/').pop());\n  }\n  if(process.getuid()!==0)throw new Error('pbcinema_root_executor_required');\n  const parent=fs.lstatSync(dir);\n  if(!parent.isDirectory()||parent.isSymbolicLink()||parent.uid!==0||(parent.mode&0o077)!==0)\n    throw new Error('pbcinema_root_stage_dir_untrusted');\n  strictFile(installer,expectedInstaller);\n  strictFile(helper,expectedHelper);\n  const output=cp.execFileSync('/usr/bin/bash',[installer,'--install-approved'],{\n    encoding:'utf8',timeout:120000,stdio:['ignore','pipe','pipe'],\n    env:{PATH:'/usr/sbin:/usr/bin:/sbin:/bin',LC_ALL:'C',HOME:'/root'},\n  });\n  const st=fs.lstatSync(dest);\n  if(!st.isFile()||st.isSymbolicLink()||st.uid!==0||hash(dest)!==expectedHelper)\n    throw new Error('pbcinema_postinstall_wrapper_invalid');\n  if(!output.includes('PBCINEMA_ROOT_INSTALL=PASS'))\n    throw new Error('pbcinema_install_receipt_not_valid');\n  return {ok:true,schema_version:'prhm.host-action-result.v1',\n    action:'pbcinema_banners_release_install_v1',installed:true,\n    root_wrapper_sha256:expectedHelper,database_mutation:false,\n    production_application_mutation:false,rollback_performed:false};\n}\n";
+  return "\nfunction applyPbcinemaBannersReleaseInstallV1(){\n  const fs = require('node:fs');\n  const cp = require('node:child_process');\n  const crypto = require('node:crypto');\n  const dir='/root/prhm-reviewed';\n  const installer=dir+'/pbcinema-banners-root-installer.sh';\n  const helper=dir+'/pbcinema-banners-release-helper.py';\n  const dest='/usr/local/libexec/deploy-control/pbcinema-banners-release';\n  const expectedInstaller='572b7f0057c19ade7ff49bd4234dcd4a667018273e0b90099ac93f7f95d8b43f';\n  const expectedHelper='8d348315a99fdfcc9d3934f39b18996761d777d90e1fac3a37475b08be1f0b69';\n  function hash(p){return crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex')}\n  function strictFile(p,expected){\n    const st=fs.lstatSync(p);\n    if(!st.isFile()||st.isSymbolicLink()||st.uid!==0||(st.mode&0o022)!==0||hash(p)!==expected)\n      throw new Error('pbcinema_root_stage_invalid_'+p.split('/').pop());\n  }\n  if(process.getuid()!==0)throw new Error('pbcinema_root_executor_required');\n  const parent=fs.lstatSync(dir);\n  if(!parent.isDirectory()||parent.isSymbolicLink()||parent.uid!==0||(parent.mode&0o077)!==0)\n    throw new Error('pbcinema_root_stage_dir_untrusted');\n  strictFile(installer,expectedInstaller);\n  strictFile(helper,expectedHelper);\n  const output=cp.execFileSync('/usr/bin/bash',[installer,'--install-approved'],{\n    encoding:'utf8',timeout:120000,stdio:['ignore','pipe','pipe'],\n    env:{PATH:'/usr/sbin:/usr/bin:/sbin:/bin',LC_ALL:'C',HOME:'/root'},\n  });\n  const st=fs.lstatSync(dest);\n  if(!st.isFile()||st.isSymbolicLink()||st.uid!==0||hash(dest)!==expectedHelper)\n    throw new Error('pbcinema_postinstall_wrapper_invalid');\n  if(!output.includes('PBCINEMA_ROOT_INSTALL=PASS'))\n    throw new Error('pbcinema_install_receipt_not_valid');\n  return {ok:true,schema_version:'prhm.host-action-result.v1',\n    action:'pbcinema_banners_release_install_v1',installed:true,\n    root_wrapper_sha256:expectedHelper,database_mutation:false,\n    production_application_mutation:false,rollback_performed:false};\n}\n";
 }
 function readExecCandidate(source){
   if(source.includes(ACTION))fail('exec_action_already_present');
