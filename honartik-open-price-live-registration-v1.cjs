@@ -116,11 +116,15 @@ async function applyTrustedRegistration(cap){
  });
  if(!receipt || receipt.consumed!==true || receipt.level!==4 ||
     receipt.operation!==INSTALL_OP || receipt.action!==ACTION ||
-    receipt.issuerChecked!==true || receipt.oneTime===false ||
+    receipt.issuerChecked!==true || receipt.oneTime!==true ||
+    receipt.liveDDLAuthorized!==false ||
     !exact(receipt.candidateSha256,KEYS) ||
     KEYS.some(k=>receipt.candidateSha256[k]!==digests[k]) ||
-    typeof receipt.requestId!=='string' || receipt.requestId.length<16 ||
-    receipt.liveDDLAuthorized===true)
+    !exact(receipt.ownerSha256,Object.keys(OWNERS)) ||
+    Object.keys(OWNERS).some(k=>receipt.ownerSha256[k]!==OWNERS[k].sha256) ||
+    !exact(receipt.reviewedSourceBlobs,Object.keys(SOURCES)) ||
+    Object.keys(SOURCES).some(k=>receipt.reviewedSourceBlobs[k]!==SOURCES[k].gitBlob) ||
+    typeof receipt.requestId!=='string' || receipt.requestId.length<16)
       fail('signed_install_scope_mismatch');
  const lock=await cap.acquireRegistrationLock(ACTION);
  let backup=null,attempted=false;
