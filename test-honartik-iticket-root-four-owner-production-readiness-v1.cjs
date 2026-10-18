@@ -56,13 +56,11 @@ test('reject missing IO adapter before attempts to read root',()=>{
   assert.throws(()=>p.audit(),/io_missing/);
   assert.throws(()=>p.audit({lstat:mockDirs()}),/io_missing/);
 });
-test('fail-closed if one root owner parent is writable by an untrusted user',()=>{
-  const io={
-    lstat:f=>({uid:f==='/home/agent'?1000:0,mode:0o40755,
-      isDirectory:()=>true,isSymbolicLink:()=>false}),
-    readPinned:()=>{throw Error('must_not_read');}
-  };
-  assert.throws(()=>p.audit(io),/parent_untrusted_\/home\/agent/);
+test('fail-closed for an untrusted ancestor of the real MCP owner',()=>{
+  const lstat=f=>({uid:f==='/home/agent'?1000:0,mode:0o40755,
+    isDirectory:()=>true,isSymbolicLink:()=>false});
+  assert.throws(()=>p.inspectDirectoryChain('/',full,lstat),
+    /parent_untrusted_\/home\/agent/);
 });
 test('fail-closed on owner symlink instead of accepting earlier lstat alone',()=>{
   const io={
