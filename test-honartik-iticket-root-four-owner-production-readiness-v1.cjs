@@ -58,7 +58,8 @@ test('reject missing IO adapter before attempts to read root',()=>{
 });
 test('fail-closed if one root owner parent is writable by an untrusted user',()=>{
   const io={
-    lstat:f=>mockDirs({'/home/agent':{uid:1000}})(f),
+    lstat:f=>({uid:f==='/home/agent'?1000:0,mode:0o40755,
+      isDirectory:()=>true,isSymbolicLink:()=>false}),
     readPinned:()=>{throw Error('must_not_read');}
   };
   assert.throws(()=>p.audit(io),/parent_untrusted_\/home\/agent/);
