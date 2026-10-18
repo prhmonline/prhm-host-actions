@@ -3,7 +3,7 @@
   "evidence_type": "OPERATOR_SUPPLIED_READ_ONLY_PRODUCTION_CONSOLE_OUTPUT",
   "observed_date": "2026-10-18",
   "host": "prhm-production",
-  "status": "ROOT_READINESS_CODE_16_PASS_LIVE_PARENT_TRUST_PENDING",
+  "status": "REAL_ROOT_PARENT_TRUST_FOUR_PASS_SIGNED_ADAPTER_PENDING",
   "installer": {
     "path": "/opt/prhm-agent-selfmaint-exec/actions/host-action-v2-installer-v1.js",
     "original_sha256": "0f76d3ad65ba267c045dd545d249e0b2083f4aedf8983a109d3ee6446686fa1d",
@@ -50,11 +50,11 @@
     "https://github.com/prhmonline/prhm-host-actions/actions/runs/39071130467"
   ],
   "release_blockers": [
-    "Live ancestor ownership/writability particularly /home/agent/... MCP plugin path not verified",
-    "No signed, privileged production 4-owner write adapter or journal integration, old installer partial-rename remains unsafe",
-    "No real issuer enforcement check for exact action's Ed25519 Level4 human+second confirmation, TTL/replay",
-    "Proposed worktree dispatcher inert; no actual action registration",
-    "Honartik checkout, Saman, iTicket seller wallet and SAMFA still unverified for separate financial release"
+    "Final file descriptor nofollow/inode/identity continuous-check not yet executed on-host (preimage SHA previously PASS)",
+    "Real issuer Ed25519 Level4 action-specific approval, replay/expiry/second confirmation not attested",
+    "No signed trusted root transaction adapter with cross-service lock, journal/rollback, guarded health activation",
+    "New worktree handler still intentionally inert; no registration",
+    "iTicket Saman/SEP, wallet, SAMFA and financial migrations remain separately unverified"
   ],
   "forbidden_operations_before_release": [
     "repeat_consumed_approval",
@@ -227,9 +227,20 @@
     "pinned_original_and_hardened_postimage_sha": true,
     "descriptor_nofollow_inode_verification_tested": true,
     "root_directory_ancestry_trust_negative_tested": true,
-    "actual_live_production_parent_trust": "NOT_ATTESTED",
+    "actual_live_production_parent_trust": "PASS_ALL_FOUR_ON_HOST",
     "approved_production_signed_adapter": "NOT_IMPLEMENTED",
     "production_mutation": false,
     "install_authorized": false
+  },
+  "actual_root_directory_parent_trust_20261018": {
+    "observed_on": "prhm-production",
+    "method": "operator root read-only lstat each ancestor to '/'",
+    "base": "PASS",
+    "exec": "PASS",
+    "policy": "PASS",
+    "mcp": "PASS",
+    "criteria": "is directory, not symlink, root UID 0, no group/world write for each ancestor",
+    "production_mutation": false,
+    "caveat": "This parent-chain test alone does not attest descriptor O_NOFOLLOW and inode identity of final files, signed L4 issuer behavior, or transaction installation."
   }
 }
