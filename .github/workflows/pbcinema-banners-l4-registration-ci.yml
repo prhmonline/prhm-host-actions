@@ -5,11 +5,15 @@ on:
     paths:
       - 'pbcinema-banners-host-action-registration-v1.cjs'
       - 'test-pbcinema-banners-host-action-registration-v1.cjs'
+      - 'pbcinema-four-owner-root-readonly-preflight-v1.cjs'
+      - 'test-pbcinema-four-owner-root-readonly-preflight-v1.cjs'
       - '.github/workflows/pbcinema-banners-l4-registration-ci.yml'
   pull_request:
     paths:
       - 'pbcinema-banners-host-action-registration-v1.cjs'
       - 'test-pbcinema-banners-host-action-registration-v1.cjs'
+      - 'pbcinema-four-owner-root-readonly-preflight-v1.cjs'
+      - 'test-pbcinema-four-owner-root-readonly-preflight-v1.cjs'
       - '.github/workflows/pbcinema-banners-l4-registration-ci.yml'
 permissions:
   contents: read
@@ -29,4 +33,6 @@ jobs:
           set -euo pipefail
           node --check pbcinema-banners-host-action-registration-v1.cjs
           node --check test-pbcinema-banners-host-action-registration-v1.cjs
-          node --test test-pbcinema-banners-host-action-registration-v1.cjs
+          node --check pbcinema-four-owner-root-readonly-preflight-v1.cjs
+          node --check test-pbcinema-four-owner-root-readonly-preflight-v1.cjs
+          node --test test-pbcinema-banners-host-action-registration-v1.cjs test-pbcinema-four-owner-root-readonly-preflight-v1.cjs
