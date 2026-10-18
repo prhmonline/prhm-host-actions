@@ -146,7 +146,7 @@ test('trusted simulation exact order, one-time, writes only after signed consume
  assert.equal(result.publicFreePriceEnabled,false);
  assert.equal(result.applicationDeployed,false);
  assert.deepEqual(events,[
-  'preflight','freeze','quiescent','backup','l4','maintenance','recheck',
+  'preflight','backup','l4','maintenance','freeze','quiescent','recheck',
   'ddl_capacity','capacity_checkpoint','ddl_features','final_checkpoint','audit','resume'
  ]);
  await assert.rejects(c.execute(),/one_time_coordinator_reused/);
@@ -155,6 +155,8 @@ test('no L4 grant means no live DDL, audit denial and no resume',async()=>{
  const f=fixture({consumeSignedLevel4:async()=>({...approval(backup()),level:3})});
  await assert.rejects(makeCoordinator(f.adapter).execute(),/signed_scope_or_issuer_missing/);
  assert.equal(f.events.includes('ddl_capacity'),false);
+ assert.equal(f.events.includes('freeze'),false);
+ assert.equal(f.events.includes('maintenance'),false);
  assert.equal(f.events.includes('resume'),false);
  assert.equal(f.events.at(-1),'audit');
 });
@@ -200,4 +202,22 @@ test('pre-DDL backup identity cannot diverge from the signed snapshot',async()=>
  })});
  await assert.rejects(makeCoordinator(f.adapter).execute(),/immediate_pre_ddl_binding_drift/);
  assert.equal(f.events.includes('ddl_capacity'),false);
+});
+
+test('backup failure cannot quiesce payment writers or acquire production maintenance',async()=>{
+ const f=fixture({verifyBackupRestore:async()=>({...backup(),manifestVerified:false})});
+ await assert.rejects(makeCoordinator(f.adapter).execute(),/backup_or_recovery_unverified/);
+ assert.equal(f.events.includes('l4'),false);
+ assert.equal(f.events.includes('maintenance'),false);
+ assert.equal(f.events.includes('freeze'),false);
+ assert.equal(f.events.includes('ddl_capacity'),false);
+ assert.equal(f.events.at(-1),'audit');
+});
+test('trusted issuer rejection cannot freeze production writers',async()=>{
+ const f=fixture({consumeSignedLevel4:async()=>{throw Error('issuer_rejected');}});
+ await assert.rejects(makeCoordinator(f.adapter).execute());
+ assert.equal(f.events.includes('maintenance'),false);
+ assert.equal(f.events.includes('freeze'),false);
+ assert.equal(f.events.includes('ddl_capacity'),false);
+ assert.equal(f.events.at(-1),'audit');
 });
