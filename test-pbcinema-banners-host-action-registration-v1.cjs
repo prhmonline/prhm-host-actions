@@ -11,8 +11,8 @@ const mockPolicy=()=>JSON.stringify({
 });
 test('fixed source and identity pins',()=>{
  assert.equal(x.ACTION,'pbcinema_banners_release_install_v1');
- assert.equal(x.INSTALLER_SHA256,'c9303556e96e7e01f3fa1f44e814ae3e83d1b900ecaeb9babb2634dd757e53ae');
- assert.equal(x.PYTHON_HELPER_SHA256,'fa2ace165fb8d0bd635f09125e1a558a3e42347fc6e7a3bf22b45f841f869c83');
+ assert.equal(x.INSTALLER_SHA256,'572b7f0057c19ade7ff49bd4234dcd4a667018273e0b90099ac93f7f95d8b43f');
+ assert.equal(x.PYTHON_HELPER_SHA256,'8d348315a99fdfcc9d3934f39b18996761d777d90e1fac3a37475b08be1f0b69');
  assert.equal(x.DEST,'/usr/local/libexec/deploy-control/pbcinema-banners-release');
 });
 test('typed policy binds L4 with second confirmation and one-time use',()=>{
@@ -52,7 +52,7 @@ test('executor action map and dispatch are fixed and unique',()=>{
  assert.match(out, /kind:'pbcinema_banners_release_install_v1'/);
  assert.match(out,/if\(action==='pbcinema_banners_release_install_v1'\)/);
  assert.match(out,/pbcinema_root_stage_dir_untrusted/);
- assert.match(out,/c9303556e96e7e01f3fa1f44e814ae3e83d1b900ecaeb9babb2634dd757e53ae/);
+ assert.match(out,/572b7f0057c19ade7ff49bd4234dcd4a667018273e0b90099ac93f7f95d8b43f/);
  assert.throws(()=>x.readExecCandidate(out),/exec_action_already_present/);
 });
 test('executor injected worker parses and fails without root authority',()=>{
