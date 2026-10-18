@@ -1,0 +1,101 @@
+# Honartik open-price — real Yii on verified restored MariaDB 10.6
+
+**Status: Git-only candidate. Not registered, not installed, not approved, not executed on the production-host snapshot, and not deployed.** This work does not grant generic shell execution or permission to access live customer records.
+
+## Source and immutable scope
+
+- Typed Host Action ID: `honartik_open_price_yii_scratch_v1`.
+- Trusted authorization operation: `host_action.honartik_open_price_yii_scratch_v1` (Ed25519, single use, signed and consumed by the trusted Control Plane; never accepted from browser payload).
+- Source repository: `prhmonline/honar-back-new`.
+- Source commit: `4853dd39c43ca678b4bb29f00777c1b89c559757`.
+- Pinned script: `scripts/open-price-yii-isolated-restore-check.sh`, Git blob `83d30253d244e57320b3c539a8cde5f37c890ce4`.
+- Verified historical dump: `/var/backups/prhm-central/20261016T212759Z/db/prhm-mariadb/honartik_db.sql.gz`, checked against the immutable backup's SHA256SUMS.
+- Database identity: `honartik_db`. Real backup expected counts from previous isolated restore: finance_transactions 37,156; finance_wallet 50,543; reserve 36,738.
+- Pinned disposable image: `mariadb:10.6`, `--network none`; completely separate datadir, socket and root password. **No live MariaDB socket, credentials, network or data volume may be mounted.**
+- Production backend exact preimage for this candidate: `502376d0360a338f9522e4a2be5f9dccc91408d7`. A drift is a hard stop, not a reason to overwrite.
+
+## Trusted registration requirements
+
+This repository contains a **typed source contract, a source-only native adapter candidate and tests**, not an installed native executor. Registration must be performed by an authorized owner through a separately reviewed, SHA-verified Host Actions v2 installer and one-time Level-4 signed approval. The trusted adapter must implement precisely these methods: `preflight`, `consumeApproval`, `executeRestoredYiiRehearsal`, `cleanup`, `audit`. It cannot accept caller-provided paths, SHA, SQL, shell commands, environment strings, machine identity, credentials, arbitrary arguments or a production deploy operation.
+
+The source-only `honartik-open-price-yii-native-adapter-v1.cjs` implements the fixed, non-shell native execution and evidence parsing **only when bound by a separately installed trusted registrar** providing `consumeBoundApproval`, `appendDurableAudit` and `registeredNativeAction`. The adapter validates the backup/manifest checksum, gzip integrity, exact Git blob and live HEAD, MariaDB image and resources; it requires the real Yii operator's post-restore JSON receipt (version, expected counts, three BIGINT columns, eight feature columns and identical financial SHA-256 digests) and exact completion/cleanup markers. It does **not** mint signed approvals or expose a standalone CLI. The trusted registration boundary must independently check the signer and bind callbacks; a caller-provided JSON `registeredNativeAction` value is not a grant. The trusted adapter—not this repository's mock test result—must prove real backup SHA256, old SHA and resources, mount confinement, no network and no source writes before invoking the fixed migration rehearsal script. Its evidence must be generated from real commands and actual restored DB state, never accepted from client JSON or test mocks. Only register the immutable action after source review and implementation of this adapter. Do not repurpose the privileged GitHub deploy-control runner to evade the host approval requirement.
+
+## Acceptance
+
+A registered operation is green only after the trusted Control Plane authorizes it and the native adapter independently returns all fixed-schema evidence. The actual Yii2 classes `m261016_105000_open_price_money_capacity` and `m261016_110000_open_price_schedules` must run on restored MariaDB **10.6** with the complete historical dataset. Verify source hashes, exact row counts, existing financial totals and absolute totals before/after, three widened money columns, all eight feature columns, safe capacity retry ordering, duplicate feature fail-closed and scratch cleanup. Never call `safeDown` or downgrade money fields, and never run database writes against the production container.
+
+The official source-only contracts have **25/25 PASS** (16 coordinator plus 9 native parser tests), but do not execute the real backup. The existing synthetic integration was independently **PASS** against Yii2 2.0.55 / PHP 8.4 / synthetic MariaDB 11.8; that does **not** satisfy the restored MariaDB 10.6 acceptance.
+
+## Subsequent release gates
+
+The new host action is *rehearsal only*, not a release operator. After its real evidence is green, independently verify actual wallet/seller settlement and cancellation/refund accounting, complete app typecheck and preserved local edits, review/merge the two open Draft feature PRs and obtain a separately authorized SHA-pinned dark deploy. Keep `schedule.free_price_enabled=0` for all public sessions pending owner-run Saman SEP transaction/receipt/reconciliation UAT. No user email or SMS should be sent during rehearsal.
+
+**Failure behavior:** never infer green from a mock, CI test or an absent error. On failed preflight, authorization, migration, data audit, cleanup or durable audit, emit failure with no approval reuse and no Production mutation. Preserve historical DB evidence and do not roll back schema by destructive down-migrations.
+
+## 2026-10-17 forced-cleanup containment refinement
+
+The restored-data operator now supports a private and tightly checked scratch parent `HONARTIK_YII_ACTION_SCRATCH_PARENT`, restricted to a pre-created root-owned mode-0700 `/var/tmp/prhm-yii-action-*` directory. The source-only Native adapter binds this path itself, starts the fixed Bash process in a dedicated process group and sends SIGTERM then SIGKILL on time limit. It then removes the precise disposable container and the scratch root and refuses success without cleanup and durable audit receipts. **Only source-level implementation and isolated tests; native Agent installation is still not authorized or performed.**
+
+
+## 2026-10-18: SHA-bound registration transaction primitive — tested, not installed
+
+The Git-only source now includes:
+- `honartik-open-price-yii-registration-transaction-v1.cjs`: fixed action ID `honartik_open_price_yii_scratch_v1`, immutable native adapter/coordinator Git blobs, previously reported four-owner production SHA256 preimages, explicit owner permission modes, one-time consumed Level-4 approval binding, candidate-file SHA map, original-state checks, before-image snapshots, verification, durable audit and fail-closed rollback requirements. It has no CLI or direct write path.
+- `test-honartik-open-price-yii-registration-transaction-v1.cjs`: deliberately rejects tampered owner candidates, missing action registrations, unpinned native blobs, missing trusted capabilities, mismatched owner preimages and direct CLI invocation. Verified isolated CI [run #39069985613](https://github.com/prhmonline/prhm-host-actions/actions/runs/39069985613): **12/12 PASS**, all actual job steps successful. Other source-only finance, approval and reversal checks on the same PR revision were GREEN.
+
+This is a **transaction primitive and source contract, not an on-host installer**. The current trusted root host installer must independently supply `buildReviewedOwnerCandidate` and all privileged capabilities from previously approved, pinned owner bytes, including its real `assertConsumedLevel4` implementation. Those production-bound owner patches and trusted wiring have not been installed, and the previously recorded four-owner SHA preimages need fresh read-only confirmation. The root installer must verify the exact committed signed candidate, stage/restore all six files and ensure runtime discovery/health. A request for `honartik_open_price_yii_scratch_v1` through the current Agent 3 `host_action_v2_request` still fails with `host_action_v2_not_allowed`; all three Agent connections lacked this installed action. **No registration approval token was issued or consumed**.
+
+Do not route this through a privileged deploy-control CI job, do not invent a consumed L4 token and do not run SQL on `honartik_db`. The unresolved executable gate is **trusted on-host L4 registrar binding + a freshly signed, narrowly scoped, SHA-bound approval**. Only after successful registered/verified installation may the full restored `mariadb:10.6` actual Yii migration rehearsal run. This Git-only update made no production or DB changes.
+
+
+## 2026-10-18: later complete snapshot — real Yii2 scratch rehearsal passed
+
+The server owner ran the pinned legacy operator from backend source commit `4853dd39c43ca678b4bb29f00777c1b89c559757`, operator Git blob `83d30253d244e57320b3c539a8cde5f37c890ce4`, after replacing only two literal data selectors in a temporary copy: removed snapshot `20261016T212759Z` → complete `20261017T152430Z`, and historical table counts → `finance_transactions=37179`, `finance_wallet=50582`, `reserve=36761`. The temporary script SHA256: `ee48a8828d0bed92d2f30b78cbbdbab769e80e3c0a591e8366aa56c8751bf23f`. New Honartik dump SHA256 `09171ccc36c6dd9e2d09000ae7338f687711aa979c6eabd38b0b309d0e5ede0c`, complete manifest/gzip integrity PASS.
+
+**Actual result** (from full owner-supplied terminal output, not simulator): isolated `--network none` MariaDB `10.6.27`; authentic Yii2 `safeUp()` ran for both capacity and eight-feature migrations; capacity retry before features passed; illegal post-feature capacity retry and duplicate feature migration rejected; `YII_SCHEMA_READINESS=PASS`; all financial aggregates unchanged, before/after SHA256 `bad740348edebe49c904063c7ecccde942d48bcd4581fc39e06c7788a84fff05`; `ISOLATED_CLEANUP=PASS`; `PRODUCTION_DATABASE_UNTOUCHED=YES`. Thus **restored-snapshot migration rehearsal was completed successfully via the owner's separate, manually executed, isolated script**. Neither the live database nor the host's installed Agent registry were modified.
+
+The legacy hard-coded `PINS.snapshot`/`expectedCounts` in the source-only action now refer to an absent historical backup. Do not report that action callable, migrate production on its behalf or copy an unsigned patched script into a privileged agent. Signed Level-4 Host Action registration / deployment is **still not installed**; the real restored Yii rehearsal and the future signed production deployment are distinct tasks. Seller settlement/refunds, feature-default-OFF deployment planning, live-schema preflight and actual bank pilot remain release gates.
+
+
+## 2026-10-18: cancellation wallet reconciliation isolated-DB regression
+
+The backend feature branch now has `OpenPriceRefundLedger` and `OpenPriceCancellationService`, wiring the opt-in cancellation path to an atomic symmetric wallet refund instead of the legacy unbalanced one-sided `FinanceWallet::inc`. No paid open-price ticket with an external GID or an attached seller settlement is automatically refunded; missing-code opt-in transactions go to manual review rather than legacy unbalanced credit. Ordinary opt-out cancellations are left unchanged.
+
+- Source SHA-pinned PHP route/refund arithmetic CI: [run 39072676301](https://github.com/prhmonline/prhm-host-actions/actions/runs/39072676301) PASS.
+- Actual `FinanceTransactions` / `FinanceWallet` and actual refund service code executed on MariaDB 10.6 `--network none`, fixture-only reserve/schedule wrappers: [run 39072988348](https://github.com/prhmonline/prhm-host-actions/actions/runs/39072988348) PASS.
+- Final injected second-row refund-write failure proves first row and reservation status are rolled back: [run 39073092212](https://github.com/prhmonline/prhm-host-actions/actions/runs/39073092212) PASS, including cleanup. Explicit results: full refund, duplicate rejection, attached settlement hold, tampered extra hold, injected-wallet-failure rollback.
+- Fixture artifacts are under `test-fixtures/honartik-open-price-finance`, with a distinct `refund-source-manifest.json`. These contain synthetic data only and no customer or production database credentials.
+
+**Not yet verified:** actual `common/models/Reserve::afterSave` seat state changes in the full schema, bank payment/refund reconciliation, actual seller settlement and production migration/deploy. Public open-price flags OFF; do not consider financial safety UAT complete merely because synthetic isolated DB tests passed.
+
+
+## 2026-10-18: exact real seat and seller approval DB contracts green
+
+The source-only `OpenPriceCancellationService` now locks and validates all SOLD seats joined to `reserve_item`, and verifies the **actual Reserve::afterSave()** released all of those same seats before committing the symmetrical base/extra wallet refund. Unexpected seat state, duplicate, missing item or incomplete seat release fails closed and rolls back the wallet/seat state.
+
+Actual source-pinned real `Reserve`, `ReserveItem`, `ScheduleSeat`, `Schedule`, `Venue` and `AccountSettlement` model behaviors and real finance models/services were executed against an isolated nonnetwork MariaDB 10.6 fixture. Only Event owner lookup and Jalali UI display formatting used minimal sandbox replacements. All tests [CI #39074125609](https://github.com/prhmonline/prhm-host-actions/actions/runs/39074125609) PASS, including reserve seat release, wallet-insert-induced seat rollback, reassigned seat hold, **real AccountSettlement financial approval hold** for unallocated excess, untouched approval path for ordinary producer and container cleanup.
+
+This is not an actual SEP refund, a seller bank payout, historic Finance reconciliation, or an authorization to deploy. The installed typed Agent root registrar still lacks `honartik_open_price_yii_scratch_v1`. Both branches remain unmerged until separate reviewed signed release gates and owner pilot.
+
+
+## 2026-10-18: second producer-payout request entry guarded
+
+`SoldEvent::markAsSettledByEventIds()` directly sets `STATUS_REQUESTED` through `updateAll` and therefore bypasses `AccountSettlement::beforeSave`. The current source-only feature now verifies the exact event-ID scope against published opt-in `Reserve` price snapshots and completed-bank amount fields using `OpenPriceSettlementGuard`; any unmatched snapshot or unallocated extra blocks the whole batch, while ordinary producer requests continue. This marks **request status only**, not a completed bank payout.
+
+The actual model and MariaDB 10.6 synthetic no-network fixture verify mixed producer hold, ordinary unaffected, open-price extra hold and malformed ID rejection: [CI #39075438109](https://github.com/prhmonline/prhm-host-actions/actions/runs/39075438109) PASS. The same CI reran the real `AccountSettlement`, `Reserve::afterSave` and wallet rollback controls. No live SQL, SEP API or payment was performed. Arbitrary database-level `UPDATE` outside the guarded source may still bypass it; production requires separate authorization and validation.
+
+
+## 2026-10-18: observed live Yii schema is pre-migration, not deploy-ready
+
+Owner-supplied command output from a read-only Yii2 DB connection to `honartik_db` confirmed backend live `502376d0360a338f9522e4a2be5f9dccc91408d7`, `finance_transactions.amount=int(11)`, `finance_wallet.amount=int(11)`, `paying_amount` missing, zero of eight opt-in columns and neither exact migration recorded in `system_db_migration`. `LIVE_SCHEMA_READ_ONLY=PASS`, `PRODUCTION_MUTATION=NO`. This replaces the previous 'unable to inspect live SQL' blocker with a precise **PENDING / requires both migrations** finding.
+
+The real-restore Yii2 rehearsal is already green on full complete backup `20261017T152430Z` (dump SHA256 `09171ccc36c6dd9e2d09000ae7338f687711aa979c6eabd38b0b309d0e5ede0c`). That does not make the backup recent enough for an unannounced live DDL. Both source-only native Host Action and its registration contract still hard-code an **absent** older snapshot; do not pass them as if installed or use them as production migration authorization.
+
+Exact central GitHub deploy-control workflow project key: `honartik_back`. Actual on-host deploy-project's protection of the known modified `app/views/admin-reserve/_form.php` and untracked customer export `honartik-28000-refresh-905d3af8f914b0e4.xlsx` remains unverified. Never dispatch a backend release before approved live DB migration and backup/rollback validation. Do not run a broad Yii `migrate/up` that may include unrelated migrations. Live finance DDL requires an independently signed release, freeze-and-recheck source SHA, verified current snapshot and per-migration audit. No code/live database changes in this note.
+
+
+## 2026-10-18: latest completed 21:20Z backup real Yii rehearsal and live L4 admission
+
+Owner-supplied latest complete snapshot: `/var/backups/prhm-central/20261017T212022Z`, dump `honartik_db.sql.gz` SHA256 `74777c7e559c55f8ed651bbbd53e93a4610a6c00804e006cbb40497b03e33fb6`; manifest, GZIP and on-host freshness all PASS at check time. Restored network-isolated MariaDB `10.6.27` counts `finance_transactions=37195`, `finance_wallet=50603`, `reserve=36777`; real pinned Yii2 migration `safeUp()` calls for both money capacity and eight feature fields passed. Financial before and after aggregate digests exactly `226ce1bedfc2480e3162002f4797afc65a774f2d5a98debf5db9d03b69784a50`. Original operator Git blob `83d30253d244e57320b3c539a8cde5f37c890ce4`; operator-owned temporary copy SHA256 `45712a91115b7b31d88bafa4639e660d67b23eb2595a6ef1196e2114f5c611aa`. Cleanup PASS, production DB unaffected and backend undeployed.
+
+The **full, separately scoped production financial migration authorization and rollback specification** is now documented in [honartik-open-price-production-l4-migration-admission-v1.md](honartik-open-price-production-l4-migration-admission-v1.md). Importantly the existing `honartik_open_price_yii_scratch_v1` draft action and its native adapter are *restored-copy only* and pinned to an unavailable old backup. They do **not** authorize or safely run financial live DDL. Agent health still lacks such production action; no scoped L4 request was issued. The live production app remains SHA `502376d0360a338f9522e4a2be5f9dccc91408d7` with the two protected owner files. Normal Code CI and backup rehearsal are **PASS**, while `LIVE_DDL_AUTHORIZED=NO` and `DEPLOY=HOLD`.

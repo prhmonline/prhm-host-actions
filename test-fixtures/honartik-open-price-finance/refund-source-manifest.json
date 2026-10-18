@@ -1,0 +1,27 @@
+{
+  "backend_source_commit": "dd56de5af71ddef18353207c46ef080b7edc3a65",
+  "synthetic_data_only": true,
+  "production_access": false,
+  "files": [
+    {
+      "path": "app/modules/finance/services/OpenPriceRefundLedger.php",
+      "blob": "bfd6200f7e98b394b47213168bde68ee3b38cdbb"
+    },
+    {
+      "path": "app/modules/finance/services/OpenPriceCancellationService.php",
+      "blob": "70f32e215670d59e9a5c8ca8a8b89e6ecc0de572"
+    },
+    {
+      "path": "app/modules/finance/services/OpenPriceSettlementGuard.php",
+      "blob": "a51b3d20f739afcd7a4e2ca7408a9e00b616a2a3"
+    },
+    {
+      "path": "app/tests/integration/OpenPriceCancellationFixtureTest.php",
+      "blob": "40e9aac7a0c019fb9d930adfda916b6fa5fb0e5b"
+    },
+    {
+      "path": "app/tests/integration/fixtures/OpenPriceCancellationFixtureModels.php",
+      "blob": "914f57d5da661f488005da8dbb6f6da7ca9a9ba3"
+    }
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "purpose": "Exact real ticket seat ActiveRecord sources, locally isolated PHP/Yii/MariaDB",
+  "snapshot_type": "synthetic_db_fixture",
+  "production_access": false,
+  "files": [
+    {
+      "path": "common/models/base/ActiveQuery.php",
+      "blob": "93bc4766ac285a0c5a6bafc0ee02845da32c7ca8"
+    },
+    {
+      "path": "common/models/base/ActiveRecord.php",
+      "blob": "8e4a6a40faee8994a4333081a504e78a8c38a067"
+    },
+    {
+      "path": "common/models/Venue.php",
+      "blob": "3a476c435642764693a697d4fdccde836c08afe8"
+    },
+    {
+      "path": "common/models/Schedule.php",
+      "blob": "e25df14f36b51355e15fccf9172fcbd5a9714140"
+    },
+    {
+      "path": "common/models/ScheduleSeat.php",
+      "blob": "c161b06f71e2e295b673111d5852bf63f7602913"
+    },
+    {
+      "path": "common/models/ReserveItem.php",
+      "blob": "dc5a70234441c3a22ce0f92b28f8562a248c4c8a"
+    },
+    {
+      "path": "common/models/Reserve.php",
+      "blob": "e29f72436c1ed44cf9639e5a8bd2e8ee67fe146b"
+    },
+    {
+      "path": "app/tests/integration/fixtures/OpenPriceLocalityStub.php",
+      "blob": "dd441a22a829c7bf8d6d41d2fcd8a3af1e798e66"
+    },
+    {
+      "path": "app/tests/integration/OpenPriceActualReserveSeatTest.php",
+      "blob": "02d6de189738e5a84ddb4a30c0ada6b9d61684f9"
+    },
+    {
+      "path": "app/tests/integration/fixtures/OpenPriceSettlementEventStub.php",
+      "blob": "f5d3f2b7436e585352117eb83edd9bfc8ac71d39"
+    },
+    {
+      "path": "common/models/AccountSettlement.php",
+      "blob": "c91d2c1c5a6693744b6e47ed2523786de29b1733"
+    },
+    {
+      "path": "common/models/SoldEvent.php",
+      "blob": "fcf38b89da9de6c6f140ebe527d4be922b7d10b4"
+    }
+  ]
+}

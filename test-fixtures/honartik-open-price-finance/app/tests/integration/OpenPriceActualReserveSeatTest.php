@@ -1,0 +1,384 @@
+<?php
+declare(strict_types=1);
+
+/**
+ * Isolated MariaDB 10.6 transaction test for the REAL open-price cancellation
+ * service and REAL finance models, but fixture-only Reserve/Schedule wrappers.
+ * Never connect this file to a production database.
+ */
+if (getenv('HONARTIK_OPEN_PRICE_FIXTURE') !== 'YES') {
+    fwrite(STDERR, "FAIL_CLOSED: fixture flag required\n"); exit(2);
+}
+$socket = getenv('HONARTIK_OPEN_PRICE_FIXTURE_SOCKET') ?: '/tmp/honartik-ledger.sock';
+if (!preg_match('~^/tmp/honartik-ledger[a-zA-Z0-9._-]*\.sock$~D', $socket)
+    || !file_exists($socket) || is_link($socket)) {
+    fwrite(STDERR, "FAIL_CLOSED: isolated socket required\n"); exit(2);
+}
+$root = dirname(__DIR__, 2);
+$vendor = getenv('HONARTIK_YII_FIXTURE_VENDOR') ?: $root . '/vendor';
+require $vendor . '/autoload.php';
+require $vendor . '/yiisoft/yii2/Yii.php';
+require $root . '/modules/finance/Config.php';
+require $root . '/modules/finance/models/FinanceTransactions.php';
+require $root . '/modules/finance/models/FinanceWallet.php';
+require $root . '/modules/finance/services/OpenPriceAmount.php';
+require $root . '/modules/finance/services/OpenPriceLedger.php';
+require $root . '/modules/finance/services/OpenPriceRefundLedger.php';
+require $root . '/modules/finance/services/OpenPriceSettlementGuard.php';
+require __DIR__ . '/fixtures/OpenPriceLocalityStub.php';
+foreach ([
+  '/../common/models/base/ActiveQuery.php',
+  '/../common/models/base/ActiveRecord.php',
+  '/../common/models/Venue.php',
+  '/../common/models/Schedule.php',
+  '/../common/models/ScheduleSeat.php',
+  '/../common/models/ReserveItem.php',
+  '/../common/models/Reserve.php',
+] as $file) require $root . $file;
+require $root . '/modules/finance/services/OpenPriceCancellationService.php';
+require __DIR__ . '/fixtures/OpenPriceSettlementEventStub.php';
+require $root . '/../common/models/AccountSettlement.php';
+require $root . '/../common/models/SoldEvent.php';
+
+use app\modules\finance\models\FinanceTransactions;
+use app\modules\finance\models\FinanceWallet;
+use app\modules\finance\services\OpenPriceLedger;
+use app\modules\finance\services\OpenPriceCancellationService;
+use common\models\Reserve;
+use common\models\Schedule;
+use common\models\AccountSettlement;
+use common\models\SoldEvent;
+
+$db = new \yii\db\Connection([
+    'dsn'=>'mysql:unix_socket='.$socket.';dbname=honartik_finance_fixture',
+    'username'=>getenv('HONARTIK_OPEN_PRICE_FIXTURE_DB_USER') ?: 'root',
+    'password'=>getenv('HONARTIK_OPEN_PRICE_FIXTURE_DB_PASS') ?: '',
+    'charset'=>'utf8mb4',
+]);
+new \yii\console\Application([
+    'id'=>'honartik-synthetic-refund-test',
+    'basePath'=>$root,
+    'components'=>['db'=>$db],
+]);
+$db->open();
+if ($db->createCommand('SELECT DATABASE()')->queryScalar()!=='honartik_finance_fixture' ||
+    (int)$db->createCommand('SELECT @@skip_networking')->queryScalar()!==1 ||
+    !str_starts_with((string)$db->createCommand('SELECT VERSION()')->queryScalar(),'10.6.')) {
+    throw new RuntimeException('Wrong DB/network/version for cancellation fixture');
+}
+foreach ([
+    'CREATE TABLE IF NOT EXISTS finance_transactions (
+      id BIGINT PRIMARY KEY AUTO_INCREMENT, created_at INT NOT NULL DEFAULT 0,
+      transactioner BIGINT NOT NULL, amount BIGINT NOT NULL, paying_amount BIGINT NULL,
+      status INT NOT NULL, gateway INT NOT NULL DEFAULT 7,
+      gateway_reciept VARCHAR(255) DEFAULT NULL, gateway_meta TEXT NULL,
+      transactioner_ip VARCHAR(255) NOT NULL DEFAULT \'127.0.0.1\',
+      internal_reciept VARCHAR(255) DEFAULT NULL, token VARCHAR(255) DEFAULT NULL,
+      return_url VARCHAR(255) DEFAULT NULL, additional_rows LONGTEXT NULL,
+      internal_meta LONGTEXT NULL, metadata LONGTEXT NULL,
+      settle_callback_function LONGTEXT NULL) ENGINE=InnoDB',
+    'CREATE TABLE IF NOT EXISTS finance_wallet (
+      id BIGINT PRIMARY KEY AUTO_INCREMENT, created_at INT NOT NULL,
+      user_id BIGINT NOT NULL, amount BIGINT NOT NULL,
+      transactioner BIGINT NOT NULL, transactioner_ip VARCHAR(255),
+      bank_transaction_id BIGINT NULL, description VARCHAR(255), metadata VARCHAR(255)
+    ) ENGINE=InnoDB',
+    'CREATE TABLE IF NOT EXISTS coupon_use (
+      id BIGINT AUTO_INCREMENT PRIMARY KEY, finance_transaction_id BIGINT NOT NULL,
+      status INT NOT NULL, used_at INT NULL, expires_at INT NULL,
+      released_at INT NULL, release_reason VARCHAR(255) NULL,
+      is_current TINYINT NOT NULL, updated_at INT NOT NULL
+    ) ENGINE=InnoDB',
+    'CREATE TABLE IF NOT EXISTS event (
+      id BIGINT PRIMARY KEY AUTO_INCREMENT, manager_id BIGINT NOT NULL
+    ) ENGINE=InnoDB',
+    'CREATE TABLE IF NOT EXISTS account_settlement (
+      id BIGINT PRIMARY KEY AUTO_INCREMENT, user_id BIGINT NOT NULL,
+      status INT NOT NULL, min_date DATE NULL, max_date DATE NULL,
+      created_at BIGINT NULL, updated_at BIGINT NULL,
+      created_by BIGINT NULL, updated_by BIGINT NULL
+    ) ENGINE=InnoDB',
+    'CREATE TABLE IF NOT EXISTS sold_event (
+      id BIGINT PRIMARY KEY AUTO_INCREMENT,
+      event_id BIGINT NOT NULL, settlement_status INT NOT NULL
+    ) ENGINE=InnoDB',
+    'CREATE TABLE IF NOT EXISTS venue (
+      id BIGINT PRIMARY KEY AUTO_INCREMENT, place_id BIGINT NOT NULL
+    ) ENGINE=InnoDB',
+    'CREATE TABLE IF NOT EXISTS schedule (
+      id BIGINT PRIMARY KEY AUTO_INCREMENT, venue_id BIGINT NOT NULL,
+      date DATE NOT NULL, start_at TIME NOT NULL,
+      sales_start_at BIGINT NULL, sales_end_at BIGINT NULL,
+      is_cancel_able TINYINT NOT NULL
+    ) ENGINE=InnoDB',
+    'CREATE TABLE IF NOT EXISTS schedule_seat (
+      id BIGINT PRIMARY KEY AUTO_INCREMENT, schedule_id BIGINT NOT NULL,
+      status INT NOT NULL, user_lock BIGINT NULL, last_lock_time INT NULL,
+      updated_at BIGINT NULL
+    ) ENGINE=InnoDB',
+    'CREATE TABLE IF NOT EXISTS reserve_item (
+      id BIGINT PRIMARY KEY AUTO_INCREMENT, reserve_id BIGINT NOT NULL,
+      schedule_seats_id BIGINT NOT NULL
+    ) ENGINE=InnoDB',
+    'CREATE TABLE IF NOT EXISTS reserve (
+      id BIGINT PRIMARY KEY AUTO_INCREMENT, user_id BIGINT NOT NULL,
+      schedule_id BIGINT NOT NULL, transaction_id BIGINT NOT NULL,
+      status INT NOT NULL, free_price_enabled_snapshot TINYINT NOT NULL,
+      free_price_original_amount BIGINT NULL,
+      free_price_minimum_amount BIGINT NULL,
+      free_price_proposed_amount BIGINT NULL,
+      free_price_gateway_amount BIGINT NULL,
+      free_price_extra_amount BIGINT NULL,
+      account_settlement_id BIGINT NULL, code VARCHAR(64) NULL,
+      gid VARCHAR(64) NULL, created_at BIGINT NULL, updated_at BIGINT NULL,
+      created_by BIGINT NULL, updated_by BIGINT NULL
+    ) ENGINE=InnoDB',
+] as $sql) $db->createCommand($sql)->execute();
+// The preceding synthetic wallet regression runs in the same temporary DB
+// and may have created the smaller schedule/reserve/seat fixture first.
+// Widen fixture-only tables, never a production table.
+$fixtureColumns = [
+  'schedule' => [
+    'event_id' => 'BIGINT NULL',
+    'venue_id' => 'BIGINT NOT NULL DEFAULT 1',
+    'sales_start_at' => 'BIGINT NULL',
+    'sales_end_at' => 'BIGINT NULL',
+  ],
+  'schedule_seat' => ['updated_at' => 'BIGINT NULL'],
+  'reserve' => [
+    'created_at'=>'BIGINT NULL', 'updated_at'=>'BIGINT NULL',
+    'created_by'=>'BIGINT NULL', 'updated_by'=>'BIGINT NULL',
+  ],
+];
+foreach ($fixtureColumns as $table => $columns) {
+    foreach ($columns as $col => $type) {
+        $count = (int)$db->createCommand(
+          'SELECT COUNT(*) FROM information_schema.COLUMNS
+           WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=:t AND COLUMN_NAME=:c',
+          [':t'=>$table, ':c'=>$col]
+        )->queryScalar();
+        if ($count === 0) {
+            $db->createCommand('ALTER TABLE ' . $table .
+                ' ADD COLUMN ' . $col . ' ' . $type)->execute();
+        }
+    }
+}
+foreach (['reserve_item','schedule_seat','reserve','schedule','venue','account_settlement','sold_event','event','coupon_use','finance_wallet','finance_transactions'] as $table)
+    $db->createCommand('DELETE FROM '.$table)->execute();
+
+// Insert venue/schedule directly: the unrelated real template-provisioning
+// afterSave() is not part of cancellation and must not invoke other services.
+$db->createCommand()->insert('event',['id'=>77,'manager_id'=>9])->execute();
+$db->createCommand()->insert('event',['id'=>88,'manager_id'=>10])->execute();
+$db->createCommand()->insert('venue',['id'=>1,'place_id'=>10])->execute();
+$db->createCommand()->insert('schedule',[
+  'venue_id'=>1,'event_id'=>77,'date'=>date('Y-m-d',time()+4*86400),
+  'start_at'=>'18:00:00','is_cancel_able'=>1,
+  'sales_start_at'=>time()-86400,'sales_end_at'=>time()+86400
+])->execute();
+$schedule=Schedule::findOne((int)$db->getLastInsertID());
+if (!$schedule || !$schedule->venue ||
+    (int)$schedule->venue->place_id!==10)
+    throw new RuntimeException('Real Schedule/Venue relations did not load');
+echo "REAL_SCHEDULE_AND_VENUE_AR=PASS\n";
+$create = static function (int $extra, int $settlementId=0) use ($schedule): array {
+    $chosen = 400000+$extra;
+    $bank = new FinanceTransactions();
+    $bank->created_at=time();
+    $bank->transactioner=42;
+    $bank->amount=$chosen;
+    $bank->paying_amount=$chosen;
+    $bank->status=FinanceTransactions::TRANSACTION_PAID;
+    $bank->gateway=7;
+    $bank->gateway_reciept='SYNTHETIC-NO-BANK';
+    $bank->transactioner_ip='127.0.0.1';
+    $bank->internal_reciept='synthetic';
+    $bank->token='synthetic';
+    $bank->return_url='/';
+    $bank->metadata='[]';
+    $bank->internal_meta='{}';
+    $bank->additional_rows=json_encode(OpenPriceLedger::rows(
+        400000,$chosen,42,'127.0.0.1','Synthetic Event',time()
+    ), JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+    if (!$bank->save(false)||!FinanceTransactions::setPayVerified($bank))
+        throw new RuntimeException('Initial accounting setup failed');
+    $reserve = new Reserve();
+    $reserve->user_id=42;
+    $reserve->schedule_id=$schedule->id;
+    $reserve->transaction_id=$bank->id;
+    $reserve->status=Reserve::STATUS_PUBLISH;
+    $reserve->free_price_enabled_snapshot=1;
+    $reserve->free_price_original_amount=400000;
+    $reserve->free_price_minimum_amount=400000;
+    $reserve->free_price_proposed_amount=$chosen;
+    $reserve->free_price_gateway_amount=$chosen;
+    $reserve->free_price_extra_amount=$extra;
+    $reserve->account_settlement_id=$settlementId ?: null;
+    $reserve->code='SYNTHETIC';
+    $reserve->gid=null;
+    if (!$reserve->save(false))throw new RuntimeException('Reserve setup failed');
+    $db = \Yii::$app->db;
+    $db->createCommand()->insert('schedule_seat',[
+      'schedule_id'=>(int)$schedule->id,'status'=>3,
+      'user_lock'=>42,'last_lock_time'=>time()
+    ])->execute();
+    $seatId=(int)$db->getLastInsertID();
+    $db->createCommand()->insert('reserve_item',[
+      'reserve_id'=>(int)$reserve->id,'schedule_seats_id'=>$seatId
+    ])->execute();
+    return [$bank,$reserve];
+};
+
+$totals=static function () use ($db): array {
+    return [
+      'count'=>(int)$db->createCommand('SELECT COUNT(*) FROM finance_wallet')->queryScalar(),
+      'buyer'=>(int)$db->createCommand('SELECT COALESCE(SUM(amount),0) FROM finance_wallet WHERE user_id=42')->queryScalar(),
+      'system'=>(int)$db->createCommand('SELECT COALESCE(SUM(amount),0) FROM finance_wallet WHERE user_id=0')->queryScalar(),
+      'combined'=>(int)$db->createCommand('SELECT COALESCE(SUM(amount),0) FROM finance_wallet')->queryScalar(),
+    ];
+};
+[$bank,$reserve]=$create(600000);
+$service=new OpenPriceCancellationService();
+$before=$totals();
+$result=$service->cancelPublished((int)$reserve->id,42);
+$after=$totals();
+$reserve->refresh();
+$firstSeat=$db->createCommand(
+ 'SELECT ss.* FROM schedule_seat ss JOIN reserve_item ri
+ ON ri.schedule_seats_id=ss.id WHERE ri.reserve_id=:id',
+ [':id'=>$reserve->id]
+)->queryOne();
+if (!$firstSeat ||
+    (int)$firstSeat['status']!==\common\models\ScheduleSeat::STATUS_SELECTABLE ||
+    $firstSeat['user_lock']!==null || $firstSeat['last_lock_time']!==null)
+    throw new RuntimeException('REAL Reserve::afterSave did not release seat');
+echo "REAL_RESERVE_AFTERSAVE_SEAT_RELEASE=PASS\n";
+if ($result['success']!==true ||
+    (int)$result['refund_amount_toman']!==1000000 ||
+    (int)$reserve->status!==Reserve::STATUS_CANCEL ||
+    $after['buyer']-$before['buyer']!==1000000 ||
+    $after['system']-$before['system']!==-1000000 ||
+    $after['combined']!==$before['combined'] ||
+    $after['count']-$before['count']!==4) {
+    throw new RuntimeException('Full refund or conservation failed: '.json_encode([$result,$before,$after]));
+}
+echo "ATOMIC_OPEN_PRICE_FULL_WALLET_REFUND=PASS\n";
+if ($service->cancelPublished((int)$reserve->id,42)['success']!==false ||
+    $totals()!==$after)throw new RuntimeException('Duplicate cancellation credited twice');
+echo "DUPLICATE_CANCELLATION_REJECTED=PASS\n";
+[$bank2,$reserve2]=$create(600000,12345);
+$before=$totals();
+if ($service->cancelPublished((int)$reserve2->id,42)['success']!==false ||
+    $totals()!==$before || (int)$reserve2->status!==Reserve::STATUS_PUBLISH)
+    throw new RuntimeException('Already settled reserve was refunded');
+echo "ATTACHED_SELLER_SETTLEMENT_HELD=PASS\n";
+[$bank3,$reserve3]=$create(600000);
+$reserve3->free_price_extra_amount=555555;
+$reserve3->save(false);
+$before=$totals();
+if ($service->cancelPublished((int)$reserve3->id,42)['success']!==false ||
+    $totals()!==$before)throw new RuntimeException('Tampered refund changed money rows');
+echo "TAMPERED_EXTRA_REFUND_HELD=PASS\n";
+[$bank4,$reserve4]=$create(600000);
+$before=$totals();
+// Fail the second refund posting (system reversal) after the buyer credit
+// would already have been written; the SQL transaction must undo the first.
+$db->createCommand(<<<'SQL'
+CREATE TRIGGER synthetic_refund_failure BEFORE INSERT ON finance_wallet
+FOR EACH ROW BEGIN
+  IF NEW.amount < 0 AND NEW.description LIKE 'اصلاح حساب%' THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='synthetic refund write failure';
+  END IF;
+END
+SQL)->execute();
+try {
+    $failure = $service->cancelPublished((int)$reserve4->id,42);
+} finally {
+    $db->createCommand('DROP TRIGGER synthetic_refund_failure')->execute();
+}
+$reserve4->refresh();
+if ($failure['success']!==false || $totals()!==$before ||
+    (int)$reserve4->status!==Reserve::STATUS_PUBLISH) {
+    throw new RuntimeException('Partial refund survived an injected DB write failure');
+}
+$failureSeat=(int)$db->createCommand(
+ 'SELECT ss.status FROM schedule_seat ss JOIN reserve_item ri
+ ON ri.schedule_seats_id=ss.id WHERE ri.reserve_id=:id',
+ [':id'=>$reserve4->id]
+)->queryScalar();
+if ($failureSeat!==\common\models\ScheduleSeat::STATUS_SOLED)
+    throw new RuntimeException('Transaction rollback failed to preserve sold seat');
+echo "INJECTED_FAILURE_REAL_SEAT_ROLLBACK=PASS\n";
+echo "INJECTED_WALLET_FAILURE_ATOMIC_ROLLBACK=PASS\n";
+[$bank5,$reserve5]=$create(600000);
+$seat5=(int)$db->createCommand(
+ 'SELECT ss.id FROM schedule_seat ss JOIN reserve_item ri
+ ON ri.schedule_seats_id=ss.id WHERE ri.reserve_id=:id',
+ [':id'=>$reserve5->id]
+)->queryScalar();
+$db->createCommand()->update('schedule_seat',[
+  'status'=>\common\models\ScheduleSeat::STATUS_LOCKED
+],['id'=>$seat5])->execute();
+$before=$totals();
+if ($service->cancelPublished((int)$reserve5->id,42)['success']!==false ||
+    $totals()!==$before ||
+    (int)Reserve::findOne($reserve5->id)->status!==Reserve::STATUS_PUBLISH)
+    throw new RuntimeException('Unsafe locked seat refund not held');
+echo "REASSIGNED_SEAT_REFUND_HELD=PASS\n";
+// Use REAL AccountSettlement::beforeSave and actual SQL ownership matching.
+// No payout is triggered; this validates only approval-time financial holds.
+$db->createCommand()->insert('account_settlement',[
+  'id'=>12345,'user_id'=>9,'status'=>AccountSettlement::STATUS_PENDING,
+  'min_date'=>date('Y-m-d', time()+3*86400),
+  'max_date'=>date('Y-m-d', time()+5*86400)
+])->execute();
+$settlement=AccountSettlement::findOne(12345);
+$moneyBefore=$totals();
+$settlement->status=AccountSettlement::STATUS_PUBLISH;
+if ($settlement->save(false)!==false ||
+    $totals()!==$moneyBefore ||
+    (int)AccountSettlement::findOne(12345)->status!==AccountSettlement::STATUS_PENDING) {
+    throw new RuntimeException('Actual AccountSettlement accepted unallocated extra');
+}
+echo "REAL_SELLER_SETTLEMENT_UNALLOCATED_EXTRA_HELD=PASS\n";
+
+// A normal non-opt-in producer with no open-price reservations is unaffected.
+$db->createCommand()->insert('account_settlement',[
+  'id'=>12346,'user_id'=>10,'status'=>AccountSettlement::STATUS_PENDING,
+  'min_date'=>date('Y-m-d',time()+3*86400),
+  'max_date'=>date('Y-m-d',time()+5*86400)
+])->execute();
+$normal=AccountSettlement::findOne(12346);
+$normal->status=AccountSettlement::STATUS_PUBLISH;
+if (!$normal->save(false) ||
+    (int)AccountSettlement::findOne(12346)->status!==AccountSettlement::STATUS_PUBLISH) {
+    throw new RuntimeException('Ordinary producer settlement unexpectedly blocked');
+}
+echo "REAL_NON_OPTIN_SETTLEMENT_UNAFFECTED=PASS\n";
+$db->createCommand()->insert('sold_event',[
+  'id'=>501, 'event_id'=>77,
+  'settlement_status'=>SoldEvent::STATUS_NOT_SETTLED
+])->execute();
+$db->createCommand()->insert('sold_event',[
+  'id'=>502, 'event_id'=>88,
+  'settlement_status'=>SoldEvent::STATUS_NOT_SETTLED
+])->execute();
+// Combined batch is all-or-none: do not request the ordinary producer
+// alongside an event that contains an unallocated contribution.
+if (SoldEvent::markAsSettledByEventIds([77,88])!==0 ||
+    (int)$db->createCommand('SELECT COUNT(*) FROM sold_event WHERE settlement_status=1')->queryScalar()!==0)
+    throw new RuntimeException('Producer batch bypassed the unallocated-extra guard');
+echo "REAL_SOLDEVENT_BULK_MIXED_PRODUCERS_HELD=PASS\n";
+if (SoldEvent::markAsSettledByEventIds([88])!==1 ||
+    (int)$db->createCommand('SELECT settlement_status FROM sold_event WHERE event_id=88')->queryScalar()!==SoldEvent::STATUS_REQUESTED)
+    throw new RuntimeException('Ordinary producer bulk request wrongly blocked');
+echo "REAL_SOLDEVENT_ORDINARY_PRODUCER_PASS=PASS\n";
+if (SoldEvent::markAsSettledByEventIds([77])!==0 ||
+    (int)$db->createCommand('SELECT settlement_status FROM sold_event WHERE event_id=77')->queryScalar()!==SoldEvent::STATUS_NOT_SETTLED)
+    throw new RuntimeException('Extra producer request was marked requested');
+echo "REAL_SOLDEVENT_OPEN_PRICE_EXTRA_HELD=PASS\n";
+if (SoldEvent::markAsSettledByEventIds(['77 OR 1=1'])!==0)
+    throw new RuntimeException('Invalid producer request ID accepted');
+echo "REAL_SOLDEVENT_INVALID_SCOPE_REJECTED=PASS\n";
+
+echo "ACTUAL_RESERVE_SEAT_AND_REFUND_DB_CONTRACT=PASS\n";

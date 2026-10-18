@@ -1,0 +1,34 @@
+name: Honartik open-price signed registration contract (source-only)
+on:
+  push:
+    paths:
+      - '.github/workflows/honartik-open-price-registration-contract.yml'
+      - 'honartik-open-price-yii-registration-transaction-v1.cjs'
+      - 'test-honartik-open-price-yii-registration-transaction-v1.cjs'
+      - 'honartik-open-price-yii-native-adapter-v1.cjs'
+      - 'honartik-open-price-yii-scratch-v1.cjs'
+  pull_request:
+    paths:
+      - '.github/workflows/honartik-open-price-registration-contract.yml'
+      - 'honartik-open-price-yii-registration-transaction-v1.cjs'
+      - 'test-honartik-open-price-yii-registration-transaction-v1.cjs'
+      - 'honartik-open-price-yii-native-adapter-v1.cjs'
+      - 'honartik-open-price-yii-scratch-v1.cjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  signed-registration-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Review source-only registrar syntax and fail-closed trust contract
+        run: |
+          set -euo pipefail
+          node --check honartik-open-price-yii-registration-transaction-v1.cjs
+          node --check test-honartik-open-price-yii-registration-transaction-v1.cjs
+          node test-honartik-open-price-yii-registration-transaction-v1.cjs

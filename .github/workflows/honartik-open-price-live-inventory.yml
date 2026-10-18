@@ -1,0 +1,36 @@
+name: Honartik live migration inventory safety (source-only)
+on:
+  push:
+    paths:
+      - '.github/workflows/honartik-open-price-live-inventory.yml'
+      - 'test-honartik-open-price-live-inventory-v1.cjs'
+      - 'test-fixtures/honartik-open-price-live-inventory/**'
+  pull_request:
+    paths:
+      - '.github/workflows/honartik-open-price-live-inventory.yml'
+      - 'test-honartik-open-price-live-inventory-v1.cjs'
+      - 'test-fixtures/honartik-open-price-live-inventory/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+      - name: PHP 8.3 syntax of source-pinned read-only inventory
+        run: php -l test-fixtures/honartik-open-price-live-inventory/scripts/open-price-live-migration-inventory-v1.php
+      - name: Verify exact hash and read-only safety contract
+        run: |
+          set -euo pipefail
+          node --test test-honartik-open-price-live-inventory-v1.cjs
+          echo 'OPEN_PRICE_LIVE_INVENTORY_SOURCE=PASS'
+          echo 'PRODUCTION_DEPLOYED=NO'

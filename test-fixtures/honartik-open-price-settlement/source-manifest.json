@@ -1,0 +1,22 @@
+{
+  "backend_source_commit": "3b15a9c4e643d9e85bf9446eeb992e49d9b077d3",
+  "description": "Immutable source snapshots for a no-db/no-bank producer-settlement gate contract.",
+  "files": [
+    {
+      "path": "app/modules/finance/services/OpenPriceAmount.php",
+      "blob": "5cfcc707162f7c3e78010fc823fec4bf2cc3a4a3"
+    },
+    {
+      "path": "app/modules/finance/services/OpenPriceSettlementGuard.php",
+      "blob": "a51b3d20f739afcd7a4e2ca7408a9e00b616a2a3"
+    },
+    {
+      "path": "app/tests/contract/OpenPriceSettlementGuardTest.php",
+      "blob": "acb55f5313af55b0a0bbc2e042c5db3833c3a3cc"
+    },
+    {
+      "path": "common/models/AccountSettlement.php",
+      "blob": "c91d2c1c5a6693744b6e47ed2523786de29b1733"
+    }
+  ]
+}

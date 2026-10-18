@@ -1,0 +1,30 @@
+{
+  "backend_source_commit": "aa2bd4104461aeb7a38db76d091a3c7b1c0f4e9e",
+  "description": "Exact source snapshot for pure refund symmetry and actual cancellation path structural checks; no customer data or bank access.",
+  "files": [
+    {
+      "path": "app/modules/finance/services/OpenPriceAmount.php",
+      "blob": "5cfcc707162f7c3e78010fc823fec4bf2cc3a4a3"
+    },
+    {
+      "path": "app/modules/finance/services/OpenPriceLedger.php",
+      "blob": "fa3a88e54e23be653deb80941377158599a0cd64"
+    },
+    {
+      "path": "app/modules/finance/services/OpenPriceRefundLedger.php",
+      "blob": "bfd6200f7e98b394b47213168bde68ee3b38cdbb"
+    },
+    {
+      "path": "app/modules/finance/services/OpenPriceCancellationService.php",
+      "blob": "cec9be61b8bef51dacf15520e836941a0b4add56"
+    },
+    {
+      "path": "app/modules/api/controllers/ReserveController.php",
+      "blob": "8459f25317ae6e7e1f8d611ac1442d6a4e479336"
+    },
+    {
+      "path": "app/tests/contract/OpenPriceRefundLedgerTest.php",
+      "blob": "980a1ed38d338081c9dcee954e68a2f78e83c046"
+    }
+  ]
+}
