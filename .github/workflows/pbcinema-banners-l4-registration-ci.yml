@@ -1,0 +1,38 @@
+name: PBCinema L4 Host Action Registration Contract
+on:
+  push:
+    branches: [feature/pbcinema-banners-l4-registration-20261019]
+    paths:
+      - 'pbcinema-banners-host-action-registration-v1.cjs'
+      - 'test-pbcinema-banners-host-action-registration-v1.cjs'
+      - 'pbcinema-four-owner-root-readonly-preflight-v1.cjs'
+      - 'test-pbcinema-four-owner-root-readonly-preflight-v1.cjs'
+      - '.github/workflows/pbcinema-banners-l4-registration-ci.yml'
+  pull_request:
+    paths:
+      - 'pbcinema-banners-host-action-registration-v1.cjs'
+      - 'test-pbcinema-banners-host-action-registration-v1.cjs'
+      - 'pbcinema-four-owner-root-readonly-preflight-v1.cjs'
+      - 'test-pbcinema-four-owner-root-readonly-preflight-v1.cjs'
+      - '.github/workflows/pbcinema-banners-l4-registration-ci.yml'
+permissions:
+  contents: read
+jobs:
+  source-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate source-only registration candidate
+        run: |
+          set -euo pipefail
+          node --check pbcinema-banners-host-action-registration-v1.cjs
+          node --check test-pbcinema-banners-host-action-registration-v1.cjs
+          node --check pbcinema-four-owner-root-readonly-preflight-v1.cjs
+          node --check test-pbcinema-four-owner-root-readonly-preflight-v1.cjs
+          node --test test-pbcinema-banners-host-action-registration-v1.cjs test-pbcinema-four-owner-root-readonly-preflight-v1.cjs
