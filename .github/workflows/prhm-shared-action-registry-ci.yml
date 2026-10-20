@@ -30,7 +30,9 @@ jobs:
           set -euo pipefail
           node --check imotion-compose-discovery-readonly-v1.cjs
           node --check test-imotion-compose-discovery-readonly-v1.cjs
-          node --test test-imotion-compose-discovery-readonly-v1.cjs
+          node --check imotion-compose-fixed-host-inspector-v1.cjs
+          node --check test-imotion-compose-fixed-host-inspector-v1.cjs
+          node --test test-imotion-compose-discovery-readonly-v1.cjs test-imotion-compose-fixed-host-inspector-v1.cjs
       - name: Explicit Production not installed acknowledgment
         run: |
           # A successful source contract never means an MCP tool was installed.
