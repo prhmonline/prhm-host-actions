@@ -5,6 +5,9 @@ on:
     paths:
       - 'shared-registrar-root-trust-preflight-v1.cjs'
       - 'test-shared-registrar-root-trust-preflight-v1.cjs'
+      - 'shared-registrar-native-filesystem-v1.cjs'
+      - 'test-shared-registrar-native-linux-v1.cjs'
+      - 'test-shared-registrar-crash-child-v1.cjs'
       - 'docs/issue-221-root-trust-registrar-bootstrap-gate.md'
       - '.github/workflows/issue-221-root-trust-registrar-gate-ci.yml'
 permissions:
@@ -23,6 +26,11 @@ jobs:
           node --check shared-registrar-root-trust-preflight-v1.cjs
           node --check test-shared-registrar-root-trust-preflight-v1.cjs
           node --test test-shared-registrar-root-trust-preflight-v1.cjs
+          node --check shared-registrar-native-filesystem-v1.cjs
+          node --check test-shared-registrar-native-linux-v1.cjs
+          node --check test-shared-registrar-crash-child-v1.cjs
+          node --test test-shared-registrar-native-linux-v1.cjs
+          echo 'LINUX_CRASH_ROLLBACK=PASS'
           echo 'SOURCE_PREFLIGHT_CONTRACT=PASS'
           echo 'ROOT_ADAPTER_IMPLEMENTED=NO'
           echo 'INSTALLATION_AUTHORIZED=NO'
