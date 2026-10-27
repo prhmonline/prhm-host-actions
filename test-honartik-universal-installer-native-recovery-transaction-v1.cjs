@@ -49,6 +49,8 @@ for(const step of ['after_pointer','after_manifest','after_wrapper']){
     path.join(root,'versions',old));
    assert.deepEqual(fs.readFileSync(path.join(root,'installation.json')),manifest);
    assert.deepEqual(fs.readFileSync(path.join(root,'deploy-project')),wrapper);
+   assert.equal(fs.statSync(path.join(root,'installation.json')).mode&0o777,0o644);
+   assert.equal(fs.statSync(path.join(root,'deploy-project')).mode&0o777,0o644);
    assert.equal(fs.existsSync(path.join(root,'install-transaction.lock')),false);
    assert.match(fs.readFileSync(path.join(root,'install-transaction.journal'),'utf8'),/ROLLED_BACK/);
    assert.throws(()=>tx.beginFixture(root,next),/old_journal_requires_reconciliation/);
