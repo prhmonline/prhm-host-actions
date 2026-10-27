@@ -20,7 +20,8 @@ test('unreviewed, partial, arbitrary or CRLF-changed policy bytes are denied',()
 });
 test('root receipt gate never exposes a token issuer, mutation, or generic file reader',()=>{
  assert.deepEqual(Object.keys(gate).sort(),[
-  'POLICY_SHA','POLICY_VERSION','inspectPinnedPolicy','readOnlyRootReceiptPreflight'
+  'POLICY_SHA','POLICY_VERSION','FIXED_ARGUMENTS_SHA','fixedRequestHash',
+  'inspectPinnedPolicy','readOnlyRootReceiptPreflight'
  ].sort());
  for(const k of ['applyProduction','install','consumeApproval',
     'issueApproval','readOwned','registerAction','executeCommand']){
@@ -52,4 +53,19 @@ test('even a locally signed Ed25519 payload cannot confer root authority',()=>{
  const token=signingInput+'.'+crypto.sign(null,Buffer.from(signingInput),privateKey).toString('base64url');
  assert.throws(()=>gate.readOnlyRootReceiptPreflight(token),
   /honartik_root_receipt_root_executor_required|honartik_root_receipt_policy_exact_sha_drift|ENOENT/);
+});
+
+test('fixed one-field action digest matches Host Actions v2 canonical request',()=>{
+ const action='honartik_universal_installer_upgrade_v1';
+ const digest=crypto.createHash('sha256').update(JSON.stringify({action})).digest('hex');
+ assert.equal(digest,'eb28cb22e48d6baea121dc345fda996f40be550d4ad0160f185d006d3f45e4fc');
+ assert.equal(gate.FIXED_ARGUMENTS_SHA,digest);
+ assert.equal(gate.fixedRequestHash({request_hash:digest}),digest);
+});
+test('mismatched ledger hash cannot define expected digest',()=>{
+ for(const ledger of [null,{},[],{request_hash:'f'.repeat(64)},
+   {request_hash:crypto.createHash('sha256')
+     .update(JSON.stringify({action:'other_registered_action'})).digest('hex')}])
+  assert.throws(()=>gate.fixedRequestHash(ledger),
+    /honartik_root_receipt_consumed_request_not_fixed_action/);
 });
