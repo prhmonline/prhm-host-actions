@@ -19,9 +19,12 @@ const POLICY='/opt/prhm-company-control-plane/config/approval-policy.json';
 const PUBLIC='/var/lib/prhm-company-approval/ed25519-public.pem';
 const CONSUMED='/var/lib/prhm-company-approval/consumed';
 const FIXED_POLICY_VERSION='2026-10-27.1-honartik-universal-installer-exact-l4-review';
-// Git PR #15 exact candidate, NOT the current installed Production policy.
-// Root execution must fail closed until independently reviewed reconciliation.
-const PINNED_POLICY_SHA='82334369202b31418e33b44c0ed53e1d4b3ea58acc7e37835b13b60c6ba239cb';
+// SHA of additive policy candidate derived on prhm-production from pinned
+// raw live preimage, read-only, by operator (75 -> 76 operations, 52 -> 53 scopes).
+// NOT a signed approval, NOT the divergent Git-main PR #15 candidate.
+// Root execution MUST remain blocked until independent current-HEAD review,
+// trusted registration and explicit signed one-time Level-4 authorization.
+const PINNED_POLICY_SHA='981967b4ce770cd3aa89d27ae98552bbeb3ab31ed116d4e51aef91c0abf68358';
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SHA=/^[a-f0-9]{64}$/;
 const ARGUMENTS_SHA=crypto.createHash('sha256')

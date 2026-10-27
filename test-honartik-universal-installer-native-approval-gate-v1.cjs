@@ -146,6 +146,8 @@ test('live reader refuses untrusted user before touching issuer state',()=>{
 
 test('root-only live admission pins the exact reviewed Policy SHA256',()=>{
  assert.equal(G.PINNED_POLICY_SHA,
+  '981967b4ce770cd3aa89d27ae98552bbeb3ab31ed116d4e51aef91c0abf68358');
+ assert.notEqual(G.PINNED_POLICY_SHA,
   '82334369202b31418e33b44c0ed53e1d4b3ea58acc7e37835b13b60c6ba239cb');
  const synthetic=fixture();
  // Semantic correctness and a matching synthetic signature are insufficient.
