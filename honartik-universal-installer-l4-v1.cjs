@@ -133,7 +133,7 @@ async function applyFixedInstallerUpgrade(host){
   // ONLY a root-owned Host Actions binding may call it with real capabilities.
   const h=trustedHost(host);
   let lease=null,journal=null,rollbackVerified=true,post=null;
-  let commitAttempted=false;
+  let commitAttempted=false,journalPrepareAttempted=false;
   try{
     lease=await h.acquireRootOwnedInstallerLock(CONTRACT);
     if(!lease||typeof lease.id!=='string'||lease.id.length<8)
@@ -141,6 +141,10 @@ async function applyFixedInstallerUpgrade(host){
     const before=attestPreimage(await h.attestInstalledPreimage(CONTRACT));
     attestCandidate(await h.attestImmutableCandidate(CONTRACT));
     attestTests(await h.attestIndependentLinuxTests(CONTRACT));
+    // If the native journal writer fsyncs and then loses its response,
+    // releasing the lease would permit another installer to overwrite an
+    // unresolved transaction. Assume uncertain until root reconciliation.
+    journalPrepareAttempted=true;
     journal=await h.createDurableRecoveryJournal(CONTRACT,lease,before);
     if(!journal||typeof journal.id!=='string'||journal.id.length<8||
        await h.attestJournalRecoverable(CONTRACT,journal)!==true)
@@ -164,6 +168,10 @@ async function applyFixedInstallerUpgrade(host){
       previous_digest:CONTRACT.existing_digest,
       installed_digest:CONTRACT.candidate_digest});
   }catch(error){
+    if(journalPrepareAttempted&&!journal){
+      rollbackVerified=false; // root reconciler alone may clear this fence
+      fail('JOURNAL_PREPARE_OUTCOME_UNCERTAIN_manual_reconciliation_required');
+    }
     if(journal&&commitAttempted){
       // A failed/absent commit response is NOT evidence the journal remains
       // PREPARED. A durable COMMITTED marker must never be rolled back.
