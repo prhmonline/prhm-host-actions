@@ -10,7 +10,7 @@ const issuedAt=1000,nowSec=1015;
 const digest=V.digestArguments(V.bootstrapArguments());
 function fixture() {
  const {privateKey,publicKey}=crypto.generateKeyPairSync('ed25519');
- const publicKeyBytes=publicKey.export({type:'spki',format:'pem'});
+ const publicKeyBytes=Buffer.from(publicKey.export({type:'spki',format:'pem'}));
  const kid=crypto.createHash('sha256')
   .update(publicKey.export({type:'spki',format:'der'}))
   .digest('hex').slice(0,16);
