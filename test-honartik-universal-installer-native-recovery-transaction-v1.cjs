@@ -67,7 +67,11 @@ test('fully switched fixture commits after postimage verification',()=>{
   assert.equal(tx.snapshot(root).digest,next);
   assert.equal(fs.existsSync(path.join(root,'install-transaction.lock')),false);
   assert.match(fs.readFileSync(path.join(root,'install-transaction.journal'),'utf8'),/COMMITTED/);
-  assert.throws(()=>tx.recoverFixture(root),/journal_untrusted/);
+  const proof=tx.recoverFixture(root);
+  assert.equal(proof.committed,true);
+  assert.equal(proof.rolled_back,false);
+  assert.equal(proof.digest,next);
+  assert.equal(tx.snapshot(root).digest,next);
  });
 });
 test('interrupted journal creation does not permit another begin',()=>{
@@ -141,5 +145,53 @@ test('altered wrapper fails commit and keeps lock',()=>{
   assert.throws(()=>tx.finishFixture(root),/postimage_wrapper_mismatch/);
   assert.equal(fs.existsSync(path.join(root,'install-transaction.lock')),true);
   assert.equal(tx.recoverFixture(root).rolled_back,true);
+ });
+});
+
+test('hard crash after durable COMMITTED keeps candidate; never rolls back',()=>{
+ fixture(({root,old,next,manifest})=>{
+  tx.beginFixture(root,next);
+  tx.applyFixture(root);
+  const child=require('node:child_process').spawnSync(process.execPath,[
+   '-e','require(process.argv[1]).finishFixture(process.argv[2],process.argv[3])',
+   require.resolve('./honartik-universal-installer-native-recovery-transaction-v1.cjs'),
+   root,'crash_after_commit_marker'],{timeout:10000,encoding:'utf8'});
+  assert.equal(child.status,90,child.stderr);
+  assert.equal(fs.existsSync(path.join(root,'install-transaction.lock')),true);
+  const result=tx.recoverFixture(root);
+  assert.equal(result.committed,true);
+  assert.equal(result.rolled_back,false);
+  assert.equal(result.digest,next);
+  assert.equal(tx.snapshot(root).digest,next);
+  assert.notDeepEqual(fs.readFileSync(path.join(root,'installation.json')),manifest);
+  assert.equal(fs.existsSync(path.join(root,'install-transaction.lock')),false);
+  assert.match(fs.readFileSync(path.join(root,'install-transaction.journal'),'utf8'),/COMMITTED/);
+  assert.throws(()=>tx.beginFixture(root,old),/old_journal_requires_reconciliation/);
+ });
+});
+test('a committed marker with tampered candidate retains its recovery lock',()=>{
+ fixture(({root,next})=>{
+  tx.beginFixture(root,next);tx.applyFixture(root);
+  const child=require('node:child_process').spawnSync(process.execPath,[
+   '-e','require(process.argv[1]).finishFixture(process.argv[2],process.argv[3])',
+   require.resolve('./honartik-universal-installer-native-recovery-transaction-v1.cjs'),
+   root,'crash_after_commit_marker'],{timeout:10000,encoding:'utf8'});
+  assert.equal(child.status,90,child.stderr);
+  fs.writeFileSync(path.join(root,'versions',next,'universal','cli.py'),'tampered fixture\\n');
+  assert.throws(()=>tx.recoverFixture(root),/active_bundle_tampered/);
+  assert.equal(fs.existsSync(path.join(root,'install-transaction.lock')),true);
+ });
+});
+test('already rolled-back journal can be verified idempotently without mutation',()=>{
+ fixture(({root,next})=>{
+  tx.beginFixture(root,next);
+  assert.throws(()=>tx.applyFixture(root,'after_pointer'),/INJECTED_/);
+  const first=tx.recoverFixture(root);
+  assert.equal(first.rolled_back,true);
+  const second=tx.recoverFixture(root);
+  assert.equal(second.rolled_back,true);
+  assert.equal(second.already_recovered,true);
+  assert.equal(second.digest,first.digest);
+  assert.equal(fs.existsSync(path.join(root,'install-transaction.lock')),false);
  });
 });
