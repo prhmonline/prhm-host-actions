@@ -78,6 +78,11 @@ function getJournal(root){
    'journal_integrity');
  return {journal:v,manifest,wrapper};
 }
+function assertLease(root){
+ const file=path.join(root,FILES.lock),st=fs.lstatSync(file);
+ need(st.isFile()&&!st.isSymbolicLink()&&st.uid===process.getuid()&&
+  (st.mode&0o777)===0o600&&st.nlink===1,'exclusive_lock_untrusted');
+}
 function beginFixture(root,newDigest){
  assertFixture(root);need(SHA.test(newDigest),'candidate_invalid');
  const pre=snapshot(root);
@@ -111,7 +116,7 @@ function changePointer(root,target){
 function applyFixture(root,stage=null) {
  assertFixture(root);
  const {journal:j}=getJournal(root);
- need(fs.lstatSync(path.join(root,FILES.lock)).isFile(),'exclusive_lock_lost');
+ assertLease(root);
  const before=fs.realpathSync(path.join(root,FILES.pointer));
  need(path.basename(before)===j.old,'preimage_pointer_drift');
  changePointer(root,j.next);
@@ -130,7 +135,7 @@ function applyFixture(root,stage=null) {
 }
 function finishFixture(root,crashStage=null){
  assertFixture(root);const {journal:j}=getJournal(root);
- need(fs.lstatSync(path.join(root,FILES.lock)).isFile(),'exclusive_lock_lost');
+ assertLease(root);
  need(snapshot(root).digest===j.next,'postimage_not_verified');
  const manifest=JSON.parse(fs.readFileSync(path.join(root,FILES.manifest),'utf8'));
  need(manifest.digest===j.next&&manifest.previous===j.old&&
@@ -144,8 +149,7 @@ function finishFixture(root,crashStage=null){
  // A durable COMMITTED marker is the point of no return. Simulate abrupt
  // termination after fsync to ensure recovery never rolls back this install.
  if(crashStage==='crash_after_commit_marker')process.exit(90);
- fs.unlinkSync(path.join(root,FILES.lock));
- syncDir(root);
+ // Keep terminal journal and lease for a separately reviewed reconciler.
  return {committed:true,installed_digest:j.next};
 }
 function recoverFixture(root){
@@ -161,25 +165,19 @@ function recoverFixture(root){
     'committed_manifest_drift');
   need(post.wrapper.equals(Buffer.from('#!/bin/sh\n# fixture-new-wrapper\n')),
     'committed_wrapper_drift');
-  const lock=path.join(root,FILES.lock);
-  if(fs.existsSync(lock)){
-   const st=fs.lstatSync(lock);
-   need(st.isFile()&&!st.isSymbolicLink()&&
-     st.uid===process.getuid()&&(st.mode&0o777)===0o600,
-     'committed_recovery_lock_unsafe');
-   fs.unlinkSync(lock);syncDir(root);
-  }
-  // Leave the journal as permanent evidence and replay prevention.
+  // Terminal readback requires a trusted, intact lease.
+  assertLease(root);
   return {committed:true,rolled_back:false,digest:j.next};
  }
  if(j.state==='ROLLED_BACK'){
+  assertLease(root);
   const pre=snapshot(root);
   need(pre.digest===j.old&&pre.manifest.equals(manifest)&&
     pre.wrapper.equals(wrapper)&&pre.manifestMode===j.manifest_mode&&
     pre.wrapperMode===j.wrapper_mode,'rolled_back_preimage_drift');
   return {rolled_back:true,already_recovered:true,digest:j.old};
  }
- need(fs.lstatSync(path.join(root,FILES.lock)).isFile(),'exclusive_lock_lost');
+ assertLease(root);
  const current=path.basename(fs.realpathSync(path.join(root,FILES.pointer)));
  need(current===j.old||current===j.next,'third_party_pointer');
  const old=path.join(root,'versions',j.old);
@@ -194,8 +192,8 @@ function recoverFixture(root){
    back.wrapper.equals(wrapper)&&back.manifestMode===j.manifest_mode&&
    back.wrapperMode===j.wrapper_mode,'rollback_unverified');
  const closed=Buffer.from(JSON.stringify({...j,state:'ROLLED_BACK'})+'\n');
- atomicFile(journalFile(root),closed);fs.unlinkSync(path.join(root,FILES.lock));
- syncDir(root);
+ atomicFile(journalFile(root),closed);
+ // Never clear terminal lease before independent reconciliation.
  return {rolled_back:true,exact_bytes_restored:true,digest:j.old};
 }
 module.exports=Object.freeze({beginFixture,applyFixture,finishFixture,
