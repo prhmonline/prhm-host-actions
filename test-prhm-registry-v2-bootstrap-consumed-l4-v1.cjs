@@ -17,7 +17,9 @@ function fixture() {
  const claims={
   iss:V.ISSUER,approval_id:approvalId,jti:approvalId,request_id:requestId,
   action:V.bootstrapArguments().action,operation:V.OPERATION,
-  project:'control_plane',environment:'production',tool:V.TOOL,
+  project:'control_plane',project_id:'control_plane',environment:'production',tool:V.TOOL,
+  rollback_reference_hash:crypto.createHash('sha256')
+   .update(V.ROLLBACK_REFERENCE).digest('hex'),
   principal_id:'mohammad',role:'mcp-operator',level:4,risk:'critical',
   decision:'accept',approver:'mohammad',one_time_use:true,
   arguments_sha256:digest,request_hash:digest,
@@ -66,6 +68,8 @@ test('wrong issuer, typed tool, action, project, approval level or scope is reje
   f=>{f.claims.action='prhm_action_registry_install_v1'},
   f=>{f.claims.tool='host_action_v2_apply'},
   f=>{f.claims.project='honartik'},
+  f=>{f.claims.project_id='honartik'},
+  f=>{f.claims.rollback_reference_hash='0'.repeat(64)},
   f=>{f.claims.operation='host_action.prhm_action_registry_install_v1'},
   f=>{f.claims.level=3},
   f=>{f.claims.iss='unknown'},
