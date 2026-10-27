@@ -101,3 +101,17 @@ test('no module CLI, signed token issuer, installation or Production mutator',()
  assert.equal(P.SOURCE_SHA.length,40);
  assert.equal(Object.isFrozen(P.TARGETS),true);
 });
+
+test('machine-readable package manifest matches reviewed source and live four-SHA pins',()=>{
+ const pkg=JSON.parse(fs.readFileSync(path.join(__dirname,
+  'manifests/honartik-universal-installer-native-registration-review-v1.json')));
+ assert.equal(pkg.action,P.ACTION);
+ assert.equal(pkg.pinned_source_commit,P.SOURCE_SHA);
+ assert.deepEqual(pkg.owner_live_preimages,P.TARGETS);
+ assert.deepEqual(pkg.root_artifacts_git_blobs,P.ARTIFACTS);
+ assert.equal(pkg.candidate_policy_sha256,null);
+ assert.equal(pkg.root_of_trust_registration_verified,false);
+ assert.equal(pkg.signed_level4_consumed,false);
+ assert.equal(pkg.installer_upgrade_executed,false);
+ assert.equal(pkg.honartik_backend_deployed,false);
+});
