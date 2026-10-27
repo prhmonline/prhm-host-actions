@@ -46,6 +46,7 @@ function harness({fault='',mutatePre=null,mutateCandidate=null,mutateTests=null,
     attestIndependentLinuxTests:async()=>{calls.push('linux');crash('linux');return linux()},
     createDurableRecoveryJournal:async()=>{
       calls.push('journal');crash('journal');backup=state.installed;state.journalReady=true;state.journalState='PREPARED';
+      if(fault==='journalAfterFsync')throw Error('INJECTED_journalAfterFsync');
       return {id:'journal-fixture-01'};},
     attestJournalRecoverable:async()=>{calls.push('recoverable');crash('recoverable');return true},
     consumeSignedOneTimeL4Approval:async()=>{calls.push('approval');crash('approval');state.consumes++;return receipt()},
@@ -202,7 +203,7 @@ test('rollback failure is hard-stopped and retains recovery lock',async()=>{
  }
 });
 test('preflight errors before journal require no rollback or approval',async()=>{
- for(const f of ['pre','candidate','linux','journal']){
+ for(const f of ['pre','candidate','linux']){
   const h=harness({fault:f});
   await assert.rejects(m.applyFixedInstallerUpgrade(h.adapter),/denied_or_rolled_back/);
   assert.equal(h.state.consumes,0);assert.equal(h.state.rollbacks,0);
@@ -255,4 +256,25 @@ test('root contract requires a durable journal inspector',async()=>{
  await assert.rejects(m.applyFixedInstallerUpgrade(h.adapter),
    /trusted_host_adapter_missing/);
  assert.deepEqual(h.calls,[]);
+});
+
+test('journal creation failures before or after fsync hold exclusive lease',async()=>{
+ for(const fault of ['journal','journalAfterFsync']){
+  const h=harness({fault});
+  await assert.rejects(m.applyFixedInstallerUpgrade(h.adapter),
+   /JOURNAL_PREPARE_OUTCOME_UNCERTAIN_manual_reconciliation_required/,fault);
+  assert.equal(h.state.rollbacks,0,fault);
+  assert.equal(h.state.consumes,0,fault);
+  assert.equal(h.state.releases,0,fault);
+  assert.equal(h.state.locked,true,fault);
+  assert.equal(h.calls.includes('install'),false,fault);
+  assert.equal(h.state.journalReady,fault==='journalAfterFsync',fault);
+ }
+});
+test('no journal prepare attempted releases lock after clean preflight rejection',async()=>{
+ const h=harness({fault:'candidate'});
+ await assert.rejects(m.applyFixedInstallerUpgrade(h.adapter),/denied_or_rolled_back/);
+ assert.equal(h.state.journalReady,false);
+ assert.equal(h.state.releases,1);
+ assert.equal(h.state.locked,false);
 });
