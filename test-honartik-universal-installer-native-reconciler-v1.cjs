@@ -178,3 +178,101 @@ test('Linux: mismatched journal/lease retains recovery evidence', {skip:!linux},
   assert.equal(fs.existsSync(path.join(o.root,I.JOURNAL)),true);
  });
 });
+
+const A=require('./honartik-universal-installer-native-terminal-archive-v1.cjs');
+function archive(o,crash=null){
+ return A.archiveIsolatedTerminalFixture(o.root,o.id,o.old,o.next,crash);
+}
+function archiveCrash(o,stage,expected){
+ const child=cp.spawnSync(process.execPath,[
+  '-e','require(process.argv[1]).archiveIsolatedTerminalFixture(...JSON.parse(process.argv[2]))',
+  require.resolve('./honartik-universal-installer-native-terminal-archive-v1.cjs'),
+  JSON.stringify([o.root,o.id,o.old,o.next,stage])
+ ],{encoding:'utf8',timeout:10000});
+ assert.equal(child.status,expected,child.stderr||child.stdout);
+}
+test('terminal archiver cannot install, register, retire lease or issue approval',()=>{
+ assert.equal(A.ROOT_ACTION_REGISTERED,false);
+ assert.equal(A.TERMINAL_LEASE_RETIRED,false);
+ assert.equal(A.PRODUCTION_EXECUTION_AUTHORIZED,false);
+ assert.equal(A.install,undefined);
+ assert.equal(A.issueApproval,undefined);
+ if(process.getuid?.()!==0)
+  assert.throws(()=>A.archiveFixedRootTerminalJournal(
+   '11111111-2222-4333-8444-555555555555'),/root_required/);
+});
+test('Linux: append-only COMMITTED evidence is byte-exact and idempotent',
+ {skip:!linux},()=>{
+ setup(o=>{
+  F.simulateCutover(o.root,o.id,o.old,o.next);
+  fixtureCall(o,'commit');
+  const p=archive(o);
+  assert.equal(p.archived,true);
+  assert.equal(p.lock_preserved,true);
+  const stored=JSON.parse(fs.readFileSync(path.join(p.archive_path,'manifest.json')));
+  assert.equal(stored.state,'COMMITTED');
+  assert.equal(stored.journal_id,o.id);
+  for(const [name,sha] of Object.entries(stored.digests)){
+   const crypto=require('node:crypto');
+   const actual=crypto.createHash('sha256').update(
+    fs.readFileSync(path.join(p.archive_path,name))).digest('hex');
+   assert.equal(actual,sha,name);
+  }
+  const next=archive(o);
+  assert.equal(next.idempotent,true);
+  assert.equal(fs.existsSync(path.join(o.root,I.LOCK)),true);
+  assert.equal(fs.existsSync(path.join(o.root,I.JOURNAL)),true);
+  assert.equal(I.inspectIsolatedJournalFixture(o.root,o.id,o.old,o.next),'COMMITTED');
+ });
+});
+test('Linux: ROLLED_BACK evidence also retains journal, lease and approval record',
+ {skip:!linux},()=>{
+ setup(o=>{
+  F.simulateCutover(o.root,o.id,o.old,o.next);
+  fixtureCall(o,'rollback');
+  const r=archive(o);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(r.archive_path,'manifest.json'))).state,
+   'ROLLED_BACK');
+  assert.equal(I.inspectIsolatedJournalFixture(o.root,o.id,o.old,o.next),'ROLLED_BACK');
+  assert.equal(fs.existsSync(path.join(o.root,I.LOCK)),true);
+ });
+});
+test('Linux: PREPARED journal cannot be archived or unlocked as terminal',
+ {skip:!linux},()=>{
+ setup(o=>{
+  assert.throws(()=>archive(o),/not_terminal/);
+  assert.equal(fs.existsSync(path.join(o.root,'terminal-evidence')),false);
+  assert.equal(fs.existsSync(path.join(o.root,I.LOCK)),true);
+ });
+});
+test('Linux: altered archived evidence is denied, no silent replacement',
+ {skip:!linux},()=>{
+ setup(o=>{
+  F.simulateCutover(o.root,o.id,o.old,o.next);
+  fixtureCall(o,'commit');
+  const r=archive(o);
+  fs.chmodSync(path.join(r.archive_path,'manifest.json'),0o600);
+  assert.throws(()=>archive(o),/source_untrusted/);
+  assert.equal(fs.existsSync(path.join(o.root,I.LOCK)),true);
+ });
+});
+for(const [stage,exit] of [['after_stage',131],['after_fsync',132],['after_rename',133]]){
+ test('Linux: hard crash '+stage+' leaves locked, recoverable terminal evidence',
+  {skip:!linux},()=>{
+  setup(o=>{
+   F.simulateCutover(o.root,o.id,o.old,o.next);
+   fixtureCall(o,'commit');
+   archiveCrash(o,stage,exit);
+   assert.equal(I.inspectIsolatedJournalFixture(o.root,o.id,o.old,o.next),'COMMITTED');
+   const ok=archive(o);
+   assert.equal(ok.archived,true);
+   assert.equal(fs.existsSync(path.join(o.root,I.LOCK)),true);
+   assert.equal(fs.existsSync(path.join(o.root,I.JOURNAL)),true);
+  });
+ });
+}
+test('Linux: fixture cannot archive another folder or path', {skip:!linux},()=>{
+ assert.throws(()=>A.archiveIsolatedTerminalFixture(
+  '/etc','11111111-2222-4333-8444-555555555555',
+  'a'.repeat(64),'b'.repeat(64)),/directory_untrusted|fixture_scope_denied/);
+});
