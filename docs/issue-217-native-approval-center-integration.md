@@ -32,3 +32,14 @@
 - Candidate backend Git SHA for later separate Honartik release: `0cdfb3d03caf143f665b20b463971e3e4f9b51c9`.
 - Central Installer prefix: `/usr/local/libexec/deploy-control/universal`.
 - Production current: **unchanged**. This PR only proposes new Git source.
+
+## Transaction recovery development evidence (2026-10-27)
+
+- Added `honartik-universal-installer-native-recovery-transaction-v1.cjs` and `test-honartik-universal-installer-native-recovery-transaction-v1.cjs`.
+- Uses only non-root isolated `/tmp/prhm-honartik217-recovery-fixture-*` directories; no production root execution entrypoint exists.
+- Records a durable preimage journal before fixture cutover; snapshots old `current`, Manifest and Wrapper bytes **and mode bits**. Uses O_EXCL lock, fsync file and containing directory, and atomic pointer/Manifest/Wrapper replacement.
+- Tests inject both thrown faults and actual child-process `process.exit` after pointer, Manifest, and Wrapper writes; a fresh process can verify and restore exact preimage and modes.
+- On altered old bundles, unexpected pointer destinations or unverified restoration, the exclusive lock is retained for manual intervention. Journal is preserved in ROLLED_BACK or COMMITTED state; repeated begin is refused.
+- **14/14 PASS, Node v24 Linux UID1000 sandbox** after final mode-preservation fix; source check PASS. This is a **fixture-only native transaction simulation**, not an authenticated signed runner, not a real Python `install_bundle()` integration test and **NOT production rollback certification**.
+- Full aggregate regression has not been verified in one clean run after this change because the sandbox provider intermittently returns HTTP 403; earlier isolated component tests passed. Do not claim aggregate PASS.
+- Remaining: bind real Python fixed `install_bundle` in approved root-owned supervisor with real signed Approval Center receipt, validate root-owned transaction and test privileged crash recovery; safely stage and register the exact Host Action in Agent API, root executor and MCP facade. None of these are installed.
