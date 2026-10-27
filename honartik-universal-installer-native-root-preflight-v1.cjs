@@ -57,7 +57,7 @@ function parseManifest(bytes){
  try{data=JSON.parse(bytes.toString('utf8'))}catch{deny('manifest_json')}
  requireValue(data&&typeof data==='object'&&!Array.isArray(data)&&
   data.digest===OLD&&data.entrypoint===PREFIX+'/deploy-project'&&
-  /^[a-f0-9]{64}$/.test(data.previous||'')&&
+  (data.previous===null||/^[a-f0-9]{64}$/.test(data.previous))&&
   data.activated_as_legacy_entrypoint===false,'manifest_mismatch');
  return data;
 }
