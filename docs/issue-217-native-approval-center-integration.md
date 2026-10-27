@@ -90,3 +90,48 @@ authoritative single-use L4 receipt binding, locked native production installer
 transaction, independently attested Linux fault-injection using real engine
 bytes, signed reviewer provenance, and exact live policy reconciliation.
 Production remains unchanged.
+
+
+## Commit acknowledgement ambiguity — critical source fix (2026-10-27)
+
+Coordinator `honartik-universal-installer-l4-v1.cjs` formerly attempted
+`restoreExactJournal()` on **every** `commitJournal()` failure, including a
+lost acknowledgement **after** a durable `COMMITTED` marker. Restoring the
+old installer after durable commit can violate the atomic transaction
+guarantee and create an unsafe mismatch between installer bytes, manifest,
+audit and the one-use L4 approval. Fix reviewed in PR #223.
+
+The trusted native root executor must implement the additional
+`inspectDurableJournalState(CONTRACT,journal)` capability. It MUST read
+a fixed root-owned, no-follow, exact-version journal path, verify its
+ownership/permissions, schema, checksum, source/destination digests, approval
+identity and fsynced durable state before yielding precisely `PREPARED`
+or `COMMITTED`. It MUST never infer PREPARED from a failed API response,
+untrusted in-memory booleans, a missing journal, or an empty file. Broken
+journal or unknown state MUST throw/fail closed.
+
+- When `commitJournal()` returns true, the source-only coordinator retains
+  the existing nominal successful path; native root owner must ensure true
+  corresponds to durable verified COMMITTED state.
+- When commit throws, times out or returns false and exact root journal
+  inspection proves it is still `PREPARED`, a normal exact-preimage rollback
+  is allowed, subject to independent rollback verification.
+- If the inspected journal state is `COMMITTED`, `ROLLED_BACK`,
+  indeterminate, forged or unreadable, **do not call rollback**. Preserve
+  the exclusive recovery lock and require trusted root reconciler/manual
+  inspection; a cryptographically consumed one-time L4 approval MUST NOT be
+  reused.
+- The coordinator code intentionally does not itself act as an issuer,
+  resolver for root-owned bytes, actual installer transaction or root
+  registration. Any new native adapter version requires fresh independent
+  review, installed owner hashes, exact policy reconciliation and signed
+  L4 through Root-of-Trust, with production strictly NO-GO until then.
+
+Exact source-only negative test command:
+`node --test test-honartik-universal-installer-l4-v1.cjs`.
+On the authorized Windows development workstation, Node v22.14.0:
+**16 tests / 16 PASS**, including four new cases for lost acknowledgement
+after COMMITTED, commit returning false after COMMITTED, inspection failure
+or unknown state (all retain the fence), root inspector capability required,
+and legitimate still-PREPARED rollback. This is NOT a signed independent
+Linux native-root test or a Production adapter validation.
