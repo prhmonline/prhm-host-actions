@@ -122,3 +122,21 @@ test('live reader refuses untrusted user before touching issuer state',()=>{
   assert.throws(()=>G.readNativeConsumedProof(uid,()=>''),/root_required/);
  }
 });
+
+test('root-only live admission pins the exact reviewed Policy SHA256',()=>{
+ assert.equal(G.PINNED_POLICY_SHA,
+  '82334369202b31418e33b44c0ed53e1d4b3ea58acc7e37835b13b60c6ba239cb');
+ const synthetic=fixture();
+ // Semantic correctness and a matching synthetic signature are insufficient.
+ assert.equal(G.parsePolicy(synthetic.policyBytes).version,
+  '2026-10-27.1-honartik-universal-installer-exact-l4-review');
+ assert.throws(()=>G.requirePinnedProductionPolicy(synthetic.policyBytes),
+  /live_policy_preimage_unreconciled/);
+});
+test('root-only admission rejects arbitrary or empty policy byte streams',()=>{
+ for(const raw of [Buffer.from(''),Buffer.from('{}'),null,
+   Buffer.from('{"version":"2026-10-27.1-honartik-universal-installer-exact-l4-review"}')]){
+  assert.throws(()=>G.requirePinnedProductionPolicy(raw),
+   /live_policy_preimage_unreconciled/);
+ }
+});
