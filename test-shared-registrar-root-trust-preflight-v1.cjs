@@ -73,10 +73,10 @@ test('canonical five-field source+manifest binding is order independent',()=>{
 });
 test('preflight cannot accept unverified operator-provided metadata',()=>{
  const empty={live:{},backups:{},services:{},
-  sourceCommit:m.RELEASE_COMMIT};
+  pbcinemaSourceCommit:m.PBCINEMA_SOURCE_MERGE_SHA};
  assert.throws(()=>m.checkPreflightRecords(empty),/registrar_bootstrap_/);
  assert.throws(()=>m.checkPreflightRecords({...empty,
-  sourceCommit:'a'.repeat(40)}),/registrar_bootstrap_preflight_input/);
+  pbcinemaSourceCommit:'a'.repeat(40)}),/registrar_bootstrap_preflight_input/);
  const fakeLive=Object.fromEntries(Object.entries(m.OWNERS).map(
   ([id,rec])=>[id,{path:rec.path,regular:true,symlink:false,realpath:rec.path,
    uid:0,gid:0,mode:0o644,bytes:Buffer.from('fabricated')}]));
@@ -85,7 +85,7 @@ test('preflight cannot accept unverified operator-provided metadata',()=>{
  const allActive=Object.fromEntries(m.SERVICES.map(name=>[name,'active']));
  assert.throws(()=>m.checkPreflightRecords({
   live:fakeLive,backups:fakeBackup,services:allActive,
-  sourceCommit:m.RELEASE_COMMIT
+  pbcinemaSourceCommit:m.PBCINEMA_SOURCE_MERGE_SHA
  }),/registrar_bootstrap_live_sha_drift/);
 });
 test('no installer, signer or privileged mutation entrypoint exposed',()=>{
