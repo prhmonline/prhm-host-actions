@@ -8,6 +8,7 @@
  * root-owned, provider-console bootstrap must supply the native adapter.
  *
  * The GitHub approval for PBCinema PR #220 authorizes source review only.
+ * This PBCinema SHA does NOT identify or authorize a registrar bootstrap.
  */
 const crypto=require('node:crypto');
 const assert=require('node:assert/strict');
@@ -15,7 +16,7 @@ const gateway=require('./prhm-action-registry-gateway-v1.cjs');
 const ACTION='prhm_action_registry_install_v1';
 const OPERATION='host_action.'+ACTION;
 const VERSION='2026-10-27.2-shared-registrar-bootstrap-proposal';
-const RELEASE_COMMIT='70a51f7ddc00136863904873ab2a146b6227b7c2';
+const PBCINEMA_SOURCE_MERGE_SHA='70a51f7ddc00136863904873ab2a146b6227b7c2';
 const BACKUP_DIR='/var/backups/prhm-host-actions-registration/preinstall.EHclsBk3';
 const OWNERS=Object.freeze({
   base:Object.freeze({path:'/opt/prhm-agent-selfmaint/server.js',
@@ -35,11 +36,11 @@ const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
 const fail=x=>{throw Error('registrar_bootstrap_'+x)};
 const obj=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
 const own=(o,k)=>Object.prototype.hasOwnProperty.call(o,k);
-function checkPreflightRecords({live,backups,services,sourceCommit}){
+function checkPreflightRecords({live,backups,services,pbcinemaSourceCommit}){
  // This is data integrity only, not proof of who collected the data. The
  // privileged installer MUST read all bytes itself just before mutation.
  if(!obj(live)||!obj(backups)||!obj(services)||
-    sourceCommit!==RELEASE_COMMIT)fail('preflight_input');
+    pbcinemaSourceCommit!==PBCINEMA_SOURCE_MERGE_SHA)fail('preflight_input');
  if(Object.keys(live).sort().join('|')!==Object.keys(OWNERS).sort().join('|')||
     Object.keys(backups).sort().join('|')!==Object.keys(OWNERS).sort().join('|'))
     fail('owner_set_drift');
@@ -62,7 +63,7 @@ function checkPreflightRecords({live,backups,services,sourceCommit}){
  }
  if(Object.keys(services).length!==SERVICES.length)fail('service_set_drift');
  return Object.freeze({phase:'preinstall',ownerSha256:Object.freeze(digests),
-  backupDir:BACKUP_DIR,sourceCommit:RELEASE_COMMIT,
+  backupDir:BACKUP_DIR,pbcinemaSourceCommit:PBCINEMA_SOURCE_MERGE_SHA,
   policyOnly:false,rootAdapterInstalled:false,
   signedApprovalIssued:false,productionChanged:false});
 }
@@ -117,6 +118,6 @@ function fiveFieldBinding(args){
  return gateway.approvalBindingSha(args);
 }
 module.exports=Object.freeze({
- ACTION,OPERATION,VERSION,RELEASE_COMMIT,BACKUP_DIR,OWNERS,SERVICES,
+ ACTION,OPERATION,VERSION,PBCINEMA_SOURCE_MERGE_SHA,BACKUP_DIR,OWNERS,SERVICES,
  checkPreflightRecords,buildPolicyCandidate,fiveFieldBinding
 });
