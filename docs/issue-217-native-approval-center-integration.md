@@ -167,3 +167,53 @@ negative tests. These are source-only simulated host capabilities;
 the actual privileged executor has not been installed or tested,
 and no independent Linux source-head attestation exists. Production
 remains NO-GO.
+
+
+## Source-only root journal disk inspector contract — 2026-10-27
+
+Source: `honartik-universal-installer-native-journal-inspector-v1.cjs`;
+tests: `test-honartik-universal-installer-native-journal-inspector-v1.cjs`.
+This **does not install, register or implement the root-owned writer**, authorize
+L4, run the installer, or resolve a previous crash.
+
+The proposed future journal producer MUST atomically fsync one canonical
+`prhm.honartik217.fixed-native-installer-journal.v1` record under the exact
+fixed root-owned directory
+`/var/lib/prhm-agent-selfmaint-exec/honartik-universal-installer-l4`.
+The inspector accepts no caller-supplied production directory, bundle digest,
+policy version or arbitrary action. It checks:
+- UID 0, non-symlink root-owned parent chain, owner-only directory (0700),
+  regular journal (0600), exact fixed lock (0600), checked inode/owner/size,
+  canonical JSON and a SHA256 checksum. SHA256 alone is not authentication:
+  protection comes from **trusted root filesystem ownership** and pinned source.
+- Exact action, operation, old/new bundle digests, canonical args SHA256,
+  candidate policy SHA256, journal/lease UUIDs and preimage bytes/modes/hash.
+  The installed Approval Center policy must already equal the exact reviewed
+  candidate bytes. It is deliberately **NO-GO** while the live policy SHA
+  remains unreconciled.
+- For `PREPARED`, old bundle content is preserved and current pointer can be
+  either the old or candidate digest (partial Python installer cutovers).
+  This proves only which durable journal *state* was read, NOT authorization
+  to perform arbitrary rollback.
+- For `COMMITTED`, additionally verifies next pointer and actual installed
+  candidate bundle, manifest and wrapper SHA256, modes and manifest old/new
+  digest fields. A verified COMMITTED state **must never be rolled back**.
+- For `ROLLED_BACK`, verifies old pointer plus exact original manifest,
+  wrapper and file modes before confirming that state. It does not write.
+- Missing/forged lock, tampered bundle, wrong parent ownership, symlinks,
+  wrong journal identity or incomplete records fail closed.
+
+The future root writer must use exactly this newly proposed schema; there
+is currently no installed production journal producer. The root adapter must
+**independently** reconcile an uncertain `createDurableRecoveryJournal`
+return that supplied no handle, using the trusted fixed lock and on-disk record.
+An inspector alone cannot grant replay/approval or safely release a lock.
+Mandatory review must cover journal-creation atomicity, root-owned writer,
+external one-time signed approval consumption, root registration, and the
+post-install rollback/verifier with a separate signed Linux test attestation.
+
+**Validation as of staging:** Authorized Windows workstation Node tests:
+6 passed, 0 failed, 6 Linux-only file-system tests explicitly SKIPPED.
+The Linux test suite is enrolled in the branch-scoped Ubuntu GitHub workflow,
+but no confirmed latest-head Linux run is claimed here. Local Windows fixtures
+are NOT native Linux/Root evidence. PR remains Draft and Production unchanged.
