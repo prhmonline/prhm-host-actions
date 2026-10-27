@@ -51,7 +51,7 @@ for(const step of ['after_pointer','after_manifest','after_wrapper']){
    assert.deepEqual(fs.readFileSync(path.join(root,'deploy-project')),wrapper);
    assert.equal(fs.statSync(path.join(root,'installation.json')).mode&0o777,0o644);
    assert.equal(fs.statSync(path.join(root,'deploy-project')).mode&0o777,0o644);
-   assert.equal(fs.existsSync(path.join(root,'install-transaction.lock')),false);
+   assert.equal(fs.existsSync(path.join(root,'install-transaction.lock')),true);
    assert.match(fs.readFileSync(path.join(root,'install-transaction.journal'),'utf8'),/ROLLED_BACK/);
    assert.throws(()=>tx.beginFixture(root,next),/old_journal_requires_reconciliation/);
   });
@@ -65,7 +65,7 @@ test('fully switched fixture commits after postimage verification',()=>{
   assert.equal(committed.committed,true);
   assert.equal(committed.installed_digest,next);
   assert.equal(tx.snapshot(root).digest,next);
-  assert.equal(fs.existsSync(path.join(root,'install-transaction.lock')),false);
+  assert.equal(fs.existsSync(path.join(root,'install-transaction.lock')),true);
   assert.match(fs.readFileSync(path.join(root,'install-transaction.journal'),'utf8'),/COMMITTED/);
   const proof=tx.recoverFixture(root);
   assert.equal(proof.committed,true);
@@ -133,7 +133,7 @@ for(const [stage,exitStatus] of [
    assert.deepEqual(fs.readFileSync(path.join(root,'installation.json')),manifest);
    assert.deepEqual(fs.readFileSync(path.join(root,'deploy-project')),wrapper);
    assert.equal(tx.snapshot(root).digest,old);
-   assert.equal(fs.existsSync(path.join(root,'install-transaction.lock')),false);
+   assert.equal(fs.existsSync(path.join(root,'install-transaction.lock')),true);
   });
  });
 }
@@ -164,7 +164,7 @@ test('hard crash after durable COMMITTED keeps candidate; never rolls back',()=>
   assert.equal(result.digest,next);
   assert.equal(tx.snapshot(root).digest,next);
   assert.notDeepEqual(fs.readFileSync(path.join(root,'installation.json')),manifest);
-  assert.equal(fs.existsSync(path.join(root,'install-transaction.lock')),false);
+  assert.equal(fs.existsSync(path.join(root,'install-transaction.lock')),true);
   assert.match(fs.readFileSync(path.join(root,'install-transaction.journal'),'utf8'),/COMMITTED/);
   assert.throws(()=>tx.beginFixture(root,old),/old_journal_requires_reconciliation/);
  });
@@ -182,6 +182,25 @@ test('a committed marker with tampered candidate retains its recovery lock',()=>
   assert.equal(fs.existsSync(path.join(root,'install-transaction.lock')),true);
  });
 });
+test('terminal COMMITTED state refuses missing lease even with valid postimage',()=>{
+ fixture(({root,next})=>{
+  tx.beginFixture(root,next);
+  tx.applyFixture(root);
+  tx.finishFixture(root);
+  fs.unlinkSync(path.join(root,'install-transaction.lock'));
+  assert.throws(()=>tx.recoverFixture(root),/ENOENT|exclusive_lock_untrusted/);
+  assert.equal(tx.snapshot(root).digest,next);
+ });
+});
+test('terminal ROLLED_BACK state refuses missing lease even with exact preimage',()=>{
+ fixture(({root,next})=>{
+  tx.beginFixture(root,next);
+  assert.throws(()=>tx.applyFixture(root,'after_pointer'),/INJECTED_/);
+  assert.equal(tx.recoverFixture(root).rolled_back,true);
+  fs.unlinkSync(path.join(root,'install-transaction.lock'));
+  assert.throws(()=>tx.recoverFixture(root),/ENOENT|exclusive_lock_untrusted/);
+ });
+});
 test('already rolled-back journal can be verified idempotently without mutation',()=>{
  fixture(({root,next})=>{
   tx.beginFixture(root,next);
@@ -192,6 +211,6 @@ test('already rolled-back journal can be verified idempotently without mutation'
   assert.equal(second.rolled_back,true);
   assert.equal(second.already_recovered,true);
   assert.equal(second.digest,first.digest);
-  assert.equal(fs.existsSync(path.join(root,'install-transaction.lock')),false);
+  assert.equal(fs.existsSync(path.join(root,'install-transaction.lock')),true);
  });
 });
