@@ -19,6 +19,8 @@ const {readTree}=require('./honartik-universal-installer-native-fs-v1.cjs');
 const I=require('./honartik-universal-installer-native-journal-inspector-v1.cjs');
 const FENCE='/var/lib/prhm-agent-selfmaint-exec/honartik-universal-installer-l4';
 const POLICY='/opt/prhm-company-control-plane/config/approval-policy.json';
+const CANDIDATE_ARCHIVE='/var/tmp/honartik-universal-integrated-candidate-linux.tar.gz';
+const CANDIDATE_ARCHIVE_SHA='e49ed1ce6366f87fad8dc2e46fd69c323c3cafb3729e90cdaaebe5421898212c';
 const SHA=/^[0-9a-f]{64}$/;
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const LEASE_SCHEMA=I.LEASE_SCHEMA;
@@ -36,11 +38,15 @@ function parentCheck(p,owner){
   while(true){
     const s=fs.lstatSync(d);
     const owned=s.uid===owner&&(s.mode&0o022)===0;
+    // Only this fixed root-owned staging archive uses a sticky /var/tmp
+    // parent; its contents are still pinned and checked O_NOFOLLOW.
+    const rootStaging=owner===0&&d==='/var/tmp'&&
+      s.uid===0&&(s.mode&0o1777)===0o1777;
     const fixtureParent=owner!==0&&s.uid===0&&(
       (d===os.tmpdir()&&(s.mode&0o1777)===0o1777)||
       (d==='/'&&(s.mode&0o022)===0));
     need(s.isDirectory()&&!s.isSymbolicLink()&&
-      (owned||fixtureParent),'parent_untrusted');
+      (owned||fixtureParent||rootStaging),'parent_untrusted');
     if(d==='/')break;d=path.dirname(d);
   }
 }
@@ -186,6 +192,10 @@ function prepareFixedRootJournal(){
   // Root-of-Trust. The installed policy currently does NOT match this SHA.
   const policy=readOwnedFile(POLICY,0,[0o600,0o640,0o644],131072);
   need(sha(policy.bytes)===PINNED_POLICY_SHA,'live_policy_unreconciled');
+  const candidate=readOwnedFile(CANDIDATE_ARCHIVE,0,
+    [0o400,0o440,0o444,0o600,0o640,0o644],64*1024*1024);
+  need(sha(candidate.bytes)===CANDIDATE_ARCHIVE_SHA,
+    'candidate_archive_drift');
   return prepare({fence:FENCE,prefix:CONTRACT.installer_prefix,owner:0,
     old:CONTRACT.existing_digest,next:CONTRACT.candidate_digest,
     entrypoint:CONTRACT.installer_prefix+'/deploy-project',verifyNext:false});
