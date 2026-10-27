@@ -1,0 +1,29 @@
+name: PBCinema Agent Registry Read-Only Candidate
+
+on:
+  pull_request:
+    paths:
+      - 'pbcinema-agent-registry-readonly-v1.cjs'
+      - 'test-pbcinema-agent-registry-readonly-v1.cjs'
+      - '.github/workflows/pbcinema-agent-registry-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pure-source-readonly-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax validation (no credentials or server access)
+        run: |
+          node --check pbcinema-agent-registry-readonly-v1.cjs
+          node --check test-pbcinema-agent-registry-readonly-v1.cjs
+      - name: SHA guard, path/vhost checks and write-denial tests
+        run: node --test test-pbcinema-agent-registry-readonly-v1.cjs
+      - name: Guard against confusing a source-only candidate with installed state
+        run: |
+          test -f PRHM-ACTION-REGISTRY-ONBOARDING-STANDARD.md
+          echo "SOURCE CONTRACT ONLY — NOT INSTALLED, NOT L4 APPROVED"
