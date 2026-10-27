@@ -1,6 +1,11 @@
 name: Honartik Universal Installer L4 — Source Contract Only
 
 on:
+  # PR #223 targets another review branch; a narrowly scoped push trigger
+  # validates source/fixtures even when the PR event has no eligible run.
+  push:
+    branches:
+      - review/issue-217-native-root-preflight
   pull_request:
     paths:
       - 'honartik-universal-installer-l4-v1.cjs'
