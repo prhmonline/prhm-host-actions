@@ -281,3 +281,29 @@ test('Linux: fixture cannot archive another folder or path', {skip:!linux},()=>{
   '/etc','11111111-2222-4333-8444-555555555555',
   'a'.repeat(64),'b'.repeat(64)),/directory_untrusted|fixture_scope_denied/);
 });
+
+test('Linux: empty durable O_EXCL execution marker remains archived after rollback',
+ {skip:!linux},()=>{
+ setup(o=>{
+  // Simulate a hard exit after durable O_EXCL but before the marker bytes.
+  fs.truncateSync(o.attempt,0);
+  F.simulateCutover(o.root,o.id,o.old,o.next);
+  fixtureCall(o,'rollback');
+  const r=archive(o);
+  assert.equal(fs.statSync(path.join(r.archive_path,'attempt')).size,0);
+  assert.equal(archive(o).idempotent,true);
+  assert.equal(fs.existsSync(path.join(o.root,I.LOCK)),true);
+  assert.equal(fs.statSync(o.attempt).size,0);
+  assert.equal(I.inspectIsolatedJournalFixture(o.root,o.id,o.old,o.next),'ROLLED_BACK');
+ });
+});
+test('Linux: COMMITTED evidence cannot accept empty Python invocation marker',
+ {skip:!linux},()=>{
+ setup(o=>{
+  F.simulateCutover(o.root,o.id,o.old,o.next);
+  fixtureCall(o,'commit');
+  fs.truncateSync(o.attempt,0);
+  assert.throws(()=>archive(o),/empty_attempt_cannot_commit/);
+  assert.equal(fs.existsSync(path.join(o.root,I.LOCK)),true);
+ });
+});
