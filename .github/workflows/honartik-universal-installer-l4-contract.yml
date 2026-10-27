@@ -22,6 +22,8 @@ on:
       - 'test-honartik-universal-installer-native-l4-fence-v1.cjs'
       - 'honartik-universal-installer-native-recovery-transaction-v1.cjs'
       - 'test-honartik-universal-installer-native-recovery-transaction-v1.cjs'
+      - 'honartik-universal-installer-python-outer-journal-fixture-v1.py'
+      - 'test-honartik-universal-installer-real-python-fixture-v1.py'
       - 'manifests/honartik-universal-installer-l4-issue217.json'
       - 'docs/runbooks/honartik-universal-installer-l4-issue217.md'
       - '.github/workflows/honartik-universal-installer-l4-contract.yml'
@@ -41,6 +43,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # No private installed Python engine bytes are in this repository.
+          # Syntax is checked; real-install integration requires a separately
+          # verified, non-root fixture containing the exact live source bytes.
+          python3 -m py_compile honartik-universal-installer-python-outer-journal-fixture-v1.py test-honartik-universal-installer-real-python-fixture-v1.py
+          echo 'PYTHON_SYNTAX_ONLY=PASS REAL_INSTALL_FIXTURE=NOT_EXECUTED'
           node --check honartik-universal-installer-l4-v1.cjs
           node --check test-honartik-universal-installer-l4-v1.cjs
           node --check honartik-universal-installer-native-fs-v1.cjs
