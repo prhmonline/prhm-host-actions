@@ -1,0 +1,28 @@
+name: Issue 221 Trusted Registrar Bootstrap Gate — Source Only
+
+on:
+  pull_request:
+    paths:
+      - 'shared-registrar-root-trust-preflight-v1.cjs'
+      - 'test-shared-registrar-root-trust-preflight-v1.cjs'
+      - 'docs/issue-221-root-trust-registrar-bootstrap-gate.md'
+      - '.github/workflows/issue-221-root-trust-registrar-gate-ci.yml'
+permissions:
+  contents: read
+jobs:
+  preflight-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Reject unauthorized installer source
+        run: |
+          set -euo pipefail
+          node --check shared-registrar-root-trust-preflight-v1.cjs
+          node --check test-shared-registrar-root-trust-preflight-v1.cjs
+          node --test test-shared-registrar-root-trust-preflight-v1.cjs
+          echo 'SOURCE_PREFLIGHT_CONTRACT=PASS'
+          echo 'ROOT_ADAPTER_IMPLEMENTED=NO'
+          echo 'INSTALLATION_AUTHORIZED=NO'
