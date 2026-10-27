@@ -18,6 +18,7 @@ const FENCE='/var/lib/prhm-agent-selfmaint-exec/honartik-universal-installer-l4'
 const JOURNAL='installer-transaction.journal.json';
 const LOCK='installer-transaction.lock';
 const SCHEMA='prhm.honartik217.fixed-native-installer-journal.v1';
+const POLICY='/opt/prhm-company-control-plane/config/approval-policy.json';
 const SHA=/^[a-f0-9]{64}$/;
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const fail=s=>{throw Error('honartik217_journal_inspect_'+s)};
@@ -28,7 +29,8 @@ const KEYS=Object.freeze([
   'next_digest','policy_sha256','arguments_sha256','request_id','approval_id',
   'preimage_manifest_b64','preimage_manifest_sha256','preimage_manifest_mode',
   'preimage_wrapper_b64','preimage_wrapper_sha256','preimage_wrapper_mode',
-  'post_manifest_sha256','post_wrapper_sha256','record_sha256'
+  'post_manifest_sha256','post_wrapper_sha256',
+  'post_manifest_mode','post_wrapper_mode','record_sha256'
 ]);
 function canonical(v){
   if(Array.isArray(v))return '['+v.map(canonical).join(',')+']';
@@ -89,8 +91,14 @@ function parse(bytes,expectedId,entrypoint,oldExpected,nextExpected){
     need(UUID.test(record.request_id)&&UUID.test(record.approval_id)&&
       SHA.test(record.post_manifest_sha256)&&
       SHA.test(record.post_wrapper_sha256),'committed_proof_incomplete');
+    need(Number.isInteger(record.post_manifest_mode)&&
+      Number.isInteger(record.post_wrapper_mode)&&
+      [0o600,0o644].includes(record.post_manifest_mode)&&
+      [0o700,0o744,0o755].includes(record.post_wrapper_mode),
+      'committed_modes_untrusted');
   }else{
-    need(record.post_manifest_sha256===null&&record.post_wrapper_sha256===null,
+    need(record.post_manifest_sha256===null&&record.post_wrapper_sha256===null&&
+      record.post_manifest_mode===null&&record.post_wrapper_mode===null,
       'not_committed_postimage_present');
     need((record.request_id===null&&record.approval_id===null)||
       (UUID.test(record.request_id)&&UUID.test(record.approval_id)),
@@ -118,7 +126,8 @@ function readSecureFile(filename,owner,{max=512000,mode=0o600}={}){
   verifyParentChain(filename,owner);
   const pre=fs.lstatSync(filename);
   need(pre.isFile()&&!pre.isSymbolicLink()&&pre.uid===owner&&
-    (pre.mode&0o777)===mode&&pre.nlink===1&&pre.size>0&&
+    (mode===null?((pre.mode&0o022)===0):(pre.mode&0o777)===mode)&&
+    pre.nlink===1&&pre.size>0&&
     pre.size<=max,'untrusted_file');
   const fd=fs.openSync(filename,fs.constants.O_RDONLY|fs.constants.O_NOFOLLOW);
   try{
@@ -167,9 +176,9 @@ function stateFromDisk(opts,id){
     need(target===path.join(versions,record.next_digest),
       'committed_pointer_drift');
     const manifest=readSecureFile(path.join(prefix,'installation.json'),owner,
-      {max:131072});
+      {max:131072,mode:record.post_manifest_mode});
     const wrapper=readSecureFile(path.join(prefix,'deploy-project'),owner,
-      {max:131072,mode:0o700});
+      {max:131072,mode:record.post_wrapper_mode});
     let json;
     try{json=JSON.parse(manifest.toString('utf8'))}catch{fail('post_manifest_json')}
     need(hex(manifest)===record.post_manifest_sha256&&
@@ -191,8 +200,11 @@ function stateFromDisk(opts,id){
 function inspectFixedNativeJournalState(id){
   need(typeof process.getuid==='function'&&process.getuid()===0,'root_required');
   need(typeof id==='string'&&UUID.test(id),'journal_id_invalid');
-  // Future root adapter must reconcile installed live policy against PR #15
-  // before invoking this reader; this reader alone is never authorization.
+  // The installed policy MUST already match exact independently reviewed
+  // candidate bytes. This is deliberately fail-closed against current live
+  // policy until separate authorized root-of-trust policy reconciliation.
+  const livePolicy=readSecureFile(POLICY,0,{max:131072,mode:null});
+  need(hex(livePolicy)===PINNED_POLICY_SHA,'live_policy_unreconciled');
   return stateFromDisk({
     fence:FENCE,prefix:CONTRACT.installer_prefix,
     owner:0,entrypoint:CONTRACT.installer_prefix+'/deploy-project',
@@ -218,6 +230,9 @@ function inspectIsolatedJournalFixture(dir,id,oldExpected,nextExpected){
 }
 module.exports=Object.freeze({
   inspectFixedNativeJournalState,inspectIsolatedJournalFixture,
-  serializeForFixture,SCHEMA,JOURNAL,LOCK,
+  serializeForFixture,
+  // Pure byte parser is test-only; it cannot read any paths or mutate files.
+  parseJournalFixtureBytes:(bytes,id,old,next)=>parse(bytes,id,'fixture-only',old,next),
+  SCHEMA,JOURNAL,LOCK,
   ROOT_ACTION_REGISTERED:false,PRODUCTION_APPLY_PRESENT:false
 });
