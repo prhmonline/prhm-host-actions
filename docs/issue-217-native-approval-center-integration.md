@@ -217,3 +217,30 @@ post-install rollback/verifier with a separate signed Linux test attestation.
 The Linux test suite is enrolled in the branch-scoped Ubuntu GitHub workflow,
 but no confirmed latest-head Linux run is claimed here. Local Windows fixtures
 are NOT native Linux/Root evidence. PR remains Draft and Production unchanged.
+
+
+## Mandatory COMMITTED readback on the success path
+
+The fixed source coordinator now invokes
+`inspectDurableJournalState(CONTRACT,journal)` **after** a seemingly
+successful `commitJournal()`. The coordinator cannot return
+`installer_upgraded:true` until this second independent durable read
+returns exactly `COMMITTED`. Any untrusted/absent/UNKNOWN readback
+holds the exclusive root recovery fence and requires reconciliation.
+A positively verified `PREPARED` result may be compensated by exact
+preimage rollback, but is not success.
+
+**Source-contract test result at code SHA
+`3a2073c4ff964ef105653d83bc63d2e5f73eb42a`:**
+authorized Windows Node v22.14.0 `node --test
+test-honartik-universal-installer-l4-v1.cjs` 21/21 PASS,
+0 fail, 0 skipped. It includes false COMMITTED readback after a
+successful return and a false success where disk remained PREPARED.
+
+This tests the coordinator's *simulated trusted-host capabilities*,
+not actual root-only journal reading in the installed Host Actions service.
+The separately added disk inspector is still source-only. Its six
+filesystem tests are Linux-specific and must be run against the exact
+latest PR SHA in an isolated nonroot environment or CI. An unsigned
+developer run is not independent security review or cryptographic
+approval for a production install. Root registration/policy remains NO-GO.
