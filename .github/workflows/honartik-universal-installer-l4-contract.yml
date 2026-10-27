@@ -35,6 +35,7 @@ on:
       - 'honartik-universal-installer-native-terminal-archive-v1.cjs'
       - 'honartik-universal-installer-registration-review-pack-v1.cjs'
       - 'test-honartik-universal-installer-registration-review-pack-v1.cjs'
+      - 'manifests/honartik-universal-installer-native-registration-review-v1.json'
       - 'honartik-universal-installer-journal-finalize-fixture-v1.cjs'
       - 'test-honartik-universal-installer-journal-finalize-fixture-v1.cjs'
       - 'honartik-universal-installer-python-outer-journal-fixture-v1.py'
