@@ -174,7 +174,10 @@ function reserveAttempt(dir,owner,j,crash=null){
   const now=fs.fstatSync(fd);
   need(now.isFile()&&now.uid===owner&&now.nlink===1&&
    (now.mode&0o777)===0o600,'execution_marker_untrusted');
-  // Abrupt exit after O_EXCL but before bytes => permanent burned marker.
+  // Persist the O_EXCL existence BEFORE any execution path. Even an empty
+  // file after a lost response must deny repeat Python invocation.
+  fs.fsyncSync(fd);fsyncDirectory(dir);
+  // Abrupt exit after durable O_EXCL but before bytes => burned marker.
   if(crash==='after_exclusive_create')process.exit(111);
   const data=Buffer.from(JSON.stringify({
    schema:'prhm.honartik217.fixed-python-attempt.v1',
