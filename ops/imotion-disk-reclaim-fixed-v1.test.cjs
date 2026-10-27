@@ -63,9 +63,9 @@ test('refuses arbitrary paths, old backups, volumes, in-use cache, symlinks and 
    assert.throws(()=>v.reviewPlan(i,[id]),/candidate_not_safe/);
  }
  const d=cap();d.cache.in_use=true;
- assert.throws(()=>v.reviewPlan(await v.collect(d),[ID]),/candidate_not_safe/);
+ await assert.rejects(async()=>v.reviewPlan(await v.collect(d),[ID]),/candidate_not_safe/);
  const e=cap();e.cache.age_days=3;
- assert.throws(()=>v.reviewPlan(await v.collect(e),[ID]),/cache_too_new/);
+ await assert.rejects(async()=>v.reviewPlan(await v.collect(e),[ID]),/cache_too_new/);
  const f=cap();f.log.symlink=true;
  await assert.rejects(()=>v.collect(f),/candidate_schema/);
 });
