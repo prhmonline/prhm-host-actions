@@ -20,6 +20,41 @@ the shared registrar or either PBCinema alias.
   `/var/backups/prhm-host-actions-registration/preinstall.EHclsBk3`.
   It is not a crash-safe journal or an installation authorization.
 
+## Native candidate and Linux proof (2026-10-27)
+
+**Source candidate implemented and CI tested; NOT installed or root-authorized.**
+
+- `shared-registrar-native-filesystem-v1.cjs` now implements actual Linux
+  temp-file fsync, same-directory atomic rename, exact four-file before-image
+  journaling, no-symlink/mode/SHA checks, immediate rollback and interrupted
+  `SIGKILL` recovery with dead-PID lock safety.
+- `shared-registrar-native-root-adapter-v1.cjs` implements a fixed-root
+  source-level integration candidate. It attests immutable Git manifest/source
+  and exact owner candidate digests, calls the EXISTING
+  `verifyLiveConsumedRegistrationApproval` Ed25519 + consumed-ledger checker,
+  reserves a durable one-request-ID-only execution receipt before a write,
+  and invokes the native transaction with mandatory post-install health and
+  post-rollback service-health callbacks. No CLI, generic request route,
+  signature issuer or bypass is exported.
+- Linux CI ran actual disposable POSIX files and `SIGKILL` of a separate
+  Node process; tests cover successful atomic install, injected failure after
+  two renames, failed health rollback, preimage SHA drift, symlink rejection,
+  SIGKILL crash recovery, active lock refusal, mismatched recovery targets,
+  concurrent write fail-closed and the no-CLI/unauthenticated adapter boundary.
+- GitHub Actions commit `016d8b7f5023863e48e52568f3d033b697f5692d`:
+  Issue 221 Trusted Registrar Bootstrap Gate **success** and shared Agent 3
+  registry gate **success**. This is source CI, **not independent security
+  review, real production restart/recovery or an L4 approval**.
+
+**Outstanding:** the provider-console bootstrap native dispatcher that wires
+the reviewed source to the four live owner entrypoints and the installed
+Approval Center five-field request route has NOT been implemented/installed.
+The gate cannot bootstrap itself: absent the existing allowlist entry,
+`host_action_v2_not_allowed` remains correct. The on-disk SHA pins are
+historical and must be re-attested by that future trusted bootstrap. An
+independent security reviewer must review the native binding and repeat
+isolated crash/rollback testing before any production critical approval.
+
 ## Mandatory native Root-of-Trust implementation before any production activation
 
 **Infrastructure owner** must build and independently review an exact
@@ -88,7 +123,8 @@ registration.
 
 - `SHA_PREFLIGHT=PASS`: historical user-executed source and backup verification
 - `SOURCE_REVIEW_GATE=READY_FOR_CI`: this package, no production changes
-- `NATIVE_ROOT_ADAPTER=NOT_IMPLEMENTED`: blocking
+- `NATIVE_ROOT_ADAPTER_SOURCE=CI_PASS`: candidate only, not installed
+- `ROOT_OF_TRUST_NATIVE_DISPATCHER=NOT_IMPLEMENTED`: blocking
 - `FRESH_SIGNED_LEVEL4=NOT_ISSUED`: blocking
 - `REGISTRAR_INSTALLED=NO`: blocking
 - `PBCINEMA_DISCOVERY_INSTALLED=NO`: blocking
