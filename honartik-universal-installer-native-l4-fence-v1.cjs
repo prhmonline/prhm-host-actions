@@ -69,6 +69,8 @@ function reserve(dir,proof,owner){
  return Object.freeze({
    ok:true,action:ACTION,approval_id:proof.approval_id,
    request_id:proof.request_id,durable_one_time_fence:true,
+   policy_sha256:proof.policy_sha256,
+   arguments_sha256:proof.arguments_sha256,
    installer_upgraded:false
  });
 }
