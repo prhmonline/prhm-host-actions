@@ -38,11 +38,11 @@ function trustedAncestors(file){
   if(d==='/')break;d=path.dirname(d);
  }
 }
-function exactRead(file,uid,max=512000,mode=0o600){
+function exactRead(file,uid,max=512000,mode=0o600,allowEmpty=false){
  const st=fs.lstatSync(file);
  need(st.isFile()&&!st.isSymbolicLink()&&st.uid===uid&&
   st.nlink===1&&(st.mode&0o777)===mode&&
-  st.size>0&&st.size<=max,'source_untrusted');
+  (allowEmpty?st.size>=0:st.size>0)&&st.size<=max,'source_untrusted');
  const fd=fs.openSync(file,fs.constants.O_RDONLY|fs.constants.O_NOFOLLOW);
  try{
   const now=fs.fstatSync(fd);
@@ -54,7 +54,7 @@ function exactRead(file,uid,max=512000,mode=0o600){
  }finally{fs.closeSync(fd)}
 }
 function writeImmutable(file,bytes){
- need(Buffer.isBuffer(bytes)&&bytes.length>0,'invalid_archive_bytes');
+ need(Buffer.isBuffer(bytes),'invalid_archive_bytes');
  const fd=fs.openSync(file,fs.constants.O_WRONLY|fs.constants.O_CREAT|
   fs.constants.O_EXCL|fs.constants.O_NOFOLLOW,0o400);
  try{
@@ -86,7 +86,12 @@ function terminalBytes(ctx,id){
  if(fs.existsSync(attemptPath)){
   // Even an empty marker is burned; do not erase it or silently upgrade
   // its evidentiary meaning. Empty files are not valid archive receipts.
-  entries.attempt=exactRead(attemptPath,ctx.uid,8192);
+  entries.attempt=exactRead(attemptPath,ctx.uid,8192,0o600,true);
+  // A zero-byte O_EXCL marker is a durable burned execution attempt.
+  // It is admissible only for a rolled-back interrupted install, NEVER
+  // for a COMMITTED transition requiring verified Python execution.
+  if(entries.attempt.length===0)need(state==='ROLLED_BACK',
+    'empty_attempt_cannot_commit');
  }else need(state==='ROLLED_BACK'&&j.request_id===null&&
   j.approval_id===null,'terminal_attempt_missing');
  if(j.approval_id!==null){
@@ -114,7 +119,8 @@ function validateFinal(destination,expected,uid){
  need(fs.readdirSync(destination).sort().join('|')===
   expectedNames.join('|'),'archived_files_drift');
  for(const [name,bytes] of Object.entries(expected)){
-  const got=exactRead(path.join(destination,name),uid,512000,0o400);
+  const got=exactRead(path.join(destination,name),uid,512000,0o400,
+   name==='attempt');
   need(got.equals(bytes),'archived_bytes_drift');
  }
  return Object.freeze({ok:true,archived:true,idempotent:true,
