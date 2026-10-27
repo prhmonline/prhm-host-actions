@@ -56,7 +56,10 @@ function readTree(root) {
  }
  walk(universal);if(!paths.some(p=>path.basename(p)==='cli.py'))
    fail('bundle_cli_missing');
- paths.sort((a,b)=>a.localeCompare(b,'en'));
+ // Python pathlib sorting is codepoint-order, not locale collation. UTF-8
+ // lexicographic ordering agrees for valid filenames and ASCII bundle paths.
+ paths.sort((a,b)=>Buffer.compare(Buffer.from(path.relative(root,a)),
+   Buffer.from(path.relative(root,b))));
  const hash=crypto.createHash('sha256');
  for(const p of paths){
   const relative=path.relative(root,p).split(path.sep).join('/');
