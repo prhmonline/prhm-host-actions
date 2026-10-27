@@ -19,6 +19,9 @@ const POLICY='/opt/prhm-company-control-plane/config/approval-policy.json';
 const PUBLIC='/var/lib/prhm-company-approval/ed25519-public.pem';
 const CONSUMED='/var/lib/prhm-company-approval/consumed';
 const FIXED_POLICY_VERSION='2026-10-27.1-honartik-universal-installer-exact-l4-review';
+// Git PR #15 exact candidate, NOT the current installed Production policy.
+// Root execution must fail closed until independently reviewed reconciliation.
+const PINNED_POLICY_SHA='82334369202b31418e33b44c0ed53e1d4b3ea58acc7e37835b13b60c6ba239cb';
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SHA=/^[a-f0-9]{64}$/;
 const ARGUMENTS_SHA=crypto.createHash('sha256')
@@ -84,6 +87,11 @@ function parsePolicy(bytes){
     'typed_scope_not_exact');
   return {version:p.version,sha256:hash(bytes)};
 }
+function requirePinnedProductionPolicy(bytes){
+  need(Buffer.isBuffer(bytes)&&hash(bytes)===PINNED_POLICY_SHA,
+    'live_policy_preimage_unreconciled');
+  return parsePolicy(bytes);
+}
 function verifyFixedEvidence({token,publicKey,ledger,policyBytes,nowSec,requestId}){
   need(typeof requestId==='string'&&UUID.test(requestId),'request_id_invalid');
   const trusted=parsePolicy(policyBytes);
@@ -112,6 +120,9 @@ function readNativeConsumedProof(requestId,rootSealedTokenLoader){
   need(typeof rootSealedTokenLoader==='function','trusted_vault_missing');
   const publicKey=rootRead(PUBLIC,{min:80,max:8192});
   const policyBytes=rootRead(POLICY,{min:100,max:131072});
+  // Root trust must bind exact reviewed policy bytes, not just a matching
+  // policy version or syntactically plausible operation/scope.
+  requirePinnedProductionPolicy(policyBytes);
   const token=rootSealedTokenLoader(requestId);
   need(typeof token==='string'&&token.length>=120&&token.length<=16384,
     'sealed_token_unavailable');
@@ -130,7 +141,7 @@ function readNativeConsumedProof(requestId,rootSealedTokenLoader){
   });
 }
 module.exports=Object.freeze({
-  ACTION,ARGUMENTS_SHA,parsePolicy,verifyFixedEvidence,
+  ACTION,ARGUMENTS_SHA,PINNED_POLICY_SHA,parsePolicy,requirePinnedProductionPolicy,verifyFixedEvidence,
   readNativeConsumedProof,
   LIVE_REGISTRATION_PRESENT:false,
   INSTALL_APPLY_EXPORTED:false
