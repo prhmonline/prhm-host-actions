@@ -75,11 +75,12 @@ function harness({fault='',mutatePre=null,mutateCandidate=null,mutateTests=null,
         throw Error('INJECTED_'+fault);
       }
       crash('commit');
-      state.journalState='COMMITTED';return true;
+      state.journalState=fault==='postCommitPrepared'?'PREPARED':'COMMITTED';return true;
     },
     inspectDurableJournalState:async()=>{
       calls.push('inspect-commit');
       if(fault==='commitInspectThrows')throw Error('INJECTED_inspection_failed');
+      if(fault==='postCommitUnknown')return 'UNKNOWN';
       return state.journalState;
     },
     restoreExactJournal:async()=>{
@@ -122,6 +123,8 @@ test('happy-path exact installer upgrade: lock, preimages, tests, journal, signe
  assert.ok(h.calls.indexOf('approval')<h.calls.indexOf('install'));
  assert.ok(h.calls.indexOf('post')<h.calls.indexOf('commit'));
  assert.deepEqual(h.state.audits,['authorized','precommit_verified']);
+ assert.ok(h.calls.indexOf('commit')<h.calls.indexOf('inspect-commit'));
+ assert.ok(h.calls.indexOf('inspect-commit')<h.calls.indexOf('unlock'));
 });
 test('wrong installed digest, owner and registry drift reject before approval and installation',async()=>{
  for(const p of [
@@ -277,4 +280,31 @@ test('no journal prepare attempted releases lock after clean preflight rejection
  assert.equal(h.state.journalReady,false);
  assert.equal(h.state.releases,1);
  assert.equal(h.state.locked,false);
+});
+
+test('successful commit response must have independently verified durable COMMITTED',async()=>{
+ const h=harness();
+ const result=await m.applyFixedInstallerUpgrade(h.adapter);
+ assert.equal(result.ok,true);
+ assert.equal(h.state.journalState,'COMMITTED');
+ assert.equal(h.calls.filter(x=>x==='inspect-commit').length,1);
+ assert.equal(h.state.rollbacks,0);
+});
+test('false COMMITTED observation after successful reply retains root fence',async()=>{
+ const h=harness({fault:'postCommitUnknown'});
+ await assert.rejects(m.applyFixedInstallerUpgrade(h.adapter),
+  /COMMIT_OUTCOME_UNCERTAIN_manual_reconciliation_required/);
+ assert.equal(h.state.installed,C.candidate_digest);
+ assert.equal(h.state.journalState,'COMMITTED');
+ assert.equal(h.state.rollbacks,0);
+ assert.equal(h.state.releases,0);
+ assert.equal(h.state.locked,true);
+});
+test('proven PREPARED after purported commit cannot report installer success',async()=>{
+ const h=harness({fault:'postCommitPrepared'});
+ await assert.rejects(m.applyFixedInstallerUpgrade(h.adapter),/denied_or_rolled_back/);
+ assert.equal(h.state.journalState,'ROLLED_BACK');
+ assert.equal(h.state.installed,C.existing_digest);
+ assert.equal(h.state.rollbacks,1);
+ assert.equal(h.state.releases,1);
 });
