@@ -54,3 +54,90 @@ test('Python code is unchanged and cannot accept runtime source arguments',()=>{
  assert.equal(a,b);
  assert.ok(a.includes('PRHM_FIXED_PYTHON_INSTALL_OK=1'));
 });
+
+const fs=require('node:fs');
+const path=require('node:path');
+const os=require('node:os');
+const cp=require('node:child_process');
+const canFixture=process.platform==='linux'&&process.getuid?.()!==0;
+const receipt=()=>({
+ journal_id:'11111111-2222-4333-8444-555555555555',
+ request_id:'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+ approval_id:'eeeeeeee-1111-4111-8111-222222222222',
+ state:'PREPARED',old_digest:C.existing_digest,next_digest:C.candidate_digest
+});
+function isolated(run){
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),
+  'prhm-honartik217-python-attempt-fixture-'));
+ fs.chmodSync(dir,0o700);
+ try{return run(dir)}finally{fs.rmSync(dir,{recursive:true,force:true})}
+}
+test('Linux: fixed one-use execution marker is durable and refuses replay',
+ {skip:!canFixture},()=>{
+ isolated(dir=>{
+  const first=m.reserveIsolatedPythonAttemptFixture(dir,receipt());
+  assert.equal(first.attempt_reserved,true);
+  assert.equal(first.approval_reusable,false);
+  const file=path.join(dir,'python-attempt-started.json');
+  const pre=fs.readFileSync(file);
+  assert.equal(fs.statSync(file).mode&0o777,0o600);
+  const j=JSON.parse(pre);
+  assert.equal(j.action,C.action);
+  assert.equal(j.request_id,receipt().request_id);
+  assert.equal(j.journal_id,receipt().journal_id);
+  assert.throws(()=>m.reserveIsolatedPythonAttemptFixture(dir,receipt()),
+   /execution_already_attempted_recovery_required/);
+  assert.deepEqual(fs.readFileSync(file),pre);
+ });
+});
+test('Linux: invalid approval or journal identity is denied without marker',
+ {skip:!canFixture},()=>{
+ isolated(dir=>{
+  for(const change of [
+   {journal_id:'not-a-uuid'},{request_id:''},{approval_id:'wrong'},
+   {state:'COMMITTED'},{old_digest:'f'.repeat(64)},
+   {next_digest:'f'.repeat(64)}
+  ]){
+   assert.throws(()=>m.reserveIsolatedPythonAttemptFixture(
+    dir,{...receipt(),...change}),/execution_attempt_identity_invalid/);
+  }
+  assert.deepEqual(fs.readdirSync(dir),[]);
+ });
+});
+test('Linux: durable empty marker after interrupted creation burns attempt',
+ {skip:!canFixture},()=>{
+ isolated(dir=>{
+  const child=cp.spawnSync(process.execPath,[
+   '-e','require(process.argv[1]).reserveIsolatedPythonAttemptFixture(process.argv[2],JSON.parse(process.argv[3]),process.argv[4])',
+   require.resolve('./honartik-universal-installer-native-python-bridge-v1.cjs'),
+   dir,JSON.stringify(receipt()),'after_exclusive_create'
+  ],{timeout:10000,encoding:'utf8'});
+  assert.equal(child.status,111,child.stderr);
+  const file=path.join(dir,'python-attempt-started.json');
+  assert.equal(fs.statSync(file).size,0);
+  assert.throws(()=>m.reserveIsolatedPythonAttemptFixture(dir,receipt()),
+   /execution_already_attempted_recovery_required/);
+ });
+});
+test('Linux: crash after fsynced marker never allows a second Python call',
+ {skip:!canFixture},()=>{
+ isolated(dir=>{
+  const child=cp.spawnSync(process.execPath,[
+   '-e','require(process.argv[1]).reserveIsolatedPythonAttemptFixture(process.argv[2],JSON.parse(process.argv[3]),process.argv[4])',
+   require.resolve('./honartik-universal-installer-native-python-bridge-v1.cjs'),
+   dir,JSON.stringify(receipt()),'after_durable_marker'
+  ],{timeout:10000,encoding:'utf8'});
+  assert.equal(child.status,112,child.stderr);
+  const j=JSON.parse(fs.readFileSync(path.join(dir,'python-attempt-started.json')));
+  assert.equal(j.state,'started_once_recovery_only');
+  assert.throws(()=>m.reserveIsolatedPythonAttemptFixture(dir,receipt()),
+   /execution_already_attempted_recovery_required/);
+ });
+});
+test('nonroot fixture never admits production fence path',()=>{
+ if(process.getuid?.()!==0){
+  assert.throws(()=>m.reserveIsolatedPythonAttemptFixture(
+   '/var/lib/prhm-agent-selfmaint-exec/honartik-universal-installer-l4',
+   receipt()),/fixture_scope_denied/);
+ }
+});
