@@ -282,6 +282,15 @@ function bindFixedRootSignedApproval({journalId,requestId,rootSealedTokenLoader}
     'binding_request_invalid');
   const readback=()=>I.inspectFixedNativeJournalState(journalId);
   need(readback()==='PREPARED','binding_preflight_failed');
+  // Reject an already-bound journal BEFORE reserving/burning any new L4.
+  // The independent reader just validated canonical bytes, lease and policy.
+  const live=readOwnedFile(path.join(FENCE,I.JOURNAL),0,[0o600],512000);
+  let current;
+  try{current=JSON.parse(live.bytes.toString('utf8'))}
+  catch{fail('binding_root_journal_invalid')}
+  need(current.state==='PREPARED'&&current.journal_id===journalId&&
+    current.request_id===null&&current.approval_id===null,
+    'binding_root_already_bound');
   const {reserveFixedApprovalFence}=
     require('./honartik-universal-installer-native-l4-fence-v1.cjs');
   // This invokes the independent Ed25519 and consumed-ledger proof reader.
