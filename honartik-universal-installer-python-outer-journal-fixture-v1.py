@@ -103,20 +103,24 @@ def read(root):
             deny('preimage_corrupt')
         before[item] = raw
     return data, before
-def unlock(root):
+def assert_lock(root):
     _, lock, _ = names(root)
     s = lock.lstat()
     if not stat.S_ISREG(s.st_mode) or s.st_uid != os.getuid() or (
-        stat.S_IMODE(s.st_mode) != 0o600):
+        stat.S_IMODE(s.st_mode) != 0o600 or s.st_nlink != 1):
         deny('unsafe_lock')
+    return lock
+def unlock(root):
+    lock = assert_lock(root)
     lock.unlink()
     sync_dir(root)
 def commit(root, installer, crash=False):
     fixture(root)
     prefix, lock, journal = names(root)
     data, _ = read(root)
-    if data['state'] != 'PREPARED' or not lock.is_file():
+    if data['state'] != 'PREPARED':
         deny('not_prepared')
+    assert_lock(root)
     after = observed(prefix, installer)
     if after['digest'] != data['new'] or (
             json.loads(after['manifest']).get('previous') != data['old']):
@@ -151,12 +155,15 @@ def recover(root, installer):
                 after[item] != before[item] for item in ('manifest','wrapper')):
             deny('restored_drift')
         return dict(already_recovered=True, rolled_back=True, digest=data['old'])
-    if not lock.is_file():
-        deny('lock_absent')
-    current = observed(prefix, installer)['digest'] if (
-        json.loads((prefix / 'installation.json').read_bytes()).get('digest') ==
-        (prefix / 'current').resolve().name) else (prefix / 'current').resolve().name
-    if current not in (data['old'], data['new']):
+    assert_lock(root)
+    # A partial Python install may have switched current before the manifest.
+    # Read the symlink independently, confining its destination to versions.
+    ptr = prefix / 'current'
+    if not ptr.is_symlink():
+        deny('pointer_missing')
+    resolved = ptr.resolve(strict=True)
+    if resolved.parent != prefix / 'versions' or (
+            resolved.name not in (data['old'], data['new'])):
         deny('unexpected_pointer')
     olddir = prefix / 'versions' / data['old']
     if installer.bundle_digest(olddir) != data['old'] or (
