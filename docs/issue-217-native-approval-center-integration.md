@@ -52,3 +52,41 @@
 - **Completed:** copied the five exact live Python engine source files read-only from prhm-production to an authorized workstation, then staged their bytes in an isolated Linux sandbox (non-root UID 1000, Python 3.13.18). SHA-256 pin verification of all five passed before import. Ran the **actual installed `universal.install.install_bundle` source**, 7/7 PASS, including normal forward install, refusal of wrong candidate/current hashes, wrapper failure and manifest-write exception recovery in fixture, plus hard child-process exit immediately after the actual pointer switch and immediately after the actual manifest write followed by exact fixture restoration. No production target path was used. This is real source-byte-matched Python function **in a fixture**, not authenticated signed Linux runner provenance, not an operational root adapter or production recovery attestation.
 - Fixed preflight policy to permit a valid first-install `installation.json.previous=null` (or pinned SHA-256), rather than falsely demanding a non-null prior release. Retested the updated non-root Linux preflight test suite **10/10 PASS**.
 - Previous 14/14 durable fixture crash-recovery and 12/12 synthetic cryptographic tests remain separately verified; no new cumulative or signed runner attestation is claimed.
+
+
+## Source-only real-Python outer-journal fixture (2026-10-27, not signed)
+
+The additional test-only module
+`honartik-universal-installer-python-outer-journal-fixture-v1.py`
+and extensions to
+`test-honartik-universal-installer-real-python-fixture-v1.py`
+exercise an on-disk O_EXCL/fdatasync-style (fsync file and parent directory)
+preimage journal around the **exact installed-source Python**
+`universal.install.install_bundle`, once the five previously SHA-pinned
+private engine files are supplied to a non-root sandbox. The module only
+admits per-test, owner-controlled `/tmp/prhm-honartik217-python-install-fixture-*`
+directories; it has no production path or privileged entrypoint.
+
+New real-source-dependent regression cases: failure during manifest write,
+abrupt exit immediately after pointer replacement, abrupt exit immediately
+after manifest replacement, abrupt exit following durable COMMITTED marker,
+forged lock symlink, redirected current pointer, and post-commit modified
+candidate bundle. After a confirmed COMMITTED marker, recovery verifies
+candidate bytes/manifest/wrapper and does not restore the preimage. A corrupt
+or indeterminate state retains its recovery fence. Prior journal is never
+silently discarded or reused.
+
+**Validation boundary:** Syntax checking of both Python files is enrolled in
+source-only CI. The existing Linux CI cannot run the real installer tests
+because it does not possess the private byte-exact five-file installed-engine
+fixture. The new real-source-dependent tests have **NOT yet been executed or
+independently signed**. An isolated non-root local synthetic installer smoke
+test exercised journal commit and pointer-crash restoration, but is not
+evidence of real Python installation or privileged recovery. Do not add these
+tests to a success count without actual runner output for this exact SHA.
+
+**Still required:** trusted root executor/Host Actions registration,
+authoritative single-use L4 receipt binding, locked native production installer
+transaction, independently attested Linux fault-injection using real engine
+bytes, signed reviewer provenance, and exact live policy reconciliation.
+Production remains unchanged.
