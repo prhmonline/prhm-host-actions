@@ -19,6 +19,6 @@ const steps=tx.KEYS.map(key=>{
 const plan={schema:'prhm.registrar.native-transaction.v1',steps,
  sourceCommit:'a'.repeat(40),manifestSha256:'b'.repeat(64)};
 tx.executeCore(plan,{workRoot:path.join(base,'journal'),
- postInstall:async()=>true,
+ postInstall:async()=>true,postRollback:async()=>true,
  onRenamed:(key,i)=>{if(i===0)process.kill(process.pid,'SIGKILL')}
 }).then(()=>process.exit(3),e=>{process.stderr.write(String(e));process.exit(4)});
