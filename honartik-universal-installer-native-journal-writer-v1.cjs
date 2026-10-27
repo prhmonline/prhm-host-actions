@@ -21,7 +21,7 @@ const FENCE='/var/lib/prhm-agent-selfmaint-exec/honartik-universal-installer-l4'
 const POLICY='/opt/prhm-company-control-plane/config/approval-policy.json';
 const SHA=/^[0-9a-f]{64}$/;
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const LEASE_SCHEMA='prhm.honartik217.fixed-native-installer-lease.v1';
+const LEASE_SCHEMA=I.LEASE_SCHEMA;
 const fail=s=>{throw Error('honartik217_journal_writer_'+s)};
 const need=(x,s)=>{if(!x)fail(s)};
 const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
@@ -60,11 +60,12 @@ function readOwnedFile(file,owner,allowedModes,max=131072){
     return {bytes,mode:st.mode&0o777};
   }finally{fs.closeSync(fd)}
 }
-function ownedDirectory(dir,owner){
+function ownedDirectory(dir,owner,allowed=[0o700]){
   parentCheck(dir,owner);
   const st=fs.lstatSync(dir);
   need(st.isDirectory()&&!st.isSymbolicLink()&&
-    st.uid===owner&&(st.mode&0o777)===0o700,'directory_untrusted');
+    st.uid===owner&&allowed.includes(st.mode&0o777),
+    'directory_untrusted');
 }
 function treeOwned(root,owner){
   const top=fs.lstatSync(root);
@@ -117,7 +118,11 @@ function atomicWriteExclusive(file,bytes){
   // Producer is single owner of O_EXCL durable lock; an unexpected file
   // appearing here must stop, not overwrite or auto-repair it.
   need(!fs.existsSync(file),'prior_journal_race');
-  fs.renameSync(stage,file);syncDir(dir);
+  // Atomic no-clobber link: renameSync would overwrite a journal that
+  // appeared between the check and rename. fs.linkSync refuses EEXIST.
+  fs.linkSync(stage,file);
+  syncDir(dir);
+  fs.unlinkSync(stage);syncDir(dir);
 }
 function createLease(fence,owner,leaseId){
   const file=path.join(fence,I.LOCK);
@@ -139,7 +144,7 @@ function prepare({fence,prefix,owner,old,next,entrypoint,verifyNext,
   crash=null}){
   need(SHA.test(old)&&SHA.test(next)&&old!==next,'digest_invalid');
   ownedDirectory(fence,owner);
-  ownedDirectory(prefix,owner);
+  ownedDirectory(prefix,owner,owner===0?[0o700,0o755]:[0o700]);
   // Immutable preimage must be byte verified BEFORE grabbing the lease.
   const before=preimage(prefix,owner,old,next,entrypoint,verifyNext);
   need(!fs.existsSync(path.join(fence,I.JOURNAL)),
