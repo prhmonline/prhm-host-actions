@@ -164,3 +164,121 @@ test('Linux: lock identity tampering prevents independent PREPARED readback',
    /lease_record_mismatch/);
  });
 });
+
+const F=require('./honartik-universal-installer-native-l4-fence-v1.cjs');
+const {ARGUMENTS_SHA}=require('./honartik-universal-installer-native-approval-gate-v1.cjs');
+function reserveFixtureProof(){
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'prhm-honartik217-fence-fixture-'));
+ fs.chmodSync(dir,0o700);
+ const proof={
+   ok:true,action:CONTRACT.action,
+   request_id:'11111111-2222-4333-8444-555555555555',
+   approval_id:'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+   policy_sha256:PINNED_POLICY_SHA,arguments_sha256:ARGUMENTS_SHA,
+   signature_verified:true,consumed_ledger_verified:true,
+   execution_fence_reserved:false,installer_upgraded:false
+ };
+ try{return {dir,bound:F.reserveIsolatedFixtureFence(dir,proof)}}
+ catch(e){fs.rmSync(dir,{recursive:true,force:true});throw e}
+}
+test('source-only root approval binding is forbidden for nonroot',()=>{
+ if(typeof process.getuid==='function'&&process.getuid()!==0){
+  assert.throws(()=>W.bindFixedRootSignedApproval({
+   journalId:'11111111-2222-4333-8444-555555555555',
+   requestId:'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+   rootSealedTokenLoader:()=>''}),/binding_root_required/);
+ }
+});
+test('Linux: one-use fenced signed proof binds durable PREPARED journal once',
+ {skip:!supported},()=>{
+ fixture(({root,old,next})=>{
+  const j=W.prepareIsolatedJournalFixture(root,next);
+  const one=reserveFixtureProof();
+  try{
+   const result=W.bindIsolatedApprovalFixture(root,j.id,old,next,one.bound);
+   assert.equal(result.ok,true);
+   assert.equal(result.signed_consumed_once,true);
+   assert.equal(result.installer_upgraded,false);
+   assert.equal(result.approval_id,one.bound.approval_id);
+   assert.equal(I.inspectIsolatedJournalFixture(root,j.id,old,next),'PREPARED');
+   const record=JSON.parse(fs.readFileSync(path.join(root,I.JOURNAL)));
+   assert.equal(record.approval_id,one.bound.approval_id);
+   assert.equal(record.request_id,one.bound.request_id);
+   assert.equal(fs.existsSync(path.join(root,I.LOCK)),true);
+   assert.equal(fs.realpathSync(path.join(root,'current')),
+     path.join(root,'versions',old));
+   const bytes=fs.readFileSync(path.join(root,I.JOURNAL));
+   assert.throws(()=>W.bindIsolatedApprovalFixture(root,j.id,old,next,one.bound),
+     /binding_journal_drift/);
+   assert.deepEqual(fs.readFileSync(path.join(root,I.JOURNAL)),bytes);
+  }finally{fs.rmSync(one.dir,{recursive:true,force:true})}
+ });
+});
+test('Linux: wrong policy, arguments or absent one-use fence rejected without mutation',
+ {skip:!supported},()=>{
+ fixture(({root,old,next})=>{
+  const j=W.prepareIsolatedJournalFixture(root,next);
+  const one=reserveFixtureProof();
+  try{
+   const original=fs.readFileSync(path.join(root,I.JOURNAL));
+   for(const changes of [
+    {policy_sha256:'f'.repeat(64)},
+    {arguments_sha256:'f'.repeat(64)},
+    {durable_one_time_fence:false},
+    {approval_id:'../etc/passwd'},
+    {installer_upgraded:true}
+   ]){
+    assert.throws(()=>W.bindIsolatedApprovalFixture(root,j.id,old,next,
+      {...one.bound,...changes}),/signed_fence_binding_invalid/);
+    assert.deepEqual(fs.readFileSync(path.join(root,I.JOURNAL)),original);
+   }
+  }finally{fs.rmSync(one.dir,{recursive:true,force:true})}
+ });
+});
+test('Linux: crashed binding before journal does not counterfeit approval',
+ {skip:!supported},()=>{
+ fixture(({root,old,next})=>{
+  const j=W.prepareIsolatedJournalFixture(root,next);
+  const one=reserveFixtureProof();
+  try{
+   const child=cp.spawnSync(process.execPath,[
+    '-e','require(process.argv[1]).bindIsolatedApprovalFixture(process.argv[2],process.argv[3],process.argv[4],process.argv[5],JSON.parse(process.argv[6]),"after_fence")',
+    require.resolve('./honartik-universal-installer-native-journal-writer-v1.cjs'),
+    root,j.id,old,next,JSON.stringify(one.bound)],{encoding:'utf8',timeout:10000});
+   assert.equal(child.status,97,child.stderr);
+   const record=JSON.parse(fs.readFileSync(path.join(root,I.JOURNAL)));
+   assert.equal(record.request_id,null);
+   assert.equal(record.approval_id,null);
+   assert.equal(I.inspectIsolatedJournalFixture(root,j.id,old,next),'PREPARED');
+   assert.equal(fs.existsSync(path.join(one.dir,one.bound.approval_id+'.json')),true);
+   assert.throws(()=>F.reserveIsolatedFixtureFence(one.dir,{
+    ok:true,action:CONTRACT.action,request_id:one.bound.request_id,
+    approval_id:one.bound.approval_id,policy_sha256:PINNED_POLICY_SHA,
+    arguments_sha256:ARGUMENTS_SHA,signature_verified:true,
+    consumed_ledger_verified:true,execution_fence_reserved:false,
+    installer_upgraded:false
+   }),/approval_replayed/);
+  }finally{fs.rmSync(one.dir,{recursive:true,force:true})}
+ });
+});
+test('Linux: crash after journal fsync preserves canonical receipt and lease',
+ {skip:!supported},()=>{
+ fixture(({root,old,next})=>{
+  const j=W.prepareIsolatedJournalFixture(root,next);
+  const one=reserveFixtureProof();
+  try{
+   const child=cp.spawnSync(process.execPath,[
+    '-e','require(process.argv[1]).bindIsolatedApprovalFixture(process.argv[2],process.argv[3],process.argv[4],process.argv[5],JSON.parse(process.argv[6]),"after_journal")',
+    require.resolve('./honartik-universal-installer-native-journal-writer-v1.cjs'),
+    root,j.id,old,next,JSON.stringify(one.bound)],{encoding:'utf8',timeout:10000});
+   assert.equal(child.status,98,child.stderr);
+   assert.equal(I.inspectIsolatedJournalFixture(root,j.id,old,next),'PREPARED');
+   const record=JSON.parse(fs.readFileSync(path.join(root,I.JOURNAL)));
+   assert.equal(record.approval_id,one.bound.approval_id);
+   assert.equal(record.request_id,one.bound.request_id);
+   assert.equal(fs.existsSync(path.join(root,I.LOCK)),true);
+   assert.throws(()=>W.bindIsolatedApprovalFixture(root,j.id,old,next,one.bound),
+     /binding_journal_drift/);
+  }finally{fs.rmSync(one.dir,{recursive:true,force:true})}
+ });
+});
