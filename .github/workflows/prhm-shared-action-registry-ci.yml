@@ -101,6 +101,9 @@ jobs:
           node --check test-prhm-action-registry-v2-bootstrap-transaction-plan-v1.cjs
           node --check test-honartik-shared-registry-v2-bootstrap-transaction-stage-v1.cjs
           node --check prhm-action-registry-v2-bootstrap-wal-v1.cjs
+          node --check prhm-action-registry-v2-bootstrap-lab-recovery-v1.cjs
+          node --check test-prhm-action-registry-v2-bootstrap-lab-recovery-v1.cjs
+          node --test test-prhm-action-registry-v2-bootstrap-lab-recovery-v1.cjs
           node --check test-prhm-action-registry-v2-bootstrap-wal-v1.cjs
           node --check test-honartik-shared-registry-v2-bootstrap-wal-stage-v1.cjs
           node --check prhm-action-registry-v2-bootstrap-exclusive-lock-v1.cjs
