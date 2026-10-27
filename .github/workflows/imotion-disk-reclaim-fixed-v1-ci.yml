@@ -6,6 +6,8 @@ on:
       - 'ops/imotion-disk-reclaim-fixed-v1.test.cjs'
       - 'ops/imotion-disk-reclaim-registration-readiness-v1.cjs'
       - 'ops/imotion-disk-reclaim-registration-readiness-v1.test.cjs'
+      - 'ops/imotion-disk-reclaim-source-pin-verify-v1.cjs'
+      - 'manifests/imotion-disk-reclaim-source-review-v1.json'
       - '.github/workflows/imotion-disk-reclaim-fixed-v1-ci.yml'
   push:
     branches:
@@ -15,6 +17,8 @@ on:
       - 'ops/imotion-disk-reclaim-fixed-v1.test.cjs'
       - 'ops/imotion-disk-reclaim-registration-readiness-v1.cjs'
       - 'ops/imotion-disk-reclaim-registration-readiness-v1.test.cjs'
+      - 'ops/imotion-disk-reclaim-source-pin-verify-v1.cjs'
+      - 'manifests/imotion-disk-reclaim-source-review-v1.json'
       - '.github/workflows/imotion-disk-reclaim-fixed-v1-ci.yml'
 permissions:
   contents: read
@@ -26,14 +30,18 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          fetch-depth: 0
       - name: Syntax
         run: |
           node --check ops/imotion-disk-reclaim-fixed-v1.cjs
           node --check ops/imotion-disk-reclaim-fixed-v1.test.cjs
           node --check ops/imotion-disk-reclaim-registration-readiness-v1.cjs
           node --check ops/imotion-disk-reclaim-registration-readiness-v1.test.cjs
+          node --check ops/imotion-disk-reclaim-source-pin-verify-v1.cjs
       - name: Unit tests
         run: node --test ops/imotion-disk-reclaim-fixed-v1.test.cjs ops/imotion-disk-reclaim-registration-readiness-v1.test.cjs
+      - name: Immutable source and manifest provenance
+        run: node ops/imotion-disk-reclaim-source-pin-verify-v1.cjs
       - name: Reject direct shell, host mutation, network and execution surfaces
         run: |
           if grep -En 'child_process|execSync|spawnSync|unlinkSync|rmSync|writeFile|https?\.request|fetch\(' ops/imotion-disk-reclaim-fixed-v1.cjs ops/imotion-disk-reclaim-registration-readiness-v1.cjs; then
