@@ -43,6 +43,11 @@ function setup(fn){
    execution_fence_reserved:false,installer_upgraded:false};
   const bound=L.reserveIsolatedFixtureFence(fence,proof);
   W.bindIsolatedApprovalFixture(root,id,old,next,bound);
+  // Root Production keeps signed approval fence and Journal under the same
+  // private directory. Mirror the independently made fixture proof there
+  // so the terminal archive exercises the exact installed layout.
+  fs.copyFileSync(path.join(fence,proof.approval_id+'.json'),
+   path.join(root,proof.approval_id+'.json'),fs.constants.COPYFILE_EXCL);
   const marker={schema:'prhm.honartik217.fixed-python-attempt.v1',action:C.action,
    state:'started_once_recovery_only',journal_id:id,
    request_id:proof.request_id,approval_id:proof.approval_id,
