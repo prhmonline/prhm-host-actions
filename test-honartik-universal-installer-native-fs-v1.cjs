@@ -54,6 +54,27 @@ test('interrupted transaction after durable journal but before pointer change re
     assert.equal(native.record(x.root).digest,x.old_digest);
   }finally{x.dispose()}
 });
+for(const scenario of [{name:'pointer',stage:'after_pointer',code:87},{name:'manifest',stage:'after_manifest',code:88}]){
+  test('Linux subprocess crashes after '+scenario.name+' change; durable journal restores exact preimage',()=>{
+    const x=setup();
+    try{
+      const child=require('node:child_process');
+      const exact=fs.readFileSync(path.join(x.root,'installation.json'));
+      native.begin(x.root,x.candidate_digest);
+      const source='require(process.argv[1]).switchFixture(process.argv[2],process.argv[3],process.argv[4])';
+      const result=child.spawnSync(process.execPath,['-e',source,
+        path.resolve(__dirname,'honartik-universal-installer-native-fs-v1.cjs'),
+        x.root,x.candidate_digest,scenario.stage],{
+        encoding:'utf8',timeout:10000
+      });
+      assert.equal(result.status,scenario.code,result.stderr);
+      assert.equal(native.recoverFixture(x.root).state,'ROLLED_BACK');
+      assert.equal(native.record(x.root).digest,x.old_digest);
+      assert.deepEqual(fs.readFileSync(path.join(x.root,'installation.json')),exact);
+      assert.equal(fs.existsSync(path.join(x.root,'upgrade.lock')),false);
+    }finally{x.dispose()}
+  });
+}
 test('concurrent transaction is rejected by exclusive lock',()=>{
   const x=setup();
   try{
