@@ -34,7 +34,8 @@ const METHODS=Object.freeze([
   'attestImmutableCandidate','attestIndependentLinuxTests',
   'createDurableRecoveryJournal','attestJournalRecoverable',
   'consumeSignedOneTimeL4Approval','installFixedBundleTransaction',
-  'attestInstalledPostimage','commitJournal','restoreExactJournal',
+  'attestInstalledPostimage','commitJournal','inspectDurableJournalState',
+  'restoreExactJournal',
   'attestExactRollback','durableAudit','releaseInstallerLock'
 ]);
 function trustedHost(host) {
@@ -132,6 +133,7 @@ async function applyFixedInstallerUpgrade(host){
   // ONLY a root-owned Host Actions binding may call it with real capabilities.
   const h=trustedHost(host);
   let lease=null,journal=null,rollbackVerified=true,post=null;
+  let commitAttempted=false;
   try{
     lease=await h.acquireRootOwnedInstallerLock(CONTRACT);
     if(!lease||typeof lease.id!=='string'||lease.id.length<8)
@@ -155,12 +157,26 @@ async function applyFixedInstallerUpgrade(host){
       approval_id:receipt.approval_id,new_digest:CONTRACT.candidate_digest});
     // The trusted native adapter must atomically finalize the audit+commit
     // state and preserve recovery on any uncertain result.
+    commitAttempted=true;
     if(await h.commitJournal(CONTRACT,journal)!==true)fail('durable_commit_failed');
     return Object.freeze({ok:true,installer_upgraded:true,
       backend_deployed:false,yii_migrations_executed:false,
       previous_digest:CONTRACT.existing_digest,
       installed_digest:CONTRACT.candidate_digest});
   }catch(error){
+    if(journal&&commitAttempted){
+      // A failed/absent commit response is NOT evidence the journal remains
+      // PREPARED. A durable COMMITTED marker must never be rolled back.
+      // Only the preinstalled root-owned journal inspector may authorize
+      // rollback on a byte-verified, still-PREPARED transaction.
+      let durableState='UNKNOWN';
+      try{durableState=await h.inspectDurableJournalState(CONTRACT,journal)}
+      catch{durableState='UNKNOWN'}
+      if(durableState!=='PREPARED'){
+        rollbackVerified=false; // preserve exclusive recovery fence
+        fail('COMMIT_OUTCOME_UNCERTAIN_manual_reconciliation_required');
+      }
+    }
     if(journal){
       try {
         if(await h.restoreExactJournal(CONTRACT,journal)!==true||
