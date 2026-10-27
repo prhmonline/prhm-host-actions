@@ -33,7 +33,7 @@ function fixture(){
 test('real Linux atomic installation: all four owners, journal COMMITTED',async()=>{
  const x=fixture();
  try{
-  const r=await tx.executeCore(x.plan,{workRoot:x.journal,postInstall:async()=>true});
+  const r=await tx.executeCore(x.plan,{workRoot:x.journal,postInstall:async()=>true,postRollback:async()=>true});
   assert.equal(r.status,'COMMITTED');
   for(const s of x.steps)assert.equal(tx.HASH(fs.readFileSync(s.path)),s.afterSha);
   const j=JSON.parse(fs.readFileSync(path.join(r.transaction,'journal.json')));
@@ -46,7 +46,7 @@ test('injected failure after two renames restores exact bytes and modes',async()
  const x=fixture();
  try{
   await assert.rejects(tx.executeCore(x.plan,{workRoot:x.journal,
-   postInstall:async()=>true,onRenamed:(key,i)=>{if(i===1)throw Error('INJECT_AFTER_TWO_RENAMES')}
+   postInstall:async()=>true,postRollback:async()=>true,onRenamed:(key,i)=>{if(i===1)throw Error('INJECT_AFTER_TWO_RENAMES')}
   }),/INJECT_AFTER_TWO_RENAMES/);
   x.original();
   const dirs=fs.readdirSync(x.journal).filter(n=>n.startsWith('txn-'));
@@ -59,7 +59,7 @@ test('failed post-install health triggers four-owner rollback',async()=>{
  const x=fixture();
  try{
   await assert.rejects(tx.executeCore(x.plan,{workRoot:x.journal,
-   postInstall:async()=>false}),/postinstall_health/);
+   postInstall:async()=>false,postRollback:async()=>true}),/postinstall_health/);
   x.original();
  }finally{x.dispose()}
 });
@@ -68,7 +68,7 @@ test('preimage drift aborts before modifying a single owner',async()=>{
  try{
   fs.writeFileSync(x.steps[2].path,'unexpected');
   await assert.rejects(tx.executeCore(x.plan,{workRoot:x.journal,
-   postInstall:async()=>true}),/preimage_sha_drift/);
+   postInstall:async()=>true,postRollback:async()=>true}),/preimage_sha_drift/);
   for(let i=0;i<2;i++)assert.deepEqual(fs.readFileSync(x.steps[i].path),x.old[x.steps[i].path]);
  }finally{x.dispose()}
 });
@@ -78,7 +78,7 @@ test('unsafe symlink target aborts before modifying a single owner',async()=>{
   fs.unlinkSync(x.steps[0].path);
   fs.symlinkSync(x.steps[1].path,x.steps[0].path);
   await assert.rejects(tx.executeCore(x.plan,{workRoot:x.journal,
-   postInstall:async()=>true}),/unsafe_file/);
+   postInstall:async()=>true,postRollback:async()=>true}),/unsafe_file/);
   assert.deepEqual(fs.readFileSync(x.steps[1].path),x.old[x.steps[1].path]);
  }finally{x.dispose()}
 });
@@ -93,19 +93,19 @@ test('SIGKILL crash after first rename, then independent-process recovery',async
   assert.notDeepEqual(fs.readFileSync(x.steps[0].path),x.old[x.steps[0].path]);
   const dirs=fs.readdirSync(x.journal).filter(n=>n.startsWith('txn-'));
   assert.equal(dirs.length,1);
-  const r=tx.recoverAfterCrash({workRoot:x.journal,
+  const r=await tx.recoverAfterCrash({workRoot:x.journal,postRollback:async()=>true,
    transaction:path.join(x.journal,dirs[0]),expectedTargets:x.steps.map(s=>s.path)});
   assert.equal(r.status,'ROLLED_BACK');
   x.original();
   assert.equal(fs.existsSync(path.join(x.journal,'active.lock')),false);
  }finally{x.dispose()}
 });
-test('recovery will not break a live owner lock',()=>{
+test('recovery will not break a live owner lock',async()=>{
  const x=fixture();
  try{
   fs.writeFileSync(path.join(x.journal,'active.lock'),JSON.stringify({pid:process.pid}));
-  assert.throws(()=>tx.recoverAfterCrash({
-   workRoot:x.journal,transaction:path.join(x.journal,'txn-missing'),
+  await assert.rejects(tx.recoverAfterCrash({
+   workRoot:x.journal,postRollback:async()=>true,transaction:path.join(x.journal,'txn-missing'),
    expectedTargets:x.steps.map(s=>s.path)
   }),/lock_owner_active/);
  }finally{x.dispose()}
@@ -114,7 +114,7 @@ test('recovery rejects non-allowlisted destination even with a journal',async()=
  const x=fixture();
  try{
   await assert.rejects(tx.executeCore(x.plan,{workRoot:x.journal,
-   postInstall:async()=>false}),/postinstall_health/);
+   postInstall:async()=>false,postRollback:async()=>true}),/postinstall_health/);
   const dirs=fs.readdirSync(x.journal).filter(n=>n.startsWith('txn-'));
   assert.throws(()=>tx.restoreFromJournal(path.join(x.journal,dirs[0]),
    ['/tmp/not-a-verified-owner',...x.steps.slice(1).map(s=>s.path)]
@@ -125,7 +125,7 @@ test('concurrent mutation during install causes unverified rollback hard STOP',a
  const x=fixture();
  try{
   await assert.rejects(tx.executeCore(x.plan,{workRoot:x.journal,
-   postInstall:async()=>true,
+   postInstall:async()=>true,postRollback:async()=>true,
    onRenamed:(key,i)=>{
     if(i===0)fs.writeFileSync(x.steps[2].path,'UNTRUSTED_DRIFT')
    }
@@ -135,6 +135,34 @@ test('concurrent mutation during install causes unverified rollback hard STOP',a
   assert.deepEqual(fs.readFileSync(x.steps[0].path),x.old[x.steps[0].path]);
  }finally{x.dispose()}
 });
+
+test('failed post-rollback service health leaves a blocking recovery journal',async()=>{
+ const x=fixture();
+ try{
+  await assert.rejects(tx.executeCore(x.plan,{workRoot:x.journal,
+    postInstall:async()=>false,postRollback:async()=>false
+  }),/rollback_health_unverified/);
+  x.original();
+  await assert.rejects(tx.executeCore(x.plan,{workRoot:x.journal,
+    postInstall:async()=>true,postRollback:async()=>true
+  }),/pending_transaction_requires_recovery/);
+  const txn=fs.readdirSync(x.journal).filter(n=>n.startsWith('txn-'))[0];
+  const file=path.join(x.journal,txn);
+  const result=await tx.recoverAfterCrash({workRoot:x.journal,
+    transaction:file,expectedTargets:x.steps.map(s=>s.path),
+    postRollback:async()=>true});
+  assert.equal(result.status,'ROLLED_BACK');
+ }finally{x.dispose()}
+});
+test('recovery without a trusted service health check fails closed',async()=>{
+ const x=fixture();
+ try{
+  await assert.rejects(tx.recoverAfterCrash({workRoot:x.journal,
+    transaction:path.join(x.journal,'txn-missing'),
+    expectedTargets:x.steps.map(s=>s.path)}),/recovery_health_callback_required/);
+ }finally{x.dispose()}
+});
+
 test('module exposes no standalone apply and rejects unbound plan',()=>{
  assert.equal(Object.isFrozen(tx),true);
  assert.equal(Object.keys(tx).some(x=>/sign|issueApproval|executeShell/.test(x)),false);
