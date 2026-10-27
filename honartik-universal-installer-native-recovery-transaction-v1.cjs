@@ -65,7 +65,7 @@ function getJournal(root){
    (s.mode&0o777)===0o600,'journal_not_private');
  const v=JSON.parse(fs.readFileSync(p,'utf8'));
  need(v.schema==='prhm.honartik217.fixture-recovery.v1'&&
-   v.state==='PREPARED'&&SHA.test(v.old)&&SHA.test(v.next)&&v.old!==v.next&&
+   ['PREPARED','COMMITTED','ROLLED_BACK'].includes(v.state)&&SHA.test(v.old)&&SHA.test(v.next)&&v.old!==v.next&&
    typeof v.manifest_base64==='string'&&typeof v.wrapper_base64==='string'&&
    SHA.test(v.manifest_sha256)&&SHA.test(v.wrapper_sha256)&&
    Number.isInteger(v.manifest_mode)&&v.manifest_mode>=0o400&&
@@ -128,7 +128,7 @@ function applyFixture(root,stage=null) {
  need(snapshot(root).digest===j.next,'postimage_failed');
  return {switched:true,requires_commit:true};
 }
-function finishFixture(root){
+function finishFixture(root,crashStage=null){
  assertFixture(root);const {journal:j}=getJournal(root);
  need(fs.lstatSync(path.join(root,FILES.lock)).isFile(),'exclusive_lock_lost');
  need(snapshot(root).digest===j.next,'postimage_not_verified');
@@ -140,13 +140,45 @@ function finishFixture(root){
  const previous=fs.readFileSync(journalFile(root));
  const next=Buffer.from(JSON.stringify({...j,state:'COMMITTED'})+'\n');
  need(previous.length>0,'journal_missing');
- atomicFile(journalFile(root),next);fs.unlinkSync(path.join(root,FILES.lock));
+ atomicFile(journalFile(root),next);
+ // A durable COMMITTED marker is the point of no return. Simulate abrupt
+ // termination after fsync to ensure recovery never rolls back this install.
+ if(crashStage==='crash_after_commit_marker')process.exit(90);
+ fs.unlinkSync(path.join(root,FILES.lock));
  syncDir(root);
  return {committed:true,installed_digest:j.next};
 }
 function recoverFixture(root){
  assertFixture(root);
  const {journal:j,manifest,wrapper}=getJournal(root);
+ if(j.state==='COMMITTED'){
+  // A durably committed transaction must NEVER be rolled back just because
+  // the process died before acknowledging success or releasing its lock.
+  const post=snapshot(root);
+  need(post.digest===j.next,'committed_candidate_drift');
+  const m=JSON.parse(post.manifest.toString('utf8'));
+  need(m.previous===j.old&&m.entrypoint==='fixture-only',
+    'committed_manifest_drift');
+  need(post.wrapper.toString('utf8')==='#'+'!/bin/sh\\n# fixture-new-wrapper\\n',
+    'committed_wrapper_drift');
+  const lock=path.join(root,FILES.lock);
+  if(fs.existsSync(lock)){
+   const st=fs.lstatSync(lock);
+   need(st.isFile()&&!st.isSymbolicLink()&&
+     st.uid===process.getuid()&&(st.mode&0o777)===0o600,
+     'committed_recovery_lock_unsafe');
+   fs.unlinkSync(lock);syncDir(root);
+  }
+  // Leave the journal as permanent evidence and replay prevention.
+  return {committed:true,rolled_back:false,digest:j.next};
+ }
+ if(j.state==='ROLLED_BACK'){
+  const pre=snapshot(root);
+  need(pre.digest===j.old&&pre.manifest.equals(manifest)&&
+    pre.wrapper.equals(wrapper)&&pre.manifestMode===j.manifest_mode&&
+    pre.wrapperMode===j.wrapper_mode,'rolled_back_preimage_drift');
+  return {rolled_back:true,already_recovered:true,digest:j.old};
+ }
  need(fs.lstatSync(path.join(root,FILES.lock)).isFile(),'exclusive_lock_lost');
  const current=path.basename(fs.realpathSync(path.join(root,FILES.pointer)));
  need(current===j.old||current===j.next,'third_party_pointer');
