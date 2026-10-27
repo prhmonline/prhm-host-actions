@@ -131,7 +131,11 @@ function begin(root,desiredDigest){
    next:desiredDigest,prior_manifest_base64:prior.manifest.toString('base64')};
   atomicData(journal,Buffer.from(JSON.stringify(obj)),0o600);
   fs.fsyncSync(fd);fsyncDir(root);
- }catch(e){fs.closeSync(fd);fs.unlinkSync(lock);fsyncDir(root);throw e}
+ }catch(e){
+  // A failed journal write/fsync has indeterminate persistence. Retain the
+  // exclusive recovery fence even if the journal file is not yet visible.
+  fs.closeSync(fd);throw e;
+ }
  fs.closeSync(fd);
  return {old:prior.digest,next:desiredDigest};
 }
@@ -153,11 +157,32 @@ function switchFixture(root,nextDigest,crashStage){
  if(current.digest!==nextDigest)fail('postimage_not_valid');
  return {state:'SWITCHED',digest:current.digest};
 }
+function commitFixture(root,crashStage){
+ fixtureRoot(root);
+ const journal=path.join(root,'upgrade.journal');
+ safeFile(path.join(root,'upgrade.lock'));safeFile(journal);
+ const j=JSON.parse(fs.readFileSync(journal,'utf8'));
+ if(j.schema!=='prhm.honartik217.fixture-journal.v1'||j.old===j.next||
+    (j.state!==undefined&&j.state!=='COMMITTED'))fail('commit_journal_invalid');
+ if(record(root).digest!==j.next)fail('commit_postimage_invalid');
+ // The durable COMMITTED marker is the linearization point. Never roll back
+ // after this marker, even if the acknowledgement is lost on process crash.
+ atomicData(journal,Buffer.from(JSON.stringify({...j,state:'COMMITTED'})),0o600);
+ if(crashStage==='after_commit')process.exit(89);
+ return {state:'COMMITTED',digest:j.next};
+}
 function recoverFixture(root){
  fixtureRoot(root);const p=path.join(root,'upgrade.journal');safeFile(p);
+ safeFile(path.join(root,'upgrade.lock'));
  const j=JSON.parse(fs.readFileSync(p,'utf8'));
  if(j.schema!=='prhm.honartik217.fixture-journal.v1'||j.old===j.next)
    fail('journal_invalid');
+ if(j.state==='COMMITTED'){
+  if(record(root).digest!==j.next)fail('committed_postimage_drift');
+  fs.unlinkSync(p);fs.unlinkSync(path.join(root,'upgrade.lock'));fsyncDir(root);
+  return {state:'COMMITTED',sha256:j.next,production_mutated:false};
+ }
+ if(j.state!==undefined)fail('journal_state_invalid');
  const live=exactSymlink(path.join(root,'current'),root);
  if(![j.old,j.next].includes(path.basename(live)))
    fail('third_party_pointer_drift');
@@ -179,4 +204,4 @@ function recoverFixture(root){
 // A production registration/export is intentionally absent. This code cannot
 // authorize itself, use root, consume an Approval Center token or install live.
 module.exports=Object.freeze({CONTRACT,readTree,fixtureRoot,initFixture,begin,
- switchFixture,recoverFixture,record});
+ switchFixture,commitFixture,recoverFixture,record});

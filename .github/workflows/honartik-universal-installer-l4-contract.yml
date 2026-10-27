@@ -12,6 +12,8 @@ on:
       - 'test-honartik-universal-installer-l4-v1.cjs'
       - 'honartik-universal-installer-native-fs-v1.cjs'
       - 'test-honartik-universal-installer-native-fs-v1.cjs'
+      - 'honartik-universal-installer-native-root-receipt-v1.cjs'
+      - 'test-honartik-universal-installer-native-root-receipt-v1.cjs'
       - 'honartik-universal-installer-l4-approval-verify-v1.cjs'
       - 'test-honartik-universal-installer-l4-approval-verify-v1.cjs'
       - 'honartik-universal-installer-native-root-preflight-v1.cjs'
@@ -62,6 +64,8 @@ jobs:
           node --check test-honartik-universal-installer-l4-v1.cjs
           node --check honartik-universal-installer-native-fs-v1.cjs
           node --check test-honartik-universal-installer-native-fs-v1.cjs
+          node --check honartik-universal-installer-native-root-receipt-v1.cjs
+          node --check test-honartik-universal-installer-native-root-receipt-v1.cjs
           node --check honartik-universal-installer-l4-approval-verify-v1.cjs
           node --check test-honartik-universal-installer-l4-approval-verify-v1.cjs
           node --check honartik-universal-installer-native-root-preflight-v1.cjs
@@ -86,6 +90,7 @@ jobs:
           node --test \
             test-honartik-universal-installer-l4-v1.cjs \
             test-honartik-universal-installer-native-fs-v1.cjs \
+            test-honartik-universal-installer-native-root-receipt-v1.cjs \
             test-honartik-universal-installer-l4-approval-verify-v1.cjs \
             test-honartik-universal-installer-native-root-preflight-v1.cjs \
             test-honartik-universal-installer-native-approval-gate-v1.cjs \
