@@ -137,8 +137,11 @@ for(const [point,code] of [['after_pointer',124],['after_manifest',125],
   setup(o=>{
    F.simulateCutover(o.root,o.id,o.old,o.next);
    hardCrash(o,'rollback',point,code);
-   const r=fixtureCall(o,'rollback');
+   const r=point==='after_terminal_marker'?
+    fixtureCall(o,'inspect'):fixtureCall(o,'rollback');
    assert.equal(r.state,'ROLLED_BACK');
+   if(point==='after_terminal_marker')
+    assert.throws(()=>fixtureCall(o,'rollback'),/terminal_never_mutated/);
    assert.equal(I.inspectIsolatedJournalFixture(o.root,o.id,o.old,o.next),'ROLLED_BACK');
    assert.deepEqual(fs.readFileSync(path.join(o.root,'installation.json')),o.manifest);
    assert.deepEqual(fs.readFileSync(path.join(o.root,'deploy-project')),o.wrapper);
