@@ -41,6 +41,10 @@ const ARTIFACTS=Object.freeze({
  'honartik-universal-installer-native-terminal-archive-v1.cjs':'7de2333ba52c25d9432e3d3e93edd00a5fb53816'
 });
 const PREIMAGE_POLICY_VERSION='2026-10-02.1-control-plane-current-owner-bootstrap-repair-v1';
+// SHA-256 of JSON indent=2 + trailing LF, derived on the real Production host
+// from the pinned live bytes by an operator's read-only Python check.
+// This is NOT an independent signature or approval to activate the policy.
+const RECONCILED_CANDIDATE_POLICY_SHA='981967b4ce770cd3aa89d27ae98552bbeb3ab31ed116d4e51aef91c0abf68358';
 const fail=x=>{throw Error('honartik217_registration_pack_'+x)};
 const need=(v,x)=>{if(!v)fail(x)};
 const hash=b=>crypto.createHash('sha256').update(b).digest('hex');
@@ -122,10 +126,16 @@ function proposeLivePolicyReview(liveBytes){
  catch{fail('live_policy_invalid_json')}
  const candidate=overlayPolicyObject(live);
  const bytes=Buffer.from(JSON.stringify(candidate,null,2)+'\n');
+ const digest=hash(bytes);
+ // Node JSON serializer MUST byte-match the host's Python-produced digest.
+ // A differing JSON representation, source drift or encoding must block
+ // registration review; never silently accept an alternative digest.
+ need(digest===RECONCILED_CANDIDATE_POLICY_SHA,
+  'operator_candidate_sha_mismatch');
  return Object.freeze({
   action:ACTION,operation:OP,review_only:true,production_mutation:false,
   source_sha:SOURCE_SHA,preimage_sha256:TARGETS.policy.sha256,
-  candidate_sha256:hash(bytes),
+  candidate_sha256:digest,
   policy_version_before:PREIMAGE_POLICY_VERSION,
   policy_version_after:VERSION,
   operations_before:Object.keys(live.operations).length,
@@ -133,10 +143,12 @@ function proposeLivePolicyReview(liveBytes){
   scopes_before:live.typed_scopes.length,
   scopes_after:candidate.typed_scopes.length,
   // This digest is evidence for an independent reviewer, NOT authorization:
-  // Approval Gate still pins the unrelated Git-main candidate SHA.
-  matches_current_approval_gate_pin:hash(bytes)===
+  // Approval Gate deliberately still pins the old Git-main candidate SHA,
+  // so the runtime MUST remain fail-closed pending independent re-review.
+  matches_current_approval_gate_pin:digest===
    require('./honartik-universal-installer-native-approval-gate-v1.cjs')
     .PINNED_POLICY_SHA,
+  operator_candidate_sha_verified:true,
   requires_independent_policy_pin_review:true,
   requires_signed_level4:true,action_registered:false,install_authorized:false,
   candidate_policy_bytes:bytes
@@ -160,6 +172,7 @@ function reviewPlan(readOwners,readArtifact){
 }
 module.exports=Object.freeze({
  ACTION,OP,VERSION,SOURCE_SHA,TARGETS,ARTIFACTS,
+ RECONCILED_CANDIDATE_POLICY_SHA,
  verifyOwnerPreimages,verifyArtifactClosure,
  overlayPolicyObject,proposeLivePolicyReview,reviewPlan
 });
