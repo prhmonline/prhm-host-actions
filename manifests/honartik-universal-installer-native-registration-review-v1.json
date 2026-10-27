@@ -42,7 +42,7 @@
   "new_installer_sha256": "8680011e11ad8eae89707b74492e60354c4b7e56799b205d3da581e92806a552",
   "policy_version_before": "2026-10-02.1-control-plane-current-owner-bootstrap-repair-v1",
   "policy_version_proposed": "2026-10-27.1-honartik-universal-installer-exact-l4-review",
-  "candidate_policy_sha256": null,
+  "candidate_policy_sha256": "981967b4ce770cd3aa89d27ae98552bbeb3ab31ed116d4e51aef91c0abf68358",
   "candidate_policy_requires_exact_live_bytes": true,
   "terminal_journal_lease_retirement_authorized": false,
   "independent_security_approval_verified": false,
@@ -50,5 +50,20 @@
   "root_of_trust_registration_verified": false,
   "signed_level4_consumed": false,
   "installer_upgrade_executed": false,
-  "honartik_backend_deployed": false
+  "honartik_backend_deployed": false,
+  "operator_read_only_reconciliation": {
+    "status": "PASS",
+    "observed_live_sha256": "148fe2a724befc15cd8c731b0195d83e254d39215792a5084b70dd5b5c178174",
+    "observed_candidate_sha256": "981967b4ce770cd3aa89d27ae98552bbeb3ab31ed116d4e51aef91c0abf68358",
+    "operations_before": 75,
+    "operations_after": 76,
+    "scopes_before": 52,
+    "scopes_after": 53,
+    "unrelated_policy_changes": "NONE",
+    "production_changed": false,
+    "evidence_origin": "operator-provided read-only prhm-production console output",
+    "independently_signed": false,
+    "candidate_bytes_copied_to_git": false
+  },
+  "approval_gate_repin_and_independent_review_required": true
 }
