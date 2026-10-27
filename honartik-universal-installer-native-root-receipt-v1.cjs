@@ -18,6 +18,9 @@ const PUBLIC_KEY='/var/lib/prhm-company-approval/ed25519-public.pem';
 const CONSUMED='/var/lib/prhm-company-approval/consumed';
 const POLICY_SHA='82334369202b31418e33b44c0ed53e1d4b3ea58acc7e37835b13b60c6ba239cb';
 const POLICY_VERSION='2026-10-27.1-honartik-universal-installer-exact-l4-review';
+// Computed independently from the EXISTING Host Actions v2 request route:
+// argumentsSha256({action}) where request schema has exactly one key.
+const FIXED_ARGUMENTS_SHA='eb28cb22e48d6baea121dc345fda996f40be550d4ad0160f185d006d3f45e4fc';
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const HASH=b=>crypto.createHash('sha256').update(b).digest('hex');
 const deny=x=>{throw Error('honartik_root_receipt_'+x)};
@@ -50,6 +53,15 @@ function inspectPinnedPolicy(bytes){
     deny('policy_exact_scope_drift');
   return Object.freeze({version:POLICY_VERSION,sha256:POLICY_SHA,
     operation:CONTRACT.operation});
+}
+function fixedRequestHash(ledger){
+ // A consumed ledger proves a prior event, NOT what this action requested.
+ // Never treat ledger.request_hash as the expected authority by itself.
+ const expected=HASH(Buffer.from(JSON.stringify({action:ACTION})));
+ if(expected!==FIXED_ARGUMENTS_SHA)deny('canonical_action_hash_drift');
+ if(!ledger||typeof ledger!=='object'||Array.isArray(ledger)||
+    ledger.request_hash!==expected)deny('consumed_request_not_fixed_action');
+ return expected;
 }
 function rootOnly(){
  if(typeof process.getuid!=='function'||process.getuid()!==0)
@@ -97,12 +109,14 @@ function readOnlyRootReceiptPreflight(token){
  const ledgerBytes=readOwned(path.join(CONSUMED,claims.approval_id+'.json'),16384);
  let ledger;try{ledger=JSON.parse(ledgerBytes.toString('utf8'))}
  catch{deny('ledger_json_invalid')}
- // SHA comes from the root-owned authoritative consumed ledger, not a tool
- // argument or JWS claim. Signature, issuer, scope and this SHA must all agree.
+ // The fixed one-field Host Actions v2 request independently determines
+ // the required hash; the authoritative ledger and signed JWS must match it.
+ // Merely reading the already-consumed ledger is NOT once-only execution.
+ const expectedArgumentsSha=fixedRequestHash(ledger);
  const proof=verifyConsumedExactL4({token,issuerPublicKey,ledger,
    nowSec:Math.floor(Date.now()/1000),
    trustedPolicyVersion:policy.version,trustedPolicyHash:policy.sha256,
-   trustedArgumentsSha256:ledger?.request_hash});
+   trustedArgumentsSha256:expectedArgumentsSha});
  return Object.freeze({
    evidence_verified:proof.ok,action:ACTION,operation:CONTRACT.operation,
    approval_id:proof.approval_id,policy_sha256:policy.sha256,
@@ -114,5 +128,6 @@ function readOnlyRootReceiptPreflight(token){
 // No function in this module consumes the ledger, runs an action, or exports
 // a generic root-file reader. Root-owned transaction binding is still pending.
 module.exports=Object.freeze({
-  POLICY_SHA,POLICY_VERSION,readOnlyRootReceiptPreflight,inspectPinnedPolicy
+  POLICY_SHA,POLICY_VERSION,FIXED_ARGUMENTS_SHA,fixedRequestHash,
+  readOnlyRootReceiptPreflight,inspectPinnedPolicy
 });
