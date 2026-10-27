@@ -149,9 +149,13 @@ async function applyFixedInstallerUpgrade(host){
     const installed=await h.installFixedBundleTransaction(CONTRACT,journal);
     if(installed!==true)fail('fixed_installer_transaction_failed');
     post=attestPostimage(await h.attestInstalledPostimage(CONTRACT,journal),before);
-    if(await h.commitJournal(CONTRACT,journal)!==true)fail('durable_commit_failed');
-    await h.durableAudit({action:ACTION,event:'installed',journal_id:journal.id,
+    // Audit while the rollback journal is still recoverable. A post-commit
+    // audit failure must never attempt to restore a finalized journal.
+    await h.durableAudit({action:ACTION,event:'precommit_verified',journal_id:journal.id,
       approval_id:receipt.approval_id,new_digest:CONTRACT.candidate_digest});
+    // The trusted native adapter must atomically finalize the audit+commit
+    // state and preserve recovery on any uncertain result.
+    if(await h.commitJournal(CONTRACT,journal)!==true)fail('durable_commit_failed');
     return Object.freeze({ok:true,installer_upgraded:true,
       backend_deployed:false,yii_migrations_executed:false,
       previous_digest:CONTRACT.existing_digest,
