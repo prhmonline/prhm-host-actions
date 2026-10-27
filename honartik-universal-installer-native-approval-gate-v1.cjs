@@ -78,7 +78,10 @@ function parsePolicy(bytes){
   const sc=matches[0];
   need(sc.tool==='host_action_v2_apply'&&sc.project==='control_plane'&&
     sc.environment==='production'&&sc.operation===CONTRACT.operation&&
-    sc.risk==='critical'&&sc.level===4,'typed_scope_not_exact');
+    sc.risk==='critical'&&Array.isArray(sc.principals)&&
+    sc.principals.length===1&&sc.principals[0].principal_id==='mohammad'&&
+    JSON.stringify(sc.principals[0].roles)==='["mcp-operator"]',
+    'typed_scope_not_exact');
   return {version:p.version,sha256:hash(bytes)};
 }
 function verifyFixedEvidence({token,publicKey,ledger,policyBytes,nowSec,requestId}){
