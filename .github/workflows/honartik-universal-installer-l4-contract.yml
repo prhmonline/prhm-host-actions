@@ -9,6 +9,14 @@ on:
       - 'test-honartik-universal-installer-native-fs-v1.cjs'
       - 'honartik-universal-installer-l4-approval-verify-v1.cjs'
       - 'test-honartik-universal-installer-l4-approval-verify-v1.cjs'
+      - 'honartik-universal-installer-native-root-preflight-v1.cjs'
+      - 'test-honartik-universal-installer-native-root-preflight-v1.cjs'
+      - 'honartik-universal-installer-native-approval-gate-v1.cjs'
+      - 'test-honartik-universal-installer-native-approval-gate-v1.cjs'
+      - 'honartik-universal-installer-native-l4-fence-v1.cjs'
+      - 'test-honartik-universal-installer-native-l4-fence-v1.cjs'
+      - 'honartik-universal-installer-native-recovery-transaction-v1.cjs'
+      - 'test-honartik-universal-installer-native-recovery-transaction-v1.cjs'
       - 'manifests/honartik-universal-installer-l4-issue217.json'
       - 'docs/runbooks/honartik-universal-installer-l4-issue217.md'
       - '.github/workflows/honartik-universal-installer-l4-contract.yml'
@@ -34,7 +42,22 @@ jobs:
           node --check test-honartik-universal-installer-native-fs-v1.cjs
           node --check honartik-universal-installer-l4-approval-verify-v1.cjs
           node --check test-honartik-universal-installer-l4-approval-verify-v1.cjs
-          node --test test-honartik-universal-installer-l4-v1.cjs test-honartik-universal-installer-native-fs-v1.cjs test-honartik-universal-installer-l4-approval-verify-v1.cjs
+          node --check honartik-universal-installer-native-root-preflight-v1.cjs
+          node --check test-honartik-universal-installer-native-root-preflight-v1.cjs
+          node --check honartik-universal-installer-native-approval-gate-v1.cjs
+          node --check test-honartik-universal-installer-native-approval-gate-v1.cjs
+          node --check honartik-universal-installer-native-l4-fence-v1.cjs
+          node --check test-honartik-universal-installer-native-l4-fence-v1.cjs
+          node --check honartik-universal-installer-native-recovery-transaction-v1.cjs
+          node --check test-honartik-universal-installer-native-recovery-transaction-v1.cjs
+          node --test \
+            test-honartik-universal-installer-l4-v1.cjs \
+            test-honartik-universal-installer-native-fs-v1.cjs \
+            test-honartik-universal-installer-l4-approval-verify-v1.cjs \
+            test-honartik-universal-installer-native-root-preflight-v1.cjs \
+            test-honartik-universal-installer-native-approval-gate-v1.cjs \
+            test-honartik-universal-installer-native-l4-fence-v1.cjs \
+            test-honartik-universal-installer-native-recovery-transaction-v1.cjs
       - name: Assert no runtime installation authorized
         shell: bash
         run: |
