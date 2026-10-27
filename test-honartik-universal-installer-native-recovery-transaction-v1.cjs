@@ -109,3 +109,35 @@ test('running as root cannot invoke fixture methods',()=>{
     /nonroot_only/);
  }
 });
+
+for(const [stage,exitStatus] of [
+ ['crash_after_pointer',87],['crash_after_manifest',88],
+ ['crash_after_wrapper',89]
+]){
+ test('hard process exit '+stage+' recovers exactly on next invocation',()=>{
+  fixture(({root,old,next,manifest,wrapper})=>{
+   tx.beginFixture(root,next);
+   const child=require('node:child_process').spawnSync(process.execPath,[
+    '-e','require(process.argv[1]).applyFixture(process.argv[2],process.argv[3])',
+    require.resolve('./honartik-universal-installer-native-recovery-transaction-v1.cjs'),
+    root,stage],{timeout:10000,encoding:'utf8'});
+   assert.equal(child.status,exitStatus,child.stderr);
+   const result=tx.recoverFixture(root);
+   assert.equal(result.rolled_back,true);
+   assert.deepEqual(fs.readFileSync(path.join(root,'installation.json')),manifest);
+   assert.deepEqual(fs.readFileSync(path.join(root,'deploy-project')),wrapper);
+   assert.equal(tx.snapshot(root).digest,old);
+   assert.equal(fs.existsSync(path.join(root,'install-transaction.lock')),false);
+  });
+ });
+}
+test('altered wrapper fails commit and keeps lock',()=>{
+ fixture(({root,next})=>{
+  tx.beginFixture(root,next);
+  tx.applyFixture(root);
+  fs.writeFileSync(path.join(root,'deploy-project'), 'unauthorized-wrapper\n');
+  assert.throws(()=>tx.finishFixture(root),/postimage_wrapper_mismatch/);
+  assert.equal(fs.existsSync(path.join(root,'install-transaction.lock')),true);
+  assert.equal(tx.recoverFixture(root).rolled_back,true);
+ });
+});
