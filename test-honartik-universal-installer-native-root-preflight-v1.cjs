@@ -18,6 +18,10 @@ test('exact action and bound target sha',()=>{
 test('parse exact preimage manifest',()=>{
  assert.equal(m.parseManifest(good()).digest,C.existing_digest);
 });
+test('first installer manifest may carry previous:null',()=>{
+ const mft=JSON.parse(good());mft.previous=null;
+ assert.equal(m.parseManifest(Buffer.from(JSON.stringify(mft))).previous,null);
+});
 test('reject wrong current digest',()=>{
  const v=JSON.parse(good());v.digest='a'.repeat(64);
  assert.throws(()=>m.parseManifest(Buffer.from(JSON.stringify(v))),/manifest_mismatch/);
