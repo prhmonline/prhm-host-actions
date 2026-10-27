@@ -163,6 +163,47 @@ test('recovery without a trusted service health check fails closed',async()=>{
  }finally{x.dispose()}
 });
 
+
+test('throwing post-rollback verifier leaves FAIL-CLOSED journal',async()=>{
+ const x=fixture();
+ try{
+  await assert.rejects(tx.executeCore(x.plan,{workRoot:x.journal,
+   postInstall:async()=>false,
+   postRollback:async()=>{throw Error('RESTART_FAILURE')}
+  }),/rollback_health_unverified/);
+  const txn=fs.readdirSync(x.journal).filter(n=>n.startsWith('txn-'))[0];
+  const j=JSON.parse(fs.readFileSync(path.join(x.journal,txn,'journal.json')));
+  assert.equal(j.status,'ROLLBACK_FAILED');
+  await assert.rejects(tx.executeCore(x.plan,{workRoot:x.journal,
+   postInstall:async()=>true,postRollback:async()=>true
+  }),/pending_transaction_requires_recovery/);
+ }finally{x.dispose()}
+});
+test('throwing crash recovery health remains blocked until verified',async()=>{
+ if(process.platform!=='linux')return;
+ const x=fixture();
+ try{
+  const run=cp.spawnSync(process.execPath,[
+   path.join(__dirname,'test-shared-registrar-crash-child-v1.cjs'),x.base
+  ],{timeout:10000,encoding:'utf8'});
+  assert.equal(run.signal,'SIGKILL');
+  const txn=fs.readdirSync(x.journal).filter(n=>n.startsWith('txn-'))[0];
+  const target=path.join(x.journal,txn);
+  await assert.rejects(tx.recoverAfterCrash({
+   workRoot:x.journal,transaction:target,
+   expectedTargets:x.steps.map(s=>s.path),
+   postRollback:async()=>{throw Error('SERVICE_NOT_HEALTHY')}
+  }),/recovery_service_health_unverified/);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(target,'journal.json'))).status,'ROLLBACK_FAILED');
+  const ok=await tx.recoverAfterCrash({
+   workRoot:x.journal,transaction:target,
+   expectedTargets:x.steps.map(s=>s.path),postRollback:async()=>true
+  });
+  assert.equal(ok.status,'ROLLED_BACK');
+  x.original();
+ }finally{x.dispose()}
+});
+
 test('module exposes no standalone apply and rejects unbound plan',()=>{
  assert.equal(Object.isFrozen(tx),true);
  assert.equal(Object.keys(tx).some(x=>/sign|issueApproval|executeShell/.test(x)),false);
