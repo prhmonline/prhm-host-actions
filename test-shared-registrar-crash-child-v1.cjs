@@ -1,0 +1,24 @@
+'use strict';
+// Called only by the isolated Linux crash-recovery test.
+// No production paths or approvals; disposable /tmp fixture only.
+const fs=require('node:fs');
+const path=require('node:path');
+const tx=require('./shared-registrar-native-filesystem-v1.cjs');
+const base=process.argv[2];
+if(process.argv.length!==3||!base?.includes('prhm-reg-linux-')||
+   fs.realpathSync(base)!==base||!fs.statSync(base).isDirectory()){
+ process.stderr.write('isolated_fixture_required\n');process.exit(77);
+}
+const steps=tx.KEYS.map(key=>{
+ const p=path.join(base,key+'.js');
+ const before=fs.readFileSync(p);
+ const nextBytes=Buffer.from('verified-fake-fixture-after-'+key+'\n');
+ return {key,path:p,beforeSha:tx.HASH(before),
+  afterSha:tx.HASH(nextBytes),nextBytes};
+});
+const plan={schema:'prhm.registrar.native-transaction.v1',steps,
+ sourceCommit:'a'.repeat(40),manifestSha256:'b'.repeat(64)};
+tx.executeCore(plan,{workRoot:path.join(base,'journal'),
+ postInstall:async()=>true,
+ onRenamed:(key,i)=>{if(i===0)process.kill(process.pid,'SIGKILL')}
+}).then(()=>process.exit(3),e=>{process.stderr.write(String(e));process.exit(4)});
