@@ -54,7 +54,7 @@ function strictBase64(s,max=131072){
   need(b.length>0&&b.length<=max&&b.toString('base64')===s,'base64_noncanonical');
   return b;
 }
-function parse(bytes,expectedId,entrypoint){
+function parse(bytes,expectedId,entrypoint,oldExpected,nextExpected){
   need(Buffer.isBuffer(bytes)&&bytes.length>=300&&bytes.length<=512000,'record_size');
   let record;
   try{record=JSON.parse(bytes.toString('utf8'))}catch{fail('record_json')}
@@ -69,8 +69,8 @@ function parse(bytes,expectedId,entrypoint){
     record.arguments_sha256===ARGUMENTS_SHA&&
     UUID.test(record.journal_id)&&record.journal_id===expectedId&&
     UUID.test(record.lease_id)&&
-    SHA.test(record.old_digest)&&record.old_digest===CONTRACT.existing_digest&&
-    SHA.test(record.next_digest)&&record.next_digest===CONTRACT.candidate_digest&&
+    SHA.test(record.old_digest)&&record.old_digest===oldExpected&&
+    SHA.test(record.next_digest)&&record.next_digest===nextExpected&&
     ['PREPARED','COMMITTED','ROLLED_BACK'].includes(record.state),
     'journal_scope_drift');
   const m=strictBase64(record.preimage_manifest_b64);
@@ -102,8 +102,14 @@ function verifyParentChain(filename,owner){
   let d=path.dirname(filename);
   while(true){
     const s=fs.lstatSync(d);
+    const owned=s.uid===owner&&(s.mode&0o022)===0;
+    // Nonroot fixtures are directly beneath the root-owned sticky /tmp.
+    // Production (owner=0) accepts only root-owned non-writable ancestors.
+    const fixtureAncestor=owner!==0&&s.uid===0&&(
+      (d===os.tmpdir()&&(s.mode&0o1777)===0o1777)||
+      (d==='/'&&(s.mode&0o022)===0));
     need(s.isDirectory()&&!s.isSymbolicLink()&&
-      s.uid===owner&&(s.mode&0o022)===0,'untrusted_parent');
+      (owned||fixtureAncestor),'untrusted_parent');
     if(d==='/')break;
     d=path.dirname(d);
   }
@@ -124,6 +130,13 @@ function readSecureFile(filename,owner,{max=512000,mode=0o600}={}){
     return bytes;
   }finally{fs.closeSync(fd)}
 }
+function assertLock(filename,owner){
+  verifyParentChain(filename,owner);
+  const st=fs.lstatSync(filename);
+  need(st.isFile()&&!st.isSymbolicLink()&&st.uid===owner&&
+    (st.mode&0o777)===0o600&&st.nlink===1,
+    'untrusted_lock');
+}
 function assertRootOwner(filename,owner){
   verifyParentChain(filename,owner);
   const s=fs.lstatSync(filename);
@@ -131,13 +144,13 @@ function assertRootOwner(filename,owner){
     (s.mode&0o777)===0o700,'journal_directory_untrusted');
 }
 function stateFromDisk(opts,id){
-  const {fence,prefix,owner,entrypoint}=opts;
+  const {fence,prefix,owner,entrypoint,oldExpected,nextExpected}=opts;
   assertRootOwner(fence,owner);
   // All ambiguous source-coordinator paths must retain an exclusive lock.
   // Refuse a missing/forged lock; do not infer safe state without it.
-  readSecureFile(path.join(fence,LOCK),owner,{max:8192});
+  assertLock(path.join(fence,LOCK),owner);
   const bytes=readSecureFile(path.join(fence,JOURNAL),owner);
-  const {record}=parse(bytes,id,entrypoint);
+  const {record,preManifest,preWrapper}=parse(bytes,id,entrypoint,oldExpected,nextExpected);
   const versions=path.join(prefix,'versions');
   const oldDir=path.join(versions,record.old_digest);
   const current=path.join(prefix,'current');
@@ -165,8 +178,13 @@ function stateFromDisk(opts,id){
       json.entrypoint===entrypoint,'committed_postimage_drift');
   }else if(record.state==='ROLLED_BACK'){
     need(target===oldDir,'rolled_back_pointer_drift');
-    // This inspector is strictly read-only, so it cannot make a new decision
-    // to rollback an already ROLLED_BACK record.
+    const currentManifest=readSecureFile(path.join(prefix,'installation.json'),owner,
+      {max:131072,mode:record.preimage_manifest_mode});
+    const currentWrapper=readSecureFile(path.join(prefix,'deploy-project'),owner,
+      {max:131072,mode:record.preimage_wrapper_mode});
+    need(currentManifest.equals(preManifest)&&currentWrapper.equals(preWrapper),
+      'rolled_back_preimage_drift');
+    // Never decide to rollback an already ROLLED_BACK journal.
   }
   return record.state;
 }
@@ -177,10 +195,11 @@ function inspectFixedNativeJournalState(id){
   // before invoking this reader; this reader alone is never authorization.
   return stateFromDisk({
     fence:FENCE,prefix:CONTRACT.installer_prefix,
-    owner:0,entrypoint:CONTRACT.installer_prefix+'/deploy-project'
+    owner:0,entrypoint:CONTRACT.installer_prefix+'/deploy-project',
+    oldExpected:CONTRACT.existing_digest,nextExpected:CONTRACT.candidate_digest
   },id);
 }
-function inspectIsolatedJournalFixture(dir,id){
+function inspectIsolatedJournalFixture(dir,id,oldExpected,nextExpected){
   need(typeof process.getuid==='function'&&process.getuid()!==0,
     'fixture_nonroot_required');
   need(typeof dir==='string'&&path.dirname(dir)===os.tmpdir()&&
@@ -190,10 +209,11 @@ function inspectIsolatedJournalFixture(dir,id){
   need(stat.isDirectory()&&!stat.isSymbolicLink()&&
     (stat.mode&0o777)===0o700&&stat.uid===process.getuid(),
     'fixture_owner');
-  need(UUID.test(id),'journal_id_invalid');
+  need(UUID.test(id)&&SHA.test(oldExpected)&&SHA.test(nextExpected)&&
+    oldExpected!==nextExpected,'fixture_identity_invalid');
   return stateFromDisk({
     fence:dir,prefix:dir,owner:process.getuid(),
-    entrypoint:'fixture-only'
+    entrypoint:'fixture-only',oldExpected,nextExpected
   },id);
 }
 module.exports=Object.freeze({
