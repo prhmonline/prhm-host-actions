@@ -309,5 +309,5 @@ module.exports=Object.freeze({
  prepareFixedRootJournal,prepareIsolatedJournalFixture,
  bindFixedRootSignedApproval,bindIsolatedApprovalFixture,
  ROOT_ACTION_REGISTERED:false,INSTALLER_MUTATION_EXPORTED:false,
- LIVE_APPROVAL_ISSUANCE:false
+ LIVE_APPROVAL_CONSUMPTION:false,LIVE_APPROVAL_ISSUANCE:false
 });
