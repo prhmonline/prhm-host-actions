@@ -163,6 +163,33 @@ function installViaFixedTrustedPython(journalId,requestId,rootSealedTokenLoader)
   journal_id:journalId,old_digest:OLD,new_digest:NEW,
   lease_preserved:true,approval_reusable:false,backend_deployed:false});
 }
-module.exports=Object.freeze({fixedPythonCode,installViaFixedTrustedPython,
+/**
+ * Native Host Actions owner can inject this ONE method into the existing
+ * applyFixedInstallerUpgrade trusted capability object after independent
+ * Root-of-Trust admission. This is NOT a partial standalone root executor:
+ * the owner is still responsible for all other coordinator capabilities,
+ * consumed approval, signed Linux attestation and durable reconciliation.
+ */
+function makeFixedCoordinatorPythonTransaction(rootSealedTokenLoader){
+ need(process.getuid?.()===0,'root_required');
+ need(typeof rootSealedTokenLoader==='function',
+  'trusted_sealed_token_source_missing');
+ return async function installFixedBundleTransaction(contract,journal){
+  need(contract===C,'coordinator_contract_mismatch');
+  need(journal&&UUID.test(journal.id||''),
+    'coordinator_journal_invalid');
+  const j=JSON.parse(rootRead(path.join(FENCE,I.JOURNAL),512000,0o600));
+  need(j.journal_id===journal.id&&UUID.test(j.request_id||''),
+   'coordinator_approval_not_bound');
+  const result=installViaFixedTrustedPython(
+    journal.id,j.request_id,rootSealedTokenLoader);
+  return result.ok===true&&result.installer_switched===true&&
+    result.committed===false&&result.lease_preserved===true;
+ };
+}
+module.exports=Object.freeze({
+ fixedPythonCode,installViaFixedTrustedPython,
+ makeFixedCoordinatorPythonTransaction,
  ROOT_ACTION_REGISTERED:false,PRODUCTION_INSTALL_AUTHORIZED:false,
- INDEPENDENT_SIGNED_LINUX_PROVENANCE_REQUIRED:true});
+ INDEPENDENT_SIGNED_LINUX_PROVENANCE_REQUIRED:true
+});
