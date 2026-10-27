@@ -132,6 +132,9 @@ async function applyFixedInstallerUpgrade(host){
   // ONLY a root-owned Host Actions binding may call it with real capabilities.
   const h=trustedHost(host);
   let lease=null,journal=null,rollbackVerified=true,post=null;
+  // A failed journal write or commit acknowledgement has indeterminate effects.
+  // Never unlock or roll back until trusted recovery establishes the state.
+  let journalAttempted=false,journalRecoverable=false,commitAttempted=false;
   try{
     lease=await h.acquireRootOwnedInstallerLock(CONTRACT);
     if(!lease||typeof lease.id!=='string'||lease.id.length<8)
@@ -139,10 +142,12 @@ async function applyFixedInstallerUpgrade(host){
     const before=attestPreimage(await h.attestInstalledPreimage(CONTRACT));
     attestCandidate(await h.attestImmutableCandidate(CONTRACT));
     attestTests(await h.attestIndependentLinuxTests(CONTRACT));
+    journalAttempted=true;
     journal=await h.createDurableRecoveryJournal(CONTRACT,lease,before);
     if(!journal||typeof journal.id!=='string'||journal.id.length<8||
        await h.attestJournalRecoverable(CONTRACT,journal)!==true)
       fail('prewrite_recovery_unproven');
+    journalRecoverable=true;
     const receipt=attestApproval(await h.consumeSignedOneTimeL4Approval(CONTRACT,journal));
     await h.durableAudit({action:ACTION,event:'authorized',journal_id:journal.id,
       approval_id:receipt.approval_id});
@@ -155,12 +160,18 @@ async function applyFixedInstallerUpgrade(host){
       approval_id:receipt.approval_id,new_digest:CONTRACT.candidate_digest});
     // The trusted native adapter must atomically finalize the audit+commit
     // state and preserve recovery on any uncertain result.
+    commitAttempted=true;
     if(await h.commitJournal(CONTRACT,journal)!==true)fail('durable_commit_failed');
     return Object.freeze({ok:true,installer_upgraded:true,
       backend_deployed:false,yii_migrations_executed:false,
       previous_digest:CONTRACT.existing_digest,
       installed_digest:CONTRACT.candidate_digest});
   }catch(error){
+    if(commitAttempted||(journalAttempted&&!journalRecoverable)){
+      rollbackVerified=false;
+      fail(commitAttempted?'COMMIT_INDETERMINATE_manual_recovery_required':
+        'JOURNAL_INDETERMINATE_manual_recovery_required');
+    }
     if(journal){
       try {
         if(await h.restoreExactJournal(CONTRACT,journal)!==true||
