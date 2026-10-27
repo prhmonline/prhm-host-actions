@@ -109,12 +109,15 @@ function applyFixture(root,stage=null) {
  const before=fs.realpathSync(path.join(root,FILES.pointer));
  need(path.basename(before)===j.old,'preimage_pointer_drift');
  changePointer(root,j.next);
+ if(stage==='crash_after_pointer')process.exit(87);
  if(stage==='after_pointer')throw Error('INJECTED_AFTER_POINTER');
  atomicFile(path.join(root,FILES.manifest),Buffer.from(JSON.stringify({
   digest:j.next,previous:j.old,entrypoint:'fixture-only'
  })));
+ if(stage==='crash_after_manifest')process.exit(88);
  if(stage==='after_manifest')throw Error('INJECTED_AFTER_MANIFEST');
  atomicFile(path.join(root,FILES.wrapper),Buffer.from('#!/bin/sh\n# fixture-new-wrapper\n'),0o700);
+ if(stage==='crash_after_wrapper')process.exit(89);
  if(stage==='after_wrapper')throw Error('INJECTED_AFTER_WRAPPER');
  need(snapshot(root).digest===j.next,'postimage_failed');
  return {switched:true,requires_commit:true};
@@ -123,6 +126,11 @@ function finishFixture(root){
  assertFixture(root);const {journal:j}=getJournal(root);
  need(fs.lstatSync(path.join(root,FILES.lock)).isFile(),'exclusive_lock_lost');
  need(snapshot(root).digest===j.next,'postimage_not_verified');
+ const manifest=JSON.parse(fs.readFileSync(path.join(root,FILES.manifest),'utf8'));
+ need(manifest.digest===j.next&&manifest.previous===j.old&&
+   manifest.entrypoint==='fixture-only','postimage_manifest_mismatch');
+ const wrapper=fs.readFileSync(path.join(root,FILES.wrapper),'utf8');
+ need(wrapper==='#!/bin/sh\n# fixture-new-wrapper\n','postimage_wrapper_mismatch');
  const previous=fs.readFileSync(journalFile(root));
  const next=Buffer.from(JSON.stringify({...j,state:'COMMITTED'})+'\n');
  need(previous.length>0,'journal_missing');
