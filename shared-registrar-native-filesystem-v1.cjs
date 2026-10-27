@@ -213,7 +213,9 @@ async function executeCore(plan,{workRoot,postInstall,postRollback,onRenamed}={}
   if(j.status==='INSTALLING'){
    try{
     restoreFromJournal(dir,plan.steps.map(x=>x.path));
-    if(await postRollback()!==true){
+    let healthy=false;
+    try{healthy=await postRollback()===true;}catch(_){}
+    if(!healthy){
       const failed=validateJournal(dir);
       failed.status='ROLLBACK_FAILED';
       failed.rollbackErrors=['POST_ROLLBACK_SERVICE_HEALTH'];
@@ -245,12 +247,16 @@ async function recoverAfterCrash({workRoot,transaction,expectedTargets,postRollb
  const newLock=lock(workRoot);
  try{
   const result=restoreFromJournal(transaction,expectedTargets);
-  if(result.status==='ROLLED_BACK' && await postRollback()!==true){
-   const journal=validateJournal(transaction);
-   journal.status='ROLLBACK_FAILED';
-   journal.rollbackErrors=['POST_CRASH_SERVICE_HEALTH'];
-   writeJournal(transaction,journal);
-   fail('recovery_service_health_unverified');
+  if(result.status==='ROLLED_BACK'){
+   let healthy=false;
+   try{healthy=await postRollback()===true;}catch(_){}
+   if(!healthy){
+    const journal=validateJournal(transaction);
+    journal.status='ROLLBACK_FAILED';
+    journal.rollbackErrors=['POST_CRASH_SERVICE_HEALTH'];
+    writeJournal(transaction,journal);
+    fail('recovery_service_health_unverified');
+   }
   }
   return result;
  }finally{unlock(newLock)}
