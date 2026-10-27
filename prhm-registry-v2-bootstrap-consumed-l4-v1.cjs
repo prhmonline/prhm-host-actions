@@ -23,6 +23,7 @@ const TOOL='prhm_root_bootstrap_apply_v2';
 const CONSUMER='prhm-agent-selfmaint-exec-root-bootstrap-v2';
 const ISSUER='prhm-company-approval';
 const POLICY_VERSION='2026-10-27.1-prhm-shared-registry-root-bootstrap-v2';
+const ROLLBACK_REFERENCE='prhm:shared-registry-root-bootstrap-v2:wal-exact-created-path-rollback';
 const PINNED_SOURCE_COMMIT='aa527f23bb2e316d28003ae4d73157e3349400ab';
 const PINNED_MANIFEST_COMMIT='aa527f23bb2e316d28003ae4d73157e3349400ab';
 const APPROVAL_FIELDS=Object.freeze([
@@ -91,7 +92,9 @@ function verifyConsumed({token,publicKey,ledger,nowSec,policyHash,policyVersion}
  need(UUID.test(c.approval_id||'')&&UUID.test(c.request_id||'')&&
   c.jti===c.approval_id&&c.iss===ISSUER&&
   c.action===admission.ACTION&&c.operation===OPERATION&&
-  c.project==='control_plane'&&c.environment==='production'&&
+  c.project==='control_plane'&&c.project_id==='control_plane'&&
+  c.rollback_reference_hash===sha(Buffer.from(ROLLBACK_REFERENCE))&&
+  c.environment==='production'&&
   c.tool===TOOL&&c.principal_id==='mohammad'&&
   c.role==='mcp-operator'&&c.level===4&&c.risk==='critical'&&
   c.decision==='accept'&&c.approver==='mohammad'&&
@@ -132,7 +135,7 @@ function productionProof(){
  fail('reviewed_bootstrap_policy_and_root_adapter_not_installed');
 }
 module.exports=Object.freeze({
- OPERATION,TOOL,CONSUMER,ISSUER,POLICY_VERSION,
+ OPERATION,TOOL,CONSUMER,ISSUER,POLICY_VERSION,ROLLBACK_REFERENCE,
  APPROVAL_FIELDS,bootstrapArguments,digestArguments,
  decodeSigned,verifyConsumed,productionProof
 });
