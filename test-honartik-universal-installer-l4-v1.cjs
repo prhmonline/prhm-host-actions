@@ -101,7 +101,7 @@ test('happy-path exact installer upgrade: lock, preimages, tests, journal, signe
  assert.ok(h.calls.indexOf('journal')<h.calls.indexOf('approval'));
  assert.ok(h.calls.indexOf('approval')<h.calls.indexOf('install'));
  assert.ok(h.calls.indexOf('post')<h.calls.indexOf('commit'));
- assert.deepEqual(h.state.audits,['authorized','installed']);
+ assert.deepEqual(h.state.audits,['authorized','precommit_verified']);
 });
 test('wrong installed digest, owner and registry drift reject before approval and installation',async()=>{
  for(const p of [
@@ -151,7 +151,7 @@ test('unverified, replayed, expired and wrong-SHA approvals fail without install
  }
 });
 test('mutation and postinstall failures restore exact preimage after journal',async()=>{
- for(const f of ['install','post','commit','audit:installed']){
+ for(const f of ['install','post','commit','audit:precommit_verified']){
   const h=harness({fault:f});
   await assert.rejects(m.applyFixedInstallerUpgrade(h.adapter),/denied_or_rolled_back/,f);
   assert.equal(h.state.installed,C.existing_digest,f);
