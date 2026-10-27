@@ -244,3 +244,62 @@ filesystem tests are Linux-specific and must be run against the exact
 latest PR SHA in an isolated nonroot environment or CI. An unsigned
 developer run is not independent security review or cryptographic
 approval for a production install. Root registration/policy remains NO-GO.
+
+
+## Durable PREPARED journal producer / bound exclusive lease (2026-10-27)
+
+Source-only module:
+`honartik-universal-installer-native-journal-writer-v1.cjs`.
+It supplies a **root-only, fixed-argument PREPARED writer**, plus a
+separately named nonprivileged, disposable `/tmp` fixture producer.
+It is **not installed or registered** in Host Actions; there is
+no root COMMITTED writer, approval consumption, CLI, installer apply,
+or actual privileged deployment path.
+
+Production `prepareFixedRootJournal()` accepts **no runtime path, project,
+token, operation or candidate arguments**. Before touching the on-disk
+journal/lease, it requires UID0, the exact reviewed installed policy
+bytes, exact root-owned read-only staged candidate archive SHA256,
+the byte-verified current Installer bundle, exact manifest entrypoint,
+and a root-owned exclusive fenced directory. With the **currently installed
+live policy** (different SHA from PR #15 candidate), it MUST fail closed
+without creating a lease. It is deliberately NOT production-callable via
+any registered Host Action.
+
+Journal creation protocol, proposed for future independently reviewed
+root-owned native writer:
+1. Validate immutable preimage and candidate integrity before acquiring
+   the lease; refuse an existing journal without deleting it.
+2. Atomically reserve one private `install-transaction.lock` (0600)
+   via `O_EXCL|O_NOFOLLOW`; serialize/fdatasync equivalent (fsync)
+   its newly generated random lease UUID; fsync parent.
+3. Serialize canonical `prhm.honartik217.fixed-native-installer-journal.v1`
+   with a separately random journal UUID, old/new digests, fixed action,
+   exact proposed policy and canonical argument SHA, byte-hashed preimage
+   manifest/wrapper and permissions; state `PREPARED`.
+4. Stage with private `O_EXCL` temporary file, fsync it, install with
+   an **atomic no-clobber hard link** (not rename-overwrite), fsync directory,
+   remove temporary stage and fsync directory again. No journal or lock
+   is removed on failed/uncertain writes.
+5. Re-read using independent
+   `inspectFixedNativeJournalState`/`inspectIsolatedJournalFixture`
+   before acknowledging `PREPARED`. The inspector now requires **the
+   lease UUID in the trusted on-disk lock to exactly match the journal**.
+6. Abrupt exit between durable lease and journal leaves an orphaned
+   lock, and exit after durable `PREPARED` leaves both, blocking any
+   reattempt. Only a reviewed root reconciler may later finalize or
+   repair, without approval replay.
+
+Exact source-only tests now include `test-honartik-universal-installer-native-journal-writer-v1.cjs`
+and updated inspector negative tests. Development Windows Node v22.14.0
+checked the same GitHub blobs: **24 test cases, 9 PASS, 0 FAIL,
+15 Linux-only SKIPPED**; no Linux acceptance or independently signed
+review may be inferred from those figures. The branch-scoped Ubuntu
+workflow includes both sets; a current-SHA run must be confirmed
+before counting the 15 Linux cases as passed.
+
+**Open gates:** root-owned COMMITTED/ROLLED_BACK state transition writer,
+independent Linux fault injection on fixed source HEAD, trusted native
+Host Actions binding/registry, exact installed policy reconciliation,
+cryptographic consumed-once Level-4 receipt and independent code review.
+Root production install remains NO-GO; Honartik Backend/iTicket unchanged.
