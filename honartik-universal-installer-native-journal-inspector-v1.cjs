@@ -17,6 +17,7 @@ const {readTree}=require('./honartik-universal-installer-native-fs-v1.cjs');
 const FENCE='/var/lib/prhm-agent-selfmaint-exec/honartik-universal-installer-l4';
 const JOURNAL='installer-transaction.journal.json';
 const LOCK='installer-transaction.lock';
+const LEASE_SCHEMA='prhm.honartik217.fixed-native-installer-lease.v1';
 const SCHEMA='prhm.honartik217.fixed-native-installer-journal.v1';
 const POLICY='/opt/prhm-company-control-plane/config/approval-policy.json';
 const SHA=/^[a-f0-9]{64}$/;
@@ -159,8 +160,15 @@ function stateFromDisk(opts,id){
   // All ambiguous source-coordinator paths must retain an exclusive lock.
   // Refuse a missing/forged lock; do not infer safe state without it.
   assertLock(path.join(fence,LOCK),owner);
+  const leaseBytes=readSecureFile(path.join(fence,LOCK),owner,{max:8192});
   const bytes=readSecureFile(path.join(fence,JOURNAL),owner);
   const {record,preManifest,preWrapper}=parse(bytes,id,entrypoint,oldExpected,nextExpected);
+  let lease;
+  try{lease=JSON.parse(leaseBytes.toString('utf8'))}catch{fail('lease_json')}
+  need(exactKeys(lease,['schema','lease_id'])&&
+    lease.schema===LEASE_SCHEMA&&lease.lease_id===record.lease_id&&
+    leaseBytes.equals(Buffer.from(JSON.stringify(lease)+'\n')),
+    'lease_record_mismatch');
   const versions=path.join(prefix,'versions');
   const oldDir=path.join(versions,record.old_digest);
   const current=path.join(prefix,'current');
@@ -234,6 +242,6 @@ module.exports=Object.freeze({
   serializeForFixture,
   // Pure byte parser is test-only; it cannot read any paths or mutate files.
   parseJournalFixtureBytes:(bytes,id,old,next)=>parse(bytes,id,'fixture-only',old,next),
-  SCHEMA,JOURNAL,LOCK,
+  SCHEMA,JOURNAL,LOCK,LEASE_SCHEMA,
   ROOT_ACTION_REGISTERED:false,PRODUCTION_APPLY_PRESENT:false
 });
