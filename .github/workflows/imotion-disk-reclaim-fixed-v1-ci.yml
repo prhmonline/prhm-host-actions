@@ -4,6 +4,8 @@ on:
     paths:
       - 'ops/imotion-disk-reclaim-fixed-v1.cjs'
       - 'ops/imotion-disk-reclaim-fixed-v1.test.cjs'
+      - 'ops/imotion-disk-reclaim-registration-readiness-v1.cjs'
+      - 'ops/imotion-disk-reclaim-registration-readiness-v1.test.cjs'
       - '.github/workflows/imotion-disk-reclaim-fixed-v1-ci.yml'
   push:
     branches:
@@ -11,6 +13,8 @@ on:
     paths:
       - 'ops/imotion-disk-reclaim-fixed-v1.cjs'
       - 'ops/imotion-disk-reclaim-fixed-v1.test.cjs'
+      - 'ops/imotion-disk-reclaim-registration-readiness-v1.cjs'
+      - 'ops/imotion-disk-reclaim-registration-readiness-v1.test.cjs'
       - '.github/workflows/imotion-disk-reclaim-fixed-v1-ci.yml'
 permissions:
   contents: read
@@ -26,11 +30,13 @@ jobs:
         run: |
           node --check ops/imotion-disk-reclaim-fixed-v1.cjs
           node --check ops/imotion-disk-reclaim-fixed-v1.test.cjs
+          node --check ops/imotion-disk-reclaim-registration-readiness-v1.cjs
+          node --check ops/imotion-disk-reclaim-registration-readiness-v1.test.cjs
       - name: Unit tests
-        run: node --test ops/imotion-disk-reclaim-fixed-v1.test.cjs
+        run: node --test ops/imotion-disk-reclaim-fixed-v1.test.cjs ops/imotion-disk-reclaim-registration-readiness-v1.test.cjs
       - name: Reject direct shell, host mutation, network and execution surfaces
         run: |
-          if grep -En 'child_process|execSync|spawnSync|unlinkSync|rmSync|writeFile|https?\.request|fetch\(' ops/imotion-disk-reclaim-fixed-v1.cjs; then
+          if grep -En 'child_process|execSync|spawnSync|unlinkSync|rmSync|writeFile|https?\.request|fetch\(' ops/imotion-disk-reclaim-fixed-v1.cjs ops/imotion-disk-reclaim-registration-readiness-v1.cjs; then
             echo 'Forbidden direct shell/file/network API in source candidate'
             exit 1
           fi
