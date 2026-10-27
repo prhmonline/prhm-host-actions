@@ -43,6 +43,7 @@ function serializeForFixture(record){
   // Canonical encoding is specified for the future native journal producer.
   // Export is a nonprivileged test encoder only; it cannot create live records.
   const {record_sha256,...unsigned}=record;
+  need(Object.values(unsigned).every(v=>v!==undefined),'fixture_value_undefined');
   return Buffer.from(canonical({...unsigned,record_sha256:hex(Buffer.from(canonical(unsigned)+'\n'))})+'\n');
 }
 function exactKeys(obj,expected){
