@@ -114,3 +114,57 @@ test('module has no production apply, registration or shell API',()=>{
   assert.equal(native.registerHostAction,undefined);
   assert.equal(native.executeCommand,undefined);
 });
+
+// Issue #217: a COMMITTED durable marker must never trigger rollback.
+test('verified fixture commit survives normal recovery without reverting',()=>{
+  const x=setup();
+  try{
+    native.begin(x.root,x.candidate_digest);
+    native.switchFixture(x.root,x.candidate_digest);
+    assert.equal(native.commitFixture(x.root).state,'COMMITTED');
+    assert.equal(native.recoverFixture(x.root).state,'COMMITTED');
+    assert.equal(native.record(x.root).digest,x.candidate_digest);
+    assert.equal(fs.existsSync(path.join(x.root,'upgrade.lock')),false);
+    assert.equal(fs.existsSync(path.join(x.root,'upgrade.journal')),false);
+  }finally{x.dispose()}
+});
+test('Linux crash after durable COMMITTED marker never rolls back verified candidate',()=>{
+  const x=setup();
+  try{
+    native.begin(x.root,x.candidate_digest);
+    native.switchFixture(x.root,x.candidate_digest);
+    const child=require('node:child_process');
+    const source='require(process.argv[1]).commitFixture(process.argv[2],process.argv[3])';
+    const result=child.spawnSync(process.execPath,['-e',source,
+      path.resolve(__dirname,'honartik-universal-installer-native-fs-v1.cjs'),
+      x.root,'after_commit'],{encoding:'utf8',timeout:10000});
+    assert.equal(result.status,89,result.stderr);
+    assert.equal(native.recoverFixture(x.root).state,'COMMITTED');
+    assert.equal(native.record(x.root).digest,x.candidate_digest);
+  }finally{x.dispose()}
+});
+test('failed journal fsync is indeterminate and retains recovery lock',()=>{
+  const x=setup();
+  const original=fs.fsyncSync;
+  try{
+    fs.fsyncSync=()=>{throw Error('injected-fsync-error')};
+    assert.throws(()=>native.begin(x.root,x.candidate_digest),/injected-fsync-error/);
+  }finally{fs.fsyncSync=original}
+  try{
+    assert.equal(fs.existsSync(path.join(x.root,'upgrade.lock')),true);
+    assert.throws(()=>native.begin(x.root,x.candidate_digest),/exclusive_lock_busy/);
+    assert.equal(native.record(x.root).digest,x.old_digest);
+  }finally{x.dispose()}
+});
+test('corrupt committed postimage blocks recovery and retains lock',()=>{
+  const x=setup();
+  try{
+    native.begin(x.root,x.candidate_digest);
+    native.switchFixture(x.root,x.candidate_digest);
+    native.commitFixture(x.root);
+    fs.appendFileSync(path.join(x.root,'versions',x.candidate_digest,'universal','cli.py'),'tamper');
+    assert.throws(()=>native.recoverFixture(x.root),/installed_content_drift/);
+    assert.equal(fs.existsSync(path.join(x.root,'upgrade.lock')),true);
+    assert.equal(fs.existsSync(path.join(x.root,'upgrade.journal')),true);
+  }finally{x.dispose()}
+});
