@@ -1,0 +1,32 @@
+{
+  "schema": "prhm.imotion.disk-reclaim.source-review.v1",
+  "status": "SOURCE_ONLY_PRODUCTION_NO_GO",
+  "repository": "prhmonline/prhm-host-actions",
+  "project": "imotion_admin_prod",
+  "action": "imotion_disk_reclaim_v1",
+  "source_commit": "913ed54f13dd6338ab83f32191677cde72dd6546",
+  "not_a_registration_manifest": true,
+  "requires_signed_l4_root_bootstrap": true,
+  "files": [
+    {
+      "source_path": "ops/imotion-disk-reclaim-fixed-v1.cjs",
+      "git_blob_sha1": "bc799bc87133281a9e8934bba4a231c35abad2bf",
+      "sha256": "487f85d07032c376bff4b1ce3429de582a4fe8cae7ab38510d4e70f19e018e12"
+    },
+    {
+      "source_path": "ops/imotion-disk-reclaim-fixed-v1.test.cjs",
+      "git_blob_sha1": "e5f73e7fa62cdeb37843cc070a46f7af5076a44a",
+      "sha256": "1397dfdd0be1d4031bef1e466821725dd40ecc88eb30acca679c4a1b8ac481c2"
+    },
+    {
+      "source_path": "ops/imotion-disk-reclaim-registration-readiness-v1.cjs",
+      "git_blob_sha1": "26f0148576c9c7d2101a01917b8cbffb25225478",
+      "sha256": "6f8c5e4cb79653751a6de9cae13609bd23cea083e6459f0dd1d6e5d225facfa1"
+    },
+    {
+      "source_path": "ops/imotion-disk-reclaim-registration-readiness-v1.test.cjs",
+      "git_blob_sha1": "654ea8d2b410024391ba1cdd0200b7153ccd6757",
+      "sha256": "c2ba9d761476ef334094d8d7828afcb1b310e33deb9f0eb1dfe10f12c9adce3b"
+    }
+  ]
+}
