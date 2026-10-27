@@ -54,7 +54,9 @@ function snapshot(root) {
  const wrapper=fs.readFileSync(path.join(root,FILES.wrapper));
  const json=JSON.parse(manifest.toString('utf8'));
  need(json.digest===digest&&wrapper.length>0,'preimage_mismatch');
- return {digest,target,manifest,wrapper};
+ return {digest,target,manifest,wrapper,
+  manifestMode:fs.statSync(path.join(root,FILES.manifest)).mode&0o777,
+  wrapperMode:fs.statSync(path.join(root,FILES.wrapper)).mode&0o777};
 }
 function journalFile(root){return path.join(root,FILES.journal)}
 function getJournal(root){
@@ -65,7 +67,10 @@ function getJournal(root){
  need(v.schema==='prhm.honartik217.fixture-recovery.v1'&&
    v.state==='PREPARED'&&SHA.test(v.old)&&SHA.test(v.next)&&v.old!==v.next&&
    typeof v.manifest_base64==='string'&&typeof v.wrapper_base64==='string'&&
-   SHA.test(v.manifest_sha256)&&SHA.test(v.wrapper_sha256),
+   SHA.test(v.manifest_sha256)&&SHA.test(v.wrapper_sha256)&&
+   Number.isInteger(v.manifest_mode)&&v.manifest_mode>=0o400&&
+   v.manifest_mode<=0o777&&Number.isInteger(v.wrapper_mode)&&
+   v.wrapper_mode>=0o400&&v.wrapper_mode<=0o777,
    'journal_untrusted');
  const manifest=Buffer.from(v.manifest_base64,'base64');
  const wrapper=Buffer.from(v.wrapper_base64,'base64');
@@ -90,7 +95,8 @@ function beginFixture(root,newDigest){
    old:pre.digest,next:newDigest,
    manifest_base64:pre.manifest.toString('base64'),
    wrapper_base64:pre.wrapper.toString('base64'),
-   manifest_sha256:sha(pre.manifest),wrapper_sha256:sha(pre.wrapper)
+   manifest_sha256:sha(pre.manifest),wrapper_sha256:sha(pre.wrapper),
+   manifest_mode:pre.manifestMode,wrapper_mode:pre.wrapperMode
   })+'\n');
   atomicFile(journalFile(root),content);
   fs.fsyncSync(fd);syncDir(root);
@@ -149,11 +155,12 @@ function recoverFixture(root){
  const expected=JSON.parse(manifest.toString('utf8'));
  need(expected.digest===j.old,'journal_manifest_wrong_old');
  changePointer(root,j.old);
- atomicFile(path.join(root,FILES.manifest),manifest);
- atomicFile(path.join(root,FILES.wrapper),wrapper,0o700);
+ atomicFile(path.join(root,FILES.manifest),manifest,j.manifest_mode);
+ atomicFile(path.join(root,FILES.wrapper),wrapper,j.wrapper_mode);
  const back=snapshot(root);
  need(back.digest===j.old&&back.manifest.equals(manifest)&&
-   back.wrapper.equals(wrapper),'rollback_unverified');
+   back.wrapper.equals(wrapper)&&back.manifestMode===j.manifest_mode&&
+   back.wrapperMode===j.wrapper_mode,'rollback_unverified');
  const closed=Buffer.from(JSON.stringify({...j,state:'ROLLED_BACK'})+'\n');
  atomicFile(journalFile(root),closed);fs.unlinkSync(path.join(root,FILES.lock));
  syncDir(root);
