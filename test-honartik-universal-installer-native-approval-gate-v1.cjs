@@ -77,6 +77,27 @@ test('tampered signature is denied',()=>{
  f.token=f.token.slice(0,-1)+(f.token.endsWith('A')?'B':'A');
  assert.throws(()=>G.verifyFixedEvidence(f),/signature_invalid|token_shape/);
 });
+test('canonical Ed25519 signature with a different byte must fail',()=>{
+ const f=fixture();
+ const parts=f.token.split('.');
+ const bytes=Buffer.from(parts[2],'base64url');
+ bytes[0]^=1;
+ parts[2]=bytes.toString('base64url');
+ f.token=parts.join('.');
+ assert.throws(()=>G.verifyFixedEvidence(f),/signature_invalid/);
+});
+test('different base64url pad bits may not alias a signed receipt',()=>{
+ const f=fixture();
+ const parts=f.token.split('.');
+ const abc='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+ const last=parts[2].at(-1),idx=abc.indexOf(last);
+ assert.equal(idx%16,0); // 64-byte Ed25519 -> 2 data bits in last character
+ parts[2]=parts[2].slice(0,-1)+abc[idx+1];
+ const originalBytes=Buffer.from(f.token.split('.')[2],'base64url');
+ assert.deepEqual(Buffer.from(parts[2],'base64url'),originalBytes);
+ f.token=parts.join('.');
+ assert.throws(()=>G.verifyFixedEvidence(f),/token_shape/);
+});
 test('expired signed receipt is denied',()=>{
  assert.throws(()=>G.verifyFixedEvidence(fixture({claims:c=>c.exp=t-1})),
   /scope_policy_expiry_mismatch/);
