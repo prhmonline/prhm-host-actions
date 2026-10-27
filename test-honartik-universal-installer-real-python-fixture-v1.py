@@ -338,6 +338,44 @@ m.commit(root,mod,crash=True)
             OUTER.prepare(self.root, INSTALL, next_sha, old)
 
 
+    def test_durable_outer_recovery_rejects_forged_symlink_lock(self):
+        old = self._install_first()
+        target = INSTALL.bundle_digest(self.two)
+        OUTER.prepare(self.root, INSTALL, old, target)
+        lock = self.root / 'outer.lock'
+        trap = self.root / 'forged-lock'
+        trap.write_text('not a lock')
+        lock.unlink()
+        lock.symlink_to(trap)
+        with self.assertRaisesRegex(RuntimeError, 'unsafe_lock'):
+            OUTER.recover(self.root, INSTALL)
+        self.assertEqual((self.prefix / 'current').resolve().name, old)
+        self.assertTrue((self.root / 'outer.journal').is_file())
+
+    def test_durable_outer_recovery_rejects_pointer_redirect(self):
+        old = self._install_first()
+        target = INSTALL.bundle_digest(self.two)
+        OUTER.prepare(self.root, INSTALL, old, target)
+        pointer = self.prefix / 'current'
+        pointer.unlink()
+        pointer.symlink_to(self.two)
+        with self.assertRaisesRegex(RuntimeError, 'unexpected_pointer'):
+            OUTER.recover(self.root, INSTALL)
+        self.assertTrue((self.root / 'outer.lock').is_file())
+
+    def test_durable_committed_candidate_tamper_rejected(self):
+        old = self._install_first()
+        target = INSTALL.bundle_digest(self.two)
+        OUTER.prepare(self.root, INSTALL, old, target)
+        INSTALL.install_bundle(self.two, self.prefix, target, old)
+        OUTER.commit(self.root, INSTALL)
+        (self.prefix / 'versions' / target / 'universal' / 'cli.py').write_text(
+            'tampered after COMMITTED\n')
+        with self.assertRaisesRegex(RuntimeError, 'bundle_tampered'):
+            OUTER.recover(self.root, INSTALL)
+        self.assertTrue((self.root / 'outer.journal').is_file())
+
+
 
 if __name__ == "__main__":
     unittest.main()
