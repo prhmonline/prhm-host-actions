@@ -163,6 +163,10 @@ async function applyFixedInstallerUpgrade(host){
     // state and preserve recovery on any uncertain result.
     commitAttempted=true;
     if(await h.commitJournal(CONTRACT,journal)!==true)fail('durable_commit_failed');
+    // A successful method return is not proof that the COMMITTED state
+    // reached durable storage. Independently re-read the trusted journal.
+    if(await h.inspectDurableJournalState(CONTRACT,journal)!=='COMMITTED')
+      fail('durable_commit_state_unverified');
     return Object.freeze({ok:true,installer_upgraded:true,
       backend_deployed:false,yii_migrations_executed:false,
       previous_digest:CONTRACT.existing_digest,
