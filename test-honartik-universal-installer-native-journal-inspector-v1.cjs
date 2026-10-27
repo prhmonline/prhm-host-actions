@@ -126,7 +126,9 @@ function fixture(cb){
   fs.symlinkSync(path.join(versions,old),path.join(dir,'current'));
   fs.writeFileSync(path.join(dir,'installation.json'),f.preManifest,{mode:0o600});
   fs.writeFileSync(path.join(dir,'deploy-project'),f.preWrapper,{mode:0o700});
-  fs.writeFileSync(path.join(dir,J.LOCK),'',{mode:0o600,flag:'wx'});
+  fs.writeFileSync(path.join(dir,J.LOCK),JSON.stringify({
+    schema:J.LEASE_SCHEMA,lease_id:lease})+'\n',
+    {mode:0o600,flag:'wx'});
   fs.writeFileSync(path.join(dir,J.JOURNAL),
     J.serializeForFixture(f.record),{mode:0o600});
   return cb({dir,old,next,...f});
@@ -203,5 +205,18 @@ test('Linux fixture: no parent trust broadening or arbitrary source directories'
   fs.chmodSync(dir,0o777);
   assert.throws(()=>J.inspectIsolatedJournalFixture(dir,jid,old,next),
     /fixture_owner/);
+ });
+});
+
+test('Linux fixture: changed lease identity cannot authorize journal readback',
+ {skip:skipLinux},()=>{
+ fixture(({dir,old,next})=>{
+  const file=path.join(dir,J.LOCK);
+  fs.writeFileSync(file,JSON.stringify({
+   schema:J.LEASE_SCHEMA,
+   lease_id:'99999999-8888-4777-8666-555555555555'
+  })+'\n');
+  assert.throws(()=>J.inspectIsolatedJournalFixture(dir,jid,old,next),
+   /lease_record_mismatch/);
  });
 });
