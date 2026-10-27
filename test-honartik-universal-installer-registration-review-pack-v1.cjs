@@ -94,6 +94,9 @@ test('production policy source can NOT be faked with Git-main candidate',()=>{
  assert.throws(()=>P.proposeLivePolicyReview(synthetic),
   /policy_preimage_sha_drift/);
  assert.notEqual(G.PINNED_POLICY_SHA,P.TARGETS.policy.sha256);
+ assert.notEqual(G.PINNED_POLICY_SHA,P.RECONCILED_CANDIDATE_POLICY_SHA);
+ assert.equal(P.RECONCILED_CANDIDATE_POLICY_SHA,
+  '981967b4ce770cd3aa89d27ae98552bbeb3ab31ed116d4e51aef91c0abf68358');
 });
 test('no module CLI, signed token issuer, installation or Production mutator',()=>{
  for(const method of ['apply','install','register','write','issueApproval',
@@ -109,7 +112,16 @@ test('machine-readable package manifest matches reviewed source and live four-SH
  assert.equal(pkg.pinned_source_commit,P.SOURCE_SHA);
  assert.deepEqual(pkg.owner_live_preimages,P.TARGETS);
  assert.deepEqual(pkg.root_artifacts_git_blobs,P.ARTIFACTS);
- assert.equal(pkg.candidate_policy_sha256,null);
+ assert.equal(pkg.candidate_policy_sha256,P.RECONCILED_CANDIDATE_POLICY_SHA);
+ assert.equal(pkg.operator_read_only_reconciliation.status,'PASS');
+ assert.equal(pkg.operator_read_only_reconciliation.operations_before,75);
+ assert.equal(pkg.operator_read_only_reconciliation.operations_after,76);
+ assert.equal(pkg.operator_read_only_reconciliation.scopes_before,52);
+ assert.equal(pkg.operator_read_only_reconciliation.scopes_after,53);
+ assert.equal(pkg.operator_read_only_reconciliation.unrelated_policy_changes,'NONE');
+ assert.equal(pkg.operator_read_only_reconciliation.production_changed,false);
+ assert.equal(pkg.operator_read_only_reconciliation.independently_signed,false);
+ assert.equal(pkg.approval_gate_repin_and_independent_review_required,true);
  assert.equal(pkg.root_of_trust_registration_verified,false);
  assert.equal(pkg.signed_level4_consumed,false);
  assert.equal(pkg.installer_upgrade_executed,false);
