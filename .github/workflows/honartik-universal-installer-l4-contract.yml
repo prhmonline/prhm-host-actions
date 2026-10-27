@@ -24,6 +24,8 @@ on:
       - 'test-honartik-universal-installer-native-recovery-transaction-v1.cjs'
       - 'honartik-universal-installer-native-journal-inspector-v1.cjs'
       - 'test-honartik-universal-installer-native-journal-inspector-v1.cjs'
+      - 'honartik-universal-installer-native-journal-writer-v1.cjs'
+      - 'test-honartik-universal-installer-native-journal-writer-v1.cjs'
       - 'honartik-universal-installer-python-outer-journal-fixture-v1.py'
       - 'test-honartik-universal-installer-real-python-fixture-v1.py'
       - 'manifests/honartik-universal-installer-l4-issue217.json'
@@ -66,6 +68,8 @@ jobs:
           node --check test-honartik-universal-installer-native-recovery-transaction-v1.cjs
           node --check honartik-universal-installer-native-journal-inspector-v1.cjs
           node --check test-honartik-universal-installer-native-journal-inspector-v1.cjs
+          node --check honartik-universal-installer-native-journal-writer-v1.cjs
+          node --check test-honartik-universal-installer-native-journal-writer-v1.cjs
           node --test \
             test-honartik-universal-installer-l4-v1.cjs \
             test-honartik-universal-installer-native-fs-v1.cjs \
@@ -74,7 +78,8 @@ jobs:
             test-honartik-universal-installer-native-approval-gate-v1.cjs \
             test-honartik-universal-installer-native-l4-fence-v1.cjs \
             test-honartik-universal-installer-native-recovery-transaction-v1.cjs \
-            test-honartik-universal-installer-native-journal-inspector-v1.cjs
+            test-honartik-universal-installer-native-journal-inspector-v1.cjs \
+            test-honartik-universal-installer-native-journal-writer-v1.cjs
       - name: Assert no runtime installation authorized
         shell: bash
         run: |
