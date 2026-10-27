@@ -169,5 +169,66 @@ class RealPythonInstallerFixture(unittest.TestCase):
         self._restore_fixture_only(pre)
 
 
+    def _run_actual_install_crash(self, step):
+        import subprocess
+        old = self._install_first()
+        pre = self._preimage()
+        target = INSTALL.bundle_digest(self.two)
+        script = """
+import os
+from pathlib import Path
+import sys
+engine_root = os.environ['PRHM217_TEST_ENGINE_ROOT']
+sys.path.insert(0, engine_root)
+from universal import install as i
+root = Path(sys.argv[1])
+old_sha = sys.argv[2]
+target = i.bundle_digest(root / 'source-two')
+assert os.getuid() != 0
+assert root.parent == Path('/tmp') and root.name.startswith(
+  'prhm-honartik217-python-install-fixture-')
+step = sys.argv[3]
+if step == 'after_pointer':
+    real_replace = i.os.replace
+    def replace_and_die(src,dst):
+        real_replace(src,dst)
+        if Path(dst) == root / 'managed' / 'current':
+            os._exit(91)
+    i.os.replace = replace_and_die
+elif step == 'after_manifest':
+    real_write = i.write_json
+    def write_and_die(path,data):
+        real_write(path,data)
+        os._exit(93)
+    i.write_json = write_and_die
+else:
+    raise RuntimeError('invalid_test_step')
+i.install_bundle(root / 'source-two', root / 'managed', target, old_sha)
+raise RuntimeError('unexpected_install_return')
+"""
+        child = subprocess.run(
+            [sys.executable, "-c", script, str(self.root), old, step],
+            capture_output=True, text=True, timeout=15,
+            env={**os.environ, "PRHM217_TEST_ENGINE_ROOT":
+                 os.environ["PRHM217_TEST_ENGINE_ROOT"]},
+            check=False,
+        )
+        self.assertEqual(child.returncode,
+                         91 if step == "after_pointer" else 93,
+                         child.stderr)
+        self.assertEqual((self.prefix / "current").resolve().name, target)
+        actual_manifest = json.loads(
+            (self.prefix / "installation.json").read_text())
+        self.assertEqual(actual_manifest["digest"],
+                         old if step == "after_pointer" else target)
+        self._restore_fixture_only(pre)
+
+    def test_hard_process_exit_after_real_pointer_write(self):
+        self._run_actual_install_crash("after_pointer")
+
+    def test_hard_process_exit_after_real_manifest_write(self):
+        self._run_actual_install_crash("after_manifest")
+
+
 if __name__ == "__main__":
     unittest.main()
