@@ -159,7 +159,7 @@ function recoverFixture(root){
   const m=JSON.parse(post.manifest.toString('utf8'));
   need(m.previous===j.old&&m.entrypoint==='fixture-only',
     'committed_manifest_drift');
-  need(post.wrapper.toString('utf8')==='#'+'!/bin/sh\\n# fixture-new-wrapper\\n',
+  need(post.wrapper.equals(Buffer.from('#!/bin/sh\n# fixture-new-wrapper\n')),
     'committed_wrapper_drift');
   const lock=path.join(root,FILES.lock);
   if(fs.existsSync(lock)){
