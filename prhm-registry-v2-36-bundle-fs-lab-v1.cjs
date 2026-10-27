@@ -188,7 +188,7 @@ function record(p,kind,index,prev){
 }
 function stageEnvironment(root){
  jail(root);
- const roots=[BASE,'/etc','/etc/systemd','/etc/systemd/system',
+ const roots=['/var','/var/lib',BASE,'/etc','/etc/systemd','/etc/systemd/system',
   '/opt','/opt/prhm-agent-selfmaint-exec','/opt/prhm-agent-selfmaint-exec/actions'];
  for(const abs of roots){
   const dest=mapped(root,abs);
