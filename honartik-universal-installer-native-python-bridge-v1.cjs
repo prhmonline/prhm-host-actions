@@ -9,7 +9,7 @@
  * registration, signed Linux provenance, L4 permit and root recovery are
  * prerequisites to using this in Production.
  */
-const fs=require('node:fs'),path=require('node:path');
+const fs=require('node:fs'),path=require('node:path'),os=require('node:os');
 const cp=require('node:child_process');
 const {CONTRACT:C}=require('./honartik-universal-installer-l4-v1.cjs');
 const {readTree}=require('./honartik-universal-installer-native-fs-v1.cjs');
@@ -141,6 +141,68 @@ function verifyPostimage(){
   'post_manifest_invalid');
  rootRead(path.join(PREFIX,'deploy-project'),131072);
 }
+/**
+ * Durable execute-once admission BEFORE Python is started.
+ * An existing marker (even empty after crash) means RECOVER, NEVER RETRY.
+ * The initial Approval Center consumed ledger/fence alone does not prevent a
+ * second Python process from being spawned with that *same* receipt.
+ */
+const ATTEMPT='python-attempt-started.json';
+function fsyncDirectory(dir){
+ const fd=fs.openSync(dir,fs.constants.O_RDONLY|
+  fs.constants.O_DIRECTORY|fs.constants.O_NOFOLLOW);
+ try{fs.fsyncSync(fd)}finally{fs.closeSync(fd)}
+}
+function reserveAttempt(dir,owner,j,crash=null){
+ need(j&&UUID.test(j.journal_id||'')&&UUID.test(j.request_id||'')&&
+  UUID.test(j.approval_id||'')&&j.state==='PREPARED'&&
+  j.old_digest===OLD&&j.next_digest===NEW,
+  'execution_attempt_identity_invalid');
+ const st=fs.lstatSync(dir);
+ need(st.isDirectory()&&!st.isSymbolicLink()&&st.uid===owner&&
+  (st.mode&0o777)===0o700,'execution_fence_directory_untrusted');
+ const file=path.join(dir,ATTEMPT);
+ let fd;
+ try{
+  fd=fs.openSync(file,fs.constants.O_WRONLY|fs.constants.O_CREAT|
+   fs.constants.O_EXCL|fs.constants.O_NOFOLLOW,0o600);
+ }catch(err){
+  if(err?.code==='EEXIST')fail('execution_already_attempted_recovery_required');
+  throw err;
+ }
+ try{
+  const now=fs.fstatSync(fd);
+  need(now.isFile()&&now.uid===owner&&now.nlink===1&&
+   (now.mode&0o777)===0o600,'execution_marker_untrusted');
+  // Abrupt exit after O_EXCL but before bytes => permanent burned marker.
+  if(crash==='after_exclusive_create')process.exit(111);
+  const data=Buffer.from(JSON.stringify({
+   schema:'prhm.honartik217.fixed-python-attempt.v1',
+   action:C.action,request_id:j.request_id,approval_id:j.approval_id,
+   journal_id:j.journal_id,old_digest:OLD,new_digest:NEW,
+   state:'started_once_recovery_only'
+  })+'\n');
+  need(fs.writeSync(fd,data,0,data.length)===data.length,
+   'execution_marker_short_write');
+  fs.fsyncSync(fd);
+ }finally{fs.closeSync(fd)}
+ fsyncDirectory(dir);
+ if(crash==='after_durable_marker')process.exit(112);
+ return Object.freeze({attempt_reserved:true,approval_reusable:false,
+  recovery_only_on_failure:true});
+}
+function reserveFixedPythonAttempt(j){
+ need(process.getuid?.()===0,'root_required');
+ trustedParents(path.join(FENCE,ATTEMPT));
+ return reserveAttempt(FENCE,0,j);
+}
+function reserveIsolatedPythonAttemptFixture(dir,j,crash=null){
+ need(process.getuid?.()!==0,'fixture_nonroot_required');
+ need(typeof dir==='string'&&path.dirname(dir)===os.tmpdir()&&
+  path.basename(dir).startsWith('prhm-honartik217-python-attempt-fixture-'),
+  'fixture_scope_denied');
+ return reserveAttempt(dir,process.getuid(),j,crash);
+}
 function installViaFixedTrustedPython(journalId,requestId,rootSealedTokenLoader){
  need(process.getuid?.()===0,'root_required');
  need(typeof rootSealedTokenLoader==='function',
@@ -148,6 +210,9 @@ function installViaFixedTrustedPython(journalId,requestId,rootSealedTokenLoader)
  const j=approvalAndJournal(journalId,requestId,rootSealedTokenLoader);
  verifyPreimage(j);
  verifyInterpreter();
+ // Must persist O_EXCL execute-once intent before calling real Python.
+ // Any failure after this line burns the L4 and requires native recovery.
+ reserveFixedPythonAttempt(j);
  const run=cp.spawnSync(PYTHON,['-I','-c',fixedPythonCode()],{
   cwd:'/',shell:false,encoding:'utf8',timeout:120000,maxBuffer:262144,
   env:{PATH:'/usr/sbin:/usr/bin:/bin',LANG:'C',LC_ALL:'C',
@@ -189,7 +254,7 @@ function makeFixedCoordinatorPythonTransaction(rootSealedTokenLoader){
 }
 module.exports=Object.freeze({
  fixedPythonCode,installViaFixedTrustedPython,
- makeFixedCoordinatorPythonTransaction,
+ makeFixedCoordinatorPythonTransaction,reserveIsolatedPythonAttemptFixture,
  ROOT_ACTION_REGISTERED:false,PRODUCTION_INSTALL_AUTHORIZED:false,
  INDEPENDENT_SIGNED_LINUX_PROVENANCE_REQUIRED:true
 });
