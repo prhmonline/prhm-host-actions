@@ -1,0 +1,54 @@
+{
+  "schema": "prhm.honartik217.native-registration-review-package.v1",
+  "action": "honartik_universal_installer_upgrade_v1",
+  "contract_operation": "host_action.honartik_universal_installer_upgrade_v1",
+  "git_repository": "prhmonline/prhm-host-actions",
+  "pinned_source_commit": "08e1e9bd212331c68fb3b0255fd9aafa25e9f73f",
+  "owner_live_preimages": {
+    "base": {
+      "path": "/opt/prhm-agent-selfmaint/server.js",
+      "sha256": "4c29d01a248d59ee85754dfa5a59e8132fe22e6b34ef04324228c16c88727406"
+    },
+    "executor": {
+      "path": "/opt/prhm-agent-selfmaint-exec/server.js",
+      "sha256": "410406ba0965ef3a5cad6da6306a85335e38acc3637fb6ed60fa42200a10c2e0"
+    },
+    "mcp": {
+      "path": "/home/agent/ssh-mcp-server/src/plugins/hostActionsV2.js",
+      "sha256": "bd768f992dab75710558e3f47187c311c2ee5b5ec6f5751a74e0bbfa64729166"
+    },
+    "policy": {
+      "path": "/opt/prhm-company-control-plane/config/approval-policy.json",
+      "sha256": "148fe2a724befc15cd8c731b0195d83e254d39215792a5084b70dd5b5c178174"
+    }
+  },
+  "root_artifacts_git_blobs": {
+    "honartik-universal-installer-l4-v1.cjs": "d9d25684f6480eb8bdbb4c097e0ffc3645e9c559",
+    "honartik-universal-installer-l4-approval-verify-v1.cjs": "280cb91673c074f6abba6e82dc861ac0c0cf9a30",
+    "honartik-universal-installer-native-approval-gate-v1.cjs": "1f2c2231952d5e175f0a2f1b32b817e631edccc6",
+    "honartik-universal-installer-native-fs-v1.cjs": "9678e8d45e32c6989808ef7d7d2419f3426a1d0d",
+    "honartik-universal-installer-native-journal-inspector-v1.cjs": "439380a7f382298f7c2a8a14cdf2142c0ad7f965",
+    "honartik-universal-installer-native-journal-writer-v1.cjs": "a80f65b23a69d5f76af91797c4e2cc83ab6bf9c1",
+    "honartik-universal-installer-native-l4-fence-v1.cjs": "9c3f1279fe0697affd774be35551d2c81a6912cd",
+    "honartik-universal-installer-native-python-bridge-v1.cjs": "608bfcf07ac06c50081730b5f4863f0f2fc3f27c",
+    "honartik-universal-installer-native-reconciler-v1.cjs": "9f471dff187e6305fde4d6f7f69920ea2bd4f124",
+    "honartik-universal-installer-native-root-preflight-v1.cjs": "7a92e3d4f6c30aaca5d4d0b5794eccd5e83c9084",
+    "honartik-universal-installer-native-root-receipt-v1.cjs": "e41724ad50267249bc91637d20e0da44a4fb2d32",
+    "honartik-universal-installer-native-terminal-archive-v1.cjs": "7de2333ba52c25d9432e3d3e93edd00a5fb53816"
+  },
+  "python_engine_prefix": "/usr/local/libexec/deploy-control/universal",
+  "python_interpreter": "/opt/prhm/universal-python/bin/python3",
+  "current_installer_sha256": "47e248686971fd373fd32ebe50f593deae6e98e0196ae7e7021508ecabb3c181",
+  "new_installer_sha256": "8680011e11ad8eae89707b74492e60354c4b7e56799b205d3da581e92806a552",
+  "policy_version_before": "2026-10-02.1-control-plane-current-owner-bootstrap-repair-v1",
+  "policy_version_proposed": "2026-10-27.1-honartik-universal-installer-exact-l4-review",
+  "candidate_policy_sha256": null,
+  "candidate_policy_requires_exact_live_bytes": true,
+  "terminal_journal_lease_retirement_authorized": false,
+  "independent_security_approval_verified": false,
+  "native_linux_signed_e2e_verified": false,
+  "root_of_trust_registration_verified": false,
+  "signed_level4_consumed": false,
+  "installer_upgrade_executed": false,
+  "honartik_backend_deployed": false
+}
