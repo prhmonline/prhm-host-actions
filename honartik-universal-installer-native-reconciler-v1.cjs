@@ -137,6 +137,8 @@ function terminalRecord(ctx,id,kind,record,preM,preW,crash=null){
   need(readTree(ptr).digest===ctx.next,'commit_bundle_drift');
   const m=checkedRead(path.join(ctx.prefix,'installation.json'),ctx.uid,131072);
   const w=checkedRead(path.join(ctx.prefix,'deploy-project'),ctx.uid,131072);
+  need(w.subarray(0,10).toString('utf8')==='#!/bin/sh\n',
+   'commit_wrapper_layout_invalid');
   let p;try{p=JSON.parse(m.toString('utf8'))}catch{fail('commit_manifest_json')}
   need(p.digest===ctx.next&&p.previous===ctx.old&&
    p.entrypoint===ctx.entrypoint,'commit_manifest_drift');
