@@ -22,6 +22,9 @@ jobs:
         run: |
           set -euo pipefail
           node --check prhm-action-registry-gateway-v1.cjs
+          node --check prhm-registry-v2-bootstrap-authorization-boundary-v1.cjs
+          node --check test-prhm-registry-v2-bootstrap-authorization-boundary-v1.cjs
+          node --test test-prhm-registry-v2-bootstrap-authorization-boundary-v1.cjs
           node --check test-prhm-action-registry-gateway-v1.cjs
           node --check prhm-action-registry-host-actions-v2-bridge-v1.cjs
           node --check prhm-action-registry-v2-five-field-approval-gate-v1.cjs
