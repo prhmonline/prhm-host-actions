@@ -59,6 +59,14 @@ def verified_engine():
 
 INSTALL = verified_engine()
 
+# Fixture-only durable outer journal: never loaded as a production adapter.
+import importlib.util
+OUTER_FILE = Path(__file__).with_name(
+    'honartik-universal-installer-python-outer-journal-fixture-v1.py')
+OUTER_SPEC = importlib.util.spec_from_file_location('honartik217_outer_fixture', OUTER_FILE)
+OUTER = importlib.util.module_from_spec(OUTER_SPEC)
+OUTER_SPEC.loader.exec_module(OUTER)
+
 
 class RealPythonInstallerFixture(unittest.TestCase):
     def setUp(self):
@@ -228,6 +236,107 @@ raise RuntimeError('unexpected_install_return')
 
     def test_hard_process_exit_after_real_manifest_write(self):
         self._run_actual_install_crash("after_manifest")
+
+    def test_durable_outer_journal_restores_actual_python_manifest_failure(self):
+        old = self._install_first()
+        before = self._preimage()
+        desired = INSTALL.bundle_digest(self.two)
+        OUTER.prepare(self.root, INSTALL, old, desired)
+        with mock.patch.object(INSTALL, "write_json",
+                               side_effect=OSError("injected_outer_manifest_failure")):
+            with self.assertRaisesRegex(OSError, "injected_outer_manifest_failure"):
+                INSTALL.install_bundle(self.two, self.prefix, desired, old)
+        recovered = OUTER.recover(self.root, INSTALL)
+        self.assertTrue(recovered["exact_bytes_restored"])
+        self.assertEqual((self.prefix / "current").resolve(), before["pointer"])
+        self.assertEqual((self.prefix / "installation.json").read_bytes(), before["manifest"])
+        self.assertEqual((self.prefix / "deploy-project").read_bytes(), before["wrapper"])
+        self.assertFalse((self.root / "outer.lock").exists())
+        self.assertEqual(OUTER.recover(self.root, INSTALL)["already_recovered"], True)
+
+    def _durable_outer_actual_python_crash(self, at):
+        import subprocess
+        old = self._install_first()
+        before = self._preimage()
+        target = INSTALL.bundle_digest(self.two)
+        OUTER.prepare(self.root, INSTALL, old, target)
+        source = """
+import os
+from pathlib import Path
+import sys
+assert os.getuid()!=0
+root=Path(sys.argv[1])
+assert root.parent==Path('/tmp') and root.name.startswith(
+ 'prhm-honartik217-python-install-fixture-')
+sys.path.insert(0,os.environ['PRHM217_TEST_ENGINE_ROOT'])
+from universal import install as mod
+original_replace=mod.os.replace
+if sys.argv[3]=='pointer':
+ def kill_pointer(src,dst):
+  original_replace(src,dst)
+  if Path(dst)==root/'managed'/'current':os._exit(91)
+ mod.os.replace=kill_pointer
+elif sys.argv[3]=='manifest':
+ real_write=mod.write_json
+ def kill_manifest(path,data):
+  real_write(path,data);os._exit(93)
+ mod.write_json=kill_manifest
+else:raise RuntimeError('bad_injection')
+mod.install_bundle(root/'source-two',root/'managed',mod.bundle_digest(root/'source-two'),sys.argv[2])
+"""
+        child = subprocess.run([sys.executable, "-c", source, str(self.root), old, at],
+                              capture_output=True, text=True, timeout=15,
+                              env=os.environ.copy(), check=False)
+        self.assertEqual(child.returncode, 91 if at == "pointer" else 93,
+                         child.stderr)
+        self.assertTrue((self.root / "outer.lock").is_file())
+        restored = OUTER.recover(self.root, INSTALL)
+        self.assertTrue(restored["rolled_back"])
+        self.assertEqual((self.prefix / "current").resolve(), before["pointer"])
+        self.assertEqual((self.prefix / "installation.json").read_bytes(), before["manifest"])
+        self.assertEqual((self.prefix / "deploy-project").read_bytes(), before["wrapper"])
+
+    def test_durable_outer_journal_hard_exit_after_real_pointer_write(self):
+        self._durable_outer_actual_python_crash("pointer")
+
+    def test_durable_outer_journal_hard_exit_after_real_manifest_write(self):
+        self._durable_outer_actual_python_crash("manifest")
+
+    def test_durable_outer_journal_crash_after_commit_keeps_real_candidate(self):
+        import subprocess
+        old = self._install_first()
+        next_sha = INSTALL.bundle_digest(self.two)
+        OUTER.prepare(self.root, INSTALL, old, next_sha)
+        INSTALL.install_bundle(self.two, self.prefix, next_sha, old)
+        source = """
+import importlib.util
+import os
+from pathlib import Path
+import sys
+assert os.getuid()!=0
+root=Path(sys.argv[1])
+assert root.parent==Path('/tmp') and root.name.startswith(
+ 'prhm-honartik217-python-install-fixture-')
+sys.path.insert(0,os.environ['PRHM217_TEST_ENGINE_ROOT'])
+from universal import install as mod
+s=importlib.util.spec_from_file_location('honartik217_outer_fixture',sys.argv[2])
+m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
+m.commit(root,mod,crash=True)
+"""
+        child = subprocess.run([sys.executable, "-c", source, str(self.root),
+                                str(OUTER_FILE)], capture_output=True, text=True,
+                               timeout=15, env=os.environ.copy(), check=False)
+        self.assertEqual(child.returncode, 94, child.stderr)
+        self.assertTrue((self.root / "outer.lock").is_file())
+        recovered = OUTER.recover(self.root, INSTALL)
+        self.assertTrue(recovered["committed"])
+        self.assertFalse(recovered["rolled_back"])
+        self.assertEqual((self.prefix / "current").resolve().name, next_sha)
+        self.assertFalse((self.root / "outer.lock").exists())
+        self.assertTrue((self.root / "outer.journal").exists())
+        with self.assertRaisesRegex(RuntimeError, "prior_journal"):
+            OUTER.prepare(self.root, INSTALL, next_sha, old)
+
 
 
 if __name__ == "__main__":
