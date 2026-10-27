@@ -52,6 +52,7 @@ function harness({fault='',mutatePre=null,mutateCandidate=null,mutateTests=null,
       calls.push('install');crash('install');state.installed=C.candidate_digest;return true;},
     attestInstalledPostimage:async()=>{
       calls.push('post');crash('post');
+      if(fault==='restore'||fault==='verifyRollback')throw Error('INJECTED_rollback_entry');
       return {installed_digest:state.installed,actual_bundle_digest:state.installed,
         previous_digest:C.existing_digest,manifest_digest:state.installed,
         registry_digest:C.registry_digest,cli_validation:true,
