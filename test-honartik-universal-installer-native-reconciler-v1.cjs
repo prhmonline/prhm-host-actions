@@ -77,6 +77,11 @@ test('no root registration, CLI, generic arbitrary shell, or automatic journal r
  assert.equal(R.exec,undefined);
  assert.equal(R.reconcileFixedRootJournal.length,2);
 });
+test('trusted recovery capability factory cannot be called by nonroot',()=>{
+ assert.equal(R.makeFixedCoordinatorRecoveryCapabilities.length,0);
+ if(process.getuid?.()!==0)
+  assert.throws(()=>R.makeFixedCoordinatorRecoveryCapabilities(),/root_required/);
+});
 test('nonroot never enters real Production reconciliation',()=>{
  if(process.getuid?.()!==0)
   assert.throws(()=>R.reconcileFixedRootJournal('11111111-2222-4333-8444-555555555555','rollback'),
