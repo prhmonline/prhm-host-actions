@@ -210,6 +210,10 @@ function prepareIsolatedJournalFixture(root,next,crash=null){
   ownedDirectory(root,owner);
   const link=fs.realpathSync(path.join(root,'current'));
   const old=path.basename(link);
+  // Require the pointer to remain inside this exact pinned versions dir
+  // BEFORE turning its basename into an installer digest.
+  need(path.dirname(link)===path.join(root,'versions')&&SHA.test(old),
+    'preimage_pointer_drift');
   return prepare({fence:root,prefix:root,owner,old,next,
     entrypoint:'fixture-only',verifyNext:true,crash});
 }
