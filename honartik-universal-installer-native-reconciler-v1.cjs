@@ -227,8 +227,46 @@ function reconcileIsolatedFixture(root,id,old,next,operation,crash=null){
  return reconcile({uid:process.getuid(),fence:root,prefix:root,old,next,
   entrypoint:'fixture-only'},id,operation,crash);
 }
+/**
+ * Exact native-coordinator capability binding. The existing trusted Host
+ * Actions owner can inject these methods into its fixed adapter AFTER
+ * independent review + trusted installation. They cannot be requested as a
+ * separate Host Action, and no Root-of-Trust ownership is claimed here.
+ */
+function makeFixedCoordinatorRecoveryCapabilities(){
+ need(process.getuid?.()===0,'root_required');
+ function validate(contract,journal){
+  need(contract===C&&journal&&UUID.test(journal.id||''),
+   'coordinator_contract_or_id_invalid');
+  return journal.id;
+ }
+ return Object.freeze({
+  commitJournal:async(contract,journal)=>{
+   const id=validate(contract,journal);
+   const r=reconcileFixedRootJournal(id,'commit');
+   return r.ok===true&&r.state==='COMMITTED'&&r.lease_retained===true;
+  },
+  inspectDurableJournalState:async(contract,journal)=>{
+   const id=validate(contract,journal);
+   return I.inspectFixedNativeJournalState(id);
+  },
+  restoreExactJournal:async(contract,journal)=>{
+   const id=validate(contract,journal);
+   const state=I.inspectFixedNativeJournalState(id);
+   if(state==='ROLLED_BACK')return true; // verify, NEVER restore twice
+   need(state==='PREPARED','coordinator_never_rollback_committed');
+   const r=reconcileFixedRootJournal(id,'rollback');
+   return r.ok===true&&r.state==='ROLLED_BACK'&&r.lease_retained===true;
+  },
+  attestExactRollback:async(contract,journal)=>{
+   const id=validate(contract,journal);
+   return I.inspectFixedNativeJournalState(id)==='ROLLED_BACK';
+  }
+ });
+}
 module.exports=Object.freeze({
  reconcileFixedRootJournal,reconcileIsolatedFixture,
+ makeFixedCoordinatorRecoveryCapabilities,
  ROOT_ACTION_REGISTERED:false,PRODUCTION_EXECUTION_AUTHORIZED:false,
  TERMINAL_ARCHIVAL_IMPLEMENTED:false
 });
