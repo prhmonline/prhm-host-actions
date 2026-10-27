@@ -217,8 +217,97 @@ function prepareIsolatedJournalFixture(root,next,crash=null){
   return prepare({fence:root,prefix:root,owner,old,next,
     entrypoint:'fixture-only',verifyNext:true,crash});
 }
+
+// A *consumed* signed L4 request must be made part of the existing durable
+// PREPARED journal before any installer pointer/manifest/wrapper mutation.
+// The installed Approval Center must consume the token first. This module
+// neither issues tokens nor registers a Host Action / install executor.
+function bindApprovedJournal({fence,prefix,owner,id,old,next,proof,
+  readback,crash=null}){
+  need(UUID.test(id)&&SHA.test(old)&&SHA.test(next)&&old!==next,
+    'binding_identity_invalid');
+  need(proof&&proof.ok===true&&proof.action===CONTRACT.action&&
+    UUID.test(proof.request_id||'')&&UUID.test(proof.approval_id||'')&&
+    proof.policy_sha256===PINNED_POLICY_SHA&&
+    proof.arguments_sha256===ARGUMENTS_SHA&&
+    proof.durable_one_time_fence===true&&
+    proof.installer_upgraded===false,'signed_fence_binding_invalid');
+  need(readback()==='PREPARED','binding_journal_not_prepared');
+  const file=path.join(fence,I.JOURNAL);
+  const source=readOwnedFile(file,owner,[0o600],512000);
+  const stat=fs.lstatSync(file);
+  let r;
+  try{r=JSON.parse(source.bytes.toString('utf8'))}
+  catch{fail('binding_journal_invalid_json')}
+  need(r.schema===I.SCHEMA&&r.action===CONTRACT.action&&
+    r.old_digest===old&&r.next_digest===next&&r.journal_id===id&&
+    r.state==='PREPARED'&&r.request_id===null&&r.approval_id===null&&
+    r.policy_sha256===PINNED_POLICY_SHA&&
+    r.arguments_sha256===ARGUMENTS_SHA,'binding_journal_drift');
+  // One-time approval fence has already been persisted O_EXCL and fsynced.
+  // If we crash here it stays burned; NEVER retry the same authorization.
+  if(crash==='after_fence')process.exit(97);
+  const updated=I.serializeForFixture({...r,
+    request_id:proof.request_id,approval_id:proof.approval_id});
+  const tmp=path.join(fence,'.honartik217-bind-'+crypto.randomUUID());
+  const fd=fs.openSync(tmp,fs.constants.O_WRONLY|fs.constants.O_CREAT|
+    fs.constants.O_EXCL|fs.constants.O_NOFOLLOW,0o600);
+  try{
+    need(fs.writeSync(fd,updated,0,updated.length)===updated.length,
+      'binding_short_write');
+    fs.fsyncSync(fd);
+  }finally{fs.closeSync(fd)}
+  // This is safe only under the existing root-owned exclusive lease; the
+  // independent inspector validated that lease immediately before readback.
+  const current=fs.lstatSync(file);
+  need(current.dev===stat.dev&&current.ino===stat.ino&&
+    current.uid===owner&&current.nlink===1,'binding_concurrent_change');
+  fs.renameSync(tmp,file);syncDir(fence);
+  if(crash==='after_journal')process.exit(98);
+  need(readback()==='PREPARED','bound_journal_readback_invalid');
+  const after=readOwnedFile(file,owner,[0o600],512000);
+  let j;
+  try{j=JSON.parse(after.bytes.toString('utf8'))}
+  catch{fail('bound_journal_json_invalid')}
+  need(j.request_id===proof.request_id&&
+    j.approval_id===proof.approval_id,'bound_journal_receipt_mismatch');
+  return Object.freeze({ok:true,state:'PREPARED',journal_id:id,
+    request_id:j.request_id,approval_id:j.approval_id,
+    signed_consumed_once:true,installer_upgraded:false});
+}
+function bindFixedRootSignedApproval({journalId,requestId,rootSealedTokenLoader}){
+  need(typeof process.getuid==='function'&&process.getuid()===0,
+    'binding_root_required');
+  need(UUID.test(journalId||'')&&UUID.test(requestId||''),
+    'binding_request_invalid');
+  const readback=()=>I.inspectFixedNativeJournalState(journalId);
+  need(readback()==='PREPARED','binding_preflight_failed');
+  const {reserveFixedApprovalFence}=
+    require('./honartik-universal-installer-native-l4-fence-v1.cjs');
+  // This invokes the independent Ed25519 and consumed-ledger proof reader.
+  // The returned proof is root-owned, one-time-fenced and fixed scoped.
+  const proof=reserveFixedApprovalFence(requestId,rootSealedTokenLoader);
+  return bindApprovedJournal({
+    fence:FENCE,prefix:CONTRACT.installer_prefix,owner:0,
+    id:journalId,old:CONTRACT.existing_digest,
+    next:CONTRACT.candidate_digest,proof,readback
+  });
+}
+// The synthetic fixture uses the same durable journal updater but cannot be
+// used as an issuer, validator, or authorizer on Production.
+function bindIsolatedApprovalFixture(root,id,old,next,proof,crash=null){
+  need(typeof process.getuid==='function'&&process.getuid()!==0,
+    'fixture_must_be_nonroot');
+  need(typeof root==='string'&&path.dirname(root)===os.tmpdir()&&
+    path.basename(root).startsWith('prhm-honartik217-journal-inspect-fixture-'),
+    'fixture_path_denied');
+  return bindApprovedJournal({fence:root,prefix:root,owner:process.getuid(),
+    id,old,next,proof,
+    readback:()=>I.inspectIsolatedJournalFixture(root,id,old,next),crash});
+}
 module.exports=Object.freeze({
  prepareFixedRootJournal,prepareIsolatedJournalFixture,
+ bindFixedRootSignedApproval,bindIsolatedApprovalFixture,
  ROOT_ACTION_REGISTERED:false,INSTALLER_MUTATION_EXPORTED:false,
- LIVE_APPROVAL_CONSUMPTION:false
+ LIVE_APPROVAL_ISSUANCE:false
 });
