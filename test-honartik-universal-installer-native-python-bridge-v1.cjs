@@ -39,6 +39,15 @@ test('Linux: unregistered bridge refuses nonroot without calling Python',()=>{
    ()=>{throw Error('should_not_call');}),/root_required/);
  }
 });
+test('coordinator bridge only builds a trusted root-owned capability',()=>{
+ assert.equal(m.makeFixedCoordinatorPythonTransaction.length,1);
+ if(process.getuid?.()!==0){
+  assert.throws(()=>m.makeFixedCoordinatorPythonTransaction(()=>{}),
+   /root_required/);
+ }
+ assert.equal(m.ROOT_ACTION_REGISTERED,false);
+ assert.equal(m.PRODUCTION_INSTALL_AUTHORIZED,false);
+});
 test('Python code is unchanged and cannot accept runtime source arguments',()=>{
  assert.equal(m.fixedPythonCode.length,0);
  const a=m.fixedPythonCode(),b=m.fixedPythonCode();
