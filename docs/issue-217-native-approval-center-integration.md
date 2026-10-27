@@ -135,3 +135,35 @@ after COMMITTED, commit returning false after COMMITTED, inspection failure
 or unknown state (all retain the fence), root inspector capability required,
 and legitimate still-PREPARED rollback. This is NOT a signed independent
 Linux native-root test or a Production adapter validation.
+
+
+## Additional failure gate: journal prepare lost ACK (2026-10-27)
+The coordinator previously released its exclusive installer lease if
+`createDurableRecoveryJournal` threw before returning a journal handle.
+This is unsafe when the root journal has already been fsynced but the
+caller never received the handle. A second installer transaction must
+not start while the root writer's durable outcome remains unknown.
+
+The source-only coordinator now records `journalPrepareAttempted`
+**before** invoking the trusted native writer. If it rejects or throws
+without supplying a validated journal handle, the coordinator:
+- retains the exclusive root-owned lease and all evidence;
+- does **not** issue or consume Level-4 approval;
+- does **not** call installer, rollback with an unknown handle, or
+  release the recovery fence;
+- returns `JOURNAL_PREPARE_OUTCOME_UNCERTAIN_manual_reconciliation_required`.
+
+The native root executor must provide a separate trusted recovery
+procedure to inspect the root-owned on-disk journal, determine whether
+it is ABSENT/PREPARED/COMMITTED, safely finalize or revert only as
+appropriate, and durably audit reconciliation **before** releasing
+the lease or permitting another approval to be consumed. A caller's
+unverified journal status or an absent response is never sufficient.
+
+Current Windows Node v22.14.0 developer fixture:
+`node --test test-honartik-universal-installer-l4-v1.cjs` yielded
+**18/18 PASS**, 0 FAIL, including new before/after-fsync lost-ACK
+negative tests. These are source-only simulated host capabilities;
+the actual privileged executor has not been installed or tested,
+and no independent Linux source-head attestation exists. Production
+remains NO-GO.
