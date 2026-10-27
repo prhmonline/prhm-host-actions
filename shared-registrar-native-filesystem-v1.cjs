@@ -160,7 +160,7 @@ function restoreFromJournal(txnDir,expectedTargets){
  if(errors.length)fail('rollback_incomplete:'+errors.join('|'));
  return {status:'ROLLED_BACK',changed:true};
 }
-async function executeCore(plan,{workRoot,postInstall,onRenamed}={}){
+async function executeCore(plan,{workRoot,postInstall,postRollback,onRenamed}={}){
  checkPlan(plan);
  if(typeof postInstall!=='function')fail('health_callback_required');
  safeWorkRoot(workRoot);
@@ -203,6 +203,8 @@ async function executeCore(plan,{workRoot,postInstall,onRenamed}={}){
   if(j.status==='INSTALLING'){
    try{
     restoreFromJournal(dir,plan.steps.map(x=>x.path));
+    if(typeof postRollback==='function' && await postRollback()!==true)
+      fail('rollback_health_unverified');
    }catch(rbErr){throw Error(String(error.message)+':'+String(rbErr.message))}
   }
   throw error;
