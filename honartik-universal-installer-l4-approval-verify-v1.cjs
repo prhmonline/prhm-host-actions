@@ -27,13 +27,12 @@ function decodeJws(token,keyBytes){
    head=JSON.parse(Buffer.from(parts[0],'base64url').toString('utf8'));
    payload=JSON.parse(Buffer.from(parts[1],'base64url').toString('utf8'));
    signature=Buffer.from(parts[2],'base64url');
-   // JWS compact serialization is canonical, unpadded base64url.
-   // A changed final character can otherwise decode to identical bytes
-   // because unused trailing pad bits are ignored by Buffer.from().
-   if(parts.some((encoded,i)=>Buffer.from(encoded,'base64url')
-      .toString('base64url')!==encoded))FAIL('token_shape');
    key=crypto.createPublicKey(keyBytes);
  }catch{FAIL('token_decode')}
+ // Check canonical compact serialization outside the decode try/catch so a
+ // malformed signature is explicitly rejected as token_shape.
+ if(parts.some(encoded=>Buffer.from(encoded,'base64url')
+      .toString('base64url')!==encoded))FAIL('token_shape');
  const kid=HASH(key.export({format:'der',type:'spki'})).slice(0,16);
  if(!EXACT(head,['alg','typ','kid'])||
   head.alg!=='EdDSA'||head.typ!=='PRHM-COMPANY-APPROVAL'||head.kid!==kid||
