@@ -7,6 +7,8 @@ on:
       - 'test-honartik-universal-installer-l4-v1.cjs'
       - 'honartik-universal-installer-native-fs-v1.cjs'
       - 'test-honartik-universal-installer-native-fs-v1.cjs'
+      - 'honartik-universal-installer-native-root-receipt-v1.cjs'
+      - 'test-honartik-universal-installer-native-root-receipt-v1.cjs'
       - 'honartik-universal-installer-l4-approval-verify-v1.cjs'
       - 'test-honartik-universal-installer-l4-approval-verify-v1.cjs'
       - 'manifests/honartik-universal-installer-l4-issue217.json'
@@ -32,9 +34,11 @@ jobs:
           node --check test-honartik-universal-installer-l4-v1.cjs
           node --check honartik-universal-installer-native-fs-v1.cjs
           node --check test-honartik-universal-installer-native-fs-v1.cjs
+          node --check honartik-universal-installer-native-root-receipt-v1.cjs
+          node --check test-honartik-universal-installer-native-root-receipt-v1.cjs
           node --check honartik-universal-installer-l4-approval-verify-v1.cjs
           node --check test-honartik-universal-installer-l4-approval-verify-v1.cjs
-          node --test test-honartik-universal-installer-l4-v1.cjs test-honartik-universal-installer-native-fs-v1.cjs test-honartik-universal-installer-l4-approval-verify-v1.cjs
+          node --test test-honartik-universal-installer-l4-v1.cjs test-honartik-universal-installer-native-fs-v1.cjs test-honartik-universal-installer-l4-approval-verify-v1.cjs test-honartik-universal-installer-native-root-receipt-v1.cjs
       - name: Assert no runtime installation authorized
         shell: bash
         run: |

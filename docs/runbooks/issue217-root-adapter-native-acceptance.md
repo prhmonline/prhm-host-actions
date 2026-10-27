@@ -1,6 +1,8 @@
 # Issue 217 — Native Root Adapter implementation and acceptance contract
 
-**Status:** implementation specification only; not installed, not a security approval, not production executable. Keep PR #218 in Draft until all gates below are proven.
+**Status:** read-only native receipt preflight source exists, but root adapter registration, one-time authoritative consumption and transaction wiring are NOT implemented or installed. It is not a security approval or a production executable. Keep PR #218 in Draft until all gates below are proven.
+
+The source-only `honartik-universal-installer-native-root-receipt-v1.cjs` is pinned to the exact Git candidate Policy SHA256 `82334369202b31418e33b44c0ed53e1d4b3ea58acc7e37835b13b60c6ba239cb`, checks every ancestor for root ownership, denies symlinks and writable paths, reads only the fixed public key, live policy and authoritative consumed receipt ledger, and delegates JWS verification to the existing Ed25519 verifier. It reports `installer_authorized=false` and does not register, consume or execute anything. On the **current live policy** it must fail closed due to the known live-to-candidate SHA drift. Root-owned executor integration, SHA-bound canonical request construction and independent signed end-to-end evidence remain outstanding.
 
 ## Trust boundaries
 - Only an independently reviewed root-owned Host Actions registry may expose `honartik_universal_installer_upgrade_v1`. The caller supplies no shell, path, SHA, project, receipt or recovery override.
