@@ -8,7 +8,8 @@ function harness({fault='',mutatePre=null,mutateCandidate=null,mutateTests=null,
   mutateReceipt=null,mutatePost=null}={}){
   const calls=[];
   const state={installed:C.existing_digest,dbWrites:0,apacheWrites:0,appDeploys:0,
-    audits:[],rollbacks:0,releases:0,consumes:0,locked:false,journalReady:false};
+    audits:[],rollbacks:0,releases:0,consumes:0,locked:false,journalReady:false,
+    journalState:'ABSENT'};
   let backup=null;
   function crash(where){if(fault===where)throw new Error('INJECTED_'+where)}
   const pre=()=>({
@@ -44,7 +45,7 @@ function harness({fault='',mutatePre=null,mutateCandidate=null,mutateTests=null,
     attestImmutableCandidate:async()=>{calls.push('candidate');crash('candidate');return candidate()},
     attestIndependentLinuxTests:async()=>{calls.push('linux');crash('linux');return linux()},
     createDurableRecoveryJournal:async()=>{
-      calls.push('journal');crash('journal');backup=state.installed;state.journalReady=true;
+      calls.push('journal');crash('journal');backup=state.installed;state.journalReady=true;state.journalState='PREPARED';
       return {id:'journal-fixture-01'};},
     attestJournalRecoverable:async()=>{calls.push('recoverable');crash('recoverable');return true},
     consumeSignedOneTimeL4Approval:async()=>{calls.push('approval');crash('approval');state.consumes++;return receipt()},
@@ -61,11 +62,29 @@ function harness({fault='',mutatePre=null,mutateCandidate=null,mutateTests=null,
         live_database_untouched:true,yii_migrations_executed:false,
         application_deployed:false,journal_durable:true,...(mutatePost||{})};
     },
-    commitJournal:async()=>{calls.push('commit');crash('commit');return true;},
+    commitJournal:async()=>{
+      calls.push('commit');
+      // Faults injected AFTER the durable COMMITTED marker are ambiguous to
+      // the coordinator. It must not undo an actually committed cutover.
+      if(['commitAfterDurable','commitFalseAfterDurable','commitUnknown',
+        'commitInspectThrows'].includes(fault)){
+        state.journalState=fault==='commitUnknown'?'UNKNOWN':
+          fault==='commitInspectThrows'?'PREPARED':'COMMITTED';
+        if(fault==='commitFalseAfterDurable')return false;
+        throw Error('INJECTED_'+fault);
+      }
+      crash('commit');
+      state.journalState='COMMITTED';return true;
+    },
+    inspectDurableJournalState:async()=>{
+      calls.push('inspect-commit');
+      if(fault==='commitInspectThrows')throw Error('INJECTED_inspection_failed');
+      return state.journalState;
+    },
     restoreExactJournal:async()=>{
       calls.push('restore');state.rollbacks++;
       if(fault==='restore')return false;
-      state.installed=backup;return true;},
+      state.installed=backup;state.journalState='ROLLED_BACK';return true;},
     attestExactRollback:async()=>{
       calls.push('verifyRollback');
       return fault!=='verifyRollback'&&state.installed===C.existing_digest;},
@@ -194,4 +213,46 @@ test('approval receiver cannot add unreviewed capabilities or token/paths',async
  const h=harness({mutateReceipt:{untrusted_cli:'echo bypass'}});
  await assert.rejects(m.applyFixedInstallerUpgrade(h.adapter),/denied_or_rolled_back/);
  assert.equal(h.calls.includes('install'),false);
+});
+
+test('commit response lost after durable COMMITTED marker never causes rollback',async()=>{
+ for(const fault of ['commitAfterDurable','commitFalseAfterDurable']){
+  const h=harness({fault});
+  await assert.rejects(m.applyFixedInstallerUpgrade(h.adapter),
+   /COMMIT_OUTCOME_UNCERTAIN_manual_reconciliation_required/,fault);
+  assert.equal(h.state.journalState,'COMMITTED',fault);
+  assert.equal(h.state.installed,C.candidate_digest,fault);
+  assert.equal(h.state.rollbacks,0,fault);
+  assert.equal(h.state.releases,0,fault);
+  assert.equal(h.state.locked,true,fault);
+  assert.ok(h.calls.includes('inspect-commit'),fault);
+  assert.equal(h.calls.includes('restore'),false,fault);
+ }
+});
+test('unknown durable state or failed inspection hard-stop with lock retained',async()=>{
+ for(const fault of ['commitUnknown','commitInspectThrows']){
+  const h=harness({fault});
+  await assert.rejects(m.applyFixedInstallerUpgrade(h.adapter),
+   /COMMIT_OUTCOME_UNCERTAIN_manual_reconciliation_required/,fault);
+  assert.equal(h.state.rollbacks,0,fault);
+  assert.equal(h.state.releases,0,fault);
+  assert.equal(h.state.locked,true,fault);
+  assert.equal(h.calls.includes('restore'),false,fault);
+ }
+});
+test('an evidenced PREPARED commit failure may restore exact preimage',async()=>{
+ const h=harness({fault:'commit'});
+ await assert.rejects(m.applyFixedInstallerUpgrade(h.adapter),
+   /denied_or_rolled_back/);
+ assert.equal(h.state.installed,C.existing_digest);
+ assert.equal(h.state.rollbacks,1);
+ assert.equal(h.state.releases,1);
+ assert.equal(h.state.locked,false);
+ assert.ok(h.calls.indexOf('inspect-commit')<h.calls.indexOf('restore'));
+});
+test('root contract requires a durable journal inspector',async()=>{
+ const h=harness();delete h.adapter.inspectDurableJournalState;
+ await assert.rejects(m.applyFixedInstallerUpgrade(h.adapter),
+   /trusted_host_adapter_missing/);
+ assert.deepEqual(h.calls,[]);
 });
