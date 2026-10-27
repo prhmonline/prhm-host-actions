@@ -160,13 +160,23 @@ function restoreFromJournal(txnDir,expectedTargets){
  if(errors.length)fail('rollback_incomplete:'+errors.join('|'));
  return {status:'ROLLED_BACK',changed:true};
 }
+function assertNoPendingTransactions(workRoot){
+ const names=fs.readdirSync(workRoot);
+ for(const name of names){
+  if(!name.startsWith('txn-'))continue;
+  const journal=validateJournal(path.join(workRoot,name));
+  if(!['COMMITTED','ROLLED_BACK'].includes(journal.status))
+   fail('pending_transaction_requires_recovery:'+name);
+ }
+}
 async function executeCore(plan,{workRoot,postInstall,postRollback,onRenamed}={}){
  checkPlan(plan);
- if(typeof postInstall!=='function')fail('health_callback_required');
+ if(typeof postInstall!=='function'||typeof postRollback!=='function')fail('health_callback_required');
  safeWorkRoot(workRoot);
  const active=lock(workRoot);
  let dir=null,pre=null;
  try{
+  assertNoPendingTransactions(workRoot);
   pre=verifyPreimage(plan.steps);
   dir=fs.mkdtempSync(path.join(workRoot,'txn-'));
   fs.chmodSync(dir,0o700);fsyncDir(workRoot);
@@ -203,8 +213,13 @@ async function executeCore(plan,{workRoot,postInstall,postRollback,onRenamed}={}
   if(j.status==='INSTALLING'){
    try{
     restoreFromJournal(dir,plan.steps.map(x=>x.path));
-    if(typeof postRollback==='function' && await postRollback()!==true)
+    if(await postRollback()!==true){
+      const failed=validateJournal(dir);
+      failed.status='ROLLBACK_FAILED';
+      failed.rollbackErrors=['POST_ROLLBACK_SERVICE_HEALTH'];
+      writeJournal(dir,failed);
       fail('rollback_health_unverified');
+    }
    }catch(rbErr){throw Error(String(error.message)+':'+String(rbErr.message))}
   }
   throw error;
@@ -214,7 +229,8 @@ async function executeCore(plan,{workRoot,postInstall,postRollback,onRenamed}={}
   if(fs.existsSync(active))unlock(active);
  }
 }
-function recoverAfterCrash({workRoot,transaction,expectedTargets}={}){
+async function recoverAfterCrash({workRoot,transaction,expectedTargets,postRollback}={}){
+ if(typeof postRollback!=='function')fail('recovery_health_callback_required');
  safeWorkRoot(workRoot);
  if(typeof transaction!=='string'||path.dirname(transaction)!==workRoot||
    !path.basename(transaction).startsWith('txn-'))fail('recovery_path_invalid');
@@ -227,11 +243,20 @@ function recoverAfterCrash({workRoot,transaction,expectedTargets}={}){
   fs.unlinkSync(active);fsyncDir(workRoot);
  }
  const newLock=lock(workRoot);
- try{return restoreFromJournal(transaction,expectedTargets)}
- finally{unlock(newLock)}
+ try{
+  const result=restoreFromJournal(transaction,expectedTargets);
+  if(result.status==='ROLLED_BACK' && await postRollback()!==true){
+   const journal=validateJournal(transaction);
+   journal.status='ROLLBACK_FAILED';
+   journal.rollbackErrors=['POST_CRASH_SERVICE_HEALTH'];
+   writeJournal(transaction,journal);
+   fail('recovery_service_health_unverified');
+  }
+  return result;
+ }finally{unlock(newLock)}
 }
 module.exports=Object.freeze({KEYS,HASH,checkPlan,verifyPreimage,
-  executeCore,recoverAfterCrash,restoreFromJournal});
+  executeCore,recoverAfterCrash,restoreFromJournal,assertNoPendingTransactions});
 // Deliberately no CLI entrypoint: the live Host Action must supply the
 // separately authenticated, one-time Ed25519 consumed authorization.
 if(require.main===module){process.stderr.write('No standalone apply. Trusted Root-of-Trust dispatcher required.\n');process.exitCode=64}
