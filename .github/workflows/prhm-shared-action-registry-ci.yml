@@ -23,6 +23,9 @@ jobs:
           set -euo pipefail
           node --check prhm-action-registry-gateway-v1.cjs
           node --check prhm-registry-v2-bootstrap-authorization-boundary-v1.cjs
+          node --check prhm-registry-v2-bootstrap-consumed-l4-v1.cjs
+          node --check test-prhm-registry-v2-bootstrap-consumed-l4-v1.cjs
+          node --test test-prhm-registry-v2-bootstrap-consumed-l4-v1.cjs
           node --check test-prhm-registry-v2-bootstrap-authorization-boundary-v1.cjs
           node --test test-prhm-registry-v2-bootstrap-authorization-boundary-v1.cjs
           node --check test-prhm-action-registry-gateway-v1.cjs
