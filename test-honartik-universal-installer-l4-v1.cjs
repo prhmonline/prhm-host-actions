@@ -8,7 +8,8 @@ function harness({fault='',mutatePre=null,mutateCandidate=null,mutateTests=null,
   mutateReceipt=null,mutatePost=null}={}){
   const calls=[];
   const state={installed:C.existing_digest,dbWrites:0,apacheWrites:0,appDeploys:0,
-    audits:[],rollbacks:0,releases:0,consumes:0,locked:false,journalReady:false};
+    audits:[],rollbacks:0,releases:0,consumes:0,locked:false,journalReady:false,
+    committed:false};
   let backup=null;
   function crash(where){if(fault===where)throw new Error('INJECTED_'+where)}
   const pre=()=>({
@@ -61,7 +62,14 @@ function harness({fault='',mutatePre=null,mutateCandidate=null,mutateTests=null,
         live_database_untouched:true,yii_migrations_executed:false,
         application_deployed:false,journal_durable:true,...(mutatePost||{})};
     },
-    commitJournal:async()=>{calls.push('commit');crash('commit');return true;},
+    commitJournal:async()=>{
+      calls.push('commit');
+      if(fault==='commit_ack_lost'){
+        state.committed=true;
+        throw Error('INJECTED_ack_lost_after_commit');
+      }
+      crash('commit');state.committed=true;return true;
+    },
     restoreExactJournal:async()=>{
       calls.push('restore');state.rollbacks++;
       if(fault==='restore')return false;
@@ -151,12 +159,37 @@ test('unverified, replayed, expired and wrong-SHA approvals fail without install
  }
 });
 test('mutation and postinstall failures restore exact preimage after journal',async()=>{
- for(const f of ['install','post','commit','audit:precommit_verified']){
+ for(const f of ['install','post','audit:precommit_verified']){
   const h=harness({fault:f});
   await assert.rejects(m.applyFixedInstallerUpgrade(h.adapter),/denied_or_rolled_back/,f);
   assert.equal(h.state.installed,C.existing_digest,f);
   assert.equal(h.state.rollbacks,1,f);assert.equal(h.state.releases,1,f);
   assert.ok(h.state.audits.includes('rollback_verified'),f);
+ }
+});
+
+test('ambiguous journal write or recovery attestation retains lock and does not consume L4',async()=>{
+ for(const fault of ['journal','recoverable']){
+  const h=harness({fault});
+  await assert.rejects(m.applyFixedInstallerUpgrade(h.adapter),
+    /JOURNAL_INDETERMINATE_manual_recovery_required/,fault);
+  assert.equal(h.state.locked,true,fault);
+  assert.equal(h.state.releases,0,fault);
+  assert.equal(h.state.rollbacks,0,fault);
+  assert.equal(h.state.consumes,0,fault);
+  assert.equal(h.calls.includes('install'),false,fault);
+ }
+});
+test('commit error or lost acknowledgement never rolls back an uncertain commit',async()=>{
+ for(const fault of ['commit','commit_ack_lost']){
+  const h=harness({fault});
+  await assert.rejects(m.applyFixedInstallerUpgrade(h.adapter),
+    /COMMIT_INDETERMINATE_manual_recovery_required/,fault);
+  assert.equal(h.state.locked,true,fault);
+  assert.equal(h.state.releases,0,fault);
+  assert.equal(h.state.rollbacks,0,fault);
+  assert.equal(h.state.installed,C.candidate_digest,fault);
+  assert.equal(h.state.committed,fault==='commit_ack_lost',fault);
  }
 });
 test('candidate runtime does not silently modify Apache, DB, Yii or the backend release',async()=>{
@@ -183,7 +216,7 @@ test('rollback failure is hard-stopped and retains recovery lock',async()=>{
  }
 });
 test('preflight errors before journal require no rollback or approval',async()=>{
- for(const f of ['pre','candidate','linux','journal']){
+ for(const f of ['pre','candidate','linux']){
   const h=harness({fault:f});
   await assert.rejects(m.applyFixedInstallerUpgrade(h.adapter),/denied_or_rolled_back/);
   assert.equal(h.state.consumes,0);assert.equal(h.state.rollbacks,0);
