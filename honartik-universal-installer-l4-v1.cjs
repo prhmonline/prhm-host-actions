@@ -201,9 +201,12 @@ async function applyFixedInstallerUpgrade(host){
     if(!rollbackVerified)fail('ROLLBACK_UNVERIFIED_manual_recovery_required');
     fail('denied_or_rolled_back');
   }finally{
-    // On unverified recovery the root executor MUST keep the lock/journal
-    // owned by recovery service: never release a potentially unsafe cutover.
-    if(lease&&rollbackVerified){
+    // The durable inspector requires the same lease for COMMITTED and
+    // ROLLED_BACK records. Keep that lease after ANY journal attempt.
+    // Only a separately reviewed native reconciler may durably archive
+    // terminal evidence and retire the lease after verifying its UUID.
+    // A clean preflight denial (no journal attempt) may release immediately.
+    if(lease&&rollbackVerified&&!journalPrepareAttempted){
       if(await h.releaseInstallerLock(CONTRACT,lease)!==true)
         fail('release_lock_failed_manual_inspection_required');
     }
