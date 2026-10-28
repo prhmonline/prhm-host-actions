@@ -108,6 +108,6 @@ test('source change fails closed when consent boundary or original request dispa
  assert.throws(()=>P.previewIsolatedSyntheticFixture(b),/ambiguous_executor_authorize_consume/);
  const c=sample();c.executor=c.executor.replace(
  "const result=await applyHostActionV2(action);",
- "const result=await applyHostActionV2(action);const result2=await applyHostActionV2(action);");
+ "const result=await applyHostActionV2(action);\nconst result=await applyHostActionV2(action);");
  assert.throws(()=>P.previewIsolatedSyntheticFixture(c),/ambiguous_executor_v2_apply_call/);
 });
