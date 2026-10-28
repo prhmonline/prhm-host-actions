@@ -152,31 +152,38 @@ function restart(unit){
   {timeout:40000,maxBuffer:8192,stdio:['ignore','pipe','pipe']});
  if(!serviceState(unit))fail('restart_not_healthy:'+unit);
 }
-function discover(expectedAction,project){
+async function discover(expectedAction,project,sourceCommit){
  if(typeof expectedAction!=='string'||!/^([a-z][a-z0-9_]{5,100})$/.test(expectedAction)||
     !Object.prototype.hasOwnProperty.call(PROJECTS,project))
    fail('discovery_binding_invalid');
+ fixedRef(sourceCommit);
  const st=fs.lstatSync(DISCOVERY_PROBE);
- if(!st.isFile()||st.isSymbolicLink()||st.uid!==0||
+ if(!st.isFile()||st.isSymbolicLink()||st.uid!==0||st.gid!==0||
     fs.realpathSync(DISCOVERY_PROBE)!==DISCOVERY_PROBE||
     (st.mode&0o022)!==0)fail('discovery_probe_untrusted');
- // Fixed provider-reviewed interface: no caller-supplied command/env/URL.
+ // Bind executable probe itself to the exact immutable source commit:
+ // no unreviewed root-owned helper can silently replace the review artifact.
+ const trusted=fs.readFileSync(DISCOVERY_PROBE);
+ const fromGit=fixedSource({repo:REPO_ID,commit:sourceCommit,
+   path:'shared-registrar-mcp-discovery-probe-v1.cjs'});
+ if(sha(trusted)!==sha(fromGit))fail('discovery_probe_source_commit_drift');
  const probe=require(DISCOVERY_PROBE);
  if(typeof probe.verify!=='function')fail('discovery_probe_interface_missing');
- if(probe.verify({action:expectedAction,project})!==true)
+ if(await probe.verify({action:expectedAction,project})!==true)
    fail('mcp_tool_not_discovered');
  return true;
 }
-async function verifyLive({services,action,project,rolledBack}){
+async function verifyLive({services,action,project,rolledBack,sourceCommit}){
  rootReady();
  checkedServices(services);
+ fixedRef(sourceCommit);
  // Policy must be reloaded on both install and rollback before consumers.
  restart(POLICY_SERVICE);
  for(const unit of services)restart(unit);
  if(!services.every(serviceState))fail('four_services_unhealthy');
  // On rollback the old registry may not contain the NEW action; the probe
  // must validate the fixed legacy host_action_v2_status tool instead.
- return discover(rolledBack?'host_action_v2_status':action,project);
+ return discover(rolledBack?'host_action_v2_status':action,project,sourceCommit);
 }
 function createTrustedHooks(){
  rootReady();
