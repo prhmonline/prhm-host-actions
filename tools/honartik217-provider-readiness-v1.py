@@ -86,7 +86,7 @@ def run_host():
     print('SOURCE_HEAD_REFERENCE=' + PINNED_SOURCE_HEAD)
     for name, filename, expected, mode in EXPECTED:
         try:
-            actual, st, contents = safe_read(filename, 2 * 1024 * 1024)
+            actual, st, contents = safe_read(filename, 131072 if name == 'policy' else 2 * 1024 * 1024)
             ok = actual == expected and st.st_uid == 0 and st.st_gid == 0 and (
                 stat.S_IMODE(st.st_mode) == mode)
             if name == 'policy':
