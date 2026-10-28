@@ -56,6 +56,7 @@ on:
       - 'test-honartik-universal-installer-owner-bootstrap-crash-child-v1.cjs'
       - 'honartik-universal-installer-owner-bootstrap-plan-review-v1.cjs'
       - 'test-honartik-universal-installer-owner-bootstrap-plan-review-v1.cjs'
+      - 'test-honartik-universal-installer-owner-bootstrap-systemd-vm-v1.cjs'
       - 'tools/honartik217-provider-readiness-v1.py'
       - 'docs/runbooks/honartik-provider-root-bootstrap-acceptance-v1.md'
       - '.github/workflows/honartik-universal-installer-l4-contract.yml'
@@ -163,3 +164,23 @@ jobs:
           assert.equal(op.CONTRACT.candidate_digest,m.candidate_digest);
           console.log('CONTRACT_TESTS_ONLY=PASS HOST_INSTALL=NOT_AUTHORIZED');
           NODE
+
+  isolated-real-systemd-vm-rollback:
+    # Disposable GitHub-hosted Ubuntu VM. No Provider access or production secrets.
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Real systemd isolated four-owner commit, restart failure, crash recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check test-honartik-universal-installer-owner-bootstrap-systemd-vm-v1.cjs
+          test "${GITHUB_ACTIONS:-}" = "true"
+          test "${RUNNER_ENVIRONMENT:-}" = "github-hosted"
+          test -S /run/systemd/private
+          NODE_EXE="$(command -v node)"
+          sudo --preserve-env=GITHUB_ACTIONS,RUNNER_ENVIRONMENT,GITHUB_WORKSPACE \
+            "$NODE_EXE" test-honartik-universal-installer-owner-bootstrap-systemd-vm-v1.cjs
