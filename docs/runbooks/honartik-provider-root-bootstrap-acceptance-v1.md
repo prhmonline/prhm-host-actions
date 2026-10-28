@@ -40,6 +40,20 @@ python3 tools/honartik217-provider-readiness-v1.py --host-readonly
 
 The operator must first check that the script bytes came from the approved exact SHA and never pipe unreviewed network content to shell/root. `--host-readonly` does not issue/consume Level-4 approval, stage files or run an installer.
 
+## Real isolated systemd Linux VM evidence — 2026-10-28
+
+The separately-scoped GitHub-hosted Ubuntu **VM** exercised the four-owner transaction core against two actual **synthetic** systemd service units. Successful job:
+[GitHub Actions run 40678086431](https://github.com/prhmonline/prhm-host-actions/actions/runs/40678086431), `isolated-real-systemd-vm-rollback`.
+
+The test `test-honartik-universal-installer-owner-bootstrap-systemd-vm-v1.cjs` requires a root process **inside a disposable GitHub-hosted VM**, writes only synthetic fixture owner files/assets below its new `/tmp/prhm-honartik217-vm-*` root and transient fixture-only units in `/run/systemd/system`, and cleans up afterward. It does not accept arbitrary target paths. Scenarios asserted:
+
+1. Four-owner + new asset atomic transaction followed by two actual systemd service restarts: durable `COMMITTED`.
+2. Forced candidate service startup failure: rollback exact original four-owner bytes/modes and remove the created asset; restart and confirm both services active; durable `ROLLED_BACK`.
+3. Independent child killed with `SIGKILL` after two owner renames: separate-process journal recovery, asset absent and both restored services active; durable `ROLLED_BACK`.
+4. Independent child killed with `SIGKILL` after asset rename: restore original four owners, remove created asset, and restart healthy services; durable `ROLLED_BACK`.
+
+**Strict scope limit:** this tests real systemd behavior on *synthetic service units* in an isolated GitHub VM. It is **not** a proof of trust-chain verification, Ed25519 approval, the authentic Provider Root entrypoint, exact 14 production root asset registration, or rollback of the real production service set. Those remain NO-GO until separately implemented, independently reviewed and attested in an authorized Provider-controlled VM and Production.
+
 ## Independent security review gate — mandatory
 
 The reviewer must be independent of the source author and confirm the **exact candidate commit**. If reviewing outside GitHub, retain a signed review attestation with subject SHA, reviewed artifact SHA-256 digests, signer identity, timestamp, critical findings/disposition and explicit `APPROVED` or `REJECTED`. An operator's chat confirmation, GitHub merge and green CI do **not** replace independent review.
