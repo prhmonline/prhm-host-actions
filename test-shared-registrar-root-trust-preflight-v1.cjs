@@ -2,6 +2,7 @@
 const test=require('node:test');
 const assert=require('node:assert/strict');
 const m=require('./shared-registrar-root-trust-preflight-v1.cjs');
+const gateway=require('./prhm-action-registry-gateway-v1.cjs');
 
 function baseline(){
  return {
@@ -39,6 +40,12 @@ test('policy proposal adds exactly one L4 operation/scope without mutating live'
  assert.equal(output.requiresReviewedRootAdapter,true);
  assert.equal(output.requiresNativeSingleUseL4,true);
  assert.equal(output.requiresAtomicBackupRollback,true);
+});
+test('candidate policy and Ed25519 verifier require the same exact version',()=>{
+ assert.equal(m.VERSION,gateway.POLICY_VERSION);
+ const candidate=m.buildPolicyCandidate(baseline()).candidatePolicy;
+ assert.equal(candidate.version,gateway.POLICY_VERSION);
+ assert.equal(candidate.operations[m.OPERATION].policy_version,gateway.POLICY_VERSION);
 });
 test('policy change fails closed when guard or registry has drifted',()=>{
  const altered=[
