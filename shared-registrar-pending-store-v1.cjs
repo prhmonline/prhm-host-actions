@@ -81,7 +81,12 @@ function createCore(directory,uid){
  assertDir(directory,uid);
  const pend=path.join(directory,'pending');
  const claims=path.join(directory,'claimed');
- assertDir(pend,uid);assertDir(claims,uid);
+ function verifyStateDirs(){
+  assertDir(directory,uid);
+  assertDir(pend,uid);
+  assertDir(claims,uid);
+ }
+ verifyStateDirs();
  const file=id=>{
   if(!UUID.test(id||''))fail('request_id_invalid');
   return path.join(pend,id+'.json');
@@ -91,7 +96,7 @@ function createCore(directory,uid){
   return path.join(claims,id+'.json');
  };
  function readPending(id){
-  assertDir(pend,uid);assertDir(claims,uid);
+  verifyStateDirs();
   const stored=readSecureFile(file(id),uid,8192);
   if(fs.existsSync(claimFile(id)))fail('already_claimed');
   let record;
@@ -102,7 +107,7 @@ function createCore(directory,uid){
   return record;
  }
  function writePendingExclusive(record){
-  assertDir(pend,uid);assertDir(claims,uid);
+  verifyStateDirs();
   validate(record);
   if(fs.existsSync(claimFile(record.request_id)))fail('already_claimed');
   const payload=Buffer.from(JSON.stringify(record)+'\n');
@@ -110,7 +115,7 @@ function createCore(directory,uid){
   return true;
  }
  function claimPendingAtomically(record){
-  assertDir(pend,uid);assertDir(claims,uid);
+  verifyStateDirs();
   validate(record);
   const id=record.request_id;
   // Exclusive claim is persistent. No cleanup/retry through public apply,
