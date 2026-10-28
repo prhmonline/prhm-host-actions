@@ -152,7 +152,10 @@ function attestRelease({manifestBytes, expectedManifestSha, sourceCommit, manife
 const fs=require('node:fs'),path=require('node:path');
 const APPROVAL_PUBLIC_KEY='/var/lib/prhm-company-approval/ed25519-public.pem';
 const APPROVAL_CONSUMED_DIR='/var/lib/prhm-company-approval/consumed';
-const POLICY_VERSION='2026-10-13.3-prhm-shared-action-registry-v1';
+// Exact registrar-bootstrap policy version. Never accept an old or fallback
+// version: this must match the independently reviewed policy installed via
+// the trusted Root-of-Trust transaction before any signed L4 receipt is valid.
+const POLICY_VERSION='2026-10-27.2-shared-registrar-bootstrap-proposal';
 function decodeJws(token,publicKey){
   exactly(typeof token==='string'&&token.length>=120&&token.length<=16384,'signed_token_missing');
   const parts=token.split('.');
