@@ -147,6 +147,17 @@ test('expired, wrong project or unconsumed L4 receipt cannot register',()=>{
  assert.throws(()=>g.verifyConsumedRegistrationApproval({...valid,args:{...args,project:'moeinshow'}}),/signed_l4_binding/);
  assert.throws(()=>g.verifyConsumedRegistrationApproval({...valid,ledger:{...valid.ledger,consumer:'unconsumed'}}),/consumption_ledger_invalid/);
 });
+test('registrar bootstrap rejects the previous signed policy version fail-closed',()=>{
+ const args={action:g.ACTION,project:'pbcinema',source_commit:'a'.repeat(40),
+   manifest_commit:'b'.repeat(40),manifest_sha256:'1'.repeat(64)};
+ assert.equal(g.POLICY_VERSION,'2026-10-27.2-shared-registrar-bootstrap-proposal');
+ const stale=signedFixture(args,{policy_version:'2026-10-13.3-prhm-shared-action-registry-v1'});
+ assert.throws(()=>g.verifyConsumedRegistrationApproval(stale),
+   /signed_l4_binding_expiry_or_policy_mismatch/);
+ const bound=signedFixture(args);
+ assert.equal(g.verifyConsumedRegistrationApproval(bound).request_id,
+   bound.ledger.request_id);
+});
 test('preinstall does not circularly require a tool it has not registered yet',()=>{
  const r=g.readiness({phase:'preinstall',release:release('honartik','honartik_config_center_readonly_enroll_v1'),
   registrarInstalled:true,approvalRouteInstalled:true,rollbackReady:true,
