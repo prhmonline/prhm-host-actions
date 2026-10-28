@@ -184,3 +184,45 @@ binary, independently executed service/reboot rollback proof or APPROVED review.
 The tested candidate is not enough to permit issuance or consumption of a
 Production L4 receipt. The current live Approval Center policy still lacks
 `host_action.prhm_action_registry_install_v1` and its typed scope.
+
+## Native pending-state core and single-use claim (source-only, 2026-10-28)
+
+`shared-registrar-pending-store-v1.cjs` is a **fixed-path, root-owned
+state-store candidate** now bound directly by
+`shared-registrar-native-dispatcher-v1.cjs`. It is NOT an installed state
+directory, native host action, signer or bootstrap. The production constructor
+requires effective UID 0 and the exact:
+`/var/lib/prhm-agent-selfmaint-exec/registrar-pending-v1`.
+
+The separately approved provider-console bootstrap must **provision**
+`registrar-pending-v1/pending` and `registrar-pending-v1/claimed` with
+root ownership, mode `0700`, a non-group/world-writable root-owned parent,
+no symlink ancestors, and no generic user-writable ACL. The candidate does
+not create or chmod these Production directories itself.
+
+- Pending records are bound, strictly shaped, and written with
+  `O_CREAT|O_EXCL|O_NOFOLLOW`, mode `0600`, file and directory `fsync`.
+  No signed JWS, private key, credential, approval token or external command
+  is persisted; an existing request ID cannot be overwritten.
+- The executor loads the exact pending record, rejects a claimed ID, then
+  uses an exclusive, durable `claimed/<request_id>.json` marker before
+  contacting Approval Center. The marker persists in all failures.
+  Approval consumption cannot proceed if the claim fails.
+- The pending record is re-attested after claiming. Missing files, mutable
+  contents, wrong owner/mode, symlinks, duplicate claims, corrupted state or
+  out-of-window requests cause fail-closed errors. Restarting the process
+  cannot turn a previously claimed request back into pending.
+- Disposable Linux tests verify persistence, duplicate IDs, mutation,
+  symlink rejection, unsafe directory metadata and `SIGKILL` after
+  durable claim. The `openDisposableTestStore` factory is limited to
+  isolated `/tmp/registrar-ci-*` fixtures and is NOT wired to Host Actions.
+- The only remaining application integration authority is in the existing
+  root-owned executor's verified callbacks for **real** Approval Center
+  request/confirm/consume, approved Git owner-byte generation, service reload,
+  health verification and journal recovery. No arbitrary user callback may
+  reach these capabilities.
+
+Independent review still must validate the complete original four owner-file
+patch, root console provenance, actual auth/issuer/consumed-ledger semantics,
+concurrent claim under the real systemd security settings, service health
+and verified rollback. Source CI is not authority to deploy.
