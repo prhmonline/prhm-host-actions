@@ -3,7 +3,7 @@
   "action": "honartik_universal_installer_upgrade_v1",
   "contract_operation": "host_action.honartik_universal_installer_upgrade_v1",
   "git_repository": "prhmonline/prhm-host-actions",
-  "pinned_source_commit": "08e1e9bd212331c68fb3b0255fd9aafa25e9f73f",
+  "pinned_source_commit": "b6ade9ecf82ff21db00b3fc93b60ac5613651d2d",
   "owner_live_preimages": {
     "base": {
       "path": "/opt/prhm-agent-selfmaint/server.js",
@@ -25,7 +25,7 @@
   "root_artifacts_git_blobs": {
     "honartik-universal-installer-l4-v1.cjs": "d9d25684f6480eb8bdbb4c097e0ffc3645e9c559",
     "honartik-universal-installer-l4-approval-verify-v1.cjs": "280cb91673c074f6abba6e82dc861ac0c0cf9a30",
-    "honartik-universal-installer-native-approval-gate-v1.cjs": "1f2c2231952d5e175f0a2f1b32b817e631edccc6",
+    "honartik-universal-installer-native-approval-gate-v1.cjs": "227bc7fdf891bf67ddae1944936d30a72c7e10d5",
     "honartik-universal-installer-native-fs-v1.cjs": "9678e8d45e32c6989808ef7d7d2419f3426a1d0d",
     "honartik-universal-installer-native-journal-inspector-v1.cjs": "439380a7f382298f7c2a8a14cdf2142c0ad7f965",
     "honartik-universal-installer-native-journal-writer-v1.cjs": "a80f65b23a69d5f76af91797c4e2cc83ab6bf9c1",
@@ -65,5 +65,7 @@
     "independently_signed": false,
     "candidate_bytes_copied_to_git": false
   },
-  "approval_gate_repin_and_independent_review_required": true
+  "approval_gate_repin_and_independent_review_required": false,
+  "approval_gate_source_repin_complete": true,
+  "approval_gate_independent_review_required": true
 }

@@ -15,7 +15,7 @@ const crypto=require('node:crypto');
 const {CONTRACT:C}=require('./honartik-universal-installer-l4-v1.cjs');
 const ACTION=C.action, OP=C.operation;
 const VERSION='2026-10-27.1-honartik-universal-installer-exact-l4-review';
-const SOURCE_SHA='08e1e9bd212331c68fb3b0255fd9aafa25e9f73f';
+const SOURCE_SHA='b6ade9ecf82ff21db00b3fc93b60ac5613651d2d';
 const TARGETS=Object.freeze({
   base:Object.freeze({path:'/opt/prhm-agent-selfmaint/server.js',
    sha256:'4c29d01a248d59ee85754dfa5a59e8132fe22e6b34ef04324228c16c88727406'}),
@@ -29,7 +29,7 @@ const TARGETS=Object.freeze({
 const ARTIFACTS=Object.freeze({
  'honartik-universal-installer-l4-v1.cjs':'d9d25684f6480eb8bdbb4c097e0ffc3645e9c559',
  'honartik-universal-installer-l4-approval-verify-v1.cjs':'280cb91673c074f6abba6e82dc861ac0c0cf9a30',
- 'honartik-universal-installer-native-approval-gate-v1.cjs':'1f2c2231952d5e175f0a2f1b32b817e631edccc6',
+ 'honartik-universal-installer-native-approval-gate-v1.cjs':'227bc7fdf891bf67ddae1944936d30a72c7e10d5',
  'honartik-universal-installer-native-fs-v1.cjs':'9678e8d45e32c6989808ef7d7d2419f3426a1d0d',
  'honartik-universal-installer-native-journal-inspector-v1.cjs':'439380a7f382298f7c2a8a14cdf2142c0ad7f965',
  'honartik-universal-installer-native-journal-writer-v1.cjs':'a80f65b23a69d5f76af91797c4e2cc83ab6bf9c1',
@@ -143,8 +143,9 @@ function proposeLivePolicyReview(liveBytes){
   scopes_before:live.typed_scopes.length,
   scopes_after:candidate.typed_scopes.length,
   // This digest is evidence for an independent reviewer, NOT authorization:
-  // Approval Gate deliberately still pins the old Git-main candidate SHA,
-  // so the runtime MUST remain fail-closed pending independent re-review.
+  // Gate source now pins this live-derived candidate; this equality alone
+  // is NEVER permission to install or consume an L4 before independent
+  // re-review and trusted Root-of-Trust registration.
   matches_current_approval_gate_pin:digest===
    require('./honartik-universal-installer-native-approval-gate-v1.cjs')
     .PINNED_POLICY_SHA,

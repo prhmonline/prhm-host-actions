@@ -94,7 +94,9 @@ test('production policy source can NOT be faked with Git-main candidate',()=>{
  assert.throws(()=>P.proposeLivePolicyReview(synthetic),
   /policy_preimage_sha_drift/);
  assert.notEqual(G.PINNED_POLICY_SHA,P.TARGETS.policy.sha256);
- assert.notEqual(G.PINNED_POLICY_SHA,P.RECONCILED_CANDIDATE_POLICY_SHA);
+ assert.equal(G.PINNED_POLICY_SHA,P.RECONCILED_CANDIDATE_POLICY_SHA);
+ assert.notEqual(G.PINNED_POLICY_SHA,
+  '82334369202b31418e33b44c0ed53e1d4b3ea58acc7e37835b13b60c6ba239cb');
  assert.equal(P.RECONCILED_CANDIDATE_POLICY_SHA,
   '981967b4ce770cd3aa89d27ae98552bbeb3ab31ed116d4e51aef91c0abf68358');
 });
@@ -121,7 +123,9 @@ test('machine-readable package manifest matches reviewed source and live four-SH
  assert.equal(pkg.operator_read_only_reconciliation.unrelated_policy_changes,'NONE');
  assert.equal(pkg.operator_read_only_reconciliation.production_changed,false);
  assert.equal(pkg.operator_read_only_reconciliation.independently_signed,false);
- assert.equal(pkg.approval_gate_repin_and_independent_review_required,true);
+ assert.equal(pkg.approval_gate_source_repin_complete,true);
+ assert.equal(pkg.approval_gate_independent_review_required,true);
+ assert.equal(pkg.approval_gate_repin_and_independent_review_required,false);
  assert.equal(pkg.root_of_trust_registration_verified,false);
  assert.equal(pkg.signed_level4_consumed,false);
  assert.equal(pkg.installer_upgrade_executed,false);
