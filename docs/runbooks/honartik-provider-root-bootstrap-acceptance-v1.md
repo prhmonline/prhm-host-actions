@@ -54,6 +54,67 @@ The test `test-honartik-universal-installer-owner-bootstrap-systemd-vm-v1.cjs` r
 
 **Strict scope limit:** this tests real systemd behavior on *synthetic service units* in an isolated GitHub VM. It is **not** a proof of trust-chain verification, Ed25519 approval, the authentic Provider Root entrypoint, exact 14 production root asset registration, or rollback of the real production service set. Those remain NO-GO until separately implemented, independently reviewed and attested in an authorized Provider-controlled VM and Production.
 
+
+## Signed initial Provider Root-of-Trust bootstrap — source contract, NOT installed
+
+The distinct bootstrap verifier is now in
+`honartik-universal-installer-native-bootstrap-authorization-v1.cjs`.
+It is a **different operation** from the existing post-registration Universal
+Installer upgrade L4. It cannot authorize its own installation.
+
+The review-only implementation:
+
+- Verifies a separate Ed25519 compact signed receipt with a canonical header
+  `PRHM-PROVIDER-ROOT-BOOTSTRAP`, distinct issuer
+  `prhm-provider-root-of-trust`, exact audience/operation/environment,
+  SHA-pinned source commit, plan manifest, UUID identity and ≤180-second TTL.
+- Rejects a reused receipt through a durable O_EXCL + fsync approval lease;
+  a rollback/failed restart does not erase a consumed lease.
+- Before any transaction validates all **four exact root owner paths**, root
+  UID/GID/mode, SHA-pinned before-images, fixed reviewed Git-blob identities
+  and ordered destinations of the 14 registration assets, and the complete
+  SHA-256 manifest built by the existing review-only plan.
+- On valid authorization, the proposed Provider-owned adapter calls the
+  **existing** `executeCore` transaction and independently provided real
+  service-health/restart callbacks. No new independent installer is created.
+- Denies live apply until the independently reviewed, immutable public key is
+  installed by the **actual Provider Root-of-Trust** as a root-owned 0600 file
+  at the fixed `KEY_PATH`, SHA-bound in code, with a pre-provisioned root-only
+  transaction directory and a root-owned trusted dispatcher.
+
+Current hard stops are intentional: `PINNED_PROVIDER_KEY_SHA256=null`,
+`PROVIDER_DISPATCH_REGISTERED=false`,
+`PRODUCTION_AUTHORIZED=false`, no standalone CLI, no signing-key material or
+real approval token in Git/CI. The signer must be provisioned and the **specific
+registration authorization** must be issued independently; merely having root
+shell or an approval for the installer-upgrade operation is insufficient.
+
+CI uses disposable, randomly generated **synthetic** Ed25519 keys and fixtures
+to check signature/issuer/scope/expiry, manifest binding, nonreplay and
+four-owner rollback. These tests do **not** prove Provider identity, trust
+anchor provenance, authentic approval consumption or a real Provider VM apply.
+
+Mandatory controlled deployment still requires:
+
+1. Independent code security review of the exact **new** commit SHA and
+   verified Provider registration signing policy/issuer identity.
+2. Existing Provider-console trusted root owner to provision and attest the
+   separate registration key anchor and SHA, root-owned transaction directory
+   and fixed signed dispatch context, using an independently reviewed
+   immutable source closure.
+3. Real Provider-managed isolated VM test of the signed entrypoint, 4-owner
+   transaction, asset installation, actual service restarts, SIGKILL crash
+   recovery and non-reuse of the same receipt. Save signed attestation.
+4. One separately issued, scoped and single-use **registration authorization**
+   for Production; transactional apply and health proof, with recoverable
+   journal and no silent replay.
+5. Only after a registered and healthy Host Action: request a distinct,
+   current-policy signed one-use L4 for the Universal Installer upgrade and
+   subsequently a **separate** Honartik iTicket deployment.
+
+NO_PROVIDER_SIGNATURE=NO_APPLY; NO_INDEPENDENT_REVIEW=NO_APPLY;
+NO_PROVIDER_VM_PROOF=NO_APPLY.
+
 ## Independent security review gate — mandatory
 
 The reviewer must be independent of the source author and confirm the **exact candidate commit**. If reviewing outside GitHub, retain a signed review attestation with subject SHA, reviewed artifact SHA-256 digests, signer identity, timestamp, critical findings/disposition and explicit `APPROVED` or `REJECTED`. An operator's chat confirmation, GitHub merge and green CI do **not** replace independent review.
