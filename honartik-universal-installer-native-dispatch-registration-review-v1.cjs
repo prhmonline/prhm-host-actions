@@ -70,8 +70,70 @@ function reviewCandidate(candidate,shimBytes){
   })
  });
 }
+// Root-console evidence 2026-10-28, pinned four-owner preimages: main
+// dispatcher has 13 fixed actions, final wrapper has 19 fixed actions.
+// This is an ADDITIONAL read-only shape gate for the exact live source,
+// not a signature, Root-of-Trust installation, or execution authorization.
+const EXPECTED_MAIN_ACTIONS=Object.freeze([
+ 'parham_page_create_v1','leadops_language_gate_v1',
+ 'mcp_candidate_schema_compare_v1','leadops_economics_inputs_foundation_v1',
+ 'solo_company_selftest_v1','control_plane_current_owner_bootstrap_repair_v1',
+ 'real_market_shadow_uat_v1','real_market_verified_economics_uat_v1',
+ 'company_os_dashboard_v1','company_os_dashboard_credentials_reset_v1',
+ 'company_os_dashboard_persian_v1',
+ 'leadops_parscoders_runtime_v3_restore_v1',
+ 'leadops_parscoders_selinux_exec_remediate_v1'
+]);
+const EXPECTED_WRAPPER_ACTIONS=Object.freeze([
+ 'control_plane_current_owner_binding_refresh_v1',
+ 'agent_zdt_source_sha_refresh_publisher_v1',
+ 'control_plane_root_scripts_stage_transport_v1',
+ 'imotion_credential_bind_v1','root_scripts_fixed_stage_v1',
+ 'agent_zdt_existing_topology_rolling_refresh_v1',
+ 'drtarjomeh_security_containment_v1',
+ 'agent_zdt_existing_topology_rolling_refresh_rollback_v1',
+ 'agent_zdt_existing_topology_rolling_refresh_finalize_v1',
+ 'rahekomak_production_deploy_v1',
+ 'control_plane_typed_bootstrap_current_baseline_refresh_v1',
+ 'imotion_marketing_targets_register_v2',
+ 'imotion_marketing_target_register_v1',
+ 'host_action_v2_installer_v1',
+ 'agent_zero_downtime_bootstrap_v1',
+ 'honartik_iticket_dark_backend_batch1_v1',
+ 'honartik_iticket_dark_backend_batch2_v1',
+ 'honartik_iticket_dark_backend_batch2_result_bridge_helper_refresh_v1',
+ 'selfmaint_exec_route_refresh_v1'
+]);
+function inspectPinnedLiveDispatcher(bytes){
+ if(!Buffer.isBuffer(bytes)||bytes.length===0||bytes.length>2_000_000)
+  fail('live_executor_missing');
+ const value=bytes.toString('utf8');
+ if(!Buffer.from(value,'utf8').equals(bytes))fail('live_executor_not_utf8');
+ const lines=value.split(/\r?\n/);
+ const main=lines.filter(s=>/^\s*async function applyHostActionV2\(action\)\{/.test(s));
+ const wrapper=lines.filter(s=>/^\s*applyHostActionV2=async function\(action\)\{/.test(s));
+ if(main.length!==1||wrapper.length!==1||
+  lines.indexOf(main[0])>=lines.indexOf(wrapper[0]))
+  fail('live_dispatcher_wrapper_ambiguous');
+ const actions=line=>[...line.matchAll(/if\s*\(\s*action\s*===\s*['"]([^'"]+)['"]\s*\)/g)]
+  .map(m=>m[1]);
+ const same=(got,expected)=>JSON.stringify(got)===JSON.stringify(expected);
+ if(!same(actions(main[0]),EXPECTED_MAIN_ACTIONS))
+  fail('live_main_dispatcher_shape_drift');
+ if(!same(actions(wrapper[0]),EXPECTED_WRAPPER_ACTIONS))
+  fail('live_final_wrapper_shape_drift');
+ if(value.includes("if(action==='honartik_universal_installer_upgrade_v1')"))
+  fail('live_upgrade_action_already_dispatched');
+ return Object.freeze({
+  main_actions:EXPECTED_MAIN_ACTIONS.length,
+  final_wrapper_actions:EXPECTED_WRAPPER_ACTIONS.length,
+  live_apply_authorized:false,production_mutation:false
+ });
+}
 function previewPinnedProduction(readOwner,readShim){
  if(typeof readShim!=='function')fail('shim_reader_required');
+ if(typeof readOwner!=='function')fail('owner_reader_required');
+ inspectPinnedLiveDispatcher(readOwner(REG.TARGETS.executor.path));
  // Owner verifier requires exact raw live bytes and validates all 3 SHA.
  return reviewCandidate(P.previewOwnerPatch(readOwner),readShim(SHIM));
 }
@@ -80,6 +142,7 @@ function previewIsolatedSynthetic(files,shimBytes){
  return reviewCandidate(P.previewIsolatedSyntheticFixture(files),shimBytes);
 }
 module.exports=Object.freeze({
- ACTION,SHIM,SHIM_BLOB,SHIM_ROOT,previewPinnedProduction,
+ ACTION,SHIM,SHIM_BLOB,SHIM_ROOT,inspectPinnedLiveDispatcher,
+ EXPECTED_MAIN_ACTIONS,EXPECTED_WRAPPER_ACTIONS,previewPinnedProduction,
  previewIsolatedSynthetic,REVIEW_ONLY:true,PRODUCTION_INSTALL_AUTHORIZED:false
 });
