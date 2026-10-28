@@ -1,0 +1,18 @@
+{
+  "schema": "prhm.honartik-universal-l4-source-review.v1",
+  "issue": 217,
+  "action": "honartik_universal_installer_upgrade_v1",
+  "risk": "critical",
+  "level": 4,
+  "existing_digest": "47e248686971fd373fd32ebe50f593deae6e98e0196ae7e7021508ecabb3c181",
+  "candidate_digest": "8680011e11ad8eae89707b74492e60354c4b7e56799b205d3da581e92806a552",
+  "backend_sha": "0cdfb3d03caf143f665b20b463971e3e4f9b51c9",
+  "registered_on_host": false,
+  "production_executable": false,
+  "root_adapter_implemented": false,
+  "approval_issued": false,
+  "backend_deployed": false,
+  "requires_native_review": true,
+  "requires_independent_signed_linux_test": true,
+  "requires_signed_one_time_approval": true
+}
