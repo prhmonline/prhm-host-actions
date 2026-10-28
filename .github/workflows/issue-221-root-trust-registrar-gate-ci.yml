@@ -3,6 +3,8 @@ name: Issue 221 Trusted Registrar Bootstrap Gate — Source Only
 on:
   pull_request:
     paths:
+      - 'prhm-action-registry-gateway-v1.cjs'
+      - 'test-prhm-action-registry-gateway-v1.cjs'
       - 'shared-registrar-root-trust-preflight-v1.cjs'
       - 'test-shared-registrar-root-trust-preflight-v1.cjs'
       - 'shared-registrar-native-filesystem-v1.cjs'
@@ -25,6 +27,9 @@ jobs:
       - name: Reject unauthorized installer source
         run: |
           set -euo pipefail
+          node --check prhm-action-registry-gateway-v1.cjs
+          node --check test-prhm-action-registry-gateway-v1.cjs
+          node --test test-prhm-action-registry-gateway-v1.cjs
           node --check shared-registrar-root-trust-preflight-v1.cjs
           node --check test-shared-registrar-root-trust-preflight-v1.cjs
           node --test test-shared-registrar-root-trust-preflight-v1.cjs
