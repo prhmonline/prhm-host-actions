@@ -74,7 +74,13 @@ function checkPlan(plan){
    !/^[a-f0-9]{64}$/.test(s.beforeSha)||!/^[a-f0-9]{64}$/.test(s.afterSha)||
    HASH(s.nextBytes)!==s.afterSha))
   fail('plan_invalid');
- const targets=plan.steps.map(s=>s.path);
+ const assets=plan.assets??[];
+ if(!Array.isArray(assets)||assets.length>32||assets.some(a=>
+   !a||typeof a.path!=='string'||!path.isAbsolute(a.path)||
+   !Buffer.isBuffer(a.nextBytes)||!/^[a-f0-9]{64}$/.test(a.afterSha)||
+   HASH(a.nextBytes)!==a.afterSha))
+   fail('asset_plan_invalid');
+ const targets=[...plan.steps.map(s=>s.path),...assets.map(a=>a.path)];
  if(new Set(targets).size!==targets.length)fail('duplicate_target');
  if(!/^[0-9a-f]{40}$/.test(plan.sourceCommit||'')||
   !/^[0-9a-f]{64}$/.test(plan.manifestSha256||''))
@@ -88,6 +94,28 @@ function verifyPreimage(steps){
   if((st.mode&0o022)!==0)fail('unsafe_source_mode:'+s.key);
   return {key:s.key,path:s.path,mode:st.mode&0o777,uid:st.uid,gid:st.gid,
     bytes:before,sha:s.beforeSha};
+ });
+}
+function verifyAssetPreimages(assets){
+ return assets.map((a,i)=>{
+  const parent=path.dirname(a.path),dir=fs.lstatSync(parent);
+  if(!dir.isDirectory()||dir.isSymbolicLink()||
+     fs.realpathSync(parent)!==parent||(dir.mode&0o022)!==0||
+     dir.uid!==process.getuid())fail('asset_parent_unsafe:'+i);
+  let st;
+  try{st=fs.lstatSync(a.path)}catch(e){
+   if(e.code==='ENOENT')return {key:'asset-'+i,path:a.path,
+    existed:false,beforeSha:null,uid:process.getuid(),
+    gid:process.getgid(),mode:0o600,bytes:null,afterSha:a.afterSha};
+   throw e;
+  }
+  if(!st.isFile()||st.isSymbolicLink()||
+     fs.realpathSync(a.path)!==a.path||(st.mode&0o022)!==0)
+   fail('asset_file_unsafe:'+i);
+  const before=fs.readFileSync(a.path);
+  return {key:'asset-'+i,path:a.path,existed:true,
+   beforeSha:HASH(before),uid:st.uid,gid:st.gid,mode:st.mode&0o777,
+   bytes:before,afterSha:a.afterSha};
  });
 }
 function safeWorkRoot(workRoot){
@@ -124,19 +152,57 @@ function validateJournal(dir){
    !/^[a-f0-9]{64}$/.test(r.beforeSha)||
    !/^[a-f0-9]{64}$/.test(r.afterSha))fail('journal_record_invalid');
  }
+ if(!Array.isArray(j.assets)||j.assets.length>32)fail('journal_assets_invalid');
+ for(const [i,a] of j.assets.entries()){
+  if(a.key!=='asset-'+i||!path.isAbsolute(a.path)||
+    typeof a.existed!=='boolean'||!Number.isInteger(a.uid)||
+    !Number.isInteger(a.gid)||!Number.isInteger(a.mode)||
+    !/^[a-f0-9]{64}$/.test(a.afterSha)||
+    (a.existed?!/^[a-f0-9]{64}$/.test(a.beforeSha):a.beforeSha!==null))
+    fail('journal_asset_record_invalid');
+ }
+ const paths=[...j.files.map(r=>r.path),...j.assets.map(a=>a.path)];
+ if(new Set(paths).size!==paths.length)fail('journal_duplicate_target');
  return j;
 }
-function restoreFromJournal(txnDir,expectedTargets){
+function restoreFromJournal(txnDir,expectedTargets,expectedAssets=[]){
  const j=validateJournal(txnDir);
- // Trusted caller supplies the FIXED allowlisted target paths; a journal on
- // its own can NEVER grant authority to overwrite an arbitrary host path.
+ // Only a trusted host's exact owner AND asset allowlist may authorize
+ // rollback. The journal itself is never a source of target authority.
  if(!Array.isArray(expectedTargets)||expectedTargets.length!==KEYS.length||
-    j.files.some((r,i)=>r.path!==expectedTargets[i]))
+    j.files.some((r,i)=>r.path!==expectedTargets[i])||
+    !Array.isArray(expectedAssets)||expectedAssets.length!==j.assets.length||
+    j.assets.some((r,i)=>r.path!==expectedAssets[i]))
    fail('recovery_target_mismatch');
  if(j.status==='COMMITTED'||j.status==='ROLLED_BACK')return {status:j.status,changed:false};
  if(j.status!=='INSTALLING'&&j.status!=='ROLLBACK_FAILED')
   fail('recovery_journal_state_invalid');
  const errors=[];
+ for(const a of [...j.assets].reverse()){
+  try{
+   const parent=path.dirname(a.path),dir=fs.lstatSync(parent);
+   if(!dir.isDirectory()||dir.isSymbolicLink()||
+      fs.realpathSync(parent)!==parent||(dir.mode&0o022)!==0||
+      dir.uid!==process.getuid())fail('asset_parent_unsafe:'+a.key);
+   let current=null;
+   try{current=HASH(fs.readFileSync(a.path));statFile(a.path)}
+   catch(e){if(e.code!=='ENOENT')throw e}
+   if(a.existed){
+    const old=fs.readFileSync(path.join(txnDir,a.key+'.before'));
+    if(HASH(old)!==a.beforeSha)fail('asset_backup_sha_drift:'+a.key);
+    if(current!==a.beforeSha&&current!==a.afterSha)
+     fail('asset_concurrent_drift:'+a.key);
+    atomicReplace(a.path,old,a);
+    const verified=statFile(a.path);
+    if(HASH(fs.readFileSync(a.path))!==a.beforeSha||
+       (verified.mode&0o777)!==a.mode||verified.uid!==a.uid||
+       verified.gid!==a.gid)fail('asset_restore_mismatch:'+a.key);
+   }else if(current!==null){
+    if(current!==a.afterSha)fail('asset_concurrent_drift:'+a.key);
+    fs.unlinkSync(a.path);fsyncDir(parent);
+   }
+  }catch(err){errors.push(a.key+':'+String(err.message));}
+ }
  for(const r of [...j.files].reverse()){
   try{
    const old=fs.readFileSync(path.join(txnDir,r.key+'.before'));
@@ -174,22 +240,29 @@ async function executeCore(plan,{workRoot,postInstall,postRollback,onRenamed}={}
  if(typeof postInstall!=='function'||typeof postRollback!=='function')fail('health_callback_required');
  safeWorkRoot(workRoot);
  const active=lock(workRoot);
- let dir=null,pre=null;
+ let dir=null,pre=null,assetPre=null;
  try{
   assertNoPendingTransactions(workRoot);
   pre=verifyPreimage(plan.steps);
+  assetPre=verifyAssetPreimages(plan.assets??[]);
   dir=fs.mkdtempSync(path.join(workRoot,'txn-'));
   fs.chmodSync(dir,0o700);fsyncDir(workRoot);
   const rec=pre.map((p,i)=>({
    key:p.key,path:p.path,mode:p.mode,uid:p.uid,gid:p.gid,
    beforeSha:p.sha,afterSha:plan.steps[i].afterSha
   }));
+  const assetRecords=assetPre.map(a=>({key:a.key,path:a.path,
+   existed:a.existed,beforeSha:a.beforeSha,afterSha:a.afterSha,
+   uid:a.uid,gid:a.gid,mode:a.mode}));
   const journal={schema:'prhm.registrar.native-journal.v1',
    status:'PREPARING',sourceCommit:plan.sourceCommit,
-   manifestSha256:plan.manifestSha256,files:rec,rollbackErrors:[]};
+   manifestSha256:plan.manifestSha256,files:rec,
+   assets:assetRecords,rollbackErrors:[]};
   writeJournal(dir,journal);
   // ALL before-images become durable before the journal is INSTALLING.
   for(const p of pre)durableWrite(path.join(dir,p.key+'.before'),p.bytes);
+  for(const a of assetPre)if(a.existed)
+    durableWrite(path.join(dir,a.key+'.before'),a.bytes);
   journal.status='INSTALLING';writeJournal(dir,journal);
   for(let i=0;i<plan.steps.length;i++){
    const step=plan.steps[i],prior=pre[i];
@@ -200,6 +273,27 @@ async function executeCore(plan,{workRoot,postInstall,postRollback,onRenamed}={}
    atomicReplace(step.path,step.nextBytes,prior);
    if(HASH(fs.readFileSync(step.path))!==step.afterSha)fail('postimage_sha:'+step.key);
    if(typeof onRenamed==='function')onRenamed(step.key,i);
+  }
+  for(let i=0;i<(plan.assets??[]).length;i++){
+   const a=plan.assets[i],prior=assetPre[i],parent=path.dirname(a.path);
+   const d=fs.lstatSync(parent);
+   if(!d.isDirectory()||d.isSymbolicLink()||
+      fs.realpathSync(parent)!==parent||(d.mode&0o022)!==0||
+      d.uid!==process.getuid())fail('asset_midflight_parent_drift:'+i);
+   let exists=true,current=null,meta=null;
+   try{meta=statFile(a.path);current=HASH(fs.readFileSync(a.path))}
+   catch(e){if(e.code==='ENOENT')exists=false;else throw e}
+   if(exists!==prior.existed||
+      (exists&&(current!==prior.beforeSha||
+       meta.uid!==prior.uid||meta.gid!==prior.gid||
+       (meta.mode&0o777)!==prior.mode)))
+     fail('asset_midflight_drift:'+i);
+   atomicReplace(a.path,a.nextBytes,prior);
+   const installed=statFile(a.path);
+   if(HASH(fs.readFileSync(a.path))!==a.afterSha||
+      (installed.mode&0o777)!==prior.mode||installed.uid!==prior.uid||
+      installed.gid!==prior.gid)fail('asset_postimage_invalid:'+i);
+   if(typeof onRenamed==='function')onRenamed(prior.key,plan.steps.length+i);
   }
   const health=await postInstall();
   if(health!==true)fail('postinstall_health');
@@ -212,7 +306,8 @@ async function executeCore(plan,{workRoot,postInstall,postRollback,onRenamed}={}
   const j=validateJournal(dir);
   if(j.status==='INSTALLING'){
    try{
-    restoreFromJournal(dir,plan.steps.map(x=>x.path));
+    restoreFromJournal(dir,plan.steps.map(x=>x.path),
+     (plan.assets??[]).map(x=>x.path));
     let healthy=false;
     try{healthy=await postRollback()===true;}catch(_){}
     if(!healthy){
@@ -231,7 +326,7 @@ async function executeCore(plan,{workRoot,postInstall,postRollback,onRenamed}={}
   if(fs.existsSync(active))unlock(active);
  }
 }
-async function recoverAfterCrash({workRoot,transaction,expectedTargets,postRollback}={}){
+async function recoverAfterCrash({workRoot,transaction,expectedTargets,expectedAssets=[],postRollback}={}){
  if(typeof postRollback!=='function')fail('recovery_health_callback_required');
  safeWorkRoot(workRoot);
  if(typeof transaction!=='string'||path.dirname(transaction)!==workRoot||
@@ -246,7 +341,7 @@ async function recoverAfterCrash({workRoot,transaction,expectedTargets,postRollb
  }
  const newLock=lock(workRoot);
  try{
-  const result=restoreFromJournal(transaction,expectedTargets);
+  const result=restoreFromJournal(transaction,expectedTargets,expectedAssets);
   if(result.status==='ROLLED_BACK'){
    let healthy=false;
    try{healthy=await postRollback()===true;}catch(_){}
@@ -261,7 +356,7 @@ async function recoverAfterCrash({workRoot,transaction,expectedTargets,postRollb
   return result;
  }finally{unlock(newLock)}
 }
-module.exports=Object.freeze({KEYS,HASH,checkPlan,verifyPreimage,
+module.exports=Object.freeze({KEYS,HASH,checkPlan,verifyPreimage,verifyAssetPreimages,
   executeCore,recoverAfterCrash,restoreFromJournal,assertNoPendingTransactions});
 // Deliberately no CLI entrypoint: the live Host Action must supply the
 // separately authenticated, one-time Ed25519 consumed authorization.
