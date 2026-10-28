@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - 'prhm-action-registry-gateway-v1.cjs'
+      - 'prhm-action-registry-host-actions-v2-bridge-v1.cjs'
+      - 'test-prhm-action-registry-host-actions-v2-bridge-v1.cjs'
       - 'test-prhm-action-registry-gateway-v1.cjs'
       - 'shared-registrar-root-trust-preflight-v1.cjs'
       - 'test-shared-registrar-root-trust-preflight-v1.cjs'
@@ -28,6 +30,9 @@ jobs:
         run: |
           set -euo pipefail
           node --check prhm-action-registry-gateway-v1.cjs
+          node --check prhm-action-registry-host-actions-v2-bridge-v1.cjs
+          node --check test-prhm-action-registry-host-actions-v2-bridge-v1.cjs
+          node --test test-prhm-action-registry-host-actions-v2-bridge-v1.cjs
           node --check test-prhm-action-registry-gateway-v1.cjs
           node --test test-prhm-action-registry-gateway-v1.cjs
           node --check shared-registrar-root-trust-preflight-v1.cjs
