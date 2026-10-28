@@ -70,8 +70,8 @@
   "approval_gate_source_repin_complete": true,
   "approval_gate_independent_review_required": true,
   "owner_registration_review_candidate": {
-    "source_blob_sha1": "4a44bcafca33014d90d0204071e396fd95c39710",
-    "test_blob_sha1": "6618cf3dc63d9bb9435f6527a7828e87741ca418",
+    "source_blob_sha1": "b3a38e391e156d478423163a2f02ab209fc683c7",
+    "test_blob_sha1": "280a39ae539f5c854237c3c3b5bac652b334e1fd",
     "authorized_owner_layer_count": 3,
     "required_owner_layers": [
       "agent_api",
@@ -84,7 +84,13 @@
     "level4_operation_only": true,
     "production_registration_complete": false,
     "root_dispatch_wired_to_signed_l4": false,
-    "production_changed": false
+    "production_changed": false,
+    "trusted_route_original_request_identity_passed_after_consumed_l4": true,
+    "trusted_server_side_consumed_token_callback_preview": true,
+    "token_exposed_in_mcp_or_output": false,
+    "native_root_dispatch_still_explicitly_denied": true,
+    "native_root_e2e_review_required": true,
+    "native_root_signed_linux_attestation_verified": false
   },
   "read_only_root_receipt_policy_sha256": "981967b4ce770cd3aa89d27ae98552bbeb3ab31ed116d4e51aef91c0abf68358",
   "read_only_root_receipt_policy_pin_alias_verified_by_source": true,
@@ -93,5 +99,15 @@
   "native_root_transaction_source_blob_sha1": "b7d020771fd576356494735a6e9224c6217b1e55",
   "native_root_transaction_execution_requires_trusted_sealed_approval_loader": true,
   "native_root_transaction_crash_recovery_source_present": true,
-  "native_root_transaction_real_Linux_signed_provenance_verified": false
+  "native_root_transaction_real_Linux_signed_provenance_verified": false,
+  "operator_execute_route_read_only_evidence": {
+    "source": "user-supplied prhm-production root-console output 2026-10-28",
+    "route": "/v2/host-actions/execute",
+    "actual_original_apply_call": "applyHostActionV2(action)",
+    "confirmation": "/v2/host-actions/confirm",
+    "consumption": "/v2/host-actions/authorize-consume",
+    "original_request_id_passed_to_dispatch_before_patch": false,
+    "source_only_candidate_proposes_post_consumption_binding": true,
+    "actual_production_route_changed": false
+  }
 }
