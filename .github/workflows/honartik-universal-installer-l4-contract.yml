@@ -37,6 +37,8 @@ on:
       - 'test-honartik-universal-installer-registration-review-pack-v1.cjs'
       - 'honartik-universal-installer-owner-registration-candidate-v1.cjs'
       - 'test-honartik-universal-installer-owner-registration-candidate-v1.cjs'
+      - 'honartik-universal-installer-native-root-transaction-v1.cjs'
+      - 'test-honartik-universal-installer-native-root-transaction-v1.cjs'
       - 'manifests/honartik-universal-installer-native-registration-review-v1.json'
       - 'honartik-universal-installer-journal-finalize-fixture-v1.cjs'
       - 'test-honartik-universal-installer-journal-finalize-fixture-v1.cjs'
@@ -95,6 +97,8 @@ jobs:
           node --check test-honartik-universal-installer-registration-review-pack-v1.cjs
           node --check honartik-universal-installer-owner-registration-candidate-v1.cjs
           node --check test-honartik-universal-installer-owner-registration-candidate-v1.cjs
+          node --check honartik-universal-installer-native-root-transaction-v1.cjs
+          node --check test-honartik-universal-installer-native-root-transaction-v1.cjs
           node -e "process.stdout.write(require('./honartik-universal-installer-native-python-bridge-v1.cjs').fixedPythonCode())" | python3 -c "import sys,ast;ast.parse(sys.stdin.read());print('FIXED_PYTHON_CODE_SYNTAX=PASS')"
           node --check honartik-universal-installer-journal-finalize-fixture-v1.cjs
           node --check test-honartik-universal-installer-journal-finalize-fixture-v1.cjs
@@ -113,6 +117,7 @@ jobs:
             test-honartik-universal-installer-native-reconciler-v1.cjs \
             test-honartik-universal-installer-registration-review-pack-v1.cjs \
             test-honartik-universal-installer-owner-registration-candidate-v1.cjs \
+            test-honartik-universal-installer-native-root-transaction-v1.cjs \
             test-honartik-universal-installer-journal-finalize-fixture-v1.cjs
       - name: Assert no runtime installation authorized
         shell: bash
