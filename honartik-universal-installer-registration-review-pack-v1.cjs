@@ -15,7 +15,7 @@ const crypto=require('node:crypto');
 const {CONTRACT:C}=require('./honartik-universal-installer-l4-v1.cjs');
 const ACTION=C.action, OP=C.operation;
 const VERSION='2026-10-27.1-honartik-universal-installer-exact-l4-review';
-const SOURCE_SHA='b6ade9ecf82ff21db00b3fc93b60ac5613651d2d';
+const SOURCE_SHA='58e7e3bee2bedeb0298a33a86b9f0a32c181b291';
 const TARGETS=Object.freeze({
   base:Object.freeze({path:'/opt/prhm-agent-selfmaint/server.js',
    sha256:'4c29d01a248d59ee85754dfa5a59e8132fe22e6b34ef04324228c16c88727406'}),
@@ -37,7 +37,7 @@ const ARTIFACTS=Object.freeze({
  'honartik-universal-installer-native-python-bridge-v1.cjs':'608bfcf07ac06c50081730b5f4863f0f2fc3f27c',
  'honartik-universal-installer-native-reconciler-v1.cjs':'9f471dff187e6305fde4d6f7f69920ea2bd4f124',
  'honartik-universal-installer-native-root-preflight-v1.cjs':'7a92e3d4f6c30aaca5d4d0b5794eccd5e83c9084',
- 'honartik-universal-installer-native-root-receipt-v1.cjs':'e41724ad50267249bc91637d20e0da44a4fb2d32',
+ 'honartik-universal-installer-native-root-receipt-v1.cjs':'106edec5141652f439f3dcecce359f0dc59fef84',
  'honartik-universal-installer-native-terminal-archive-v1.cjs':'7de2333ba52c25d9432e3d3e93edd00a5fb53816'
 });
 const PREIMAGE_POLICY_VERSION='2026-10-02.1-control-plane-current-owner-bootstrap-repair-v1';

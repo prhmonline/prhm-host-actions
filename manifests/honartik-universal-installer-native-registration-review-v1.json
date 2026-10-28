@@ -3,7 +3,7 @@
   "action": "honartik_universal_installer_upgrade_v1",
   "contract_operation": "host_action.honartik_universal_installer_upgrade_v1",
   "git_repository": "prhmonline/prhm-host-actions",
-  "pinned_source_commit": "b6ade9ecf82ff21db00b3fc93b60ac5613651d2d",
+  "pinned_source_commit": "58e7e3bee2bedeb0298a33a86b9f0a32c181b291",
   "owner_live_preimages": {
     "base": {
       "path": "/opt/prhm-agent-selfmaint/server.js",
@@ -33,7 +33,7 @@
     "honartik-universal-installer-native-python-bridge-v1.cjs": "608bfcf07ac06c50081730b5f4863f0f2fc3f27c",
     "honartik-universal-installer-native-reconciler-v1.cjs": "9f471dff187e6305fde4d6f7f69920ea2bd4f124",
     "honartik-universal-installer-native-root-preflight-v1.cjs": "7a92e3d4f6c30aaca5d4d0b5794eccd5e83c9084",
-    "honartik-universal-installer-native-root-receipt-v1.cjs": "e41724ad50267249bc91637d20e0da44a4fb2d32",
+    "honartik-universal-installer-native-root-receipt-v1.cjs": "106edec5141652f439f3dcecce359f0dc59fef84",
     "honartik-universal-installer-native-terminal-archive-v1.cjs": "7de2333ba52c25d9432e3d3e93edd00a5fb53816"
   },
   "python_engine_prefix": "/usr/local/libexec/deploy-control/universal",
@@ -84,5 +84,8 @@
     "production_registration_complete": false,
     "root_dispatch_wired_to_signed_l4": false,
     "production_changed": false
-  }
+  },
+  "read_only_root_receipt_policy_sha256": "981967b4ce770cd3aa89d27ae98552bbeb3ab31ed116d4e51aef91c0abf68358",
+  "read_only_root_receipt_policy_pin_alias_verified_by_source": true,
+  "native_root_adapter_runtime_integrated": false
 }
