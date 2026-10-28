@@ -18,6 +18,13 @@ const ORDER=Object.freeze(['base','executor','mcp','policy']);
 const fail=name=>{throw Error('honartik217_registration_plan_'+name)};
 const need=(ok,name)=>{if(!ok)fail(name)};
 const PATHS=Object.freeze(Object.fromEntries(ORDER.map(k=>[k,REG.TARGETS[k].path])));
+// Trusted root-console preimages re-attested on 2026-10-28; source-only pins.
+const EXPECTED_OWNER_META=Object.freeze({
+ base:Object.freeze({uid:0,gid:0,mode:0o644}),
+ executor:Object.freeze({uid:0,gid:0,mode:0o755}),
+ mcp:Object.freeze({uid:0,gid:0,mode:0o600}),
+ policy:Object.freeze({uid:0,gid:0,mode:0o644})
+});
 function readPinnedOwner(readOwners,key){
  const owner=REG.TARGETS[key];
  const bytes=readOwners(owner.path);
@@ -36,6 +43,9 @@ function makeReviewPlan({readOwners,readOwnerMetadata,readArtifacts,readShim}={}
    Number.isInteger(m.uid)&&m.uid>=0&&Number.isInteger(m.gid)&&m.gid>=0&&
    Number.isInteger(m.mode)&&m.mode>=0&&m.mode<=0o777&&
    (m.mode&0o022)===0,'owner_metadata_untrusted_'+key);
+  const expected=EXPECTED_OWNER_META[key];
+  need(m.uid===expected.uid&&m.gid===expected.gid&&m.mode===expected.mode,
+   'owner_metadata_drift_'+key);
   return [key,Object.freeze({expectedUid:m.uid,expectedGid:m.gid,expectedMode:m.mode})];
  }));
  const reviewed=DISPATCH.previewPinnedProduction(p=>readOwners(p),
@@ -89,7 +99,7 @@ function makeReviewPlan({readOwners,readOwnerMetadata,readArtifacts,readShim}={}
  });
 }
 module.exports=Object.freeze({
- ACTION,ASSET_ROOT,PATHS,ORDER,makeReviewPlan,
+ ACTION,ASSET_ROOT,PATHS,ORDER,EXPECTED_OWNER_META,makeReviewPlan,
  REVIEW_ONLY:true,NO_PRODUCTION_WRITER:true,NO_APPROVAL_ISSUER:true
 });
 if(require.main===module){
