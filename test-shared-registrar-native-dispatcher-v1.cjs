@@ -114,3 +114,18 @@ test('root binding denies absent native trusted host capabilities',()=>{
   assert.equal(key in d,false);
  }
 });
+
+
+test('a consumed Ed25519 receipt must belong to the SAME pending request ID',()=>{
+ const accepted={action:d.ACTION,level:4,risk:'critical',request_id:uuid};
+ assert.equal(d.assertConsumedRequestIdentity(uuid,accepted),true);
+ for(const candidate of [
+  {...accepted,request_id:'55555555-5555-4555-8555-555555555555'},
+  {...accepted,action:'other_action'},
+  {...accepted,level:3},
+  {...accepted,risk:'high'},null
+ ])assert.throws(()=>d.assertConsumedRequestIdentity(uuid,candidate),
+  /consumed_request_identity_mismatch/);
+ assert.throws(()=>d.assertConsumedRequestIdentity('invalid',accepted),
+  /consumed_request_identity_mismatch/);
+});
