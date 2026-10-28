@@ -26,6 +26,10 @@ on:
       - 'shared-registrar-native-filesystem-v1.cjs'
       - 'test-shared-registrar-native-linux-v1.cjs'
       - 'test-shared-registrar-crash-child-v1.cjs'
+      - 'shared-registrar-native-host-hooks-v1.cjs'
+      - 'test-shared-registrar-native-host-hooks-v1.cjs'
+      - 'test-shared-registrar-systemd-fixture-v1.cjs'
+      - 'test-shared-registrar-four-systemd-vm-v1.cjs'
       - 'shared-registrar-native-root-adapter-v1.cjs'
       - 'test-shared-registrar-native-root-adapter-v1.cjs'
       - 'docs/issue-221-root-trust-registrar-bootstrap-gate.md'
@@ -78,11 +82,19 @@ jobs:
           node --check test-shared-registrar-native-linux-v1.cjs
           node --check test-shared-registrar-crash-child-v1.cjs
           node --test test-shared-registrar-native-linux-v1.cjs
+          node --check shared-registrar-native-host-hooks-v1.cjs
+          node --check test-shared-registrar-native-host-hooks-v1.cjs
+          node --test test-shared-registrar-native-host-hooks-v1.cjs
+          node --check test-shared-registrar-systemd-fixture-v1.cjs
+          node --check test-shared-registrar-four-systemd-vm-v1.cjs
+          sudo -n env REGISTRAR_SYSTEMD_VM=1 node --test test-shared-registrar-four-systemd-vm-v1.cjs
           node --check shared-registrar-native-root-adapter-v1.cjs
           node --check test-shared-registrar-native-root-adapter-v1.cjs
           node --test test-shared-registrar-native-root-adapter-v1.cjs
           echo 'NATIVE_ADAPTER_NEGATIVE_GATES=PASS'
           echo 'LINUX_CRASH_ROLLBACK=PASS'
           echo 'SOURCE_PREFLIGHT_CONTRACT=PASS'
-          echo 'ROOT_ADAPTER_IMPLEMENTED=NO'
+          echo 'HOST_HOOKS_SOURCE_TESTED=YES'
+          echo 'CI_FOUR_SYSTEMD_VM=TESTED'
+          echo 'ROOT_ADAPTER_INSTALLED=NO'
           echo 'INSTALLATION_AUTHORIZED=NO'
