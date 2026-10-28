@@ -40,6 +40,9 @@ function previewOwnerPatch(readOwner){
   if(Buffer.from(files[key],'utf8').compare(raw)!==0)
    deny('owner_not_utf8_'+key);
  }
+ return transformOwnerSourceForReview(files);
+}
+function transformOwnerSourceForReview(files){
  const {base,executor,mcp}=files;
  unique(base,API_EXISTING,'api_fixed_spec');
  unique(executor,EXEC_EXISTING,'executor_fixed_spec');
@@ -93,5 +96,17 @@ function previewOwnerPatch(readOwner){
   })
  });
 }
+function previewIsolatedSyntheticFixture(files){
+ // For negative/contract CI only. Cannot run under root and cannot read or
+ // write any Production path. No output can authorize an actual installer.
+ if(typeof process.getuid!=='function'||process.getuid()===0)
+  deny('fixture_requires_unprivileged_linux');
+ if(!files||!['base','executor','mcp'].every(k=>
+   typeof files[k]==='string'&&
+   files[k].startsWith('// PRHM217 SYNTHETIC TEST ONLY\n')))
+  deny('fixture_not_synthetic');
+ return transformOwnerSourceForReview(files);
+}
 module.exports=Object.freeze({ACTION,OP,previewOwnerPatch,
+ previewIsolatedSyntheticFixture,
  SOURCE_ONLY:true,PRODUCTION_INSTALL_AUTHORIZED:false});
