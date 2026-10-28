@@ -47,6 +47,9 @@ function atomicReplace(dest,bytes,meta){
   exists=true;
   fs.chownSync(p,meta.uid,meta.gid);
   fs.chmodSync(p,meta.mode);
+  // The file's metadata must be durable, not only its contents/parent entry.
+  const attrFd=fs.openSync(p,fs.constants.O_RDONLY|fs.constants.O_NOFOLLOW);
+  try{fs.fsyncSync(attrFd)}finally{fs.closeSync(attrFd)}
   fs.renameSync(p,dest);
   exists=false;
   fsyncDir(parent);
@@ -122,7 +125,8 @@ function safeWorkRoot(workRoot){
  if(typeof workRoot!=='string'||!path.isAbsolute(workRoot))fail('work_root_invalid');
  const st=fs.lstatSync(workRoot);
  if(!st.isDirectory()||st.isSymbolicLink()||
-    fs.realpathSync(workRoot)!==workRoot||(st.mode&0o077)!==0)
+    fs.realpathSync(workRoot)!==workRoot||(st.mode&0o077)!==0||
+    st.uid!==process.getuid())
     fail('work_root_unsafe');
 }
 function lock(workRoot){
@@ -139,7 +143,8 @@ function unlock(p){
 }
 function validateJournal(dir){
  const st=fs.lstatSync(dir);
- if(!st.isDirectory()||st.isSymbolicLink()||(st.mode&0o077)!==0)
+ if(!st.isDirectory()||st.isSymbolicLink()||(st.mode&0o077)!==0||
+    fs.realpathSync(dir)!==dir||st.uid!==process.getuid())
   fail('journal_dir_unsafe');
  const b=fs.readFileSync(path.join(dir,'journal.json'));
  const j=JSON.parse(b.toString('utf8'));
@@ -175,6 +180,29 @@ function restoreFromJournal(txnDir,expectedTargets,expectedAssets=[]){
     j.assets.some((r,i)=>r.path!==expectedAssets[i]))
    fail('recovery_target_mismatch');
  if(j.status==='COMMITTED'||j.status==='ROLLED_BACK')return {status:j.status,changed:false};
+ if(j.status==='PREPARING'){
+  // The INSTALLING marker is fsynced only after every before-image is durable.
+  // PREPARING therefore guarantees no owner/asset write was attempted.
+  // Recover without requiring backups that may not yet have been written.
+  for(const r of j.files){
+   const st=statFile(r.path);
+   if(HASH(fs.readFileSync(r.path))!==r.beforeSha||
+      st.uid!==r.uid||st.gid!==r.gid||(st.mode&0o777)!==r.mode)
+     fail('preparing_owner_drift:'+r.key);
+  }
+  for(const a of j.assets){
+   let exists=true,st=null,current=null;
+   try{st=statFile(a.path);current=HASH(fs.readFileSync(a.path))}
+   catch(e){if(e.code==='ENOENT')exists=false;else throw e}
+   if(exists!==a.existed||
+     (exists&&(current!==a.beforeSha||st.uid!==a.uid||
+      st.gid!==a.gid||(st.mode&0o777)!==a.mode)))
+     fail('preparing_asset_drift:'+a.key);
+  }
+  j.status='ROLLED_BACK';j.rollbackErrors=[];
+  writeJournal(txnDir,j);
+  return {status:'ROLLED_BACK',changed:false};
+ }
  if(j.status!=='INSTALLING'&&j.status!=='ROLLBACK_FAILED')
   fail('recovery_journal_state_invalid');
  const errors=[];
