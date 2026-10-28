@@ -190,6 +190,7 @@ module.exports=Object.freeze({
  PINNED_PROVIDER_KEY_SHA256,
  verifyBootstrapReceipt,assertPinnedRegistrationPlan,
  readPinnedProviderTrustAnchor,executeSignedRegistrationFromTrustedProvider,
+ __test:Object.freeze({reserveConsumedOnce}),
  REVIEW_ONLY:true,PROVIDER_DISPATCH_REGISTERED:false,
  APPROVAL_ISSUER_PRESENT:false,PRODUCTION_AUTHORIZED:false
 });
