@@ -296,6 +296,44 @@ test('asset journal cannot authorize rollback outside trusted asset target list'
     x.steps.map(z=>z.path),['/tmp/wrong']),/recovery_target_mismatch/);
  }finally{x.dispose()}
 });
+test('crash during PREPARING recovers without requiring unfinished backups',async()=>{
+ const x=fixture();
+ try{
+  const a=withAsset(x);
+  await assert.rejects(tx.executeCore(x.plan,{workRoot:x.journal,
+   postInstall:async()=>false,postRollback:async()=>true}),/postinstall_health/);
+  const txn=fs.readdirSync(x.journal).find(n=>n.startsWith('txn-'));
+  const dir=path.join(x.journal,txn),jf=path.join(dir,'journal.json');
+  const j=JSON.parse(fs.readFileSync(jf));
+  j.status='PREPARING';
+  fs.writeFileSync(jf,JSON.stringify(j));
+  for(const name of fs.readdirSync(dir)){
+   if(name.endsWith('.before'))fs.unlinkSync(path.join(dir,name));
+  }
+  const recovered=await tx.recoverAfterCrash({workRoot:x.journal,
+   transaction:dir,expectedTargets:x.steps.map(z=>z.path),
+   expectedAssets:[a.path],postRollback:async()=>true});
+  assert.equal(recovered.status,'ROLLED_BACK');
+  x.original();
+  assert.equal(fs.existsSync(a.path),false);
+ }finally{x.dispose()}
+});
+test('PREPARING must refuse owner drift instead of trusting incomplete backups',async()=>{
+ const x=fixture();
+ try{
+  await assert.rejects(tx.executeCore(x.plan,{workRoot:x.journal,
+   postInstall:async()=>false,postRollback:async()=>true}),/postinstall_health/);
+  const txn=fs.readdirSync(x.journal).find(n=>n.startsWith('txn-'));
+  const dir=path.join(x.journal,txn),jf=path.join(dir,'journal.json');
+  const j=JSON.parse(fs.readFileSync(jf));
+  j.status='PREPARING';fs.writeFileSync(jf,JSON.stringify(j));
+  fs.writeFileSync(x.steps[0].path,'CONCURRENT_UNTRUSTED_CONTENT');
+  await assert.rejects(tx.recoverAfterCrash({workRoot:x.journal,
+   transaction:dir,expectedTargets:x.steps.map(z=>z.path),
+   postRollback:async()=>true}),/preparing_owner_drift/);
+  assert.equal(fs.readFileSync(x.steps[0].path,'utf8'),'CONCURRENT_UNTRUSTED_CONTENT');
+ }finally{x.dispose()}
+});
 test('module exposes no standalone apply and rejects unbound plan',()=>{
  assert.equal(Object.isFrozen(tx),true);
  assert.equal(Object.keys(tx).some(x=>/sign|issueApproval|executeShell/.test(x)),false);
