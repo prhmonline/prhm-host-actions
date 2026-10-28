@@ -67,5 +67,22 @@
   },
   "approval_gate_repin_and_independent_review_required": false,
   "approval_gate_source_repin_complete": true,
-  "approval_gate_independent_review_required": true
+  "approval_gate_independent_review_required": true,
+  "owner_registration_review_candidate": {
+    "source_blob_sha1": "4a44bcafca33014d90d0204071e396fd95c39710",
+    "test_blob_sha1": "6618cf3dc63d9bb9435f6527a7828e87741ca418",
+    "authorized_owner_layer_count": 3,
+    "required_owner_layers": [
+      "agent_api",
+      "root_executor",
+      "mcp_facade"
+    ],
+    "tested_against_user_supplied_root_console_excerpts": true,
+    "actual_root_owned_owner_file_bytes_verified_by_connector": false,
+    "root_dispatch_placeholder": "FAIL_CLOSED_UNTIL_NATIVE_ROOT_REVIEW",
+    "level4_operation_only": true,
+    "production_registration_complete": false,
+    "root_dispatch_wired_to_signed_l4": false,
+    "production_changed": false
+  }
 }
