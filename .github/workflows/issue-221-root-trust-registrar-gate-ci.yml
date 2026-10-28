@@ -29,6 +29,7 @@ on:
       - 'shared-registrar-native-host-hooks-v1.cjs'
       - 'shared-registrar-mcp-discovery-probe-v1.cjs'
       - 'test-shared-registrar-mcp-discovery-probe-v1.cjs'
+      - 'test-shared-registrar-mcp-discovery-loopback-v1.cjs'
       - 'test-shared-registrar-native-host-hooks-v1.cjs'
       - 'test-shared-registrar-systemd-fixture-v1.cjs'
       - 'test-shared-registrar-four-systemd-vm-v1.cjs'
@@ -87,6 +88,8 @@ jobs:
           node --check shared-registrar-mcp-discovery-probe-v1.cjs
           node --check test-shared-registrar-mcp-discovery-probe-v1.cjs
           node --test test-shared-registrar-mcp-discovery-probe-v1.cjs
+          node --check test-shared-registrar-mcp-discovery-loopback-v1.cjs
+          sudo -n env REGISTRAR_MCP_DISCOVERY_LOOPBACK=1 GITHUB_ACTIONS="${GITHUB_ACTIONS}" RUNNER_ENVIRONMENT="${RUNNER_ENVIRONMENT}" RUNNER_OS="${RUNNER_OS}" GITHUB_WORKSPACE="${GITHUB_WORKSPACE}" node --test test-shared-registrar-mcp-discovery-loopback-v1.cjs
           node --check shared-registrar-native-host-hooks-v1.cjs
           node --check test-shared-registrar-native-host-hooks-v1.cjs
           node --test test-shared-registrar-native-host-hooks-v1.cjs
