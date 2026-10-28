@@ -26,7 +26,7 @@ function inspect(src,cand){
   let oldText=old.toString('utf8'),candidate=fresh.toString('utf8');
   if(name!=='approval-policy.json'){
    assert.ok(includedInOrder(oldText,candidate),'legacy_line_modified_or_removed:'+name);
-   assert.equal(candidate.includes('prhm_action_registry_install_v1')||candidate.includes('prhm_registrar_request_v1'),true);
+   assert.equal(name==='executor.server.js'?candidate.includes('/v2/registrar/request'):candidate.includes('prhm_action_registry_install_v1')||candidate.includes('prhm_registrar_request_v1'),true);
    assert.ok(candidate.length>oldText.length);
   }else{
    const o=JSON.parse(oldText),n=JSON.parse(candidate);
