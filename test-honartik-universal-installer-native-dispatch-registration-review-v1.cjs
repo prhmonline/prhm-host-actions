@@ -71,3 +71,49 @@ test('other caller actions can never turn into Level3 or register Production',
  for(const method of ['install','execute','issueL4','consumeL4','writeOwner','runCommand'])
   assert.equal(R[method],undefined);
 });
+
+
+const fixedActionLine=(action)=>"if(action==='"+action+"')return fixture();";
+const pinnedShape=()=>[
+ 'async function applyHostActionV2(action){'+
+  R.EXPECTED_MAIN_ACTIONS.map(fixedActionLine).join('')+'}',
+ 'applyHostActionV2=async function(action){'+
+  R.EXPECTED_WRAPPER_ACTIONS.map(fixedActionLine).join('')+
+  'return applyHostActionV2Original(action);};'
+].join('\n');
+test('real 2026-10-28 root console registry/dispatcher shape is pinned',()=>{
+ const att=R.inspectPinnedLiveDispatcher(Buffer.from(pinnedShape()));
+ assert.deepEqual(att,{
+  main_actions:13,final_wrapper_actions:19,
+  live_apply_authorized:false,production_mutation:false
+ });
+ assert.equal(R.EXPECTED_MAIN_ACTIONS.includes('honartik_universal_installer_upgrade_v1'),false);
+ assert.equal(R.EXPECTED_WRAPPER_ACTIONS.includes('honartik_universal_installer_upgrade_v1'),false);
+});
+test('fail closed on missing, injected or re-ordered wrapper action',()=>{
+ const src=pinnedShape();
+ for(const tampered of [
+  src.replace(fixedActionLine('honartik_iticket_dark_backend_batch2_v1'),''),
+  src.replace(fixedActionLine('host_action_v2_installer_v1'),
+   fixedActionLine('honartik_universal_installer_upgrade_v1')+
+   fixedActionLine('host_action_v2_installer_v1')),
+  src.replace(fixedActionLine('agent_zero_downtime_bootstrap_v1'),
+   fixedActionLine('selfmaint_exec_route_refresh_v1'))
+ ]){
+  assert.throws(()=>R.inspectPinnedLiveDispatcher(Buffer.from(tampered)),
+   /live_final_wrapper_shape_drift/);
+ }
+});
+test('fail closed on main dispatcher drift and duplicated function',()=>{
+ const src=pinnedShape();
+ assert.throws(()=>R.inspectPinnedLiveDispatcher(Buffer.from(
+  src.replace(fixedActionLine('parham_page_create_v1'),''))),
+  /live_main_dispatcher_shape_drift/);
+ assert.throws(()=>R.inspectPinnedLiveDispatcher(Buffer.from(
+  src+'\n'+src.split('\n')[0])),
+  /live_dispatcher_wrapper_ambiguous/);
+});
+test('root dispatcher shape inspection rejects non-bytes',()=>{
+ assert.throws(()=>R.inspectPinnedLiveDispatcher('unknown'),/live_executor_missing/);
+ assert.throws(()=>R.inspectPinnedLiveDispatcher(Buffer.alloc(0)),/live_executor_missing/);
+});
