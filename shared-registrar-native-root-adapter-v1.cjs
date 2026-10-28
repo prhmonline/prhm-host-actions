@@ -164,13 +164,14 @@ async function applyFromTrustedRootDispatcher({args,approvalToken,hooks}={}){
    postInstall:async()=>{
     const r=await f.reloadAndVerifyHealth({
      services:gate.SERVICES,action:bound.release.normalized.action,
-     project:args.project
+     project:args.project,sourceCommit:args.source_commit
     });
     return r===true;
    },
    postRollback:async()=>{
     const r=await f.restoreAndVerifyHealth({
-     services:gate.SERVICES,project:args.project
+     services:gate.SERVICES,project:args.project,
+     sourceCommit:args.source_commit
     });
     return r===true;
    }
