@@ -105,9 +105,24 @@ function createBoundPlan({args,hooks}){
   return {key:id,path:expect.path,beforeSha:expect.sha256,
    afterSha:bound.after_sha256,nextBytes:bytes};
  });
+ // Asset contents are bound to the exact immutable source commit.
+ // Include every asset in the SAME crash-safe transaction as the four owners.
+ const assets=release.normalized.assets.map(a=>{
+  if(!/^\/opt\/prhm-agent-selfmaint-exec\/actions\/[a-z0-9][a-z0-9_.-]{2,120}$/.test(a.path))
+   fail('asset_destination_untrusted');
+  const bytes=f.readPinnedGitSource({
+   repo:'prhmonline/prhm-host-actions',commit:args.source_commit,
+   path:a.source_path
+  });
+  if(!Buffer.isBuffer(bytes)||native.HASH(bytes)!==a.sha256)
+   fail('asset_pinned_source_mismatch');
+  return {path:a.path,afterSha:a.sha256,nextBytes:bytes};
+ });
+ if(assets.length===0||assets.length>32)fail('asset_set_invalid');
  return Object.freeze({release,plan:{
   schema:'prhm.registrar.native-transaction.v1',
-  steps,sourceCommit:args.source_commit,manifestSha256:args.manifest_sha256
+  steps,assets,sourceCommit:args.source_commit,
+  manifestSha256:args.manifest_sha256
  }});
 }
 function reserveReceipt(requestId,argumentSha){
