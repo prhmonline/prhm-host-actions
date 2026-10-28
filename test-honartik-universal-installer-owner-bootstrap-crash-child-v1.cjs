@@ -16,8 +16,10 @@ const steps=tx.KEYS.map(key=>{
  const p=path.join(base,key+'.js');
  const before=fs.readFileSync(p);
  const nextBytes=Buffer.from('verified-fake-fixture-after-'+key+'\n');
+ const stat=fs.lstatSync(p);
  return {key,path:p,beforeSha:tx.HASH(before),
-  afterSha:tx.HASH(nextBytes),nextBytes};
+  afterSha:tx.HASH(nextBytes),nextBytes,
+  expectedUid:stat.uid,expectedGid:stat.gid,expectedMode:stat.mode&0o777};
 });
 const assets=includeAsset?(()=>{
  const p=path.join(base,'asset-dir','verified-action.cjs');
