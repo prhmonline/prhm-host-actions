@@ -141,6 +141,12 @@ function createCore(directory,uid){
 function openProductionStore(){
  if(typeof process.getuid!=='function'||process.getuid()!==0)
   fail('root_required');
+ // The containing service-state directory must not be replaceable by a
+ // non-root actor, or exclusive O_EXCL request files cease being trustworthy.
+ const parent=path.dirname(DIR),st=fs.lstatSync(parent);
+ if(!st.isDirectory()||st.isSymbolicLink()||
+   fs.realpathSync(parent)!==parent||st.uid!==0||
+   (st.mode&0o022)!==0)fail('production_parent_untrusted');
  return createCore(DIR,0);
 }
 // Disposable Linux-only fixtures; NOT wired to any HTTP/MCP/production route.
