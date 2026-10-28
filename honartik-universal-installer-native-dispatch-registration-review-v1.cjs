@@ -133,9 +133,10 @@ function inspectPinnedLiveDispatcher(bytes){
 function previewPinnedProduction(readOwner,readShim){
  if(typeof readShim!=='function')fail('shim_reader_required');
  if(typeof readOwner!=='function')fail('owner_reader_required');
+ // First SHA-pin every owner preimage; inspect only the pinned source shape.
+ const candidate=P.previewOwnerPatch(readOwner);
  inspectPinnedLiveDispatcher(readOwner(REG.TARGETS.executor.path));
- // Owner verifier requires exact raw live bytes and validates all 3 SHA.
- return reviewCandidate(P.previewOwnerPatch(readOwner),readShim(SHIM));
+ return reviewCandidate(candidate,readShim(SHIM));
 }
 function previewIsolatedSynthetic(files,shimBytes){
  // Test-only synthetic fixtures must be clearly marked and non-root.
