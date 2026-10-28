@@ -226,3 +226,46 @@ Independent review still must validate the complete original four owner-file
 patch, root console provenance, actual auth/issuer/consumed-ledger semantics,
 concurrent claim under the real systemd security settings, service health
 and verified rollback. Source CI is not authority to deploy.
+
+## Installed Approval Center lifecycle transport contract (source-only, 2026-10-28)
+
+The live Approval Center's installed `approval/server.js` and the live Host
+Actions excerpts confirm the following *existing* authenticated routes:
+
+- `POST /v1/requests`: typed request `{action,project,source_commit,
+  manifest_commit,manifest_sha256}` passed as `arguments`, hashed by the
+  issuer's sorted `canonicalJson` (the current old Host Actions route
+  wrongly supplies only `{action}` for this new registrar).
+- `POST /v1/requests/<request_id>/decision`: exact level-4 literal, the
+  reviewed fixed rollback reference, approval bound to the pending request.
+- `POST /v1/validate`: exact Approval Center signed token, typed principal,
+  role, tool, environment, action, operation and five-field arguments SHA.
+- `POST /v1/consume`: the same binding plus the installed fixed executor
+  consumer; the issuer writes its protected one-time consumption ledger.
+
+`shared-registrar-approval-center-bridge-v1.cjs` now owns the *source-level*
+protocol contract. It is instantiated by `shared-registrar-native-dispatcher-
+v1.cjs` with **four privileged pre-bound transport callbacks** corresponding
+to the existing authenticated issuer methods. It rejects wrong issued
+`request_id`, policy version/hash, wrong typed argument digest, missing
+approval, denied validation, and mismatched consumption proof before returning
+the signed token exclusively to the in-process dispatcher. The dispatcher
+separately verifies issuer Ed25519, live policy, consumed-once ledger and
+request identity; the root adapter verifies again before any write.
+
+**The four authenticated transport functions are NOT installed/bound on the
+live host yet.** They MUST be implemented inside the existing root-owned
+code, reusing its protected Approval Center auth and never taking a URL,
+token, credential, route selector or callback from the caller. Source-level
+test replies are deliberately synthetic: the tests do not claim a live
+Approval Center approval, real issuer signature or production consumption.
+A root-privileged Ubuntu CI job runs the synthetic callback sequence and
+fail-closed negative cases without touching production.
+
+The native provider-console Bootstrap needs separately reviewed immutable
+patches for all four original owner files, a trusted staging and policy
+transaction, before/after SHA and metadata proof, and an actual service
+stop/start plus failed-start/crash rollback drill. Only an independently
+authorized, action-specific signed level-4 transaction may activate it.
+No extra installer or parallel root path is permitted. **NO-GO** until those
+evidence records and human security APPROVED exist.
