@@ -131,3 +131,56 @@ registration.
 
 **STOP** if any live SHA differs from the recorded preimage, any backup is
 missing, any policy scope changes unexpectedly, or rollback cannot be proven.
+
+## Native five-field dispatcher integration contract (source candidate, 2026-10-28)
+
+Live operator-provided root-console source inspection confirmed the installed
+host only handles `{action}`: base request/confirm/authorize-consume and
+executor request/execute use action-only argument SHA; the MCP tool currently
+offers a fixed action enum. **Do not extend that old input schema to accept
+arbitrary fields or reuse its one-field approval for the registrar.**
+
+Candidate `shared-registrar-native-dispatcher-v1.cjs` encodes a separate,
+fixed five-field registrar path. It is a source-only module, NOT wired into
+the root-owned server; it exports no CLI, signer, URL server, bootstrap or
+general shell. It requires a separately installed, root-owned host binding:
+
+1. Base host must expose a **distinct fixed registrar** request endpoint
+   with exactly `action`, `project`, `source_commit`,
+   `manifest_commit`, `manifest_sha256`; request must use the existing
+   Approval Center `/v1/requests` typed flow and preserve existing scopes.
+2. New pending record must be written with an exclusive, fsynced, root-owned,
+   mode-0600 store; no JWS, private key or token is saved or returned. Bind
+   exactly `request_id`, full tuple, arguments SHA-256, active policy version
+   and hash, and expiry. A duplicate/corrupt/expired record is a hard stop.
+3. Root executor must accept only `request_id` and exact
+   `CONFIRM_LEVEL_4_CRITICAL`, atomically CLAIM the exact pending record
+   before issuer confirmation/consumption (compare-and-swap, never retry the
+   same request). Its host-owned `confirmAndConsumeBoundApproval` must call
+   the **actual installed** Approval Center with the same full signed tuple.
+4. Before any installer call, verify the issuer's original Ed25519 JWS,
+   installed policy hash `SHA256(JSON.stringify(parsedConfig))`, immutable
+   five-field digest, expiry and consumed-once ledger **and the exact pending
+   `request_id`**. The native root adapter independently re-verifies the
+   token and consumed ledger before doing any filesystem write.
+5. `nativeInstallerHooks` must be pre-bound privileged capability objects
+   **inside the reviewed root executor**; never accept functions, paths,
+   commands, signer URLs, credentials or hooks from user/MCP/HTTP input.
+   Use the existing root owner's exact SHA-bound files, allowed asset paths,
+   durable journal and full real service health plus rollback checks.
+6. MCP must expose only the distinct fixed registrar request and
+   status/apply methods. Never change the legacy action-only request/execute
+   route to be generically five-field; all existing actions remain unchanged.
+7. Crash after claimed request/consumption must remain fail-closed and require
+   a **separately reviewed, trusted native recovery path** for the existing
+   transaction journal; a caller must not be able to replay Level-4 or select
+   arbitrary recovery targets. Independently exercise interrupted install,
+   metadata drift, bad signature/hash, service-start failure and full rollback
+   on disposable Linux before provider-console activation.
+
+**Not yet delivered:** actual root-owned owner-file integration changes,
+secure state store and CAS host callbacks, provider-console trusted bootstrap
+binary, independently executed service/reboot rollback proof or APPROVED review.
+The tested candidate is not enough to permit issuance or consumption of a
+Production L4 receipt. The current live Approval Center policy still lacks
+`host_action.prhm_action_registry_install_v1` and its typed scope.
