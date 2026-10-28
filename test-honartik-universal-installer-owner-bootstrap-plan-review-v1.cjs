@@ -19,6 +19,7 @@ test('cannot accept arbitrary plan readers or forge owner bytes',()=>{
  assert.throws(()=>p.makeReviewPlan(),/readers_required/);
  assert.throws(()=>p.makeReviewPlan({
   readOwners:()=>Buffer.from('untrusted-production-owner'),
+  readOwnerMetadata:()=>({uid:0,gid:0,mode:0o600,isFile:true,isSymbolicLink:false,nlink:1}),
   readArtifacts:()=>Buffer.from('not-an-exact-git-blob'),
   readShim:()=>Buffer.from('unreviewed')
  }),/owner_sha_drift_base/);
