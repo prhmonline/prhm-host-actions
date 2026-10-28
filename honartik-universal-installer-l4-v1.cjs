@@ -34,7 +34,8 @@ const METHODS=Object.freeze([
   'attestImmutableCandidate','attestIndependentLinuxTests',
   'createDurableRecoveryJournal','attestJournalRecoverable',
   'consumeSignedOneTimeL4Approval','installFixedBundleTransaction',
-  'attestInstalledPostimage','commitJournal','restoreExactJournal',
+  'attestInstalledPostimage','commitJournal','inspectDurableJournalState',
+  'restoreExactJournal',
   'attestExactRollback','durableAudit','releaseInstallerLock'
 ]);
 function trustedHost(host) {
@@ -132,9 +133,7 @@ async function applyFixedInstallerUpgrade(host){
   // ONLY a root-owned Host Actions binding may call it with real capabilities.
   const h=trustedHost(host);
   let lease=null,journal=null,rollbackVerified=true,post=null;
-  // A failed journal write or commit acknowledgement has indeterminate effects.
-  // Never unlock or roll back until trusted recovery establishes the state.
-  let journalAttempted=false,journalRecoverable=false,commitAttempted=false;
+  let commitAttempted=false,journalPrepareAttempted=false;
   try{
     lease=await h.acquireRootOwnedInstallerLock(CONTRACT);
     if(!lease||typeof lease.id!=='string'||lease.id.length<8)
@@ -142,12 +141,14 @@ async function applyFixedInstallerUpgrade(host){
     const before=attestPreimage(await h.attestInstalledPreimage(CONTRACT));
     attestCandidate(await h.attestImmutableCandidate(CONTRACT));
     attestTests(await h.attestIndependentLinuxTests(CONTRACT));
-    journalAttempted=true;
+    // If the native journal writer fsyncs and then loses its response,
+    // releasing the lease would permit another installer to overwrite an
+    // unresolved transaction. Assume uncertain until root reconciliation.
+    journalPrepareAttempted=true;
     journal=await h.createDurableRecoveryJournal(CONTRACT,lease,before);
     if(!journal||typeof journal.id!=='string'||journal.id.length<8||
        await h.attestJournalRecoverable(CONTRACT,journal)!==true)
       fail('prewrite_recovery_unproven');
-    journalRecoverable=true;
     const receipt=attestApproval(await h.consumeSignedOneTimeL4Approval(CONTRACT,journal));
     await h.durableAudit({action:ACTION,event:'authorized',journal_id:journal.id,
       approval_id:receipt.approval_id});
@@ -162,15 +163,31 @@ async function applyFixedInstallerUpgrade(host){
     // state and preserve recovery on any uncertain result.
     commitAttempted=true;
     if(await h.commitJournal(CONTRACT,journal)!==true)fail('durable_commit_failed');
+    // A successful method return is not proof that the COMMITTED state
+    // reached durable storage. Independently re-read the trusted journal.
+    if(await h.inspectDurableJournalState(CONTRACT,journal)!=='COMMITTED')
+      fail('durable_commit_state_unverified');
     return Object.freeze({ok:true,installer_upgraded:true,
       backend_deployed:false,yii_migrations_executed:false,
       previous_digest:CONTRACT.existing_digest,
       installed_digest:CONTRACT.candidate_digest});
   }catch(error){
-    if(commitAttempted||(journalAttempted&&!journalRecoverable)){
-      rollbackVerified=false;
-      fail(commitAttempted?'COMMIT_INDETERMINATE_manual_recovery_required':
-        'JOURNAL_INDETERMINATE_manual_recovery_required');
+    if(journalPrepareAttempted&&!journal){
+      rollbackVerified=false; // root reconciler alone may clear this fence
+      fail('JOURNAL_PREPARE_OUTCOME_UNCERTAIN_manual_reconciliation_required');
+    }
+    if(journal&&commitAttempted){
+      // A failed/absent commit response is NOT evidence the journal remains
+      // PREPARED. A durable COMMITTED marker must never be rolled back.
+      // Only the preinstalled root-owned journal inspector may authorize
+      // rollback on a byte-verified, still-PREPARED transaction.
+      let durableState='UNKNOWN';
+      try{durableState=await h.inspectDurableJournalState(CONTRACT,journal)}
+      catch{durableState='UNKNOWN'}
+      if(durableState!=='PREPARED'){
+        rollbackVerified=false; // preserve exclusive recovery fence
+        fail('COMMIT_OUTCOME_UNCERTAIN_manual_reconciliation_required');
+      }
     }
     if(journal){
       try {
@@ -184,9 +201,12 @@ async function applyFixedInstallerUpgrade(host){
     if(!rollbackVerified)fail('ROLLBACK_UNVERIFIED_manual_recovery_required');
     fail('denied_or_rolled_back');
   }finally{
-    // On unverified recovery the root executor MUST keep the lock/journal
-    // owned by recovery service: never release a potentially unsafe cutover.
-    if(lease&&rollbackVerified){
+    // The durable inspector requires the same lease for COMMITTED and
+    // ROLLED_BACK records. Keep that lease after ANY journal attempt.
+    // Only a separately reviewed native reconciler may durably archive
+    // terminal evidence and retire the lease after verifying its UUID.
+    // A clean preflight denial (no journal attempt) may release immediately.
+    if(lease&&rollbackVerified&&!journalPrepareAttempted){
       if(await h.releaseInstallerLock(CONTRACT,lease)!==true)
         fail('release_lock_failed_manual_inspection_required');
     }

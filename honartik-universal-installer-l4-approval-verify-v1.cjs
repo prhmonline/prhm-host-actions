@@ -29,6 +29,10 @@ function decodeJws(token,keyBytes){
    signature=Buffer.from(parts[2],'base64url');
    key=crypto.createPublicKey(keyBytes);
  }catch{FAIL('token_decode')}
+ // Check canonical compact serialization outside the decode try/catch so a
+ // malformed signature is explicitly rejected as token_shape.
+ if(parts.some(encoded=>Buffer.from(encoded,'base64url')
+      .toString('base64url')!==encoded))FAIL('token_shape');
  const kid=HASH(key.export({format:'der',type:'spki'})).slice(0,16);
  if(!EXACT(head,['alg','typ','kid'])||
   head.alg!=='EdDSA'||head.typ!=='PRHM-COMPANY-APPROVAL'||head.kid!==kid||
