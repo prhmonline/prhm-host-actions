@@ -25,11 +25,19 @@ function readPinnedOwner(readOwners,key){
  need(SHA(bytes)===owner.sha256,'owner_sha_drift_'+key);
  return bytes;
 }
-function makeReviewPlan({readOwners,readArtifacts,readShim}={}){
- need(typeof readOwners==='function'&&typeof readArtifacts==='function'&&
-  typeof readShim==='function','readers_required');
- // All four owner identities are pinned before constructing any candidate.
+function makeReviewPlan({readOwners,readOwnerMetadata,readArtifacts,readShim}={}){
+ need(typeof readOwners==='function'&&typeof readOwnerMetadata==='function'&&
+  typeof readArtifacts==='function'&&typeof readShim==='function','readers_required');
+ // All four owner identities and trusted metadata are pinned before any candidate.
  const raw=Object.fromEntries(ORDER.map(k=>[k,readPinnedOwner(readOwners,k)]));
+ const ownerMeta=Object.fromEntries(ORDER.map(key=>{
+  const m=readOwnerMetadata(REG.TARGETS[key].path);
+  need(m&&m.isFile===true&&m.isSymbolicLink===false&&m.nlink===1&&
+   Number.isInteger(m.uid)&&m.uid>=0&&Number.isInteger(m.gid)&&m.gid>=0&&
+   Number.isInteger(m.mode)&&m.mode>=0&&m.mode<=0o777&&
+   (m.mode&0o022)===0,'owner_metadata_untrusted_'+key);
+  return [key,Object.freeze({expectedUid:m.uid,expectedGid:m.gid,expectedMode:m.mode})];
+ }));
  const reviewed=DISPATCH.previewPinnedProduction(p=>readOwners(p),
   n=>readShim(n));
  need(reviewed.security_boundary?.production_mutation===false&&
@@ -57,13 +65,15 @@ function makeReviewPlan({readOwners,readArtifacts,readShim}={}){
    Buffer.from(next[key],'utf8');
   need(Buffer.isBuffer(bytes),'candidate_bytes_missing_'+key);
   return Object.freeze({key,path:PATHS[key],
-   beforeSha:REG.TARGETS[key].sha256,afterSha:SHA(bytes),nextBytes:bytes});
+   beforeSha:REG.TARGETS[key].sha256,afterSha:SHA(bytes),nextBytes:bytes,
+   ...ownerMeta[key]});
  }));
  // No caller-provided paths, policy, approvals, destination or source commit.
  // This metadata digest is NOT a cryptographic deployment authorization.
  const manifestSha256=SHA(Buffer.from(JSON.stringify({
   action:ACTION,sourceCommit:REG.SOURCE_SHA,
-  shimBlob:DISPATCH.SHIM_BLOB,steps:steps.map(s=>[s.key,s.path,s.beforeSha,s.afterSha]),
+  shimBlob:DISPATCH.SHIM_BLOB,steps:steps.map(s=>[s.key,s.path,s.beforeSha,s.afterSha,
+   s.expectedUid,s.expectedGid,s.expectedMode]),
   assets:assets.map(a=>[a.path,a.afterSha])
  })));
  return Object.freeze({
