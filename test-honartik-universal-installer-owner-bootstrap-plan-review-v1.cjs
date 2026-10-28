@@ -12,6 +12,12 @@ test('review-only plan has exactly four owner paths and fixed action',()=>{
  assert.equal(p.REVIEW_ONLY,true);
  assert.equal(p.NO_PRODUCTION_WRITER,true);
  assert.equal(p.NO_APPROVAL_ISSUER,true);
+ assert.deepEqual(p.EXPECTED_OWNER_META,{
+  base:{uid:0,gid:0,mode:0o644},
+  executor:{uid:0,gid:0,mode:0o755},
+  mcp:{uid:0,gid:0,mode:0o600},
+  policy:{uid:0,gid:0,mode:0o644}
+ });
  assert.equal(typeof p.apply,'undefined');
  assert.deepEqual(tx.KEYS,exact);
 });
