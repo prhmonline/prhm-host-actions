@@ -115,3 +115,87 @@ test('missing or fabricated signed token never invokes installer',async()=>{
  }),/signed_l4_token_missing/);
  assert.equal(f.calls.installer,0);
 });
+
+
+test('live one-field Host Actions request is NOT a valid five-field registrar request',()=>{
+ const {input}=fixture();
+ for(const wrong of [{action:input.action},
+  {...input,approval_token:'caller-token'},
+  {...input,command:'node'},
+  {...input,manifest_commit:'latest'}]){
+  assert.throws(()=>bridge.strictRequest(wrong),/typed_registry_|registry_gateway_/);
+ }
+});
+function issuedPending(input,nowMs){
+ return {schema_version:'prhm.approval-request.v2',
+  request_id:'33333333-3333-4333-8333-333333333333',
+  status:'pending',action:input.action,operation:g.OPERATION,
+  tool:'host_action_v2_apply',project:'control_plane',
+  environment:'production',principal_id:'mohammad',role:'mcp-operator',
+  level:4,risk:'critical',policy_version:g.POLICY_VERSION,
+  policy_hash:'a'.repeat(64),one_time_use:true,
+  arguments_sha256:g.approvalBindingSha(input),
+  request_hash:g.approvalBindingSha(input),
+  rollback_reference:bridge.typedApprovalRequest(input).rollback_reference,
+  expires_at:new Date(nowMs+90000).toISOString()};
+}
+test('future native request persists full five-field approval identity, no token',()=>{
+ const {input}=fixture(),now=Date.now(),issued=issuedPending(input,now);
+ const record=bridge.bindPendingRequest(input,issued,now);
+ assert.deepEqual(record.request_id,issued.request_id);
+ assert.equal(record.project,input.project);
+ assert.equal(record.manifest_commit,input.manifest_commit);
+ assert.equal(record.arguments_sha256,g.approvalBindingSha(input));
+ assert.equal(Object.hasOwn(record,'approval_token'),false);
+ assert.equal(Object.isFrozen(record),true);
+ const applied=bridge.bindPendingExecute(record,{
+  request_id:record.request_id,second_confirmation:'CONFIRM_LEVEL_4_CRITICAL'},now);
+ assert.deepEqual(applied.arguments,input);
+ assert.equal(applied.policy_hash,record.policy_hash);
+});
+test('native five-field binding rejects project swap and unbound typed approval',()=>{
+ const {input}=fixture(),now=Date.now(),issued=issuedPending(input,now);
+ for(const change of [
+  {arguments_sha256:'f'.repeat(64)},
+  {request_hash:'f'.repeat(64)},
+  {policy_version:'old'},
+  {level:3,risk:'high'},
+  {status:'approved'},
+  {operation:'host_action.unrelated'},
+  {one_time_use:false},
+  {rollback_reference:'other'},
+  {expires_at:new Date(now-1000).toISOString()}
+ ])assert.throws(()=>bridge.bindPendingRequest(input,{...issued,...change},now),
+  /pending_request_/);
+ const record=bridge.bindPendingRequest(input,issued,now);
+ const request={request_id:record.request_id,
+  second_confirmation:'CONFIRM_LEVEL_4_CRITICAL'};
+ for(const changed of [
+  {...record,project:'moeinshow'},
+  {...record,source_commit:'f'.repeat(40)},
+  {...record,manifest_commit:'f'.repeat(40)},
+  {...record,manifest_sha256:'f'.repeat(64)},
+  {...record,arguments_sha256:'f'.repeat(64)},
+  {...record,policy_version:'old'},
+  {...record,status:'succeeded'}
+ ])assert.throws(()=>bridge.bindPendingExecute(changed,request,now),
+  /pending_execution_binding_invalid/);
+});
+test('native executor rejects request-id swap, missing confirmation, replay status and expired request',()=>{
+ const {input}=fixture(),now=Date.now();
+ const record=bridge.bindPendingRequest(input,issuedPending(input,now),now);
+ const cmd={request_id:record.request_id,second_confirmation:'CONFIRM_LEVEL_4_CRITICAL'};
+ for(const change of [
+  {request_id:'44444444-4444-4444-8444-444444444444'},
+  {second_confirmation:'CONFIRM_LEVEL_3_PRODUCTION'},
+  {approval_token:'fabricated'},
+  {command:'id'}
+ ]){
+  assert.throws(()=>bridge.bindPendingExecute(record,{...cmd,...change},now),
+   /pending_execution_binding_invalid|critical_confirmation_required|request_schema/);
+ }
+ assert.throws(()=>bridge.bindPendingExecute(record,cmd,now+100000),
+  /pending_execution_expired/);
+ assert.throws(()=>bridge.bindPendingRequest(input,issuedPending(input,now),NaN),
+  /trusted_clock_invalid/);
+});
