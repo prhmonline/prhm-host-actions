@@ -152,10 +152,46 @@ function attestRelease({manifestBytes, expectedManifestSha, sourceCommit, manife
 const fs=require('node:fs'),path=require('node:path');
 const APPROVAL_PUBLIC_KEY='/var/lib/prhm-company-approval/ed25519-public.pem';
 const APPROVAL_CONSUMED_DIR='/var/lib/prhm-company-approval/consumed';
+const APPROVAL_POLICY_PATH='/opt/prhm-company-control-plane/config/approval-policy.json';
 // Exact registrar-bootstrap policy version. Never accept an old or fallback
 // version: this must match the independently reviewed policy installed via
 // the trusted Root-of-Trust transaction before any signed L4 receipt is valid.
 const POLICY_VERSION='2026-10-27.2-shared-registrar-bootstrap-proposal';
+/**
+ * Match the LIVE issuer's approval/server.js policy identity exactly:
+ * const config=JSON.parse(fs.readFileSync(CONFIG_PATH,'utf8'));
+ * const policyHash=sha256(JSON.stringify(config));
+ * Do NOT hash raw file bytes or use the separate canonicalJson(args) helper.
+ */
+function issuerPolicyIdentity(policyBytes){
+  exactly(Buffer.isBuffer(policyBytes)&&policyBytes.length>0&&
+    policyBytes.length<=160000,'trusted_policy_bytes_invalid');
+  let config;
+  try{config=JSON.parse(policyBytes.toString('utf8'))}
+  catch{stop('trusted_policy_json_invalid')}
+  exactly(config&&typeof config==='object'&&!Array.isArray(config)&&
+    config.schema_version==='prhm.approval-policy.v1'&&
+    config.default_deny===true&&config.scope_freeze===true&&
+    config.version===POLICY_VERSION&&
+    config.operations&&typeof config.operations==='object'&&
+    !Array.isArray(config.operations)&&
+    Array.isArray(config.typed_scopes),'trusted_policy_identity_invalid');
+  const op=config.operations[OPERATION];
+  exactly(op&&op.level===4&&op.risk==='critical'&&op.one_time_use===true&&
+    op.requires_second_confirmation===true&&
+    op.policy_version===POLICY_VERSION&&
+    config.typed_scopes.some(scope=>scope&&
+      scope.tool==='host_action_v2_apply'&&
+      scope.project==='control_plane'&&
+      scope.environment==='production'&&
+      scope.action===ACTION&&scope.operation===OPERATION&&
+      scope.risk==='critical'&&Array.isArray(scope.principals)&&
+      scope.principals.some(p=>p&&p.principal_id==='mohammad'&&
+        Array.isArray(p.roles)&&p.roles.includes('mcp-operator'))),
+    'trusted_policy_registrar_scope_missing');
+  return Object.freeze({version:config.version,
+    hash:sha(Buffer.from(JSON.stringify(config)))});
+}
 function decodeJws(token,publicKey){
   exactly(typeof token==='string'&&token.length>=120&&token.length<=16384,'signed_token_missing');
   const parts=token.split('.');
@@ -174,8 +210,9 @@ function decodeJws(token,publicKey){
   exactly(claims&&typeof claims==='object'&&!Array.isArray(claims),'signed_claims_invalid');
   return claims;
 }
-function verifyConsumedRegistrationApproval({token,publicKey,ledger,args,nowSec}){
+function verifyConsumedRegistrationApproval({token,publicKey,ledger,args,nowSec,trustedPolicyBytes}){
   exactly(Number.isSafeInteger(nowSec)&&nowSec>0,'trusted_clock_invalid');
+  const trustedPolicy=issuerPolicyIdentity(trustedPolicyBytes);
   const c=decodeJws(token,publicKey),digest=approvalBindingSha(args);
   exactly(UUID.test(c.approval_id||'')&&UUID.test(c.request_id||'')&&
     c.jti===c.approval_id&&c.iss==='prhm-company-approval'&&
@@ -183,7 +220,8 @@ function verifyConsumedRegistrationApproval({token,publicKey,ledger,args,nowSec}
     c.environment==='production'&&c.tool==='host_action_v2_apply'&&
     c.principal_id==='mohammad'&&c.role==='mcp-operator'&&
     c.level===4&&c.risk==='critical'&&c.decision==='accept'&&c.one_time_use===true&&
-    c.policy_version===POLICY_VERSION&&SHA256.test(c.policy_hash||'')&&
+    c.policy_version===trustedPolicy.version&&
+    SHA256.test(c.policy_hash||'')&&c.policy_hash===trustedPolicy.hash&&
     c.arguments_sha256===digest&&c.request_hash===digest&&
     Number.isSafeInteger(c.nbf)&&Number.isSafeInteger(c.iat)&&Number.isSafeInteger(c.exp)&&
     c.nbf<=nowSec&&c.iat<=nowSec&&c.exp>nowSec&&c.exp>c.iat,
@@ -223,6 +261,9 @@ function verifyLiveConsumedRegistrationApproval({token,args}){
   exactly(dir.isDirectory()&&!dir.isSymbolicLink()&&
     fs.realpathSync(APPROVAL_CONSUMED_DIR)===APPROVAL_CONSUMED_DIR&&
     (dir.mode&0o022)===0,'approval_consumption_dir_unsafe');
+  const policyMeta=fs.lstatSync(APPROVAL_POLICY_PATH);
+  exactly(policyMeta.uid===0,'trusted_policy_owner_invalid');
+  const trustedPolicyBytes=trustedRead(APPROVAL_POLICY_PATH,160000);
   const publicKey=trustedRead(APPROVAL_PUBLIC_KEY,8192);
   const claims=decodeJws(token,publicKey);
   exactly(UUID.test(claims.approval_id||''),'approval_identifier_invalid');
@@ -230,7 +271,7 @@ function verifyLiveConsumedRegistrationApproval({token,args}){
   let ledger;
   try{ledger=JSON.parse(data.toString('utf8'));}catch{stop('consumption_ledger_json');}
   return verifyConsumedRegistrationApproval({token,publicKey,ledger,args,
-    nowSec:Math.floor(Date.now()/1000)});
+    trustedPolicyBytes,nowSec:Math.floor(Date.now()/1000)});
 }
 /**
  * Use explicit phases. Requiring the new target tool during PREINSTALL would
@@ -329,5 +370,5 @@ async function executeAfterTrustedAuthorization({release, signedApprovalToken, a
 }
 module.exports=Object.freeze({ACTION,OPERATION,OWNER_PATHS,ASSET_ROOT,
   sha,canonicalJson,canonicalArgs,approvalBindingSha,assertManifest,attestRelease,
-  POLICY_VERSION,decodeJws,verifyConsumedRegistrationApproval,verifyLiveConsumedRegistrationApproval,
+  POLICY_VERSION,issuerPolicyIdentity,decodeJws,verifyConsumedRegistrationApproval,verifyLiveConsumedRegistrationApproval,
   readiness,finalizeVerifiedInstall,executeAfterTrustedAuthorization});
