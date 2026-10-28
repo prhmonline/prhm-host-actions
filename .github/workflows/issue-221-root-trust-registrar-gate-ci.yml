@@ -9,6 +9,8 @@ on:
       - 'shared-registrar-pending-store-v1.cjs'
       - 'shared-registrar-approval-center-bridge-v1.cjs'
       - 'test-registrar-four-owner-preimage-v1.cjs'
+      - 'shared-registrar-policy-candidate-builder-v1.cjs'
+      - 'test-shared-registrar-policy-candidate-builder-v1.cjs'
       - 'test-registrar-four-owner-preimage-contract-v1.cjs'
       - 'test-shared-registrar-approval-center-bridge-v1.cjs'
       - 'test-shared-registrar-pending-store-v1.cjs'
@@ -41,6 +43,9 @@ jobs:
           node --check prhm-action-registry-host-actions-v2-bridge-v1.cjs
           node --check shared-registrar-native-dispatcher-v1.cjs
           node --check shared-registrar-pending-store-v1.cjs
+          node --check shared-registrar-policy-candidate-builder-v1.cjs
+          node --check test-shared-registrar-policy-candidate-builder-v1.cjs
+          node --test test-shared-registrar-policy-candidate-builder-v1.cjs
           node --check test-registrar-four-owner-preimage-v1.cjs
           node --check test-registrar-four-owner-preimage-contract-v1.cjs
           node --test test-registrar-four-owner-preimage-contract-v1.cjs
