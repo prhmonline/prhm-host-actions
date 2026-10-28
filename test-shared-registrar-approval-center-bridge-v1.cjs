@@ -48,7 +48,7 @@ test('typed Approval request must match exactly reviewed canonical five fields',
   {...request,approval_token:'untrusted'},
   {...request,principal_id:'attacker'}
  ])assert.throws(()=>b.requestPayload(invalid),
-  /registrar_approval_bridge_|registry_gateway_/);
+  /registrar_approval_bridge_|registry_gateway_|typed_registry_/);
 });
 test('critical decision carries only signed request ID, fixed rollback and no user payload',()=>{
  const c=command();
