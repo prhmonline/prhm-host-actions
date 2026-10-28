@@ -62,7 +62,8 @@ test('provider-specific Ed25519 receipt binds exact request, VM, source, manifes
 test('invalid signatures, wrong signer and opaque noncanonical claims fail closed',()=>{
  const f=fixture();try{
   const ok=f.sign(f.claims());
-  assert.throws(()=>f.verify(ok.slice(0,-1)+'A'),/signature_invalid|token_canonical_encoding/);
+  const flipped=ok.slice(0,-1)+(ok.endsWith('A')?'B':'A');
+  assert.throws(()=>f.verify(flipped),/signature_invalid|token_canonical_encoding/);
   const another=crypto.generateKeyPairSync('ed25519').publicKey.export({type:'spki',format:'pem'});
   assert.throws(()=>S.verifyBootstrapReceipt({
    token:ok,publicKey:another,plan:f.plan,environment:'isolated-vm',
@@ -107,6 +108,8 @@ test('one-time durable approval lease cannot be reused, even after failure',()=>
   assert.equal(fs.statSync(lease).mode&0o777,0o600);
   assert.throws(()=>S.__test.reserveConsumedOnce(f.workRoot,f.approvalId),/EEXIST/);
   assert.equal(fs.existsSync(lease),true);
+  assert.throws(()=>S.__test.reserveConsumedOnce(f.workRoot,'../outside'),
+   /lease_approval_id_invalid/);
  }finally{f.dispose()}
 });
 test('distinct bootstrap signer cannot write Production and unpinned owner plan stops',async()=>{
