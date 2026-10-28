@@ -297,6 +297,20 @@ async function executeCore(plan,{workRoot,postInstall,postRollback,onRenamed}={}
   }
   const health=await postInstall();
   if(health!==true)fail('postinstall_health');
+  // A successful callback cannot hide a concurrent write after an earlier
+  // rename. Re-attest EVERY owner and asset just before COMMITTED.
+  for(let i=0;i<plan.steps.length;i++){
+   const now=statFile(plan.steps[i].path),prior=pre[i];
+   if(HASH(fs.readFileSync(plan.steps[i].path))!==plan.steps[i].afterSha||
+      now.uid!==prior.uid||now.gid!==prior.gid||
+      (now.mode&0o777)!==prior.mode)fail('postflight_owner_drift:'+prior.key);
+  }
+  for(let i=0;i<(plan.assets??[]).length;i++){
+   const a=plan.assets[i],now=statFile(a.path),prior=assetPre[i];
+   if(HASH(fs.readFileSync(a.path))!==a.afterSha||
+      now.uid!==prior.uid||now.gid!==prior.gid||
+      (now.mode&0o777)!==prior.mode)fail('postflight_asset_drift:'+prior.key);
+  }
   journal.status='COMMITTED';writeJournal(dir,journal);
   return {status:'COMMITTED',transaction:dir,sourceCommit:plan.sourceCommit};
  }catch(error){
