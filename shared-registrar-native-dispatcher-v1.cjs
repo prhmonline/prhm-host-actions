@@ -16,6 +16,7 @@ const bridge=require('./prhm-action-registry-host-actions-v2-bridge-v1.cjs');
 const gateway=require('./prhm-action-registry-gateway-v1.cjs');
 const native=require('./shared-registrar-native-root-adapter-v1.cjs');
 const stateStore=require('./shared-registrar-pending-store-v1.cjs');
+const issuerBridge=require('./shared-registrar-approval-center-bridge-v1.cjs');
 const ACTION=gateway.ACTION;
 const fail=x=>{throw Error('registrar_dispatch_'+x)};
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -60,8 +61,9 @@ function rootOnly(){
   fail('native_root_required');
 }
 function hostCapabilities(h){
- const names=['requestTypedApproval','confirmAndConsumeBoundApproval',
-  'nativeInstallerHooks','auditMetadata'];
+ const names=['nativeInstallerHooks','auditMetadata'];
+ if(!h||!h.approvalCenterTransport||typeof h.approvalCenterTransport!=='object')
+  fail('trusted_host_approval_transport_missing');
  if(!h||typeof h!=='object'||names.some(n=>typeof h[n]!=='function'))
   fail('trusted_host_capabilities_missing');
  return h;
@@ -81,6 +83,9 @@ function hostCapabilities(h){
 function createForExistingRootExecutor(host){
  rootOnly();
  const h=hostCapabilities(host);
+ // Reviewed source owns the exact Approval Center lifecycle; the host only
+ // supplies its already-authenticated, non-user-configurable transport.
+ const issuer=issuerBridge.createForExistingTrustedHost(h.approvalCenterTransport);
  // No storage callback, path, or lock can be injected by an MCP/HTTP request.
  // Fixed path is enforced by this module; fail closed if not provisioned.
  const pending=stateStore.openProductionStore();
@@ -88,7 +93,7 @@ function createForExistingRootExecutor(host){
   async request(input){
    rootOnly();
    const payload=prepareRequest(input);
-   const response=await h.requestTypedApproval(payload);
+   const response=await issuer.requestTypedApproval(payload);
    const issuerRequest=response?.request;
    const bound=bindIssuedPending(input,issuerRequest,Date.now());
    pending.writePendingExclusive(bound);
@@ -108,7 +113,7 @@ function createForExistingRootExecutor(host){
    if(claimed!==true)fail('pending_claim_failed');
    // No recoverable/retryable public apply after this point. A crash is
    // reconciled by trusted internal recovery, never by reusing the receipt.
-   const issued=await h.confirmAndConsumeBoundApproval({
+   const issued=await issuer.confirmAndConsumeBoundApproval({
     request_id:bound.request_id,second_confirmation:command.second_confirmation,
     arguments:bound.arguments,arguments_sha256:bound.arguments_sha256,
     policy_hash:bound.policy_hash
