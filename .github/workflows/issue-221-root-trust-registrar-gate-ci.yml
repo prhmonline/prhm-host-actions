@@ -5,6 +5,8 @@ on:
     paths:
       - 'prhm-action-registry-gateway-v1.cjs'
       - 'prhm-action-registry-host-actions-v2-bridge-v1.cjs'
+      - 'shared-registrar-native-dispatcher-v1.cjs'
+      - 'test-shared-registrar-native-dispatcher-v1.cjs'
       - 'test-prhm-action-registry-host-actions-v2-bridge-v1.cjs'
       - 'test-prhm-action-registry-gateway-v1.cjs'
       - 'shared-registrar-root-trust-preflight-v1.cjs'
@@ -31,6 +33,9 @@ jobs:
           set -euo pipefail
           node --check prhm-action-registry-gateway-v1.cjs
           node --check prhm-action-registry-host-actions-v2-bridge-v1.cjs
+          node --check shared-registrar-native-dispatcher-v1.cjs
+          node --check test-shared-registrar-native-dispatcher-v1.cjs
+          node --test test-shared-registrar-native-dispatcher-v1.cjs
           node --check test-prhm-action-registry-host-actions-v2-bridge-v1.cjs
           node --test test-prhm-action-registry-host-actions-v2-bridge-v1.cjs
           node --check test-prhm-action-registry-gateway-v1.cjs
