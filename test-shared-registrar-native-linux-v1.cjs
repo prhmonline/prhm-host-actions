@@ -204,6 +204,98 @@ test('throwing crash recovery health remains blocked until verified',async()=>{
  }finally{x.dispose()}
 });
 
+function withAsset(x,{existing=false}={}){
+ const dir=path.join(x.base,'asset-dir');
+ fs.mkdirSync(dir,{mode:0o700});
+ const p=path.join(dir,'verified-action.cjs');
+ const old=Buffer.from('old-action-asset\\n');
+ if(existing)fs.writeFileSync(p,old,{mode:0o600});
+ const nextBytes=Buffer.from('new-verified-action-asset\\n');
+ x.plan.assets=[{path:p,nextBytes,afterSha:tx.HASH(nextBytes)}];
+ return {path:p,before:existing?old:null,nextBytes};
+}
+test('atomic release commits Git-bound asset and four owner files together',async()=>{
+ const x=fixture();
+ try{
+  const a=withAsset(x);
+  const r=await tx.executeCore(x.plan,{workRoot:x.journal,
+   postInstall:async()=>true,postRollback:async()=>true});
+  assert.equal(r.status,'COMMITTED');
+  assert.deepEqual(fs.readFileSync(a.path),a.nextBytes);
+  assert.equal(fs.statSync(a.path).mode&0o777,0o600);
+  const journal=JSON.parse(fs.readFileSync(path.join(r.transaction,'journal.json')));
+  assert.equal(journal.assets.length,1);
+  assert.equal(journal.assets[0].existed,false);
+  for(const st of x.steps)assert.equal(tx.HASH(fs.readFileSync(st.path)),st.afterSha);
+ }finally{x.dispose()}
+});
+test('failure after creating an asset removes asset and rolls back owners',async()=>{
+ const x=fixture();
+ try{
+  const a=withAsset(x);
+  await assert.rejects(tx.executeCore(x.plan,{workRoot:x.journal,
+   postInstall:async()=>false,postRollback:async()=>true}),/postinstall_health/);
+  x.original();
+  assert.equal(fs.existsSync(a.path),false);
+ }finally{x.dispose()}
+});
+test('existing asset original bytes are preserved on failed install',async()=>{
+ const x=fixture();
+ try{
+  const a=withAsset(x,{existing:true});
+  await assert.rejects(tx.executeCore(x.plan,{workRoot:x.journal,
+   postInstall:async()=>false,postRollback:async()=>true}),/postinstall_health/);
+  x.original();
+  assert.deepEqual(fs.readFileSync(a.path),a.before);
+  assert.equal(fs.statSync(a.path).mode&0o777,0o600);
+ }finally{x.dispose()}
+});
+test('untrusted asset mutation during install blocks recovery without deleting it',async()=>{
+ const x=fixture();
+ try{
+  const a=withAsset(x);
+  await assert.rejects(tx.executeCore(x.plan,{workRoot:x.journal,
+   postInstall:async()=>true,postRollback:async()=>true,
+   onRenamed:key=>{if(key==='asset-0')fs.writeFileSync(a.path,'CONCURRENT_CHANGE')}
+  }),/rollback_incomplete/);
+  assert.equal(fs.readFileSync(a.path,'utf8'),'CONCURRENT_CHANGE');
+  const txn=fs.readdirSync(x.journal).find(n=>n.startsWith('txn-'));
+  const j=JSON.parse(fs.readFileSync(path.join(x.journal,txn,'journal.json')));
+  assert.equal(j.status,'ROLLBACK_FAILED');
+ }finally{x.dispose()}
+});
+test('SIGKILL after asset rename restores newly created asset during independent recovery',async()=>{
+ if(process.platform!=='linux')return;
+ const x=fixture();
+ try{
+  const a=withAsset(x);
+  const run=cp.spawnSync(process.execPath,[
+   path.join(__dirname,'test-shared-registrar-crash-child-v1.cjs'),x.base,'asset'
+  ],{timeout:10000,encoding:'utf8'});
+  assert.equal(run.signal,'SIGKILL',JSON.stringify(run));
+  assert.equal(fs.existsSync(a.path),true);
+  const txn=fs.readdirSync(x.journal).find(n=>n.startsWith('txn-'));
+  const recovery=await tx.recoverAfterCrash({workRoot:x.journal,
+   transaction:path.join(x.journal,txn),expectedTargets:x.steps.map(z=>z.path),
+   expectedAssets:[a.path],postRollback:async()=>true});
+  assert.equal(recovery.status,'ROLLED_BACK');
+  assert.equal(fs.existsSync(a.path),false);
+  x.original();
+ }finally{x.dispose()}
+});
+test('asset journal cannot authorize rollback outside trusted asset target list',async()=>{
+ const x=fixture();
+ try{
+  const a=withAsset(x);
+  await assert.rejects(tx.executeCore(x.plan,{workRoot:x.journal,
+   postInstall:async()=>false,postRollback:async()=>true}),/postinstall_health/);
+  const txn=fs.readdirSync(x.journal).find(n=>n.startsWith('txn-'));
+  assert.throws(()=>tx.restoreFromJournal(path.join(x.journal,txn),
+    x.steps.map(z=>z.path),[]),/recovery_target_mismatch/);
+  assert.throws(()=>tx.restoreFromJournal(path.join(x.journal,txn),
+    x.steps.map(z=>z.path),['/tmp/wrong']),/recovery_target_mismatch/);
+ }finally{x.dispose()}
+});
 test('module exposes no standalone apply and rejects unbound plan',()=>{
  assert.equal(Object.isFrozen(tx),true);
  assert.equal(Object.keys(tx).some(x=>/sign|issueApproval|executeShell/.test(x)),false);
