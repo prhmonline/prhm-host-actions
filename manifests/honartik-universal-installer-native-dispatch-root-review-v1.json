@@ -1,0 +1,29 @@
+{
+  "schema": "prhm.honartik217.native-dispatch-root-review.v1",
+  "source": "github-only source review",
+  "root_of_trust_baseline_commit": "a8e118a2491e8caf51baf5eee00fe3f3d2f316e7",
+  "actual_live_owner_sha256": {
+    "agent_api": "4c29d01a248d59ee85754dfa5a59e8132fe22e6b34ef04324228c16c88727406",
+    "root_executor": "410406ba0965ef3a5cad6da6306a85335e38acc3637fb6ed60fa42200a10c2e0",
+    "mcp": "bd768f992dab75710558e3f47187c311c2ee5b5ec6f5751a74e0bbfa64729166",
+    "policy": "148fe2a724befc15cd8c731b0195d83e254d39215792a5084b70dd5b5c178174"
+  },
+  "candidate_live_derived_policy_sha256": "981967b4ce770cd3aa89d27ae98552bbeb3ab31ed116d4e51aef91c0abf68358",
+  "candidate_universal_archive_sha256": "e49ed1ce6366f87fad8dc2e46fd69c323c3cafb3729e90cdaaebe5421898212c",
+  "git_blob_sources": {
+    "honartik-universal-installer-native-dispatch-trust-v1.cjs": "bc0b277dc5979fcdaaa00674feda8bf1949ad1c1",
+    "test-honartik-universal-installer-native-dispatch-trust-v1.cjs": "447a725a7d466ea6532d3094adc35e5b23f7f63f",
+    "honartik-universal-installer-native-dispatch-registration-review-v1.cjs": "61ad9a43809a5a16fcb3d7c9492fb1a7dc193a93",
+    "test-honartik-universal-installer-native-dispatch-registration-review-v1.cjs": "47b42721638f011a136998b699f308f120c51365"
+  },
+  "root_module_closure": 13,
+  "root_shim_installed": false,
+  "three_owner_registration_installed": false,
+  "native_linux_signed_crash_rollback_e2e_verified": false,
+  "independent_security_review_on_this_commit_verified": false,
+  "level4_signed_single_use_consumed": false,
+  "policy_live_activated": false,
+  "universal_installer_upgraded": false,
+  "honartik_iticket_deployed": false,
+  "production_mutation": false
+}
