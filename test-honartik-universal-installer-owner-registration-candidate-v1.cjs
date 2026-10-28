@@ -14,7 +14,9 @@ const executor=H+
  "const HOST_ACTION_V2_SPECS={\n"+
  "  host_action_v2_installer_v1:{operation:'host_action.host_action_v2_installer_v1',kind:'host_action_v2_installer_v1'},\n"+
  "};\napplyHostActionV2=async function(action){return applyHostActionV2Original(action);};\n"+
- "const health={host_actions_v2: Object.keys(HOST_ACTION_V2_SPECS)};\n";
+ "const health={host_actions_v2: Object.keys(HOST_ACTION_V2_SPECS)};\n"+
+ "const authz=await callBase('/v2/host-actions/authorize-consume','POST',{action,approval_token:token});\n"+
+ "const result=await applyHostActionV2(action);\n";
 const mcp=H+"const HostActionV2=z.enum(['leadops_language_gate_v1','host_action_v2_installer_v1']);\n";
 const sample=()=>({base,executor,mcp});
 const action='honartik_universal_installer_upgrade_v1';
@@ -46,6 +48,16 @@ test('synthetic preview pins three owner edits, never promotes L4 to L3',
  const level3=updated.base.split('const HOST_ACTION_V2_LEVEL3 = new Set(')[1].split('function hostActionV2ApprovalMeta')[0];
  assert.equal(level3.includes(action),false);
  assert.match(updated.executor,/throw new Error\('honartik_universal_installer_upgrade_v1_native_root_dispatch_not_reviewed'\)/);
+ assert.match(updated.executor,/loadConsumedServerToken:/);
+ assert.match(updated.executor,/expectedId!==requestId/);
+ assert.match(updated.executor,/authorization_consumed:authz.valid===true&&authz.consumed===true/);
+ assert.match(updated.executor,/l4Binding.level!==4/);
+ assert.match(updated.executor,/confirmation!=='CONFIRM_LEVEL_4_CRITICAL'/);
+ assert.ok(updated.executor.indexOf("authorize-consume")<
+  updated.executor.indexOf("loadConsumedServerToken:"));
+ assert.equal(p.security_boundary.fixed_authenticated_request_context_injected_after_consume,true);
+ assert.equal(p.security_boundary.consumed_token_remains_in_executor_memory,true);
+ assert.equal(p.security_boundary.signed_token_revalidated_by_root_transaction,false);
  assert.equal(p.security_boundary.root_dispatch_explicitly_denied,true);
  assert.equal(p.security_boundary.install_authorized,false);
  assert.equal(p.security_boundary.live_policy_activated,false);
@@ -82,4 +94,20 @@ test('isolated fixture must be explicitly marked, never guessed from Production'
  {skip:process.getuid?.()===0},()=>{
  assert.throws(()=>P.previewIsolatedSyntheticFixture({base:'production text',executor,mcp}),
  /fixture_not_synthetic/);
+});
+
+test('source change fails closed when consent boundary or original request dispatch is absent',
+ {skip:process.getuid?.()===0},()=>{
+ const a=sample();a.executor=a.executor.replace(
+ "const result=await applyHostActionV2(action);",
+ "const result=await applyHostActionV2Original(action);");
+ assert.throws(()=>P.previewIsolatedSyntheticFixture(a),/ambiguous_executor_v2_apply_call/);
+ const b=sample();b.executor=b.executor.replace(
+ "const authz=await callBase('/v2/host-actions/authorize-consume','POST',{action,approval_token:token});",
+ "const authz={consumed:false};");
+ assert.throws(()=>P.previewIsolatedSyntheticFixture(b),/ambiguous_executor_authorize_consume/);
+ const c=sample();c.executor=c.executor.replace(
+ "const result=await applyHostActionV2(action);",
+ "const result=await applyHostActionV2(action);const result2=await applyHostActionV2(action);");
+ assert.throws(()=>P.previewIsolatedSyntheticFixture(c),/ambiguous_executor_v2_apply_call/);
 });
