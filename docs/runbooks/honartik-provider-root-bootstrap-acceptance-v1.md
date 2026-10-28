@@ -58,15 +58,15 @@ The test `test-honartik-universal-installer-owner-bootstrap-systemd-vm-v1.cjs` r
 ## Signed initial Provider Root-of-Trust bootstrap — source contract, NOT installed
 
 The distinct bootstrap verifier is now in
-\`honartik-universal-installer-native-bootstrap-authorization-v1.cjs\`.
+`honartik-universal-installer-native-bootstrap-authorization-v1.cjs`.
 It is a **different operation** from the existing post-registration Universal
 Installer upgrade L4. It cannot authorize its own installation.
 
 The review-only implementation:
 
 - Verifies a separate Ed25519 compact signed receipt with a canonical header
-  \`PRHM-PROVIDER-ROOT-BOOTSTRAP\`, distinct issuer
-  \`prhm-provider-root-of-trust\`, exact audience/operation/environment,
+  `PRHM-PROVIDER-ROOT-BOOTSTRAP`, distinct issuer
+  `prhm-provider-root-of-trust`, exact audience/operation/environment,
   SHA-pinned source commit, plan manifest, UUID identity and ≤180-second TTL.
 - Rejects a reused receipt through a durable O_EXCL + fsync approval lease;
   a rollback/failed restart does not erase a consumed lease.
@@ -75,16 +75,16 @@ The review-only implementation:
   and ordered destinations of the 14 registration assets, and the complete
   SHA-256 manifest built by the existing review-only plan.
 - On valid authorization, the proposed Provider-owned adapter calls the
-  **existing** \`executeCore\` transaction and independently provided real
+  **existing** `executeCore` transaction and independently provided real
   service-health/restart callbacks. No new independent installer is created.
 - Denies live apply until the independently reviewed, immutable public key is
   installed by the **actual Provider Root-of-Trust** as a root-owned 0600 file
-  at the fixed \`KEY_PATH\`, SHA-bound in code, with a pre-provisioned root-only
+  at the fixed `KEY_PATH`, SHA-bound in code, with a pre-provisioned root-only
   transaction directory and a root-owned trusted dispatcher.
 
-Current hard stops are intentional: \`PINNED_PROVIDER_KEY_SHA256=null\`,
-\`PROVIDER_DISPATCH_REGISTERED=false\`,
-\`PRODUCTION_AUTHORIZED=false\`, no standalone CLI, no signing-key material or
+Current hard stops are intentional: `PINNED_PROVIDER_KEY_SHA256=null`,
+`PROVIDER_DISPATCH_REGISTERED=false`,
+`PRODUCTION_AUTHORIZED=false`, no standalone CLI, no signing-key material or
 real approval token in Git/CI. The signer must be provisioned and the **specific
 registration authorization** must be issued independently; merely having root
 shell or an approval for the installer-upgrade operation is insufficient.
