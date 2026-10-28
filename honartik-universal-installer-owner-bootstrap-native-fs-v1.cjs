@@ -1,0 +1,406 @@
+/* SOURCE-ONLY: Honartik Issue #217 registration transaction review port from #221 exact 6effffd41c68f51bc394d42d7f334f23284dafb0. Not a registered Root-of-Trust action, L4 approval issuer, standalone CLI, or Production deployment. Independent reviewer must verify fixed owner/policy/asset target binding before any activation. */
+'use strict';
+
+/*
+ * Issue #221: native filesystem transaction CORE for the EXISTING Host Actions
+ * registrar. Not an approval issuer, public endpoint, CLI or Root-of-Trust
+ * bootstrap. An independently reviewed native root dispatcher MUST verify
+ * Approval Center Ed25519 signature + consumed-once ledger and immutable Git
+ * candidate bytes before calling executeCore. In particular this module does
+ * not make an unregistered action permissible.
+ *
+ * Tests exercise this core using actual Linux temporary files, never /opt.
+ */
+const fs=require('node:fs');
+const path=require('node:path');
+const crypto=require('node:crypto');
+const KEYS=Object.freeze(['base','executor','mcp','policy']);
+const HASH=b=>crypto.createHash('sha256').update(b).digest('hex');
+const fail=s=>{throw Error('registrar_native_'+s)};
+const statFile=p=>{
+ const st=fs.lstatSync(p);
+ if(!st.isFile()||st.isSymbolicLink()||fs.realpathSync(p)!==p)fail('unsafe_file');
+ return st;
+};
+function fsyncDir(p){
+ const fd=fs.openSync(p,fs.constants.O_RDONLY|fs.constants.O_DIRECTORY);
+ try{fs.fsyncSync(fd);}finally{fs.closeSync(fd)}
+}
+function durableWrite(p,bytes,mode=0o600){
+ const fd=fs.openSync(p,'wx',mode);
+ try{
+  let pos=0;
+  while(pos<bytes.length){
+   const n=fs.writeSync(fd,bytes,pos,bytes.length-pos,pos);
+   if(n<=0)fail('short_write');
+   pos+=n;
+  }
+  fs.fsyncSync(fd);
+ }finally{fs.closeSync(fd)}
+ fsyncDir(path.dirname(p));
+}
+function atomicReplace(dest,bytes,meta){
+ const parent=path.dirname(dest);
+ const p=path.join(parent,'.prhm-reg-'+crypto.randomUUID()+'.tmp');
+ let exists=false;
+ try{
+  durableWrite(p,bytes,meta.mode);
+  exists=true;
+  fs.chownSync(p,meta.uid,meta.gid);
+  fs.chmodSync(p,meta.mode);
+  // The file's metadata must be durable, not only its contents/parent entry.
+  const attrFd=fs.openSync(p,fs.constants.O_RDONLY|fs.constants.O_NOFOLLOW);
+  try{fs.fsyncSync(attrFd)}finally{fs.closeSync(attrFd)}
+  fs.renameSync(p,dest);
+  exists=false;
+  fsyncDir(parent);
+ }finally{if(exists)try{fs.unlinkSync(p)}catch{}}
+}
+function writeJournal(dir,data){
+ const output=Buffer.from(JSON.stringify(data)+'\n');
+ const filename=path.join(dir,'journal.json');
+ const tmp=path.join(dir,'.journal-'+crypto.randomUUID());
+ let created=false;
+ try{
+  durableWrite(tmp,output);
+  created=true;
+  fs.renameSync(tmp,filename);
+  created=false;
+  fsyncDir(dir);
+ }finally{if(created)try{fs.unlinkSync(tmp)}catch{}}
+}
+function checkPlan(plan){
+ if(!plan||plan.schema!=='prhm.registrar.native-transaction.v1'||
+  !Array.isArray(plan.steps)||plan.steps.length!==KEYS.length||
+  plan.steps.some((s,i)=>s.key!==KEYS[i]||
+   typeof s.path!=='string'||!path.isAbsolute(s.path)||
+   !Buffer.isBuffer(s.nextBytes)||
+   !/^[a-f0-9]{64}$/.test(s.beforeSha)||!/^[a-f0-9]{64}$/.test(s.afterSha)||
+   HASH(s.nextBytes)!==s.afterSha))
+  fail('plan_invalid');
+ const assets=plan.assets??[];
+ if(!Array.isArray(assets)||assets.length>32||assets.some(a=>
+   !a||typeof a.path!=='string'||!path.isAbsolute(a.path)||
+   !Buffer.isBuffer(a.nextBytes)||!/^[a-f0-9]{64}$/.test(a.afterSha)||
+   HASH(a.nextBytes)!==a.afterSha))
+   fail('asset_plan_invalid');
+ const targets=[...plan.steps.map(s=>s.path),...assets.map(a=>a.path)];
+ if(new Set(targets).size!==targets.length)fail('duplicate_target');
+ if(!/^[0-9a-f]{40}$/.test(plan.sourceCommit||'')||
+  !/^[0-9a-f]{64}$/.test(plan.manifestSha256||''))
+  fail('git_identity_missing');
+}
+function verifyPreimage(steps){
+ return steps.map(s=>{
+  const st=statFile(s.path);
+  const before=fs.readFileSync(s.path);
+  if(HASH(before)!==s.beforeSha)fail('preimage_sha_drift:'+s.key);
+  if((st.mode&0o022)!==0)fail('unsafe_source_mode:'+s.key);
+  return {key:s.key,path:s.path,mode:st.mode&0o777,uid:st.uid,gid:st.gid,
+    bytes:before,sha:s.beforeSha};
+ });
+}
+function verifyAssetPreimages(assets){
+ return assets.map((a,i)=>{
+  const parent=path.dirname(a.path),dir=fs.lstatSync(parent);
+  if(!dir.isDirectory()||dir.isSymbolicLink()||
+     fs.realpathSync(parent)!==parent||(dir.mode&0o022)!==0||
+     dir.uid!==process.getuid())fail('asset_parent_unsafe:'+i);
+  let st;
+  try{st=fs.lstatSync(a.path)}catch(e){
+   if(e.code==='ENOENT')return {key:'asset-'+i,path:a.path,
+    existed:false,beforeSha:null,uid:process.getuid(),
+    gid:process.getgid(),mode:0o600,bytes:null,afterSha:a.afterSha};
+   throw e;
+  }
+  if(!st.isFile()||st.isSymbolicLink()||
+     fs.realpathSync(a.path)!==a.path||(st.mode&0o022)!==0)
+   fail('asset_file_unsafe:'+i);
+  const before=fs.readFileSync(a.path);
+  return {key:'asset-'+i,path:a.path,existed:true,
+   beforeSha:HASH(before),uid:st.uid,gid:st.gid,mode:st.mode&0o777,
+   bytes:before,afterSha:a.afterSha};
+ });
+}
+function safeWorkRoot(workRoot){
+ if(typeof workRoot!=='string'||!path.isAbsolute(workRoot))fail('work_root_invalid');
+ const st=fs.lstatSync(workRoot);
+ if(!st.isDirectory()||st.isSymbolicLink()||
+    fs.realpathSync(workRoot)!==workRoot||(st.mode&0o077)!==0||
+    st.uid!==process.getuid())
+    fail('work_root_unsafe');
+}
+function lock(workRoot){
+ const p=path.join(workRoot,'active.lock');
+ const fd=fs.openSync(p,'wx',0o600);
+ const bytes=Buffer.from(JSON.stringify({pid:process.pid})+'\n');
+ fs.writeSync(fd,bytes);fs.fsyncSync(fd);fs.closeSync(fd);
+ fsyncDir(workRoot);
+ return p;
+}
+function unlock(p){
+ fs.unlinkSync(p);
+ fsyncDir(path.dirname(p));
+}
+function validateJournal(dir){
+ const st=fs.lstatSync(dir);
+ if(!st.isDirectory()||st.isSymbolicLink()||(st.mode&0o077)!==0||
+    fs.realpathSync(dir)!==dir||st.uid!==process.getuid())
+  fail('journal_dir_unsafe');
+ const b=fs.readFileSync(path.join(dir,'journal.json'));
+ const j=JSON.parse(b.toString('utf8'));
+ if(j.schema!=='prhm.registrar.native-journal.v1'||
+    !KEYS.every((k,i)=>j.files?.[i]?.key===k)||
+    j.files.length!==KEYS.length)fail('journal_invalid');
+ for(const r of j.files){
+  if(!path.isAbsolute(r.path)||!Number.isInteger(r.uid)||
+   !Number.isInteger(r.gid)||!Number.isInteger(r.mode)||
+   !/^[a-f0-9]{64}$/.test(r.beforeSha)||
+   !/^[a-f0-9]{64}$/.test(r.afterSha))fail('journal_record_invalid');
+ }
+ if(!Array.isArray(j.assets)||j.assets.length>32)fail('journal_assets_invalid');
+ for(const [i,a] of j.assets.entries()){
+  if(a.key!=='asset-'+i||!path.isAbsolute(a.path)||
+    typeof a.existed!=='boolean'||!Number.isInteger(a.uid)||
+    !Number.isInteger(a.gid)||!Number.isInteger(a.mode)||
+    !/^[a-f0-9]{64}$/.test(a.afterSha)||
+    (a.existed?!/^[a-f0-9]{64}$/.test(a.beforeSha):a.beforeSha!==null))
+    fail('journal_asset_record_invalid');
+ }
+ const paths=[...j.files.map(r=>r.path),...j.assets.map(a=>a.path)];
+ if(new Set(paths).size!==paths.length)fail('journal_duplicate_target');
+ return j;
+}
+function restoreFromJournal(txnDir,expectedTargets,expectedAssets=[]){
+ const j=validateJournal(txnDir);
+ // Only a trusted host's exact owner AND asset allowlist may authorize
+ // rollback. The journal itself is never a source of target authority.
+ if(!Array.isArray(expectedTargets)||expectedTargets.length!==KEYS.length||
+    j.files.some((r,i)=>r.path!==expectedTargets[i])||
+    !Array.isArray(expectedAssets)||expectedAssets.length!==j.assets.length||
+    j.assets.some((r,i)=>r.path!==expectedAssets[i]))
+   fail('recovery_target_mismatch');
+ if(j.status==='COMMITTED'||j.status==='ROLLED_BACK')return {status:j.status,changed:false};
+ if(j.status==='PREPARING'){
+  // The INSTALLING marker is fsynced only after every before-image is durable.
+  // PREPARING therefore guarantees no owner/asset write was attempted.
+  // Recover without requiring backups that may not yet have been written.
+  for(const r of j.files){
+   const st=statFile(r.path);
+   if(HASH(fs.readFileSync(r.path))!==r.beforeSha||
+      st.uid!==r.uid||st.gid!==r.gid||(st.mode&0o777)!==r.mode)
+     fail('preparing_owner_drift:'+r.key);
+  }
+  for(const a of j.assets){
+   let exists=true,st=null,current=null;
+   try{st=statFile(a.path);current=HASH(fs.readFileSync(a.path))}
+   catch(e){if(e.code==='ENOENT')exists=false;else throw e}
+   if(exists!==a.existed||
+     (exists&&(current!==a.beforeSha||st.uid!==a.uid||
+      st.gid!==a.gid||(st.mode&0o777)!==a.mode)))
+     fail('preparing_asset_drift:'+a.key);
+  }
+  j.status='ROLLED_BACK';j.rollbackErrors=[];
+  writeJournal(txnDir,j);
+  return {status:'ROLLED_BACK',changed:false};
+ }
+ if(j.status!=='INSTALLING'&&j.status!=='ROLLBACK_FAILED')
+  fail('recovery_journal_state_invalid');
+ const errors=[];
+ for(const a of [...j.assets].reverse()){
+  try{
+   const parent=path.dirname(a.path),dir=fs.lstatSync(parent);
+   if(!dir.isDirectory()||dir.isSymbolicLink()||
+      fs.realpathSync(parent)!==parent||(dir.mode&0o022)!==0||
+      dir.uid!==process.getuid())fail('asset_parent_unsafe:'+a.key);
+   let current=null;
+   try{current=HASH(fs.readFileSync(a.path));statFile(a.path)}
+   catch(e){if(e.code!=='ENOENT')throw e}
+   if(a.existed){
+    const old=fs.readFileSync(path.join(txnDir,a.key+'.before'));
+    if(HASH(old)!==a.beforeSha)fail('asset_backup_sha_drift:'+a.key);
+    if(current!==a.beforeSha&&current!==a.afterSha)
+     fail('asset_concurrent_drift:'+a.key);
+    atomicReplace(a.path,old,a);
+    const verified=statFile(a.path);
+    if(HASH(fs.readFileSync(a.path))!==a.beforeSha||
+       (verified.mode&0o777)!==a.mode||verified.uid!==a.uid||
+       verified.gid!==a.gid)fail('asset_restore_mismatch:'+a.key);
+   }else if(current!==null){
+    if(current!==a.afterSha)fail('asset_concurrent_drift:'+a.key);
+    fs.unlinkSync(a.path);fsyncDir(parent);
+   }
+  }catch(err){errors.push(a.key+':'+String(err.message));}
+ }
+ for(const r of [...j.files].reverse()){
+  try{
+   const old=fs.readFileSync(path.join(txnDir,r.key+'.before'));
+   if(HASH(old)!==r.beforeSha)fail('backup_sha_drift:'+r.key);
+   const st=statFile(r.path);
+   // If another writer replaced the file after the interrupted transaction,
+   // STOP; never overwrite unrelated bytes.
+   const current=HASH(fs.readFileSync(r.path));
+   if(current!==r.beforeSha && current!==r.afterSha)
+    fail('concurrent_drift:'+r.key);
+   atomicReplace(r.path,old,r);
+   const verify=statFile(r.path);
+   if(HASH(fs.readFileSync(r.path))!==r.beforeSha||
+      (verify.mode&0o777)!==r.mode||verify.uid!==r.uid||verify.gid!==r.gid)
+     fail('restore_mismatch:'+r.key);
+  }catch(err){errors.push(r.key+':'+String(err.message));}
+ }
+ j.status=errors.length?'ROLLBACK_FAILED':'ROLLED_BACK';
+ j.rollbackErrors=errors;
+ writeJournal(txnDir,j);
+ if(errors.length)fail('rollback_incomplete:'+errors.join('|'));
+ return {status:'ROLLED_BACK',changed:true};
+}
+function assertNoPendingTransactions(workRoot){
+ const names=fs.readdirSync(workRoot);
+ for(const name of names){
+  if(!name.startsWith('txn-'))continue;
+  const journal=validateJournal(path.join(workRoot,name));
+  if(!['COMMITTED','ROLLED_BACK'].includes(journal.status))
+   fail('pending_transaction_requires_recovery:'+name);
+ }
+}
+async function executeCore(plan,{workRoot,postInstall,postRollback,onRenamed}={}){
+ checkPlan(plan);
+ if(typeof postInstall!=='function'||typeof postRollback!=='function')fail('health_callback_required');
+ safeWorkRoot(workRoot);
+ const active=lock(workRoot);
+ let dir=null,pre=null,assetPre=null;
+ try{
+  assertNoPendingTransactions(workRoot);
+  pre=verifyPreimage(plan.steps);
+  assetPre=verifyAssetPreimages(plan.assets??[]);
+  dir=fs.mkdtempSync(path.join(workRoot,'txn-'));
+  fs.chmodSync(dir,0o700);fsyncDir(workRoot);
+  const rec=pre.map((p,i)=>({
+   key:p.key,path:p.path,mode:p.mode,uid:p.uid,gid:p.gid,
+   beforeSha:p.sha,afterSha:plan.steps[i].afterSha
+  }));
+  const assetRecords=assetPre.map(a=>({key:a.key,path:a.path,
+   existed:a.existed,beforeSha:a.beforeSha,afterSha:a.afterSha,
+   uid:a.uid,gid:a.gid,mode:a.mode}));
+  const journal={schema:'prhm.registrar.native-journal.v1',
+   status:'PREPARING',sourceCommit:plan.sourceCommit,
+   manifestSha256:plan.manifestSha256,files:rec,
+   assets:assetRecords,rollbackErrors:[]};
+  writeJournal(dir,journal);
+  // ALL before-images become durable before the journal is INSTALLING.
+  for(const p of pre)durableWrite(path.join(dir,p.key+'.before'),p.bytes);
+  for(const a of assetPre)if(a.existed)
+    durableWrite(path.join(dir,a.key+'.before'),a.bytes);
+  journal.status='INSTALLING';writeJournal(dir,journal);
+  for(let i=0;i<plan.steps.length;i++){
+   const step=plan.steps[i],prior=pre[i];
+   const current=statFile(step.path);
+   if(HASH(fs.readFileSync(step.path))!==step.beforeSha ||
+     current.uid!==prior.uid||current.gid!==prior.gid||
+     (current.mode&0o777)!==prior.mode)fail('midflight_drift:'+step.key);
+   atomicReplace(step.path,step.nextBytes,prior);
+   if(HASH(fs.readFileSync(step.path))!==step.afterSha)fail('postimage_sha:'+step.key);
+   if(typeof onRenamed==='function')onRenamed(step.key,i);
+  }
+  for(let i=0;i<(plan.assets??[]).length;i++){
+   const a=plan.assets[i],prior=assetPre[i],parent=path.dirname(a.path);
+   const d=fs.lstatSync(parent);
+   if(!d.isDirectory()||d.isSymbolicLink()||
+      fs.realpathSync(parent)!==parent||(d.mode&0o022)!==0||
+      d.uid!==process.getuid())fail('asset_midflight_parent_drift:'+i);
+   let exists=true,current=null,meta=null;
+   try{meta=statFile(a.path);current=HASH(fs.readFileSync(a.path))}
+   catch(e){if(e.code==='ENOENT')exists=false;else throw e}
+   if(exists!==prior.existed||
+      (exists&&(current!==prior.beforeSha||
+       meta.uid!==prior.uid||meta.gid!==prior.gid||
+       (meta.mode&0o777)!==prior.mode)))
+     fail('asset_midflight_drift:'+i);
+   atomicReplace(a.path,a.nextBytes,prior);
+   const installed=statFile(a.path);
+   if(HASH(fs.readFileSync(a.path))!==a.afterSha||
+      (installed.mode&0o777)!==prior.mode||installed.uid!==prior.uid||
+      installed.gid!==prior.gid)fail('asset_postimage_invalid:'+i);
+   if(typeof onRenamed==='function')onRenamed(prior.key,plan.steps.length+i);
+  }
+  const health=await postInstall();
+  if(health!==true)fail('postinstall_health');
+  // A successful callback cannot hide a concurrent write after an earlier
+  // rename. Re-attest EVERY owner and asset just before COMMITTED.
+  for(let i=0;i<plan.steps.length;i++){
+   const now=statFile(plan.steps[i].path),prior=pre[i];
+   if(HASH(fs.readFileSync(plan.steps[i].path))!==plan.steps[i].afterSha||
+      now.uid!==prior.uid||now.gid!==prior.gid||
+      (now.mode&0o777)!==prior.mode)fail('postflight_owner_drift:'+prior.key);
+  }
+  for(let i=0;i<(plan.assets??[]).length;i++){
+   const a=plan.assets[i],now=statFile(a.path),prior=assetPre[i];
+   if(HASH(fs.readFileSync(a.path))!==a.afterSha||
+      now.uid!==prior.uid||now.gid!==prior.gid||
+      (now.mode&0o777)!==prior.mode)fail('postflight_asset_drift:'+prior.key);
+  }
+  journal.status='COMMITTED';writeJournal(dir,journal);
+  return {status:'COMMITTED',transaction:dir,sourceCommit:plan.sourceCommit};
+ }catch(error){
+  if(!dir)throw error;
+  const journalPath=path.join(dir,'journal.json');
+  if(!fs.existsSync(journalPath))throw error;
+  const j=validateJournal(dir);
+  if(j.status==='INSTALLING'){
+   try{
+    restoreFromJournal(dir,plan.steps.map(x=>x.path),
+     (plan.assets??[]).map(x=>x.path));
+    let healthy=false;
+    try{healthy=await postRollback()===true;}catch(_){}
+    if(!healthy){
+      const failed=validateJournal(dir);
+      failed.status='ROLLBACK_FAILED';
+      failed.rollbackErrors=['POST_ROLLBACK_SERVICE_HEALTH'];
+      writeJournal(dir,failed);
+      fail('rollback_health_unverified');
+    }
+   }catch(rbErr){throw Error(String(error.message)+':'+String(rbErr.message))}
+  }
+  throw error;
+ }finally{
+  // SIGKILL/crash deliberately bypasses finally. Recovery below is
+  // separately callable and must verify that lock owner is dead.
+  if(fs.existsSync(active))unlock(active);
+ }
+}
+async function recoverAfterCrash({workRoot,transaction,expectedTargets,expectedAssets=[],postRollback}={}){
+ if(typeof postRollback!=='function')fail('recovery_health_callback_required');
+ safeWorkRoot(workRoot);
+ if(typeof transaction!=='string'||path.dirname(transaction)!==workRoot||
+   !path.basename(transaction).startsWith('txn-'))fail('recovery_path_invalid');
+ const active=path.join(workRoot,'active.lock');
+ if(fs.existsSync(active)){
+  const j=JSON.parse(fs.readFileSync(active,'utf8'));
+  if(!Number.isInteger(j.pid)||j.pid<=0)fail('lock_corrupt');
+  try{process.kill(j.pid,0);fail('lock_owner_active');}
+  catch(e){if(e.code!=='ESRCH')throw e}
+  fs.unlinkSync(active);fsyncDir(workRoot);
+ }
+ const newLock=lock(workRoot);
+ try{
+  const result=restoreFromJournal(transaction,expectedTargets,expectedAssets);
+  if(result.status==='ROLLED_BACK'){
+   let healthy=false;
+   try{healthy=await postRollback()===true;}catch(_){}
+   if(!healthy){
+    const journal=validateJournal(transaction);
+    journal.status='ROLLBACK_FAILED';
+    journal.rollbackErrors=['POST_CRASH_SERVICE_HEALTH'];
+    writeJournal(transaction,journal);
+    fail('recovery_service_health_unverified');
+   }
+  }
+  return result;
+ }finally{unlock(newLock)}
+}
+module.exports=Object.freeze({KEYS,HASH,checkPlan,verifyPreimage,verifyAssetPreimages,
+  executeCore,recoverAfterCrash,restoreFromJournal,assertNoPendingTransactions});
+// Deliberately no CLI entrypoint: the live Host Action must supply the
+// separately authenticated, one-time Ed25519 consumed authorization.
+if(require.main===module){process.stderr.write('No standalone apply. Trusted Root-of-Trust dispatcher required.\n');process.exitCode=64}
