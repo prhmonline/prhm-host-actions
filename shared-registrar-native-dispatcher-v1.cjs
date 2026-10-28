@@ -47,6 +47,13 @@ function prepareExecute(stored,command,nowMs){
  if(!UUID.test(command.request_id||''))fail('request_id_invalid');
  return bridge.bindPendingExecute(stored,command,nowMs);
 }
+function assertConsumedRequestIdentity(expectedRequestId,proof){
+ if(!UUID.test(expectedRequestId||'')||!proof||
+   proof.action!==ACTION||proof.level!==4||proof.risk!=='critical'||
+   proof.request_id!==expectedRequestId)
+  fail('consumed_request_identity_mismatch');
+ return true;
+}
 function rootOnly(){
  if(typeof process.getuid!=='function'||process.getuid()!==0)
   fail('native_root_required');
@@ -105,8 +112,15 @@ function createForExistingRootExecutor(host){
    const token=issued?.approval_token;
    if(typeof token!=='string'||token.length<120||token.length>16384)
     fail('consumed_approval_token_missing');
-   // This verifier MUST check real Ed25519 signature, active policy identity
-   // and the consumed-once ledger. Any mock approval must fail here.
+   // Verify identity of the persisted pending request, not merely the
+   // five-field argument digest: two approvals for the same source tuple
+   // MUST NOT be interchangeable.
+   const proof=gateway.verifyLiveConsumedRegistrationApproval({
+    token,args:bound.arguments
+   });
+   assertConsumedRequestIdentity(bound.request_id,proof);
+   // The native adapter performs the whole verification AGAIN immediately
+   // before attempting its root-owned atomic transaction.
    const result=await native.applyFromTrustedRootDispatcher({
     args:bound.arguments,approvalToken:token,hooks:h.nativeInstallerHooks()
    });
@@ -120,7 +134,7 @@ function createForExistingRootExecutor(host){
 }
 module.exports=Object.freeze({
  ACTION,INPUT_FIELDS,EXEC_FIELDS,prepareRequest,bindIssuedPending,
- prepareExecute,createForExistingRootExecutor
+ prepareExecute,assertConsumedRequestIdentity,createForExistingRootExecutor
 });
 if(require.main===module){
  process.stderr.write('Native dispatcher is NOT a standalone installer or Host Action.\\n');
