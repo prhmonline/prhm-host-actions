@@ -56,6 +56,8 @@ on:
       - 'test-honartik-universal-installer-owner-bootstrap-crash-child-v1.cjs'
       - 'honartik-universal-installer-owner-bootstrap-plan-review-v1.cjs'
       - 'test-honartik-universal-installer-owner-bootstrap-plan-review-v1.cjs'
+      - 'tools/honartik217-provider-readiness-v1.py'
+      - 'docs/runbooks/honartik-provider-root-bootstrap-acceptance-v1.md'
       - '.github/workflows/honartik-universal-installer-l4-contract.yml'
 
 permissions:
@@ -73,6 +75,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          python3 tools/honartik217-provider-readiness-v1.py --ci-source
+          python3 -m py_compile tools/honartik217-provider-readiness-v1.py
           # No private installed Python engine bytes are in this repository.
           # Syntax is checked; real-install integration requires a separately
           # verified, non-root fixture containing the exact live source bytes.
