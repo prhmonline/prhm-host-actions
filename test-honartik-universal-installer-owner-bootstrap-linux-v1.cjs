@@ -342,3 +342,25 @@ test('module exposes no standalone apply and rejects unbound plan',()=>{
  assert.equal(Object.keys(tx).some(x=>/sign|issueApproval|executeShell/.test(x)),false);
  assert.throws(()=>tx.checkPlan({schema:'invalid',steps:[]}),/plan_invalid/);
 });
+
+
+test('missing trusted owner metadata pin rejects the transaction before any write',async()=>{
+ const x=fixture();
+ try{
+  const steps=x.plan.steps.map((s,i)=>i===0?{...s,expectedUid:undefined}:s);
+  await assert.rejects(tx.executeCore({...x.plan,steps},{workRoot:x.journal,
+   postInstall:async()=>true,postRollback:async()=>true}),/plan_invalid/);
+  x.original();
+ }finally{x.dispose()}
+});
+test('same bytes with changed owner mode reject before first write',async()=>{
+ const x=fixture();
+ try{
+  fs.chmodSync(x.steps[0].path,0o400);
+  await assert.rejects(tx.executeCore(x.plan,{workRoot:x.journal,
+   postInstall:async()=>true,postRollback:async()=>true}),/owner_metadata_drift:base/);
+  assert.deepEqual(fs.readFileSync(x.steps[0].path),x.old[x.steps[0].path]);
+  for(const s of x.steps.slice(1))
+   assert.deepEqual(fs.readFileSync(s.path),x.old[s.path]);
+ }finally{x.dispose()}
+});
