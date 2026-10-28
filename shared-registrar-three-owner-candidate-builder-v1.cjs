@@ -105,7 +105,7 @@ function nativeRegistrar(){
    const fd=fs.openSync(path.join(DATA_ROOT,'registrar-audit-v1.jsonl'),'a',0o600);
    try{fs.writeSync(fd,JSON.stringify({event:e.event,request_id:e.request_id,
      arguments_sha256:e.arguments_sha256,policy_version:e.policy_version,
-     token_exposed:false,at:new Date().toISOString()})+'\\n');fs.fsyncSync(fd)}
+     token_exposed:false,at:new Date().toISOString()})+'\n');fs.fsyncSync(fd)}
    finally{fs.closeSync(fd)}
   }
  });
