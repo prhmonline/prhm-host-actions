@@ -75,6 +75,10 @@ function checkPlan(plan){
   plan.steps.some((s,i)=>s.key!==KEYS[i]||
    typeof s.path!=='string'||!path.isAbsolute(s.path)||
    !Buffer.isBuffer(s.nextBytes)||
+   !Number.isInteger(s.expectedUid)||s.expectedUid<0||
+   !Number.isInteger(s.expectedGid)||s.expectedGid<0||
+   !Number.isInteger(s.expectedMode)||s.expectedMode<0||s.expectedMode>0o777||
+   (s.expectedMode&0o022)!==0||
    !/^[a-f0-9]{64}$/.test(s.beforeSha)||!/^[a-f0-9]{64}$/.test(s.afterSha)||
    HASH(s.nextBytes)!==s.afterSha))
   fail('plan_invalid');
@@ -96,6 +100,9 @@ function verifyPreimage(steps){
   const before=fs.readFileSync(s.path);
   if(HASH(before)!==s.beforeSha)fail('preimage_sha_drift:'+s.key);
   if((st.mode&0o022)!==0)fail('unsafe_source_mode:'+s.key);
+  if(st.uid!==s.expectedUid||st.gid!==s.expectedGid||
+    (st.mode&0o777)!==s.expectedMode)
+    fail('owner_metadata_drift:'+s.key);
   return {key:s.key,path:s.path,mode:st.mode&0o777,uid:st.uid,gid:st.gid,
     bytes:before,sha:s.beforeSha};
  });
