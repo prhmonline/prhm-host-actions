@@ -17,8 +17,10 @@ function fixture(){
   const before=Buffer.from('original-fixture-owner-'+key+'\n');
   const nextBytes=Buffer.from('candidate-fixture-owner-'+key+'\n');
   fs.writeFileSync(p,before,{mode:0o600});
+  const stat=fs.lstatSync(p);
   return {key,path:p,beforeSha:tx.HASH(before),
-   afterSha:tx.HASH(nextBytes),nextBytes};
+   afterSha:tx.HASH(nextBytes),nextBytes,
+   expectedUid:stat.uid,expectedGid:stat.gid,expectedMode:stat.mode&0o777};
  });
  const plan={schema:'prhm.registrar.native-transaction.v1',steps,
   sourceCommit:'a'.repeat(40),manifestSha256:'b'.repeat(64)};
