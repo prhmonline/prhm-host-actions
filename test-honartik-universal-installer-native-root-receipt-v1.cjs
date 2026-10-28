@@ -9,7 +9,11 @@ test('root receipt gate pins immutable exact reviewed policy identity',()=>{
  assert.equal(gate.POLICY_VERSION,
    '2026-10-27.1-honartik-universal-installer-exact-l4-review');
  assert.equal(gate.POLICY_SHA,
-   '82334369202b31418e33b44c0ed53e1d4b3ea58acc7e37835b13b60c6ba239cb');
+   '981967b4ce770cd3aa89d27ae98552bbeb3ab31ed116d4e51aef91c0abf68358');
+ assert.equal(gate.POLICY_SHA,
+   require('./honartik-universal-installer-native-approval-gate-v1.cjs').PINNED_POLICY_SHA);
+ assert.equal(gate.POLICY_SHA,
+   require('./honartik-universal-installer-registration-review-pack-v1.cjs').RECONCILED_CANDIDATE_POLICY_SHA);
  assert.equal(CONTRACT.level,4);
 });
 test('unreviewed, partial, arbitrary or CRLF-changed policy bytes are denied',()=>{

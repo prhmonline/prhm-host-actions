@@ -16,7 +16,11 @@ const {decodeJws,verifyConsumedExactL4}=
 const POLICY='/opt/prhm-company-control-plane/config/approval-policy.json';
 const PUBLIC_KEY='/var/lib/prhm-company-approval/ed25519-public.pem';
 const CONSUMED='/var/lib/prhm-company-approval/consumed';
-const POLICY_SHA='82334369202b31418e33b44c0ed53e1d4b3ea58acc7e37835b13b60c6ba239cb';
+// Root receipt and signed-approval gate MUST share one immutable live-derived
+// policy digest. Independent current-SHA review + trusted activation remain
+// mandatory; this source-only alias cannot grant authorization.
+const {PINNED_POLICY_SHA}=require('./honartik-universal-installer-native-approval-gate-v1.cjs');
+const POLICY_SHA=PINNED_POLICY_SHA;
 const POLICY_VERSION='2026-10-27.1-honartik-universal-installer-exact-l4-review';
 // Computed independently from the EXISTING Host Actions v2 request route:
 // argumentsSha256({action}) where request schema has exactly one key.
