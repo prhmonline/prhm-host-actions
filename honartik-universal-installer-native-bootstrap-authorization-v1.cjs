@@ -141,6 +141,7 @@ function readPinnedProviderTrustAnchor(){
  }finally{fs.closeSync(fd)}
 }
 function reserveConsumedOnce(workRoot,approvalId){
+ need(typeof approvalId==='string'&&UUID.test(approvalId),'lease_approval_id_invalid');
  const st=fs.lstatSync(workRoot);
  need(st.isDirectory()&&!st.isSymbolicLink()&&st.uid===process.getuid()&&
   (st.mode&0o777)===0o700&&fs.realpathSync(workRoot)===workRoot,
