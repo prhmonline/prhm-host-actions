@@ -15,6 +15,7 @@
 const bridge=require('./prhm-action-registry-host-actions-v2-bridge-v1.cjs');
 const gateway=require('./prhm-action-registry-gateway-v1.cjs');
 const native=require('./shared-registrar-native-root-adapter-v1.cjs');
+const stateStore=require('./shared-registrar-pending-store-v1.cjs');
 const ACTION=gateway.ACTION;
 const fail=x=>{throw Error('registrar_dispatch_'+x)};
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -59,8 +60,7 @@ function rootOnly(){
   fail('native_root_required');
 }
 function hostCapabilities(h){
- const names=['requestTypedApproval','writePendingExclusive','readPending',
-  'claimPendingAtomically','confirmAndConsumeBoundApproval',
+ const names=['requestTypedApproval','confirmAndConsumeBoundApproval',
   'nativeInstallerHooks','auditMetadata'];
  if(!h||typeof h!=='object'||names.some(n=>typeof h[n]!=='function'))
   fail('trusted_host_capabilities_missing');
@@ -70,8 +70,9 @@ function hostCapabilities(h){
  * Only the EXISTING trusted, privileged executor can invoke this factory.
  * Its host implementation MUST prove:
  *   - authentication and fixed action dispatch before this call;
- *   - pending record exclusive root-owned mode 0600, durable fsync;
- *   - compare-and-swap pending -> claimed BEFORE approval consumption;
+ *   - source-owned fixed-path stateStore.openProductionStore() provides
+ *     strict root-owned mode 0600, durable fsync and one-time CAS claim;
+ *   - trusted bootstrap must provision the fixed root-owned directory tree;
  *   - fail-closed on crash/duplicate execution and attest recovery separately;
  *   - same exact five-field tuple at Approval Center request+confirm+consume.
  *
@@ -80,6 +81,9 @@ function hostCapabilities(h){
 function createForExistingRootExecutor(host){
  rootOnly();
  const h=hostCapabilities(host);
+ // No storage callback, path, or lock can be injected by an MCP/HTTP request.
+ // Fixed path is enforced by this module; fail closed if not provisioned.
+ const pending=stateStore.openProductionStore();
  return Object.freeze({
   async request(input){
    rootOnly();
@@ -87,7 +91,7 @@ function createForExistingRootExecutor(host){
    const response=await h.requestTypedApproval(payload);
    const issuerRequest=response?.request;
    const bound=bindIssuedPending(input,issuerRequest,Date.now());
-   await h.writePendingExclusive(bound);
+   pending.writePendingExclusive(bound);
    await h.auditMetadata({event:'registrar_pending_created',
     request_id:bound.request_id,arguments_sha256:bound.arguments_sha256,
     policy_version:bound.policy_version,token_exposed:false});
@@ -97,10 +101,10 @@ function createForExistingRootExecutor(host){
    rootOnly();
    exact(command,EXEC_FIELDS);
    if(!UUID.test(command.request_id||''))fail('request_id_invalid');
-   const stored=await h.readPending(command.request_id);
+   const stored=pending.readPending(command.request_id);
    const bound=prepareExecute(stored,command,Date.now());
    // Strict CAS is mandatory before contacting Approval Center or installer.
-   const claimed=await h.claimPendingAtomically(stored);
+   const claimed=pending.claimPendingAtomically(stored);
    if(claimed!==true)fail('pending_claim_failed');
    // No recoverable/retryable public apply after this point. A crash is
    // reconciled by trusted internal recovery, never by reusing the receipt.
