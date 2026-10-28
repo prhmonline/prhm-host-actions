@@ -7,6 +7,8 @@ on:
       - 'prhm-action-registry-host-actions-v2-bridge-v1.cjs'
       - 'shared-registrar-native-dispatcher-v1.cjs'
       - 'shared-registrar-pending-store-v1.cjs'
+      - 'shared-registrar-approval-center-bridge-v1.cjs'
+      - 'test-shared-registrar-approval-center-bridge-v1.cjs'
       - 'test-shared-registrar-pending-store-v1.cjs'
       - 'test-shared-registrar-native-dispatcher-v1.cjs'
       - 'test-prhm-action-registry-host-actions-v2-bridge-v1.cjs'
@@ -37,6 +39,10 @@ jobs:
           node --check prhm-action-registry-host-actions-v2-bridge-v1.cjs
           node --check shared-registrar-native-dispatcher-v1.cjs
           node --check shared-registrar-pending-store-v1.cjs
+          node --check shared-registrar-approval-center-bridge-v1.cjs
+          node --check test-shared-registrar-approval-center-bridge-v1.cjs
+          node --test test-shared-registrar-approval-center-bridge-v1.cjs
+          sudo -n node --test test-shared-registrar-approval-center-bridge-v1.cjs
           node --check test-shared-registrar-pending-store-v1.cjs
           node --test test-shared-registrar-pending-store-v1.cjs
           node --check test-shared-registrar-native-dispatcher-v1.cjs
