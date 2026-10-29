@@ -57,7 +57,7 @@ function issueCredential(receipt,{runner=run,sql=rootSql,platform=fs,random=cryp
  if(platform.existsSync(secret)||platform.existsSync(dir))deny('existing_secret_path_requires_reconciliation');
  if(sql("SELECT COUNT(*) FROM mysql.user WHERE User='"+user+"' AND Host='"+BINDINGS.gateway+"';",runner).trim()!=='0')deny('existing_db_account');
  const password=random(36).toString('base64url');const client=optionFile(password);
- let created=false,hasFile=false;
+ let created=false,hasFile=false,hasDir=false;
  try {
    sql('CREATE USER '+account+" IDENTIFIED BY '"+password+"';",runner);created=true;
    sql('GRANT SELECT, SHOW VIEW, TRIGGER, EVENT ON \x60cfpark_park_bazar\x60.* TO '+account+';',runner);
@@ -65,12 +65,12 @@ function issueCredential(receipt,{runner=run,sql=rootSql,platform=fs,random=cryp
    if(grants.length!==2||!grants.some(s=>s.includes('USAGE ON *.*'))||
       !grants.some(s=>s.includes('cfpark_park_bazar')&&['SELECT','SHOW VIEW','TRIGGER','EVENT'].every(x=>s.includes(x)))||
       grants.some(s=>/\b(INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|SUPER|FILE|ALL PRIVILEGES)\b/i.test(s)))deny('grant_scope_drift');
-   platform.mkdirSync(dir,{mode:0o700});
+   platform.mkdirSync(dir,{mode:0o700});hasDir=true;
    const st=platform.lstatSync(dir);
    if(!st.isDirectory()||st.isSymbolicLink()||st.uid!==0||(st.mode&0o777)!==0o700)deny('secret_dir_unsafe');
-   const fd=platform.openSync(secret,'wx',0o600);
+   const fd=platform.openSync(secret,'wx',0o600);hasFile=true;
    try{platform.writeSync(fd,client);platform.fsyncSync(fd);}
-   finally{platform.closeSync(fd);} hasFile=true;
+   finally{platform.closeSync(fd);}
    const f=platform.lstatSync(secret);
    if(!f.isFile()||f.isSymbolicLink()||f.uid!==0||(f.mode&0o777)!==0o600)deny('secret_mode_unsafe');
    const test=runner('/usr/bin/docker',['run','--rm','--network','host','-v',secret+':/run/mysql.cnf:ro',
@@ -82,6 +82,7 @@ function issueCredential(receipt,{runner=run,sql=rootSql,platform=fs,random=cryp
  } catch(error) {
    let failed=false;
    if(hasFile)try{platform.unlinkSync(secret)}catch{failed=true}
+   if(hasDir)try{platform.rmdirSync(dir)}catch{failed=true}
    if(created)try{sql('DROP USER '+account+';',runner)}catch{failed=true}
    if(failed)deny('rollback_integrity_failed');
    deny('credential_issuance_failed_rolled_back');
