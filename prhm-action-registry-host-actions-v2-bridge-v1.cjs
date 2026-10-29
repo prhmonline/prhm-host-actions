@@ -18,6 +18,11 @@ function exactFields(obj,fields) {
 function strictRequest(input){
  exactFields(input,['action','project','source_commit','manifest_commit','manifest_sha256']);
  if(input.action!==ACTION)fail('action_not_allowlisted');
+ // A release manifest contains the immutable source commit; publishing
+ // that manifest must yield its OWN second Git commit. Never accept a
+ // self-referential or mutable release ID at the approval boundary.
+ if(input.source_commit===input.manifest_commit)
+   fail('source_and_manifest_commits_must_differ');
  const json=g.canonicalArgs(input);
  if(json.length>360)fail('request_size');
  return Object.freeze({...input,arguments_sha256:g.approvalBindingSha(input)});
@@ -49,10 +54,31 @@ function attestExistingRoute(bridge){
  // Externally injected capabilities are owned exclusively by the existing
  // root executor, never constructed from client-provided path/code.
  const functions=['readPinnedGitManifest','readPinnedGitSource','readLiveOwner','readStagedAsset',
-    'getInstaller','getRollback','verifyOriginalState',
-    'getToolDiscovery','writeMetadataAudit'];
+    'getInstaller','getRollback','claimOnce','verifyOriginalState',
+    'restartService','checkServiceHealth','getToolDiscovery','writeMetadataAudit'];
  for(const f of functions)if(!bridge||typeof bridge[f]!=='function')fail('trusted_capability_missing_'+f);
  return bridge;
+}
+// Explicit two-release policy. V2 is permitted only at its exact immutable
+// source, manifest and digest; a same-named mutable HEAD cannot qualify.
+// The previously released V1 contract is preserved for compatibility.
+const HONARTIK_V1='manifests/honartik-config-center-registry-release-v1.json';
+const HONARTIK_V2=Object.freeze({
+ path:'manifests/honartik-config-center-registry-release-v2.json',
+ source_commit:'aa267202d11784f0ac0a957e0d8ba911a6b07734',
+ manifest_commit:'d1a8b26da238d1a86b7a5d96f69185e7d25f1430',
+ manifest_sha256:'9ff881e0d470da91aa26923b950589645613244d4b34d30b9e240d5277128f3b'
+});
+function assertHonartikReleaseIdentity(input,gitPath){
+ const request=strictRequest(input);
+ if(request.project!=='honartik')fail('honartik_project_required');
+ if(gitPath===HONARTIK_V1)return HONARTIK_V1;
+ if(gitPath!==HONARTIK_V2.path ||
+    request.source_commit!==HONARTIK_V2.source_commit ||
+    request.manifest_commit!==HONARTIK_V2.manifest_commit ||
+    request.manifest_sha256!==HONARTIK_V2.manifest_sha256)
+    fail('honartik_release_manifest_path_or_sha_unexpected');
+ return HONARTIK_V2.path;
 }
 function immutableManifest(input,bridge){
  const request=strictRequest(input),cap=attestExistingRoute(bridge);
@@ -86,7 +112,54 @@ function immutableManifest(input,bridge){
  });
  if(out.normalized.project!==input.project||out.normalized.git_path!==file.path)
     fail('manifest_project_or_path_mismatch');
+ if(input.project==='honartik')
+    assertHonartikReleaseIdentity(input,out.normalized.git_path);
  return out;
+}
+/**
+ * Fixed compatibility handoff to the existing Honartik atomic installer.
+ * Only the original signed token goes forward; a boolean 'approved' object
+ * cannot be repackaged into a successful project installer invocation.
+ *
+ * Source-only transport: the root executor must supply trusted pinned Git
+ * readers and allowlisted systemd controls. No user-supplied callback input.
+ */
+function invokeHonartikReviewedInstaller({input,release,approvalToken,installer,cap}){
+ strictRequest(input);
+ if(input.project!=='honartik'||
+    release?.normalized?.project!=='honartik'||
+    release?.normalized?.action!=='honartik_config_center_readonly_enroll_v1'||
+    release.source_commit!==input.source_commit||
+    release.manifest_commit!==input.manifest_commit||
+    release.manifest_sha256!==input.manifest_sha256||
+    typeof installer!=='function'||typeof approvalToken!=='string'||
+    approvalToken.length<120)fail('honartik_adapter_binding');
+ attestExistingRoute(cap);
+ const approvedServices=release.normalized.health?.services;
+ if(!Array.isArray(approvedServices)||approvedServices.length!==4)
+   fail('honartik_service_manifest_missing');
+ const service=(name,kind)=>{
+   if(!approvedServices.includes(name))fail('service_not_allowlisted');
+   const v=(kind==='restart'?cap.restartService:cap.checkServiceHealth)(name);
+   if(v!==true)fail('service_'+kind+'_verification_failed');
+   return v;
+ };
+ return installer({
+   approvalToken,args:input,release,
+   readPinnedManifest:(commit,path)=>{
+     if(commit!==input.source_commit||
+        path!=='honartik-config-center-install-manifest-v1.json')
+       fail('honartik_source_manifest_unbound');
+     const data=cap.readPinnedGitSource({
+       repo:'prhmonline/prhm-host-actions',source_commit:commit,
+       source_path:path,max_bytes:4000000});
+     if(!Buffer.isBuffer(data)||data.length<=100)
+       fail('honartik_source_manifest_missing');
+     return data;
+   },
+   restart:name=>service(name,'restart'),
+   health:name=>service(name,'health')
+ });
 }
 async function applyAfterConsumption({input,approvalToken,capabilities}){
  const request=strictRequest(input);
@@ -99,7 +172,9 @@ async function applyAfterConsumption({input,approvalToken,capabilities}){
    fail('approved_installer_or_rollback_not_registered');
  return g.executeAfterTrustedAuthorization({
   release,args:input,signedApprovalToken:approvalToken,
-  trustedInstaller:async bound=>installer(bound), // project-specific reviewed atomic installer
+  trustedClaimOnce:async bound=>cap.claimOnce(bound),
+  trustedInstaller:async bound=>invokeHonartikReviewedInstaller({
+    input,release:bound.release,approvalToken,installer,cap}),
   trustedRollback:async bound=>rollback(bound),
   verifyOriginalState:async bound=>cap.verifyOriginalState(bound),
   readInstalledTool:async action=>cap.getToolDiscovery(action),
@@ -108,5 +183,6 @@ async function applyAfterConsumption({input,approvalToken,capabilities}){
 }
 module.exports=Object.freeze({
  ACTION,JWS_BOUNDARY,strictRequest,typedApprovalRequest,validateReceipt,
- attestExistingRoute,immutableManifest,applyAfterConsumption
+ attestExistingRoute,immutableManifest,assertHonartikReleaseIdentity,
+ invokeHonartikReviewedInstaller,applyAfterConsumption
 });

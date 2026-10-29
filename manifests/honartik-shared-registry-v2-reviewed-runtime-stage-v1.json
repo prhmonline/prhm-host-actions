@@ -1,0 +1,161 @@
+{
+  "schema": "prhm.shared-registry.v2.reviewed-runtime-stage.v1",
+  "status": "NOT_STAGED",
+  "installation_authorized": false,
+  "level4_consumed": false,
+  "repo": "prhmonline/prhm-host-actions",
+  "project": "honartik",
+  "action": "prhm_action_registry_install_v1",
+  "project_source_commit": "aa267202d11784f0ac0a957e0d8ba911a6b07734",
+  "release_manifest_commit": "d1a8b26da238d1a86b7a5d96f69185e7d25f1430",
+  "release_manifest_sha256": "9ff881e0d470da91aa26923b950589645613244d4b34d30b9e240d5277128f3b",
+  "runtime_source_commit": "6b038d7618f2ec27ecb44e8fc92f3c4a5979836b",
+  "approval_arguments_sha256": "d1f29c8f517ca787f88f61d218a5dde03ecee2be096a7aefd91c6c2865d394c3",
+  "destination_root": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2",
+  "independent_entrypoint": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-independent-runner-entry-v1.cjs",
+  "replaces_unusable_previous_bridge_blob_sha1": "45d9aae3dd390a14053d6844b201f118ab2c5586",
+  "bridge_runtime_git_blob_sha1": "166d9253634df48624aaa75da719253dc1e21508",
+  "files": [
+    {
+      "source_path": "prhm-action-registry-host-actions-v2-bridge-v1.cjs",
+      "source_commit": "6b038d7618f2ec27ecb44e8fc92f3c4a5979836b",
+      "git_blob_sha1": "166d9253634df48624aaa75da719253dc1e21508",
+      "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-host-actions-v2-bridge-v1.cjs"
+    },
+    {
+      "source_path": "prhm-action-registry-gateway-v1.cjs",
+      "source_commit": "aa267202d11784f0ac0a957e0d8ba911a6b07734",
+      "git_blob_sha1": "2c20453a91cb55c305a8901217e4b2d2cc22e9f9",
+      "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-gateway-v1.cjs"
+    },
+    {
+      "source_path": "prhm-action-registry-one-time-fence-v1.cjs",
+      "source_commit": "aa267202d11784f0ac0a957e0d8ba911a6b07734",
+      "git_blob_sha1": "ccae1d7c7715c87bef4665c4b600fcdd500b9d8d",
+      "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-one-time-fence-v1.cjs"
+    },
+    {
+      "source_path": "prhm-action-registry-v2-durable-recovery-v1.cjs",
+      "source_commit": "cf505af78c9cae02b37e2bbc38a05fbd9516e629",
+      "git_blob_sha1": "51b6224c24ef6d4ec27c1da092dfe5aafbf65ec6",
+      "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-durable-recovery-v1.cjs"
+    },
+    {
+      "source_path": "honartik-config-center-atomic-registration-installer-v1.cjs",
+      "source_commit": "aa267202d11784f0ac0a957e0d8ba911a6b07734",
+      "git_blob_sha1": "24ab998249eb4dad71c515e3bacf4cf2e4129724",
+      "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/honartik-config-center-atomic-registration-installer-v1.cjs"
+    },
+    {
+      "source_path": "honartik-config-center-registration-candidate-v1.cjs",
+      "source_commit": "aa267202d11784f0ac0a957e0d8ba911a6b07734",
+      "git_blob_sha1": "edd6d8c1e0833c7016aaeab59bde806d20662c52",
+      "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/honartik-config-center-registration-candidate-v1.cjs"
+    },
+    {
+      "source_path": "honartik-config-center-signed-registration-approval-v1.cjs",
+      "source_commit": "aa267202d11784f0ac0a957e0d8ba911a6b07734",
+      "git_blob_sha1": "0b1f1b4ede057d4eba6228d455df75dfacc626ec",
+      "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/honartik-config-center-signed-registration-approval-v1.cjs"
+    },
+    {
+      "source_path": "honartik-config-center-enrollment-action-v1.cjs",
+      "source_commit": "aa267202d11784f0ac0a957e0d8ba911a6b07734",
+      "git_blob_sha1": "725bd719b278bd3fa43a8b84e2a10b34aaf966ef",
+      "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/honartik-config-center-enrollment-action-v1.cjs"
+    },
+    {
+      "source_path": "honartik-config-center-trusted-adapter-v1.cjs",
+      "source_commit": "aa267202d11784f0ac0a957e0d8ba911a6b07734",
+      "git_blob_sha1": "592fad0bf9cbd0d5698dcba1ba0ffb7ea7a49813",
+      "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/honartik-config-center-trusted-adapter-v1.cjs"
+    },
+    {
+      "source_path": "honartik-config-center-privileged-runner-v1.cjs",
+      "source_commit": "aa267202d11784f0ac0a957e0d8ba911a6b07734",
+      "git_blob_sha1": "38846dd829768dc780801dc9689585781445429c",
+      "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/honartik-config-center-privileged-runner-v1.cjs"
+    },
+    {
+      "source_path": "honartik-config-center-install-manifest-v1.json",
+      "source_commit": "aa267202d11784f0ac0a957e0d8ba911a6b07734",
+      "git_blob_sha1": "97b6a197cbf1516931a34a73695bbf0110c3b084",
+      "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/honartik-config-center-install-manifest-v1.json"
+    },
+    {
+      "source_path": "manifests/honartik-config-center-registry-release-v2.json",
+      "source_commit": "d1a8b26da238d1a86b7a5d96f69185e7d25f1430",
+      "git_blob_sha1": "36d7451f238c68ae39fa3b1c505064d611f1970d",
+      "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/manifests/honartik-config-center-registry-release-v2.json"
+    },
+    {
+      "source_path": "prhm-action-registry-v2-root-pinned-readers-v1.cjs",
+      "source_commit": "6b038d7618f2ec27ecb44e8fc92f3c4a5979836b",
+      "git_blob_sha1": "a88c417b8cc2dbfb0f345b11d1a54429cb8e823c",
+      "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-root-pinned-readers-v1.cjs"
+    },
+    {
+      "source_path": "prhm-action-registry-v2-independent-runner-contract-v1.cjs",
+      "source_commit": "b0d99fba530e6780bf230a6f10908f547068c86d",
+      "git_blob_sha1": "0f9c09a80b6bd0f20850dad1a2aef032abf491c2",
+      "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-independent-runner-contract-v1.cjs"
+    },
+    {
+      "source_path": "prhm-action-registry-v2-fixed-systemd-bridge-v1.cjs",
+      "source_commit": "6b038d7618f2ec27ecb44e8fc92f3c4a5979836b",
+      "git_blob_sha1": "0ed8e849c3748f0642fd275c914840b0d1a7d701",
+      "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-fixed-systemd-bridge-v1.cjs"
+    },
+    {
+      "source_path": "prhm-action-registry-v2-independent-runner-entry-v1.cjs",
+      "source_commit": "0a8fca5bbe59c607c4f96c1f75e80979124afaa8",
+      "git_blob_sha1": "8dd786829aad356c5d207365258cb4c9dd61b95d",
+      "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-independent-runner-entry-v1.cjs"
+    },
+    {
+      "source_path": "manifests/honartik-shared-registry-pinned-release-v2.json",
+      "source_commit": "6b038d7618f2ec27ecb44e8fc92f3c4a5979836b",
+      "git_blob_sha1": "1656955e9a9927a13a5b8ced2b6ee2cddd53ea3f",
+      "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/manifests/honartik-shared-registry-pinned-release-v2.json"
+    },
+    {
+      "source_path": "prhm-action-registry-v2-mcp-discovery-v1.cjs",
+      "source_commit": "4c448583a1759fcccb2cf44dbd94ad19ec309037",
+      "git_blob_sha1": "c47456483b529226184415e4d6107ed44099051d",
+      "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-mcp-discovery-v1.cjs"
+    },
+    {
+      "source_path": "prhm-action-registry-v2-five-field-approval-gate-v1.cjs",
+      "source_commit": "e0c608c24990e1e75a6af06449b59b59664edb40",
+      "git_blob_sha1": "78001c5d059d26be55fa53adcf5d2d6c84cb6181",
+      "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-five-field-approval-gate-v1.cjs"
+    },
+    {
+      "source_path": "prhm-action-registry-v2-approval-http-adapter-v1.cjs",
+      "source_commit": "db632ebd75b4e7b9e543b7cfc7d0f9f381cbe376",
+      "git_blob_sha1": "a4fc61d424c2209ddde7858cb6146d19b4823c97",
+      "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-approval-http-adapter-v1.cjs"
+    }
+  ],
+  "conditions": [
+    "preexisting_roots_and_staged_sha_verified",
+    "five_field_signed_L4_route_installed",
+    "root_only_transient_runner_attested",
+    "durable_rollback_approved_and_tested",
+    "MCP_discovery_negative_after_recovery"
+  ],
+  "production_mutation": false,
+  "recovery_source_commit": "cf505af78c9cae02b37e2bbc38a05fbd9516e629",
+  "recovery_requires_negative_mcp_discovery": true,
+  "discovery_source_commit": "4c448583a1759fcccb2cf44dbd94ad19ec309037",
+  "discovery_requires_both_live_mcp_workers": true,
+  "runner_entry_source_commit": "0a8fca5bbe59c607c4f96c1f75e80979124afaa8",
+  "runner_entry_rejects_injected_apply": true,
+  "five_field_approval_source_commit": "e0c608c24990e1e75a6af06449b59b59664edb40",
+  "five_field_approval_requires_ed25519_and_consumed_ledger": true,
+  "approval_http_adapter_source_commit": "db632ebd75b4e7b9e543b7cfc7d0f9f381cbe376",
+  "http_approval_route_installed": false,
+  "http_approval_route_authentic_root_preflight_required": true,
+  "v2_runner_recovery_lock_and_audit_write_scopes_verified_in_source": true,
+  "v2_runner_scope_source_commit": "b0d99fba530e6780bf230a6f10908f547068c86d"
+}
