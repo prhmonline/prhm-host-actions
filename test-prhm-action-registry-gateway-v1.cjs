@@ -101,6 +101,23 @@ test('future approval argument hash binds project, release SHA and action',()=>{
  assert.notEqual(g.approvalBindingSha(a),g.approvalBindingSha(b));
  assert.notEqual(g.approvalBindingSha(a),g.approvalBindingSha({...a,manifest_sha256:'2'.repeat(64)}));
 });
+function policyFixture(){
+ const config={
+  schema_version:'prhm.approval-policy.v1',
+  version:g.POLICY_VERSION,default_deny:true,scope_freeze:true,
+  issuer:'prhm-company-approval',
+  operations:{[g.OPERATION]:{
+   level:4,risk:'critical',requires_second_confirmation:true,
+   one_time_use:true,policy_version:g.POLICY_VERSION}},
+  typed_scopes:[{
+   tool:'host_action_v2_apply',project:'control_plane',
+   environment:'production',action:g.ACTION,operation:g.OPERATION,
+   risk:'critical',principals:[{principal_id:'mohammad',
+    roles:['mcp-operator']}]
+  }]
+ };
+ return Buffer.from(JSON.stringify(config,null,2)+'\n');
+}
 function signedFixture(args,overrides={}) {
  const {privateKey,publicKey}=crypto.generateKeyPairSync('ed25519');
  const pub=publicKey.export({type:'spki',format:'pem'});
@@ -109,12 +126,14 @@ function signedFixture(args,overrides={}) {
  const id='11111111-1111-4111-8111-111111111111';
  const request='22222222-2222-4222-8222-222222222222';
  const hash=g.approvalBindingSha(args);
+ const trustedPolicyBytes=policyFixture();
+ const policyHash=g.issuerPolicyIdentity(trustedPolicyBytes).hash;
  const claims={approval_id:id,request_id:request,jti:id,
   iss:'prhm-company-approval',action:g.ACTION,operation:g.OPERATION,
   project:'control_plane',environment:'production',tool:'host_action_v2_apply',
   principal_id:'mohammad',role:'mcp-operator',level:4,risk:'critical',
   decision:'accept',one_time_use:true,policy_version:g.POLICY_VERSION,
-  policy_hash:'b'.repeat(64),arguments_sha256:hash,request_hash:hash,
+  policy_hash:policyHash,arguments_sha256:hash,request_hash:hash,
   nbf:now-20,iat:now-20,exp:now+90,...overrides};
  const header={alg:'EdDSA',typ:'PRHM-COMPANY-APPROVAL',kid};
  const prefix=[header,claims].map(x=>Buffer.from(JSON.stringify(x)).toString('base64url')).join('.');
@@ -124,7 +143,8 @@ function signedFixture(args,overrides={}) {
   operation:g.OPERATION,request_hash:hash,consumed_at:new Date((now-5)*1000).toISOString(),
   consumer:'prhm-agent-selfmaint-exec-host-actions-v2',consumption_hash:null};
  ledger.consumption_hash=g.sha(Buffer.from(JSON.stringify(ledger)));
- return {token:prefix+'.'+signature,publicKey:pub,ledger,args,nowSec:now};
+ return {token:prefix+'.'+signature,publicKey:pub,ledger,args,nowSec:now,
+  trustedPolicyBytes};
 }
 test('signed one-time Ed25519 registration binding verifies cryptographically',()=>{
  const args={action:g.ACTION,project:'honartik',source_commit:'a'.repeat(40),manifest_commit:'b'.repeat(40),manifest_sha256:'1'.repeat(64)};
@@ -146,6 +166,55 @@ test('expired, wrong project or unconsumed L4 receipt cannot register',()=>{
  const valid=signedFixture(args);
  assert.throws(()=>g.verifyConsumedRegistrationApproval({...valid,args:{...args,project:'moeinshow'}}),/signed_l4_binding/);
  assert.throws(()=>g.verifyConsumedRegistrationApproval({...valid,ledger:{...valid.ledger,consumer:'unconsumed'}}),/consumption_ledger_invalid/);
+});
+test('registrar bootstrap rejects the previous signed policy version fail-closed',()=>{
+ const args={action:g.ACTION,project:'pbcinema',source_commit:'a'.repeat(40),
+   manifest_commit:'b'.repeat(40),manifest_sha256:'1'.repeat(64)};
+ assert.equal(g.POLICY_VERSION,'2026-10-27.2-shared-registrar-bootstrap-proposal');
+ const stale=signedFixture(args,{policy_version:'2026-10-13.3-prhm-shared-action-registry-v1'});
+ assert.throws(()=>g.verifyConsumedRegistrationApproval(stale),
+   /signed_l4_binding_expiry_or_policy_mismatch/);
+ const bound=signedFixture(args);
+ assert.equal(g.verifyConsumedRegistrationApproval(bound).request_id,
+   bound.ledger.request_id);
+});
+test('issuer policy digest uses JSON.stringify(parsed config), not raw bytes or canonical args',()=>{
+ const bytes=policyFixture(),parsed=JSON.parse(bytes.toString('utf8'));
+ const expected=crypto.createHash('sha256')
+   .update(JSON.stringify(parsed)).digest('hex');
+ assert.equal(g.issuerPolicyIdentity(bytes).hash,expected);
+ assert.notEqual(expected,g.sha(bytes));
+ assert.notEqual(expected,g.sha(Buffer.from(g.canonicalJson(parsed))));
+});
+test('valid Ed25519 signature with wrong policy hash is rejected fail-closed',()=>{
+ const args={action:g.ACTION,project:'pbcinema',
+  source_commit:'a'.repeat(40),manifest_commit:'b'.repeat(40),
+  manifest_sha256:'1'.repeat(64)};
+ const valid=signedFixture(args);
+ assert.equal(g.verifyConsumedRegistrationApproval(valid).request_id,
+  valid.ledger.request_id);
+ const wrong=signedFixture(args,{policy_hash:'f'.repeat(64)});
+ assert.throws(()=>g.verifyConsumedRegistrationApproval(wrong),
+  /signed_l4_binding_expiry_or_policy_mismatch/);
+ assert.throws(()=>g.verifyConsumedRegistrationApproval({
+   ...valid,trustedPolicyBytes:Buffer.from('not-json')
+ }),/trusted_policy_json_invalid/);
+ assert.throws(()=>g.verifyConsumedRegistrationApproval({
+   ...valid,trustedPolicyBytes:Buffer.from(JSON.stringify({
+     ...JSON.parse(valid.trustedPolicyBytes),version:'old-policy'
+   }))
+ }),/trusted_policy_identity_invalid/);
+});
+test('unregistered or weakened registrar policy cannot verify any signed receipt',()=>{
+ const args={action:g.ACTION,project:'pbcinema',
+  source_commit:'a'.repeat(40),manifest_commit:'b'.repeat(40),
+  manifest_sha256:'1'.repeat(64)};
+ const fixture=signedFixture(args);
+ const policy=JSON.parse(fixture.trustedPolicyBytes);
+ delete policy.operations[g.OPERATION];
+ assert.throws(()=>g.verifyConsumedRegistrationApproval({
+  ...fixture,trustedPolicyBytes:Buffer.from(JSON.stringify(policy))
+ }),/trusted_policy_registrar_scope_missing/);
 });
 test('preinstall does not circularly require a tool it has not registered yet',()=>{
  const r=g.readiness({phase:'preinstall',release:release('honartik','honartik_config_center_readonly_enroll_v1'),
