@@ -33,7 +33,7 @@ test('unmodified live five-file preimage is safe to inspect, read only',()=>{
 test('source drift, partial registration, missing owner fail closed',()=>{
  const bad={base:'changed',executor:'',policy:'{}',mcp:'',mcp_candidate:''};
  assert.throws(()=>registry.buildCandidates(bad),/preimage_drift:base/);
- assert.throws(()=>registry.buildCandidates({base:'changed'}),/source_missing/);
+ assert.throws(()=>registry.buildCandidates({}),/source_missing:base/);
 });
 test('approved helper blob SHA checks and no mutating API exposed',()=>{
  assert.match(registry.BLOB_SHA256.native,/^[a-f0-9]{64}$/);
