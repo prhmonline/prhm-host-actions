@@ -75,12 +75,14 @@ test('failed grant drops created user and creates no secret',()=>{
  assert.throws(()=>n.issueCredential(receipt('pbcinema_mysql_backup_credential_issue_v1'),f),/failed_rolled_back/);
  assert.ok(f.log.some(s=>s.startsWith('DROP USER')));
  assert.equal(f.files[c.RELEASE.secret_file],undefined);
+ assert.equal(f.files[c.RELEASE.secret_file.substring(0,c.RELEASE.secret_file.lastIndexOf('/'))],undefined);
 });
 test('failed login removes secret and drops user',()=>{
  const f=fixture({failLogin:true});
  assert.throws(()=>n.issueCredential(receipt('pbcinema_mysql_backup_credential_issue_v1'),f),/failed_rolled_back/);
  assert.ok(f.log.some(s=>s.startsWith('DROP USER')));
  assert.equal(f.files[c.RELEASE.secret_file],undefined);
+ assert.equal(f.files[c.RELEASE.secret_file.substring(0,c.RELEASE.secret_file.lastIndexOf('/'))],undefined);
 });
 test('upgrade Python source parses but is never executed by this test',()=>{
  const p=cp.spawnSync('/opt/prhm/universal-python/bin/python3',['-c',
