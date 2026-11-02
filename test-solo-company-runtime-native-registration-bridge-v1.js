@@ -35,7 +35,7 @@ test('unknown path, mutated SHA or unsafe permissions are rejected',()=>{
   const p=syntheticPlan();p.steps[2].path='/etc/arbitrary';
   assert.throws(()=>bridge.convertExactPlan(p),/installation_plan_step_invalid/);
   const q=syntheticPlan();q.steps[1].mode=0o666;
-  assert.throws(()=>bridge.convertExactPlan(q),/unsafe_owner_metadata/);
+  assert.throws(()=>bridge.convertExactPlan(q),/unsafe_asset_metadata/);
   const r=syntheticPlan();r.steps[0].bytes=Buffer.from('attack');
   assert.throws(()=>bridge.convertExactPlan(r),/installation_plan_step_invalid/);
 });
