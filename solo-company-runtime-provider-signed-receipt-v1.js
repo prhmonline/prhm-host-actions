@@ -76,8 +76,7 @@ function verifyReceipt({token,publicKeyPem,pinnedPublicKeySha256,plan,requestId,
     'request_id','jti','level','risk','one_time_use','iat','exp','source_commits']))
     FAIL('claims_invalid');
   if(payload.iss!==ISSUER||payload.aud!==AUDIENCE||payload.env!=='production'||
-     payload.action!==ACTION||payload.operation!==OPERATION||payload.release_sha!==tx.PINS?.release_sha &&
-     payload.release_sha!=='0eb43d72aab3f10db22172c8be4c0411cf22d074')
+     payload.action!==ACTION||payload.operation!==OPERATION)
      FAIL('scope_invalid');
   if(payload.release_sha!=='0eb43d72aab3f10db22172c8be4c0411cf22d074'||
      payload.plan_sha256!==hashPlan(plan)||
