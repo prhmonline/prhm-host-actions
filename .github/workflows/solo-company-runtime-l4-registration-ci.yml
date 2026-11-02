@@ -1,0 +1,25 @@
+name: Solo Runtime L4 registration contract
+on:
+  push:
+    paths:
+      - 'solo-company-runtime-l4-registration-candidate-v1.js'
+      - 'test-solo-company-runtime-l4-registration-candidate-v1.js'
+      - '.github/workflows/solo-company-runtime-l4-registration-ci.yml'
+  pull_request:
+    paths:
+      - 'solo-company-runtime-l4-registration-candidate-v1.js'
+      - 'test-solo-company-runtime-l4-registration-candidate-v1.js'
+      - '.github/workflows/solo-company-runtime-l4-registration-ci.yml'
+jobs:
+  source-only-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node --check solo-company-runtime-l4-registration-candidate-v1.js
+      - run: node --test test-solo-company-runtime-l4-registration-candidate-v1.js
+      - name: Verify no host install commands in candidate
+        run: |
+          ! grep -E 'execFileSync|spawnSync|systemctl|systemd-run|fs\.writeFile' solo-company-runtime-l4-registration-candidate-v1.js
