@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtemp,writeFile,rm,readFile} from 'node:fs/promises';
+import {mkdtemp,writeFile,rm,readFile,readdir} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {DurableAuditQueue,makeBucketId,SCHEMA} from './queue.mjs';
@@ -109,4 +109,24 @@ test('corrupted storage fails closed and is never overwritten',async()=>fixture(
  const q=new DurableAuditQueue({file,stopFile});
  await assert.rejects(()=>q.schedule('ops-health-1'));
  assert.equal(await readFile(file,'utf8'),'UNTRUSTED_JSON');
+}));
+
+test('bounded queue archives 512 terminal records durably without losing recent evidence',async()=>fixture(async ({file,stopFile})=>{
+ const jobs=Array.from({length:1024},(_,i)=>({
+   id:'ops-health-'+i,status:'succeeded',attempts:1,
+   created_at:1000+i,updated_at:1000+i,lease_expires_at:null,
+   summary:'agent2_healthy_verified_twice',evidence_count:2,error_code:null
+ }));
+ await writeFile(file,JSON.stringify({schema:SCHEMA,jobs})+'\n',{mode:0o600});
+ const q=new DurableAuditQueue({file,stopFile,now:()=>4000});
+ assert.deepEqual(await q.schedule('ops-health-1024'),{enqueued:true});
+ const latest=await q.snapshot();
+ assert.equal(latest.jobs.length,513);
+ assert.equal(latest.jobs[0].id,'ops-health-512');
+ assert.equal(latest.jobs.at(-1).status,'queued');
+ const archived=await readdir(join(join(file,'..'),'archive'));
+ assert.equal(archived.length,512);
+ assert.equal(JSON.parse(await readFile(join(join(file,'..'),'archive','ops-health-0.json'),'utf8')).evidence_count,2);
+ assert.deepEqual(await q.schedule('ops-health-1024'),{duplicate:true});
+ assert.equal((await readdir(join(join(file,'..'),'archive'))).length,512);
 }));
