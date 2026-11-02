@@ -1,0 +1,10 @@
+[Unit]
+Description=Every 30 minutes: PRHM public smoke QA
+[Timer]
+OnCalendar=*:0/30
+Persistent=false
+RandomizedDelaySec=40s
+AccuracySec=1min
+Unit=prhm-sites-smoke.service
+[Install]
+WantedBy=timers.target
