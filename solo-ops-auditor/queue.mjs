@@ -55,7 +55,7 @@ export class DurableAuditQueue{
     if(state.jobs.some(j=>j.id===id))return {duplicate:true};
     if(state.jobs.length>=MAX_RECORDS)fail('auditor_queue_capacity_exceeded');
     state.jobs.push({id,status:'queued',attempts:0,created_at:this.now(),
-      updated_at:this.now(),lease_expires_at:null,summary:null,error_code:null});
+      updated_at:this.now(),lease_expires_at:null,summary:null,error_code:null,evidence_count:0});
     await atomicWrite(this.file,state);return {enqueued:true};
   }
   async claim({leaseMs=120_000}={}){
@@ -75,13 +75,14 @@ export class DurableAuditQueue{
     await atomicWrite(this.file,state);
     return structuredClone(job);
   }
-  async complete(id,{status,summary=null,errorCode=null}={}){
+  async complete(id,{status,summary=null,errorCode=null,evidenceCount=0}={}){
     if(!['succeeded','failed'].includes(status))fail('auditor_final_status_invalid');
     const state=await this.snapshot(),job=state.jobs.find(j=>j.id===id);
     if(!job||job.status!=='running')fail('auditor_job_not_running');
     job.status=status;job.updated_at=this.now();
     job.lease_expires_at=null;
     job.summary=summary===null?null:String(summary).slice(0,160);
+    job.evidence_count=Number.isInteger(evidenceCount)&&evidenceCount>=0&&evidenceCount<=8?evidenceCount:0;
     job.error_code=errorCode===null?null:String(errorCode).replace(/[^a-z0-9_]/g,'').slice(0,64);
     await atomicWrite(this.file,state);
     return structuredClone(job);
