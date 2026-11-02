@@ -1,0 +1,23 @@
+name: Solo QA Agent CF Park Read Only CI
+on:
+  push:
+    paths:
+      - 'solo-qa-agent/**'
+      - '.github/workflows/solo-qa-agent-ci.yml'
+  pull_request:
+    paths:
+      - 'solo-qa-agent/**'
+      - '.github/workflows/solo-qa-agent-ci.yml'
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node --check solo-qa-agent/queue.mjs
+      - run: node --check solo-qa-agent/qa.mjs
+      - run: node --test solo-qa-agent/test-qa.mjs
