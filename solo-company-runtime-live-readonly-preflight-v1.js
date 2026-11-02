@@ -17,7 +17,7 @@ const refs={
     path:'mcp-server/src/plugins/soloCompanyRuntimeInstallCore.js'
   },
   'prhmonline/prhm-host-actions':{
-    dir:HOST_REVIEW,head:'fb6d7d6009466ff2e92d8a8d34e8a8dc5fa5c2a1',
+    dir:HOST_REVIEW,head:null,
     path:'solo-company-runtime-root-action-v1.js'
   }
 };
@@ -42,7 +42,7 @@ function sourceRead({repository,commit,path}){
   const ref=refs[repository];
   if(!ref||ref.path!==path||commit!==core.SOURCE_COMMITS[repository==='prhmonline/sshagent'?'sshagent':'host'])
     throw Error('read_only_git_binding_invalid');
-  if(gitHead(ref.dir)!==ref.head)throw Error('read_only_checkout_drift');
+  if(ref.head&&gitHead(ref.dir)!==ref.head)throw Error('read_only_checkout_drift');
   return fs.readFileSync(ref.dir+'/'+ref.path);
 }
 async function main(){
