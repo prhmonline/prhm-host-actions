@@ -2,6 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
 import {CAPABILITY,RELEASE_SHA,SOURCE_COMMIT,assertReadOnly,buildAdapter,runPilot} from './solo-company-agent2-readonly-uat-v1.mjs';
 const metadata={selfmaint_health:{annotations:{readOnlyHint:true},inputSchema:{type:'object'}}};
 function fake(){
@@ -52,7 +53,7 @@ test('risk escalation and out of scope tools fail closed',async()=>{
   await assert.rejects(()=>adapter.rollback(),/readonly_no_rollback_needed/);
 });
 test('no unattended executable without explicit read-only CLI switch',()=>{
-  const r=spawnSync(process.execPath,['solo-company-agent2-readonly-uat-v1.mjs'],{encoding:'utf8',timeout:8000});
+  const r=spawnSync(process.execPath,[fileURLToPath(new URL('./solo-company-agent2-readonly-uat-v1.mjs',import.meta.url))],{encoding:'utf8',timeout:8000});
   assert.equal(r.status,2);
   assert.match(r.stderr,/READONLY_UAT_FAILED=readonly_mode_required/);
 });
