@@ -4,6 +4,8 @@ on:
     paths:
       - 'solo-company-runtime-l4-registration-candidate-v1.js'
       - 'test-solo-company-runtime-l4-registration-candidate-v1.js'
+      - 'solo-company-runtime-root-action-v1.js'
+      - 'test-solo-company-runtime-root-action-v1.js'
       - '.github/workflows/solo-company-runtime-l4-registration-ci.yml'
   pull_request:
     paths:
@@ -19,7 +21,8 @@ jobs:
         with:
           node-version: '20'
       - run: node --check solo-company-runtime-l4-registration-candidate-v1.js
-      - run: node --test test-solo-company-runtime-l4-registration-candidate-v1.js
+      - run: node --check solo-company-runtime-root-action-v1.js
+      - run: node --test test-solo-company-runtime-l4-registration-candidate-v1.js test-solo-company-runtime-root-action-v1.js
       - name: Verify no host install commands in candidate
         run: |
           ! grep -E 'execFileSync|spawnSync|systemctl|systemd-run|fs\.writeFile' solo-company-runtime-l4-registration-candidate-v1.js
