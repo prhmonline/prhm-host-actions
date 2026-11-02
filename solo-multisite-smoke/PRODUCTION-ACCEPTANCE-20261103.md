@@ -16,9 +16,9 @@
 - Live authenticated server-proximate client requests were public HTTPS GET with fixed URLs, 7-second timeout, redirects not automatically followed. Results **5/5 PASS**, WorkOrder `qa-public-996478`, `severity:none`, 0 mutations.
 - First manual `prhm-sites-smoke.service` returned `Result=success` and persisted one durable job with five sanitized findings.
 - Re-run same 30-minute bucket returned `idle`. STOP file test returned `stopped`, with no new job. STOP removed.
-- Timer `prhm-sites-smoke.timer` **active and enabled**, `OnCalendar=*:0/30`, `Persistent=false`, first scheduled fire at 2026-11-03 03:00:01 +03:30.
+- Timer `prhm-sites-smoke.timer` **active and enabled**, `OnCalendar=*:0/30`, `Persistent=false`, **first automatic trigger confirmed** at 2026-11-03 03:00:01 +03:30: WorkOrder `qa-public-996479`, status `succeeded`, five of five checks PASS, next timer 03:30:12 +03:30.
 - Node tests **8/8 PASS** on the production host, GitHub CI green. Code deployed with fixed SHA and standalone StateDirectory. No credentials of any kind installed for this role.
-- Adjacent `prhm-solo-qa-agent.timer` (CF Park), `prhm-solo-ops-auditor.timer`, Solo Runtime and MCP router remain active.
+- Adjacent `prhm-solo-qa-agent.timer` (CF Park), `prhm-solo-ops-auditor.timer`, Solo Runtime and MCP router remain active. CF Park's first automatic run at 03:00:10 +03:30 also returned `succeeded`, 10/10 checks PASS, 2 evidences.
 - A ChatGPT condition-watch alert automation is enabled hourly for critical/warning/failed findings in **both** QA queues. Delivery was configured; first automated alert-delivery cycle has not yet been observed.
 
 ## Operate
