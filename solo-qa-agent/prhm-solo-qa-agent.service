@@ -1,0 +1,31 @@
+[Unit]
+Description=PRHM Solo CF Park QA Agent (fixed read-only checks)
+Wants=network-online.target
+After=network-online.target prhm-agent-mcp-router.service
+ConditionPathExists=/opt/prhm-solo-company/.release-sha
+
+[Service]
+Type=oneshot
+DynamicUser=yes
+StateDirectory=prhm-solo-qa
+StateDirectoryMode=0700
+RuntimeDirectory=prhm-solo-qa
+RuntimeDirectoryMode=0700
+Environment=SOLO_QA_STATE_DIR=/var/lib/prhm-solo-qa
+Environment=CREDENTIALS_DIRECTORY=/run/prhm-solo-qa
+ExecStartPre=+/usr/bin/install -m 0400 /etc/prhm-solo-company/agent2.bearer /run/prhm-solo-qa/agent2_bearer
+ExecStartPre=+/usr/bin/chown --reference=/run/prhm-solo-qa /run/prhm-solo-qa/agent2_bearer
+ExecStart=/usr/local/bin/prhm-node /opt/prhm-solo-qa/qa.mjs --once
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+TimeoutStartSec=90
+MemoryMax=192M
+CPUQuota=30%
