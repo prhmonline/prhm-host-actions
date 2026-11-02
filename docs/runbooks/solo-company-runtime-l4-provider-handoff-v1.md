@@ -33,3 +33,9 @@ Provider must independently pin and install the legitimate production Ed25519 tr
 7. Verify Runtime port 8782 health, active/enabled, dark-mode zero queue and scheduled jobs, no exposed credentials, restart/persistence, and isolated recovery/rollback evidence.
 
 Do NOT copy the candidate files over live /opt or /etc paths or weaken ProtectSystem as a workaround. Provider signing is an external trust boundary that this source package cannot bootstrap by itself.
+
+## Provider receipt reference and acceptance evidence
+
+Source-only verifier: solo-company-runtime-provider-signed-receipt-v1.js. The verifier requires an independently pinned Ed25519 public key, canonical compact signature, exact root registration operation, exact six-file plan hash, two immutable source commits, release SHA, a valid UUID request ID, a critical Level-4 receipt with a maximum 180-second lifetime and a durable, consumed-once marker. It contains no production signer or CLI. Tests generate only disposable synthetic Ed25519 keys and verify tampering rejection, expiry and replay rejection. This is not production trust provisioning.
+
+Provider must make available its canonical trusted key fingerprint and separately authenticated, authorized Provider bootstrap dispatcher. Neither should be provisioned by the MCP process, this candidate generator or a shell command supplied from ChatGPT. The role of the provider is a distinct security boundary; an active company approval service does not establish authorization for Provider Root-of-Trust registration.
