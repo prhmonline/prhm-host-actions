@@ -67,33 +67,23 @@ function audit(record){
   try{fs.fsyncSync(dir)}finally{fs.closeSync(dir)}
 }
 
-const CREDENTIAL_GROUP='prhm-solo-credentials';
-function groupId(){
-  const r=cp.spawnSync('/usr/bin/getent',['group',CREDENTIAL_GROUP],{
-    timeout:10000,encoding:'utf8',env:{PATH:'/usr/bin:/bin',LC_ALL:'C'}});
-  if(r.error||r.status!==0)fail('credential_group_not_created');
-  const fields=String(r.stdout||'').trim().split(':');
-  if(fields.length<4||fields[0]!==CREDENTIAL_GROUP||!/^\d+$/.test(fields[2]))
-    fail('credential_group_invalid');
-  return Number(fields[2]);
-}
-function compatibilitySource(input,gid){
-  if(!Buffer.isBuffer(input)||!Number.isSafeInteger(gid)||gid<=0)
-    fail('compatibility_inputs_invalid');
+
+function compatibilitySource(input){
+  if(!Buffer.isBuffer(input))fail('compatibility_inputs_invalid');
   let s=input.toString('utf8');
   const once=(before,after,label)=>{
     if(s.split(before).length!==2)fail('compatibility_anchor_missing_'+label);
     s=s.replace(before,after);
   };
-  once("DynamicUser=yes\nStateDirectory=prhm-solo-company",
-    "DynamicUser=yes\nSupplementaryGroups=prhm-solo-credentials\nStateDirectory=prhm-solo-company",'dynamic_group');
-  once("LoadCredential=agent2_bearer:/etc/prhm-solo-company/agent2.bearer",
-    "Environment=CREDENTIALS_DIRECTORY=/etc/prhm-solo-company",'legacy_credentials');
+  once("LoadCredential=agent2_bearer:/etc/prhm-solo-company/agent2.bearer",[
+    "RuntimeDirectory=prhm-solo-company",
+    "RuntimeDirectoryMode=0700",
+    "ExecStartPre=+/usr/bin/install -m 0400 /etc/prhm-solo-company/agent2.bearer /run/prhm-solo-company/agent2_bearer",
+    "ExecStartPre=+/usr/bin/chown --reference=/run/prhm-solo-company /run/prhm-solo-company/agent2_bearer",
+    "Environment=CREDENTIALS_DIRECTORY=/run/prhm-solo-company"
+  ].join('\n'),'legacy_credentials');
   once("RestrictSUIDSGID=true\nLockPersonality=true",
     "LockPersonality=true",'unsupported_setting');
-  const oldConfig="phase='config_write';fs.mkdirSync(CONFIG_DIR,{recursive:true,mode:0o700});fs.chmodSync(CONFIG_DIR,0o700);atomicWrite(CREDENTIAL_FILE,Buffer.from(bearer+'\\n'),0o600);";
-  const newConfig="phase='config_write';fs.mkdirSync(CONFIG_DIR,{recursive:true,mode:0o750});fs.chownSync(CONFIG_DIR,0,"+gid+");fs.chmodSync(CONFIG_DIR,0o750);atomicWrite(CREDENTIAL_FILE,Buffer.from(bearer+'\\n'),0o640);fs.chownSync(CREDENTIAL_FILE,0,"+gid+");fs.chmodSync(CREDENTIAL_FILE,0o640);";
-  once(oldConfig,newConfig,'credential_group_owner');
   once("phase='stage_promote';fs.renameSync(stage,APP_DIR);",
     "phase='stage_promote';secureStagePermissions(stage);fs.renameSync(stage,APP_DIR);",
     'readable_runtime_tree');
@@ -113,8 +103,7 @@ async function apply(){
   const bearer=String(process.env.MCP_BEARER_TOKEN||process.env.ACTION_API_KEY||'').trim();
   if(bearer.length<8)fail('mcp_bearer_not_provisioned_in_systemd_unit');
   const bytes=sourcePreflight();
-  const gid=groupId();
-  const adapted=compatibilitySource(bytes,gid);
+  const adapted=compatibilitySource(bytes);
   audit({schema:'prhm.solo.operator-emergency.v1',status:'STARTED',
     authorization:'explicit-owner-chat-2026-11-03',release_sha:RELEASE_SHA,
     source_commit:SOURCE_COMMIT,source_sha256:SOURCE_SHA256,
@@ -190,4 +179,4 @@ if(require.main===module){
   });
 }
 module.exports={SOURCE,SOURCE_SHA256,SOURCE_COMMIT,RELEASE_SHA,JOURNAL_DIR,fnHash,
-  preflight,sourcePreflight,compatibilitySource,groupId,apply};
+  preflight,sourcePreflight,compatibilitySource,apply};
