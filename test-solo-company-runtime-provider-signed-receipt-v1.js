@@ -72,7 +72,7 @@ test('expired, excessive TTL or noncanonical claims reject',()=>{
  assert.throws(()=>check(s,{nowSeconds:issuedAt+120}),/expired_or_invalid/);
  assert.throws(()=>check(s,{token:s.sign({...s.payload,exp:issuedAt+999})}),/expired_or_invalid/);
  assert.throws(()=>check(s,{token:s.sign({...s.payload,unexpected:'field'})}),/claims_invalid/);
- assert.throws(()=>check(s,{token:s.token+';bad'}),/token_structure/);
+ assert.throws(()=>check(s,{token:s.token+';bad'}),/receipt_(token_structure|encoding)/);
 });
 test('durable consume-once marker forbids replay and survives rollback simulation',()=>{
  const s=signer(),verified=check(s);
@@ -84,6 +84,19 @@ test('durable consume-once marker forbids replay and survives rollback simulatio
   assert.equal(fs.readdirSync(ledger).length,1);
   assert.throws(()=>verifier.consumeReceipt(verified,ledger,issuedAt+32),/receipt_replay/);
   assert.throws(()=>verifier.consumeReceipt(consumed,ledger,issuedAt+32),/consumption_binding_invalid/);
+  assert.equal(fs.readdirSync(ledger).length,1);
+ }finally{fs.rmSync(ledger,{recursive:true,force:true})}
+});
+test('trusted caller can verify and consume a signed receipt only once',()=>{
+ const s=signer();
+ const ledger=fs.mkdtempSync(path.join(os.tmpdir(),'prhm-solo-verified-'));
+ try{
+  fs.chmodSync(ledger,0o700);
+  const args={token:s.token,publicKeyPem:s.publicKeyPem,
+    pinnedPublicKeySha256:s.pin,plan:s.plan,requestId,
+    nowSeconds:issuedAt+32,ledgerDir:ledger};
+  assert.equal(verifier.verifyAndConsume(args).consumed,true);
+  assert.throws(()=>verifier.verifyAndConsume(args),/receipt_replay/);
   assert.equal(fs.readdirSync(ledger).length,1);
  }finally{fs.rmSync(ledger,{recursive:true,force:true})}
 });
