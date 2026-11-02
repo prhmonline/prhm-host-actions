@@ -5,7 +5,7 @@
 ## Behavior
 - One fixed action: `selfmaint_health`, explicitly annotated `readOnlyHint=true` by Agent2, independently invoked twice.
 - Every 15 minutes via `prhm-solo-ops-auditor.timer` (no catch-up at boot). One WorkOrder per UTC time bucket; duplicates ignored.
-- Durable `/var/lib/prhm-solo-auditor/queue.json`: atomic temp+fsync+rename+directory-fsync; evidence count, attempts, bounded error codes, final status. Never store bearer, request payloads, raw logs or business data.
+- Durable `/var/lib/prhm-solo-auditor/queue.json`: atomic temp+fsync+rename+directory-fsync; evidence count, attempts, bounded error codes, final status. Old terminal records are moved to root/private-state `archive/<workorder-id>.json` with `O_EXCL` + fsync before queue compaction at 1024 recent records; no report silently dropped. Never store bearer, request payloads, raw logs or business data.
 - Claim leases expire after 2 minutes; a crashed run is retried at most once. Corrupt state fails closed.
 - Kill switch: create an empty `/var/lib/private/prhm-solo-auditor/STOP` and stop/disable the timer to halt scheduling. A STOP before remote call prevents execution. `systemctl stop prhm-solo-ops-auditor.service` stops an active run.
 - `DynamicUser=yes`, sandbox strict, existing credential copied only to a private ephemeral `RuntimeDirectory` with mode 0400; does not expose secrets via arguments, environment values or reports.
