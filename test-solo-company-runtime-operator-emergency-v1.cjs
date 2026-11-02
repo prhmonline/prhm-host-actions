@@ -35,22 +35,23 @@ test('source preflight accepts only exact immutable source, or refuses unavailab
   }
 });
 
-test('systemd 239 adapter keeps DynamicUser and creates only group-readable credentials',()=>{
+test('systemd 239 credential polyfill preserves DynamicUser and root-only credential at rest',()=>{
   const old=[
     'DynamicUser=yes',
     'StateDirectory=prhm-solo-company',
     'LoadCredential=agent2_bearer:/etc/prhm-solo-company/agent2.bearer',
     'RestrictSUIDSGID=true',
     'LockPersonality=true',
-    "phase='config_write';fs.mkdirSync(CONFIG_DIR,{recursive:true,mode:0o700});fs.chmodSync(CONFIG_DIR,0o700);atomicWrite(CREDENTIAL_FILE,Buffer.from(bearer+'\\n'),0o600);",
     "phase='stage_promote';fs.renameSync(stage,APP_DIR);"
   ].join('\n');
-  const out=tool.compatibilitySource(Buffer.from(old),492);
-  assert.match(out,/DynamicUser=yes\nSupplementaryGroups=prhm-solo-credentials\nStateDirectory/);
-  assert.match(out,/Environment=CREDENTIALS_DIRECTORY=\/etc\/prhm-solo-company/);
-  assert.doesNotMatch(out,/LoadCredential=/);
+  const out=tool.compatibilitySource(Buffer.from(old));
+  assert.match(out,/DynamicUser=yes/);
+  assert.match(out,/RuntimeDirectory=prhm-solo-company/);
+  assert.match(out,/ExecStartPre=\+\/usr\/bin\/install -m 0400/);
+  assert.match(out,/ExecStartPre=\+\/usr\/bin\/chown --reference=\/run\/prhm-solo-company/);
+  assert.match(out,/Environment=CREDENTIALS_DIRECTORY=\/run\/prhm-solo-company/);
+  assert.doesNotMatch(out,/LoadCredential=|SupplementaryGroups=/);
   assert.doesNotMatch(out,/RestrictSUIDSGID/);
-  assert.match(out,/fs\.chownSync\(CREDENTIAL_FILE,0,492\)/);
   assert.match(out,/secureStagePermissions\(stage\)/);
-  assert.throws(()=>tool.compatibilitySource(Buffer.from(''),492),/compatibility_anchor_missing/);
+  assert.throws(()=>tool.compatibilitySource(Buffer.from('')),/compatibility_anchor_missing/);
 });
