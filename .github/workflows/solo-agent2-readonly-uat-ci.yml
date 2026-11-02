@@ -1,0 +1,24 @@
+name: Solo Agent2 Read Only UAT
+on:
+  push:
+    paths:
+      - 'solo-company-agent2-readonly-uat-v1.mjs'
+      - 'test-solo-company-agent2-readonly-uat-v1.mjs'
+      - '.github/workflows/solo-agent2-readonly-uat-ci.yml'
+  pull_request:
+    paths:
+      - 'solo-company-agent2-readonly-uat-v1.mjs'
+      - 'test-solo-company-agent2-readonly-uat-v1.mjs'
+      - '.github/workflows/solo-agent2-readonly-uat-ci.yml'
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node --check solo-company-agent2-readonly-uat-v1.mjs
+      - run: node --test test-solo-company-agent2-readonly-uat-v1.mjs
