@@ -88,6 +88,7 @@ test('end-to-end WorkOrder persists final evidence, exactly 2 read-only tools',a
  assert.equal(r.mutation_count,0);
  assert.deepEqual(f.called,[{name:'selfmaint_health',args:{}},{name:'selfmaint_health',args:{}}]);
  assert.equal((await q.snapshot()).jobs[0].status,'succeeded');
+ assert.equal((await q.snapshot()).jobs[0].evidence_count,2);
  const another=await runOnce({queue:q,client:f.client,metadata:fakeMetadata,
   EngineeringAgent:f.Agent,createWorkOrder:f.workOrder,closureReport:f.closureReport,
   now:1800000000000});
