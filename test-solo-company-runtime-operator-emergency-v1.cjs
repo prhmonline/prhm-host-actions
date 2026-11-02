@@ -34,3 +34,23 @@ test('source preflight accepts only exact immutable source, or refuses unavailab
     assert.match(String(error.message),/ENOENT|source_sha_mismatch|source_git_commit_mismatch|untrusted_source_metadata/);
   }
 });
+
+test('systemd 239 adapter keeps DynamicUser and creates only group-readable credentials',()=>{
+  const old=[
+    'DynamicUser=yes',
+    'StateDirectory=prhm-solo-company',
+    'LoadCredential=agent2_bearer:/etc/prhm-solo-company/agent2.bearer',
+    'RestrictSUIDSGID=true',
+    'LockPersonality=true',
+    "phase='config_write';fs.mkdirSync(CONFIG_DIR,{recursive:true,mode:0o700});fs.chmodSync(CONFIG_DIR,0o700);atomicWrite(CREDENTIAL_FILE,Buffer.from(bearer+'\\n'),0o600);",
+    "phase='stage_promote';fs.renameSync(stage,APP_DIR);"
+  ].join('\n');
+  const out=tool.compatibilitySource(Buffer.from(old),492);
+  assert.match(out,/DynamicUser=yes\nSupplementaryGroups=prhm-solo-credentials\nStateDirectory/);
+  assert.match(out,/Environment=CREDENTIALS_DIRECTORY=\/etc\/prhm-solo-company/);
+  assert.doesNotMatch(out,/LoadCredential=/);
+  assert.doesNotMatch(out,/RestrictSUIDSGID/);
+  assert.match(out,/fs\.chownSync\(CREDENTIAL_FILE,0,492\)/);
+  assert.match(out,/secureStagePermissions\(stage\)/);
+  assert.throws(()=>tool.compatibilitySource(Buffer.from(''),492),/compatibility_anchor_missing/);
+});
