@@ -67,7 +67,7 @@ export async function runOnce({queue,client,metadata,EngineeringAgent,
     const result=await new EngineeringAgent({adapter}).run(wo);
     const report=closureReport(result);
     if(report.final_status!=='succeeded')fail('auditor_verification_failed');
-    await queue.complete(claimed.id,{status:'succeeded',summary:'agent2_healthy_verified_twice'});
+    await queue.complete(claimed.id,{status:'succeeded',summary:'agent2_healthy_verified_twice',evidenceCount:report.evidence_count});
     return {status:'succeeded',id:claimed.id,evidence_count:report.evidence_count,
       mutation_count:0,attempts:claimed.attempts};
   }catch(error){
@@ -118,7 +118,7 @@ async function main(){
     const data=await queue.snapshot();
     console.log(JSON.stringify({schema:data.schema,stopped:await queue.stopped(),
       total:data.jobs.length,last:data.jobs.slice(-5).map(x=>({id:x.id,status:x.status,
-        attempts:x.attempts,updated_at:x.updated_at,error_code:x.error_code}))}));
+        attempts:x.attempts,evidence_count:x.evidence_count,updated_at:x.updated_at,error_code:x.error_code}))}));
     return;
   }
   const report=await productionOnce({stateDir,credentialsDir:process.env.CREDENTIALS_DIRECTORY});
