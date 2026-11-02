@@ -1,0 +1,23 @@
+name: Solo Public Smoke QA
+on:
+  push:
+    paths:
+      - 'solo-multisite-smoke/**'
+      - '.github/workflows/solo-sites-smoke-ci.yml'
+  pull_request:
+    paths:
+      - 'solo-multisite-smoke/**'
+      - '.github/workflows/solo-sites-smoke-ci.yml'
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node --check solo-multisite-smoke/queue.mjs
+      - run: node --check solo-multisite-smoke/smoke.mjs
+      - run: node --test solo-multisite-smoke/test-smoke.mjs
