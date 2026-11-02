@@ -11,7 +11,7 @@ const {pathToFileURL}=require('node:url');
 const ACTION='solo_company_runtime_install_v1';
 const RELEASE_SHA='0eb43d72aab3f10db22172c8be4c0411cf22d074';
 const SOURCE='/home/agent/ssh-mcp-server/src/plugins/soloCompanyRuntimeInstallCore.js';
-const SOURCE_SHA256='826da54790d826b47a5ae0d0b41bfac515b2a4fdbd44251bdcd59265744f3101';
+const SOURCE_SHA256='a93abca70f158729e0e22d39717a6e10a4025b18c44bf60a774ce3bf63fa41dd';
 const RESULT='/var/lib/prhm-agent-selfmaint-exec/solo-company-runtime-install-v1/root-action-result.json';
 const SCHEMA='prhm.solo-runtime-root-result.v1';
 const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
