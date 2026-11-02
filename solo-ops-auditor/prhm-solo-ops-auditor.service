@@ -1,0 +1,31 @@
+[Unit]
+Description=PRHM Solo Operations Auditor (read-only one-shot)
+Wants=network-online.target
+After=network-online.target prhm-agent-mcp-router.service
+ConditionPathExists=/opt/prhm-solo-company/.release-sha
+
+[Service]
+Type=oneshot
+DynamicUser=yes
+StateDirectory=prhm-solo-auditor
+StateDirectoryMode=0700
+RuntimeDirectory=prhm-solo-auditor
+RuntimeDirectoryMode=0700
+Environment=SOLO_AUDITOR_STATE_DIR=/var/lib/prhm-solo-auditor
+Environment=CREDENTIALS_DIRECTORY=/run/prhm-solo-auditor
+ExecStartPre=+/usr/bin/install -m 0400 /etc/prhm-solo-company/agent2.bearer /run/prhm-solo-auditor/agent2_bearer
+ExecStartPre=+/usr/bin/chown --reference=/run/prhm-solo-auditor /run/prhm-solo-auditor/agent2_bearer
+ExecStart=/usr/local/bin/prhm-node /opt/prhm-solo-auditor/auditor.mjs --once
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+TimeoutStartSec=90
+MemoryMax=192M
+CPUQuota=30%
