@@ -1,0 +1,12 @@
+[Unit]
+Description=Every 30 minutes: PRHM Solo CF Park read-only QA
+
+[Timer]
+OnCalendar=*:0/30
+Persistent=false
+RandomizedDelaySec=20s
+AccuracySec=1min
+Unit=prhm-solo-qa-agent.service
+
+[Install]
+WantedBy=timers.target
