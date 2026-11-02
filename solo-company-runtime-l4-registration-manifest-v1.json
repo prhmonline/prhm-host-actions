@@ -1,0 +1,69 @@
+{
+  "schema_version": "prhm.solo-runtime.registration-manifest.v1",
+  "status": "UNSIGNED_SOURCE_ONLY",
+  "environment": "production",
+  "target_host": "prhm-production.prhm.ir",
+  "operation": "host_action.solo_company_runtime_registration_v1",
+  "action": "solo_company_runtime_registration_v1",
+  "install_action_after_registration": "solo_company_runtime_install_v1",
+  "risk": "critical",
+  "required_approval_level": 4,
+  "one_time_use": true,
+  "release_sha": "0eb43d72aab3f10db22172c8be4c0411cf22d074",
+  "source_commits": {
+    "host_actions": "9a18f281e788d9f3738884e18df82e711de466fc",
+    "sshagent": "02966549a751c16b582ce17d15a1e2cf8a22f0fb"
+  },
+  "ordered_files": [
+    {
+      "key": "worker",
+      "path": "/opt/prhm-agent-selfmaint-exec/actions/solo-company-runtime-root-action-v1.js",
+      "before_sha256": null,
+      "after_sha256": "3c36ded82888e81e33132898eac2baab4b1e41f8d35ac076ba082a22b8b7906e"
+    },
+    {
+      "key": "core",
+      "path": "/home/agent/ssh-mcp-server/src/plugins/soloCompanyRuntimeInstallCore.js",
+      "before_sha256": "fac8458d3a85bef0d30ba3864f1b9368e921ee66483528f4cdfb91fb4cc395b7",
+      "after_sha256": "a93abca70f158729e0e22d39717a6e10a4025b18c44bf60a774ce3bf63fa41dd"
+    },
+    {
+      "key": "approval",
+      "path": "/opt/prhm-agent-selfmaint/server.js",
+      "before_sha256": "4c29d01a248d59ee85754dfa5a59e8132fe22e6b34ef04324228c16c88727406",
+      "after_sha256": "57828b344aca1d1fb51e74cc2c64094edb03c5fd86fe68420d7185f0d12b6530"
+    },
+    {
+      "key": "executor",
+      "path": "/opt/prhm-agent-selfmaint-exec/server.js",
+      "before_sha256": "410406ba0965ef3a5cad6da6306a85335e38acc3637fb6ed60fa42200a10c2e0",
+      "after_sha256": "4c136a210681ee07a45d96d38d91c1253afcce67feed0a9d062f9f14d0557169"
+    },
+    {
+      "key": "policy",
+      "path": "/opt/prhm-company-control-plane/config/approval-policy.json",
+      "before_sha256": "148fe2a724befc15cd8c731b0195d83e254d39215792a5084b70dd5b5c178174",
+      "after_sha256": "26359a31efdfe0acde07cc9f4001afddee98efaa206e4528880068bf93c425f5"
+    },
+    {
+      "key": "mcp",
+      "path": "/home/agent/ssh-mcp-server/src/plugins/hostActionsV2.js",
+      "before_sha256": "bd768f992dab75710558e3f47187c311c2ee5b5ec6f5751a74e0bbfa64729166",
+      "after_sha256": "0c6a74757696a0d85840a0aec1bc53c91431481024f2be56e4ecb02f789073ef"
+    }
+  ],
+  "verified_tests": [
+    "ci-sha-and-policy",
+    "read-only-live-preflight",
+    "in-memory-fault-injection",
+    "linux-native-filesystem-atomic-commit",
+    "linux-native-filesystem-rollback"
+  ],
+  "explicit_no_go": [
+    "provider-signer-not-attested",
+    "provider-root-bootstrap-public-key-unavailable",
+    "production-root-adapter-not-installed",
+    "production-runtime-not-installed"
+  ],
+  "note": "NOT a signature, approval receipt, installation authority or executable manifest"
+}
