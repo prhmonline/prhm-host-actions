@@ -11,6 +11,8 @@ on:
       - 'test-solo-company-runtime-sixfile-native-rollback-v1.cjs'
       - 'solo-company-runtime-provider-signed-receipt-v1.js'
       - 'test-solo-company-runtime-provider-signed-receipt-v1.js'
+      - 'solo-company-runtime-native-registration-bridge-v1.js'
+      - 'test-solo-company-runtime-native-registration-bridge-v1.js'
       - '.github/workflows/solo-company-runtime-l4-registration-ci.yml'
   pull_request:
     paths:
@@ -31,7 +33,8 @@ jobs:
       - run: node --check solo-company-runtime-root-action-v1.js
       - run: node --check solo-company-runtime-signed-registration-transaction-v1.js
       - run: node --check solo-company-runtime-provider-signed-receipt-v1.js
-      - run: node --test test-solo-company-runtime-l4-registration-candidate-v1.js test-solo-company-runtime-root-action-v1.js test-solo-company-runtime-signed-registration-transaction-v1.js test-solo-company-runtime-sixfile-native-rollback-v1.cjs test-solo-company-runtime-provider-signed-receipt-v1.js
+      - run: node --check solo-company-runtime-native-registration-bridge-v1.js
+      - run: node --test test-solo-company-runtime-l4-registration-candidate-v1.js test-solo-company-runtime-root-action-v1.js test-solo-company-runtime-signed-registration-transaction-v1.js test-solo-company-runtime-sixfile-native-rollback-v1.cjs test-solo-company-runtime-provider-signed-receipt-v1.js test-solo-company-runtime-native-registration-bridge-v1.js
       - name: Verify registration tool exposes no operational execution API
         run: |
           node -e "const x=require('./solo-company-runtime-l4-registration-candidate-v1.js'); if(typeof x.run==='function'||typeof x.install==='function'||typeof x.apply==='function'||typeof x.deploy==='function')process.exit(1)"
