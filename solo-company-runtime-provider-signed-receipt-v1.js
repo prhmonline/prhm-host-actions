@@ -120,8 +120,16 @@ function consumeReceipt(receipt,ledgerDir,nowSeconds){
   try{fs.fsyncSync(dfd)}finally{fs.closeSync(dfd)}
   return Object.freeze({...receipt,consumed:true});
 }
+function verifyAndConsume({token,publicKeyPem,pinnedPublicKeySha256,plan,requestId,
+  nowSeconds,ledgerDir}={}){
+  // The privileged Provider adapter MUST pin the public key independently.
+  // Never accept a key hash derived from the caller's token as authority.
+  const verified=verifyReceipt({token,publicKeyPem,pinnedPublicKeySha256,
+    plan,requestId,nowSeconds});
+  return consumeReceipt(verified,ledgerDir,nowSeconds);
+}
 module.exports=Object.freeze({ACTION,OPERATION,TYPE,ISSUER,AUDIENCE,UUID,SHA,
-  bindPlan,hashPlan,verifyReceipt,consumeReceipt});
+  bindPlan,hashPlan,verifyReceipt,consumeReceipt,verifyAndConsume});
 if(require.main===module){
   process.stderr.write('NO_CLI: real Provider signing key + authenticated dispatcher required\n');
   process.exitCode=64;
