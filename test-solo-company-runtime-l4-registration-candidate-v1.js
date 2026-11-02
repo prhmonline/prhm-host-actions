@@ -14,7 +14,13 @@ test('fixed target and immutable production SHA inventory',()=>{
 test('four registration candidates include a CLOSED privileged dispatch',()=>{
   const a=mod.approval(approval), e=mod.executor(executor), m=mod.mcp(mcp), p=JSON.parse(mod.policy(policy));
   assert.equal((a.match(/host_action\.solo_company_runtime_install_v1/g)||[]).length,1);
-  assert.match(e,/function applySoloCompanyRuntimeInstallV1\(\)\{throw Error\('solo_runtime_root_adapter_not_installed'\)\}/);
+  assert.match(e,/function applySoloCompanyRuntimeInstallV1\(\)/);
+  assert.match(e,/solo_root_helper_sha_mismatch/);
+  assert.match(e,/--property=ProtectSystem=full/);
+  assert.match(e,/ConfigurationDirectory=prhm-solo-company/);
+  assert.match(e,/EnvironmentFile=\/etc\/prhm-agent-mcp-auth.env/);
+  assert.match(e,/solo_root_result_binding_invalid/);
+  assert.match(e,/155000/);
   assert.match(e,/return applySoloCompanyRuntimeInstallV1\(\)/);
   assert.match(m,/'solo_company_runtime_install_v1'/);
   assert.equal(p.operations['host_action.solo_company_runtime_install_v1'].level,4);
@@ -35,4 +41,5 @@ test('baseline authorization is never bypassed by arbitrary input',()=>{
   const raw={approval:Buffer.from(approval),executor:Buffer.from(executor),mcp:Buffer.from(mcp),policy:Buffer.from(policy)};
   assert.throws(()=>mod.buildCandidates(raw),/baseline_sha_mismatch/);
   assert.equal(typeof mod.buildCandidates,'function');
+  assert.match(mod.ROOT_HELPER_SHA256,/^[a-f0-9]{64}$/);
 });
