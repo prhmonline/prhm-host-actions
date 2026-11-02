@@ -6,6 +6,7 @@ export const SCHEMA='prhm.solo.ops-auditor.queue.v1';
 const MAX_RECORDS=1024;
 const MAX_ATTEMPTS=2;
 const STATES=new Set(['queued','running','succeeded','failed']);
+const FINAL=new Set(['succeeded','failed']);
 const fail=c=>{throw Object.assign(new Error(c),{code:c})};
 
 async function fsyncDirectory(dir){
@@ -21,6 +22,31 @@ async function atomicWrite(file,data){
   finally{await handle.close()}
   await rename(tmp,file);
   await fsyncDirectory(parent);
+}
+async function archiveFinal(file,job){
+  const dir=join(dirname(file),'archive');
+  await mkdir(dir,{recursive:true,mode:0o700});
+  const record=JSON.stringify(job)+'\n';
+  const target=join(dir,job.id+'.json');
+  let fd;
+  try{fd=await open(target,'wx',0o600)}
+  catch(e){
+    if(e.code!=='EEXIST')throw e;
+    if(await readFile(target,'utf8')!==record)fail('auditor_archive_integrity_error');
+    return;
+  }
+  try{await fd.writeFile(record,'utf8');await fd.sync()}
+  finally{await fd.close()}
+  await fsyncDirectory(dir);
+}
+async function compact(file,state){
+  if(state.jobs.length<MAX_RECORDS)return;
+  const n=state.jobs.length-512;
+  const removable=state.jobs.filter(j=>FINAL.has(j.status)).slice(0,n);
+  if(removable.length!==n)fail('auditor_queue_unarchivable_capacity');
+  for(const job of removable)await archiveFinal(file,job);
+  const ids=new Set(removable.map(j=>j.id));
+  state.jobs=state.jobs.filter(j=>!ids.has(j.id));
 }
 function validate(data){
   if(data?.schema!==SCHEMA||!Array.isArray(data.jobs)||data.jobs.length>MAX_RECORDS)
@@ -53,6 +79,7 @@ export class DurableAuditQueue{
     if(await this.stopped())return {stopped:true};
     const state=await this.snapshot();
     if(state.jobs.some(j=>j.id===id))return {duplicate:true};
+    await compact(this.file,state);
     if(state.jobs.length>=MAX_RECORDS)fail('auditor_queue_capacity_exceeded');
     state.jobs.push({id,status:'queued',attempts:0,created_at:this.now(),
       updated_at:this.now(),lease_expires_at:null,summary:null,error_code:null,evidence_count:0});
