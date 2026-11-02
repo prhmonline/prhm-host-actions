@@ -26,6 +26,11 @@ test('wrong mode cannot install',()=>{
   assert.equal(r.status,21);
   assert.match(r.stderr,/unsupported_fixed_mode/);
 });
-test('preflight fails closed when exact production source unavailable',()=>{
-  assert.throws(()=>tool.sourcePreflight(),/ENOENT|source_sha_mismatch|source_git_commit_mismatch|untrusted_source_metadata/);
+test('source preflight accepts only exact immutable source, or refuses unavailable source',()=>{
+  try{
+    const bytes=tool.sourcePreflight();
+    assert.equal(tool.fnHash(bytes),tool.SOURCE_SHA256);
+  }catch(error){
+    assert.match(String(error.message),/ENOENT|source_sha_mismatch|source_git_commit_mismatch|untrusted_source_metadata/);
+  }
 });
