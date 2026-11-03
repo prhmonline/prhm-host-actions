@@ -1,0 +1,32 @@
+name: Solo existing stateful service adoption (source-only)
+on:
+  push:
+    paths:
+      - 'solo-company-universal-existing-service-adoption-v1.js'
+      - 'solo-company-universal-adoption.production.candidate.json'
+      - 'test-solo-company-universal-existing-service-adoption-v1.js'
+      - 'docs/runbooks/solo-company-universal-adoption-v1.md'
+      - '.github/workflows/solo-company-universal-adoption-ci.yml'
+  pull_request:
+    paths:
+      - 'solo-company-universal-existing-service-adoption-v1.js'
+      - 'solo-company-universal-adoption.production.candidate.json'
+      - 'test-solo-company-universal-existing-service-adoption-v1.js'
+      - 'docs/runbooks/solo-company-universal-adoption-v1.md'
+      - '.github/workflows/solo-company-universal-adoption-ci.yml'
+permissions:
+  contents: read
+jobs:
+  review-only:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Validate source and exact candidate manifest
+        run: |
+          node --check solo-company-universal-existing-service-adoption-v1.js
+          node -e "const a=require('./solo-company-universal-existing-service-adoption-v1.js'); a.verifyCandidate(require('./solo-company-universal-adoption.production.candidate.json'))"
+      - name: Test preservation, rollback non-mutation, loopback and dark-mode refusal
+        run: node --test test-solo-company-universal-existing-service-adoption-v1.js
