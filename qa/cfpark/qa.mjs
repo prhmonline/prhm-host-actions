@@ -81,8 +81,8 @@ export function qaAdapter({client,metadata,fetchImpl=fetch}){
    const checks=[
     check('places_tool_ok',apiReachable,'warning'),
     check('place_api_http',apiReachable,'warning'),
-    check('places_present',!apiReachable||(Number.isInteger(api?.places?.record_count)&&api.places.record_count>0),'warning'),
-    check('admin_root_verified',!apiReachable||api?.backend?.verified===true),
+    check('places_present',apiReachable&&Number.isInteger(api?.places?.record_count)&&api.places.record_count>0,'warning'),
+    check('admin_root_verified',!apiReachable?true:api?.backend?.verified===true),
     check('git_tool_ok',git?.ok===true&&git?.read_only===true&&git?.target===GIT_TARGET),
     check('git_sha_valid',/^[a-f0-9]{40}$/.test(git?.head||'')),
     check('git_clean',git?.clean===true,'warning'),
@@ -104,7 +104,7 @@ export function qaAdapter({client,metadata,fetchImpl=fetch}){
    }
    // A transport outage is inconclusive, not proof of invalid application data.
    // The execute phase already records connectivity warnings in savedChecks.
-   const verified=true; // API health is assessed by execute checks, not by verification transport
+   const verified=second?.ok!==true||second?.places?.status_code===200;
    return {results:[
     {id:'repeat_api_readonly',pass:verified},
     {id:'scope_unchanged',pass:result?.checks?.length===10&&
@@ -141,7 +141,7 @@ export async function runOnce({queue,client,metadata,EngineeringAgent,
   const previous=history.at(-1);
   if(checks.find(x=>x.id==='place_api_http')?.result==='warn' &&
      previous?.id===('qa-cfpark-'+(Number(claimed.id.split('qa-cfpark-')[1])-1)) &&
-     previous?.checks?.find(x=>x.id==='place_api_http')?.result==='warn'){
+     previous?.checks?.find(x=>x.id==='places_tool_ok')?.result==='warn'){
     checks.find(x=>x.id==='place_api_http').result='fail';
   }
   const level=severity(checks);
