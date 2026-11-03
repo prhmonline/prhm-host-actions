@@ -10,7 +10,28 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  id-token: write
 jobs:
+  github-oidc-runtime-domain-readonly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Show GitHub issuer endpoint HOSTNAME only (never path or token)
+        run: |
+          node - <<'JS'
+          const {isTrustedGitHubOIDCRuntimeHost}=require('./universal-owner-oidc-sealed-transport-v1.cjs');
+          const raw=process.env.ACTIONS_ID_TOKEN_REQUEST_URL;
+          if(!raw)throw Error('OIDC URL not exposed by GitHub runner');
+          const url=new URL(raw);
+          console.log('RUNNER_OIDC_RUNTIME_HOST='+url.hostname);
+          console.log('RUNNER_OIDC_RUNTIME_PORT='+String(url.port));
+          console.log('RUNNER_OIDC_RUNTIME_PROTOCOL='+url.protocol);
+          console.log('PINNED_TRUST_VALIDATION='+isTrustedGitHubOIDCRuntimeHost(url));
+          JS
   cryptographic-negative-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 5
