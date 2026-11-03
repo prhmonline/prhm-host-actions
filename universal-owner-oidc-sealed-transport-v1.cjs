@@ -65,7 +65,7 @@ function isTrustedGitHubOIDCRuntimeHost(url){
   // never a user-supplied arbitrary URL or a lookalike hostname.
   return url instanceof URL && url.protocol==='https:' &&
     url.port==='' && url.username==='' && url.password==='' &&
-    /^pipelines[a-z0-9-]*\\.actions\\.githubusercontent\\.com$/.test(url.hostname);
+    /^pipelines[a-z0-9-]*\.actions\.githubusercontent\.com$/.test(url.hostname);
 }
 async function runProtectedActionOnly() {
   need(process.argv.length===2,'unexpected_arguments');
