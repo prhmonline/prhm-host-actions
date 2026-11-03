@@ -1,0 +1,28 @@
+name: Universal owner recovery — source-only security CI
+on:
+  pull_request:
+    paths:
+      - 'universal-owner-oidc-**'
+      - 'test-universal-owner-oidc-**'
+      - '.github/workflows/universal-owner-recovery-oidc-v1.yml'
+      - '.github/workflows/universal-owner-recovery-ci-v1.yml'
+      - 'docs/runbooks/universal-owner-recovery-oidc-v1.md'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  cryptographic-negative-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Test RSA issuer validation, required external approval, encrypted transport
+        run: |
+          node --test test-universal-owner-oidc-recovery-gate-v1.cjs test-universal-owner-oidc-sealed-transport-v1.cjs
+      - name: Check syntax
+        run: |
+          node --check universal-owner-oidc-recovery-gate-v1.cjs
+          node --check universal-owner-oidc-sealed-transport-v1.cjs
