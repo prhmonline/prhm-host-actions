@@ -4,6 +4,7 @@ import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {SCHEMA,SOURCES,sanitizeQueue,gather} from './collect.mjs';
 import {STATE_SCHEMA,validateEvidence,runOnce} from './triage.mjs';
+import {runPipeline} from './pipeline.mjs';
 
 const NOW=1800000000000;
 const qaJob=(extra={})=>({
@@ -114,4 +115,30 @@ test('no automatic CLI execution without exact mode',()=>{
  const result=spawnSync(process.execPath,[script],{encoding:'utf8',timeout:8000});
  assert.equal(result.status,2);
  assert.match(result.stderr,/DEV_TRIAGE_ERROR=developer_mode_required/);
+});
+
+test('fixed production pipeline consumes all QA queues, records one proposal and never uses Git/network',async()=>{
+  const ctx=baseline();
+  const r=await runPipeline({now:NOW,...ctx,
+    load:async src=>queue(src,src.id==='honartik_plan'?[qaJob()]:[])});
+  assert.equal(r.status,'proposals_created');
+  assert.equal(r.qa_sources_checked,3);
+  assert.equal(r.incident_count,1);
+  assert.equal(r.git_access,false);
+  assert.equal(r.network_access,false);
+  assert.equal(ctx.get().proposals.length,1);
+});
+test('healthy fixed QA queues produce idle pipeline and no state mutation',async()=>{
+  const ctx=baseline();
+  const r=await runPipeline({now:NOW,...ctx,load:async src=>queue(src,[])});
+  assert.equal(r.status,'idle');
+  assert.equal(r.new_proposals,0);
+  assert.equal(ctx.saves.length,0);
+});
+test('pipeline STOP checked before reading even one protected QA source',async()=>{
+  const ctx=baseline();
+  const r=await runPipeline({now:NOW,...ctx,stopped:async()=>true,
+    load:async()=>{throw Error('should_not_touch_qa')}});
+  assert.equal(r.status,'stopped');
+  assert.equal(ctx.saves.length,0);
 });
