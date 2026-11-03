@@ -1,0 +1,23 @@
+name: CF Park QA regression
+on:
+  pull_request:
+    paths:
+      - 'qa/cfpark/**'
+      - '.github/workflows/cfpark-qa-regression.yml'
+  workflow_dispatch:
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax checks
+        run: |
+          node --check qa/cfpark/qa.mjs
+          node --check qa/cfpark/queue.mjs
+      - name: CF Park QA regression suite
+        run: node --test qa/cfpark/qa-review.test.mjs
