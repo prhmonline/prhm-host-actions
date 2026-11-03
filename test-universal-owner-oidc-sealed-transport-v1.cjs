@@ -45,6 +45,7 @@ test('even a fresh transport envelope has no Root execution interface',()=>{
 
 test('accepts regional GitHub-hosted OIDC runtime URL from GitHub Actions',()=>{
  assert.equal(seal.isTrustedGitHubOIDCRuntimeHost(new URL('https://pipelinesghubeus15.actions.githubusercontent.com/a/b?x=1')),true);
+ assert.equal(seal.isTrustedGitHubOIDCRuntimeHost(new URL('https://run-actions-1-azure-eastus.actions.githubusercontent.com/_apis/idtoken')),true);
  assert.equal(seal.isTrustedGitHubOIDCRuntimeHost(new URL('https://pipelines.actions.githubusercontent.com/_apis/idtoken?api-version=2.0')),true);
 });
 test('rejects lookalike OIDC hosts, scheme, ports and credentials',()=>{
@@ -55,6 +56,9 @@ test('rejects lookalike OIDC hosts, scheme, ports and credentials',()=>{
   'https://pipelinesghubeus15.actions.githubusercontent.com:8443/idtoken',
   'https://u:password@pipelinesghubeus15.actions.githubusercontent.com/idtoken',
   'https://notpipelines.actions.githubusercontent.com/idtoken',
+  'https://run-actions-evil-azure-eastus.actions.githubusercontent.com/idtoken',
+  'https://run-actions-1-azure-eastus.actions.githubusercontent.com.evil.example/idtoken',
+  'https://run-actions-1-azure-eastus.actions.githubusercontent.com:8443/idtoken',
   'https://githubusercontent.com/idtoken'
  ]) assert.equal(seal.isTrustedGitHubOIDCRuntimeHost(new URL(input)),false,input);
 });
