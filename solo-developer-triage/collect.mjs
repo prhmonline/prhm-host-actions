@@ -48,7 +48,7 @@ export async function gather({load,now=Date.now()}={}){
   const records=[];
   for(const source of SOURCES){
     let raw;
-    try{raw=await load(source)}catch{fail('developer_source_unavailable_'+source.id)}
+    try{raw=await load(source)}catch(e){fail('developer_source_unavailable_'+source.id+'_'+String(e?.code||'unknown').toLowerCase().replace(/[^a-z0-9_]/g,''))}
     records.push(...sanitizeQueue(source,raw,now));
   }
   if(records.length>288)fail('developer_findings_capacity');
