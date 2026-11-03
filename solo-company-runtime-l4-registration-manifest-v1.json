@@ -11,7 +11,7 @@
   "one_time_use": true,
   "release_sha": "0eb43d72aab3f10db22172c8be4c0411cf22d074",
   "source_commits": {
-    "host_actions": "9a18f281e788d9f3738884e18df82e711de466fc",
+    "host": "9a18f281e788d9f3738884e18df82e711de466fc",
     "sshagent": "02966549a751c16b582ce17d15a1e2cf8a22f0fb"
   },
   "ordered_files": [
@@ -63,7 +63,8 @@
     "provider-signer-not-attested",
     "provider-root-bootstrap-public-key-unavailable",
     "production-root-adapter-not-installed",
-    "production-runtime-not-installed"
+    "formal-host-action-registration-not-installed",
+    "universal-stateful-service-adoption-profile-not-implemented"
   ],
-  "note": "NOT a signature, approval receipt, installation authority or executable manifest"
+  "note": "UNSIGNED source metadata only. Solo operational Runtime is active via owner-authorized emergency path; signed Host Action registration and Universal Installer adoption remain NO-GO. This metadata does not grant production authority."
 }
