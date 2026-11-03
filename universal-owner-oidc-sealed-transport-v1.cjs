@@ -61,11 +61,11 @@ function openSealedJwt(sealed,challenge,hostPrivateKey){
 function isTrustedGitHubOIDCRuntimeHost(url){
   // GitHub-hosted runner's ID_TOKEN_REQUEST_URL uses regional hosts such as
   // pipelinesghubeus*.actions.githubusercontent.com (NOT *.pipelines...).
-  // Trust exact GitHub-controlled suffix plus a restricted pipelines prefix,
+  // Trust exact GitHub-controlled suffix with observed runner families only,
   // never a user-supplied arbitrary URL or a lookalike hostname.
   return url instanceof URL && url.protocol==='https:' &&
     url.port==='' && url.username==='' && url.password==='' &&
-    /^pipelines[a-z0-9-]*\.actions\.githubusercontent\.com$/.test(url.hostname);
+    (/^(?:pipelines[a-z0-9-]*|run-actions-[0-9]+-[a-z0-9-]+)\.actions\.githubusercontent\.com$/.test(url.hostname));
 }
 async function runProtectedActionOnly() {
   need(process.argv.length===2,'unexpected_arguments');
