@@ -3,6 +3,8 @@
   "project": "solo_company",
   "environment": "production",
   "status": "SOURCE_ONLY_NO_GO",
+  "runtime_installation_record": "OPERATIONAL_ACCEPTED_2026-11-03_PR233",
+  "host_action_registration_state": "NOT_REGISTERED",
   "operation": "read_only_admission",
   "release_sha": "0eb43d72aab3f10db22172c8be4c0411cf22d074",
   "install_root": "/opt/prhm-solo-company",
