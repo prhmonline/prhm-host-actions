@@ -1,0 +1,25 @@
+[Unit]
+Description=PRHM Honartik Guest Plan SSR Read-Only QA
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+DynamicUser=yes
+StateDirectory=prhm-honartik-plan-qa
+StateDirectoryMode=0700
+Environment=SOLO_PLAN_QA_STATE_DIR=/var/lib/prhm-honartik-plan-qa
+ExecStart=/usr/local/bin/prhm-node /opt/prhm-honartik-plan-qa/plan-qa.mjs --once
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+TimeoutStartSec=90
+MemoryMax=192M
+CPUQuota=25%
