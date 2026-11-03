@@ -2,6 +2,7 @@ name: Solo Runtime L4 registration contract
 on:
   push:
     paths:
+      - 'solo-company-runtime-l4-registration-manifest-v1.json'
       - 'solo-company-runtime-l4-registration-candidate-v1.js'
       - 'test-solo-company-runtime-l4-registration-candidate-v1.js'
       - 'solo-company-runtime-root-action-v1.js'
@@ -16,10 +17,18 @@ on:
       - '.github/workflows/solo-company-runtime-l4-registration-ci.yml'
   pull_request:
     paths:
+      - 'solo-company-runtime-l4-registration-manifest-v1.json'
       - 'solo-company-runtime-l4-registration-candidate-v1.js'
       - 'test-solo-company-runtime-l4-registration-candidate-v1.js'
       - 'solo-company-runtime-root-action-v1.js'
       - 'test-solo-company-runtime-root-action-v1.js'
+      - 'solo-company-runtime-signed-registration-transaction-v1.js'
+      - 'test-solo-company-runtime-signed-registration-transaction-v1.js'
+      - 'solo-company-runtime-sixfile-native-rollback-v1.cjs'
+      - 'solo-company-runtime-provider-signed-receipt-v1.js'
+      - 'test-solo-company-runtime-provider-signed-receipt-v1.js'
+      - 'solo-company-runtime-native-registration-bridge-v1.js'
+      - 'test-solo-company-runtime-native-registration-bridge-v1.js'
       - '.github/workflows/solo-company-runtime-l4-registration-ci.yml'
 jobs:
   source-only-contract:
