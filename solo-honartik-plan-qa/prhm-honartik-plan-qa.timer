@@ -1,0 +1,10 @@
+[Unit]
+Description=Hourly Honartik Guest Plan Read-Only QA
+[Timer]
+OnCalendar=hourly
+Persistent=false
+RandomizedDelaySec=30s
+AccuracySec=1min
+Unit=prhm-honartik-plan-qa.service
+[Install]
+WantedBy=timers.target
