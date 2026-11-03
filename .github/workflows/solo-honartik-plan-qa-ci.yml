@@ -1,0 +1,23 @@
+name: Honartik Guest Plan QA Contract
+on:
+  push:
+    paths:
+      - 'solo-honartik-plan-qa/**'
+      - '.github/workflows/solo-honartik-plan-qa-ci.yml'
+  pull_request:
+    paths:
+      - 'solo-honartik-plan-qa/**'
+      - '.github/workflows/solo-honartik-plan-qa-ci.yml'
+permissions:
+  contents: read
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node --check solo-honartik-plan-qa/queue.mjs
+      - run: node --check solo-honartik-plan-qa/plan-qa.mjs
+      - run: node --test solo-honartik-plan-qa/test-plan-qa.mjs
