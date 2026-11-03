@@ -54,7 +54,7 @@ export async function gather({load,now=Date.now()}={}){
   if(records.length>288)fail('developer_findings_capacity');
   return Object.freeze({schema:SCHEMA,generated_at:now,findings:records});
 }
-async function readNoFollow(file){
+export async function readNoFollow(file){
   const h=await open(file,constants.O_RDONLY|constants.O_NOFOLLOW);
   try{
     const meta=await h.stat();
