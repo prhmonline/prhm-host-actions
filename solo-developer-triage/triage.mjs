@@ -40,7 +40,7 @@ export function validateEvidence(data){
     return item;
   });
 }
-async function atomicWrite(file,data){
+export async function atomicWrite(file,data){
   const dir=dirname(file);
   await mkdir(dir,{recursive:true,mode:0o700});
   const temp=join(dir,'.dev-'+randomUUID());
