@@ -1,0 +1,108 @@
+name: Issue 221 Trusted Registrar Bootstrap Gate — Source Only
+
+on:
+  pull_request:
+    paths:
+      - 'prhm-action-registry-gateway-v1.cjs'
+      - 'prhm-action-registry-host-actions-v2-bridge-v1.cjs'
+      - 'shared-registrar-native-dispatcher-v1.cjs'
+      - 'shared-registrar-pending-store-v1.cjs'
+      - 'shared-registrar-approval-center-bridge-v1.cjs'
+      - 'test-registrar-four-owner-preimage-v1.cjs'
+      - 'shared-registrar-policy-candidate-builder-v1.cjs'
+      - 'shared-registrar-three-owner-candidate-builder-v1.cjs'
+      - 'test-registrar-private-four-owner-package-v1.cjs'
+      - 'test-shared-registrar-three-owner-candidate-builder-v1.cjs'
+      - 'test-shared-registrar-isolated-service-recovery-v1.cjs'
+      - 'test-shared-registrar-policy-candidate-builder-v1.cjs'
+      - 'test-registrar-four-owner-preimage-contract-v1.cjs'
+      - 'test-shared-registrar-approval-center-bridge-v1.cjs'
+      - 'test-shared-registrar-pending-store-v1.cjs'
+      - 'test-shared-registrar-native-dispatcher-v1.cjs'
+      - 'test-prhm-action-registry-host-actions-v2-bridge-v1.cjs'
+      - 'test-prhm-action-registry-gateway-v1.cjs'
+      - 'shared-registrar-root-trust-preflight-v1.cjs'
+      - 'test-shared-registrar-root-trust-preflight-v1.cjs'
+      - 'shared-registrar-native-filesystem-v1.cjs'
+      - 'test-shared-registrar-native-linux-v1.cjs'
+      - 'test-shared-registrar-crash-child-v1.cjs'
+      - 'shared-registrar-native-host-hooks-v1.cjs'
+      - 'shared-registrar-mcp-discovery-probe-v1.cjs'
+      - 'test-shared-registrar-mcp-discovery-probe-v1.cjs'
+      - 'test-shared-registrar-mcp-discovery-loopback-v1.cjs'
+      - 'test-shared-registrar-native-host-hooks-v1.cjs'
+      - 'test-shared-registrar-systemd-fixture-v1.cjs'
+      - 'test-shared-registrar-four-systemd-vm-v1.cjs'
+      - 'shared-registrar-native-root-adapter-v1.cjs'
+      - 'test-shared-registrar-native-root-adapter-v1.cjs'
+      - 'docs/issue-221-root-trust-registrar-bootstrap-gate.md'
+      - '.github/workflows/issue-221-root-trust-registrar-gate-ci.yml'
+permissions:
+  contents: read
+jobs:
+  preflight-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Reject unauthorized installer source
+        run: |
+          set -euo pipefail
+          node --check prhm-action-registry-gateway-v1.cjs
+          node --check prhm-action-registry-host-actions-v2-bridge-v1.cjs
+          node --check shared-registrar-native-dispatcher-v1.cjs
+          node --check shared-registrar-pending-store-v1.cjs
+          node --check test-registrar-private-four-owner-package-v1.cjs
+          node --check shared-registrar-three-owner-candidate-builder-v1.cjs
+          node --check test-shared-registrar-three-owner-candidate-builder-v1.cjs
+          node --test test-shared-registrar-three-owner-candidate-builder-v1.cjs
+          node --check test-shared-registrar-isolated-service-recovery-v1.cjs
+          node --test test-shared-registrar-isolated-service-recovery-v1.cjs
+          node --check shared-registrar-policy-candidate-builder-v1.cjs
+          node --check test-shared-registrar-policy-candidate-builder-v1.cjs
+          node --test test-shared-registrar-policy-candidate-builder-v1.cjs
+          node --check test-registrar-four-owner-preimage-v1.cjs
+          node --check test-registrar-four-owner-preimage-contract-v1.cjs
+          node --test test-registrar-four-owner-preimage-contract-v1.cjs
+          node --check shared-registrar-approval-center-bridge-v1.cjs
+          node --check test-shared-registrar-approval-center-bridge-v1.cjs
+          node --test test-shared-registrar-approval-center-bridge-v1.cjs
+          sudo -n node --test test-shared-registrar-approval-center-bridge-v1.cjs
+          node --check test-shared-registrar-pending-store-v1.cjs
+          node --test test-shared-registrar-pending-store-v1.cjs
+          node --check test-shared-registrar-native-dispatcher-v1.cjs
+          node --test test-shared-registrar-native-dispatcher-v1.cjs
+          node --check test-prhm-action-registry-host-actions-v2-bridge-v1.cjs
+          node --test test-prhm-action-registry-host-actions-v2-bridge-v1.cjs
+          node --check test-prhm-action-registry-gateway-v1.cjs
+          node --test test-prhm-action-registry-gateway-v1.cjs
+          node --check shared-registrar-root-trust-preflight-v1.cjs
+          node --check test-shared-registrar-root-trust-preflight-v1.cjs
+          node --test test-shared-registrar-root-trust-preflight-v1.cjs
+          node --check shared-registrar-native-filesystem-v1.cjs
+          node --check test-shared-registrar-native-linux-v1.cjs
+          node --check test-shared-registrar-crash-child-v1.cjs
+          node --test test-shared-registrar-native-linux-v1.cjs
+          node --check shared-registrar-mcp-discovery-probe-v1.cjs
+          node --check test-shared-registrar-mcp-discovery-probe-v1.cjs
+          node --test test-shared-registrar-mcp-discovery-probe-v1.cjs
+          node --check test-shared-registrar-mcp-discovery-loopback-v1.cjs
+          sudo -n env REGISTRAR_MCP_DISCOVERY_LOOPBACK=1 GITHUB_ACTIONS="${GITHUB_ACTIONS}" RUNNER_ENVIRONMENT="${RUNNER_ENVIRONMENT}" RUNNER_OS="${RUNNER_OS}" GITHUB_WORKSPACE="${GITHUB_WORKSPACE}" node --test test-shared-registrar-mcp-discovery-loopback-v1.cjs
+          node --check shared-registrar-native-host-hooks-v1.cjs
+          node --check test-shared-registrar-native-host-hooks-v1.cjs
+          node --test test-shared-registrar-native-host-hooks-v1.cjs
+          node --check test-shared-registrar-systemd-fixture-v1.cjs
+          node --check test-shared-registrar-four-systemd-vm-v1.cjs
+          sudo -n env REGISTRAR_SYSTEMD_VM=1 GITHUB_ACTIONS="${GITHUB_ACTIONS}" RUNNER_ENVIRONMENT="${RUNNER_ENVIRONMENT}" RUNNER_OS="${RUNNER_OS}" GITHUB_WORKSPACE="${GITHUB_WORKSPACE}" node --test test-shared-registrar-four-systemd-vm-v1.cjs
+          node --check shared-registrar-native-root-adapter-v1.cjs
+          node --check test-shared-registrar-native-root-adapter-v1.cjs
+          node --test test-shared-registrar-native-root-adapter-v1.cjs
+          echo 'NATIVE_ADAPTER_NEGATIVE_GATES=PASS'
+          echo 'LINUX_CRASH_ROLLBACK=PASS'
+          echo 'SOURCE_PREFLIGHT_CONTRACT=PASS'
+          echo 'HOST_HOOKS_SOURCE_TESTED=YES'
+          echo 'CI_FOUR_SYSTEMD_VM=TESTED'
+          echo 'ROOT_ADAPTER_INSTALLED=NO'
+          echo 'INSTALLATION_AUTHORIZED=NO'
