@@ -70,9 +70,9 @@ async function main(){
   if(process.getuid?.()!==0)fail('developer_root_collector_required');
   try{await access(join(STATE_DIR,'STOP'));process.stdout.write('DEVELOPER_STOPPED\n');return}
   catch(e){if(e.code!=='ENOENT')throw e}
-  const evidence=await gather({load:readNoFollow});
+  const evidence=await gather({load:source=>readNoFollow(source.file)});
   const meta=await stat(RUNTIME_DIR);
-  if(!meta.isDirectory()||meta.mode%512<0)fail('developer_runtime_directory_invalid');
+  if(!meta.isDirectory())fail('developer_runtime_directory_invalid');
   const tmp=join(RUNTIME_DIR,'.evidence-'+randomUUID()+'.tmp');
   const dest=join(RUNTIME_DIR,'evidence.json');
   const h=await open(tmp,constants.O_WRONLY|constants.O_CREAT|constants.O_EXCL,0o600);
