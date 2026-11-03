@@ -7,8 +7,7 @@ ConditionPathExists=/opt/prhm-developer-triage/collect.mjs
 Type=oneshot
 User=root
 CapabilityBoundingSet=CAP_DAC_READ_SEARCH
-StateDirectory=prhm-developer-triage
-StateDirectoryMode=0700
+ReadWritePaths=/var/lib/private/prhm-developer-triage
 Environment=SOLO_DEVELOPER_STATE_DIR=/var/lib/prhm-developer-triage
 ExecStart=/usr/local/bin/prhm-node /opt/prhm-developer-triage/pipeline.mjs --once
 UMask=0077
