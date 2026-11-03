@@ -137,6 +137,12 @@ export async function runOnce({queue,client,metadata,EngineeringAgent,
   const result=await new EngineeringAgent({adapter}).run(wo);
   const report=closureReport(result);
   const checks=adapter.getChecks();
+  const history=(await queue.snapshot()).jobs.filter(j=>j.id!==claimed.id && ['succeeded','failed'].includes(j.status));
+  const previous=history.at(-1);
+  if(checks.find(x=>x.id==='place_api_http')?.result==='warn' &&
+     previous?.checks?.find(x=>x.id==='place_api_http')?.result==='warn'){
+    checks.find(x=>x.id==='place_api_http').result='fail';
+  }
   const level=severity(checks);
   const ok=report.final_status==='succeeded'&&level!=='critical';
   await queue.complete(claimed.id,{
