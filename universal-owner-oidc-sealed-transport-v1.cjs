@@ -58,6 +58,15 @@ function openSealedJwt(sealed,challenge,hostPrivateKey){
   try{return Buffer.concat([dec.update(cipher),dec.final()]).toString('utf8')}
   catch{fail('transport_authentication_failed')}
 }
+function isTrustedGitHubOIDCRuntimeHost(url){
+  // GitHub-hosted runner's ID_TOKEN_REQUEST_URL uses regional hosts such as
+  // pipelinesghubeus*.actions.githubusercontent.com (NOT *.pipelines...).
+  // Trust exact GitHub-controlled suffix plus a restricted pipelines prefix,
+  // never a user-supplied arbitrary URL or a lookalike hostname.
+  return url instanceof URL && url.protocol==='https:' &&
+    url.port==='' && url.username==='' && url.password==='' &&
+    /^pipelines[a-z0-9-]*\.actions\.githubusercontent\.com$/.test(url.hostname);
+}
 async function runProtectedActionOnly() {
   need(process.argv.length===2,'unexpected_arguments');
   need(process.env.GITHUB_ACTIONS==='true','github_actions_only');
@@ -69,10 +78,7 @@ async function runProtectedActionOnly() {
   need(/^[a-f0-9]{64}$/.test(challenge||''),'challenge');
   parseServerPublic(publicKey);
   const reqUrl=new URL(process.env.ACTIONS_ID_TOKEN_REQUEST_URL||'');
-  need(reqUrl.protocol==='https:'&&
-    (reqUrl.hostname==='pipelines.actions.githubusercontent.com'||
-      reqUrl.hostname.endsWith('.pipelines.actions.githubusercontent.com')),
-    'untrusted_github_oidc_endpoint');
+  need(isTrustedGitHubOIDCRuntimeHost(reqUrl),'untrusted_github_oidc_endpoint');
   reqUrl.searchParams.set('audience',
     'urn:prhm:universal:owner-enrollment:v1:'+challenge+':'+FIXED.candidate_bundle);
   const reqToken=process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN;
@@ -89,7 +95,7 @@ async function runProtectedActionOnly() {
   fs.appendFileSync(process.env.GITHUB_OUTPUT,'sealed_path='+dest+'\n');
   console.log('Protected owner OIDC was encrypted to host-held X25519 public key. Token NOT logged.');
 }
-module.exports=Object.freeze({parseServerPublic,sealJwt,openSealedJwt});
+module.exports=Object.freeze({parseServerPublic,sealJwt,openSealedJwt,isTrustedGitHubOIDCRuntimeHost});
 if(require.main===module){
  runProtectedActionOnly().catch(e=>{console.error(e.message);process.exitCode=1});
 }
