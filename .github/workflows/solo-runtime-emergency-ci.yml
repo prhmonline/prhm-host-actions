@@ -1,0 +1,24 @@
+name: Solo Runtime Emergency Owner Install CI
+on:
+  push:
+    paths:
+      - 'solo-company-runtime-operator-emergency-v1.cjs'
+      - 'test-solo-company-runtime-operator-emergency-v1.cjs'
+      - '.github/workflows/solo-runtime-emergency-ci.yml'
+  pull_request:
+    paths:
+      - 'solo-company-runtime-operator-emergency-v1.cjs'
+      - 'test-solo-company-runtime-operator-emergency-v1.cjs'
+      - '.github/workflows/solo-runtime-emergency-ci.yml'
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node --check solo-company-runtime-operator-emergency-v1.cjs
+      - run: node --test test-solo-company-runtime-operator-emergency-v1.cjs
