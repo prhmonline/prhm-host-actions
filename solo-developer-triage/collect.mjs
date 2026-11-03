@@ -47,7 +47,8 @@ export async function gather({load,now=Date.now()}={}){
   if(typeof load!=='function')fail('developer_reader_not_provided');
   const records=[];
   for(const source of SOURCES){
-    const raw=await load(source);
+    let raw;
+    try{raw=await load(source)}catch{fail('developer_source_unavailable_'+source.id)}
     records.push(...sanitizeQueue(source,raw,now));
   }
   if(records.length>288)fail('developer_findings_capacity');
@@ -71,7 +72,8 @@ async function main(){
   try{await access(join(STATE_DIR,'STOP'));process.stdout.write('DEVELOPER_STOPPED\n');return}
   catch(e){if(e.code!=='ENOENT')throw e}
   const evidence=await gather({load:source=>readNoFollow(source.file)});
-  const meta=await stat(RUNTIME_DIR);
+  let meta;
+  try{meta=await stat(RUNTIME_DIR)}catch{fail('developer_runtime_dir_unavailable')}
   if(!meta.isDirectory())fail('developer_runtime_directory_invalid');
   const tmp=join(RUNTIME_DIR,'.evidence-'+randomUUID()+'.tmp');
   const dest=join(RUNTIME_DIR,'evidence.json');
