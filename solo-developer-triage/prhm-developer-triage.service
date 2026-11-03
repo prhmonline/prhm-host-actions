@@ -1,0 +1,29 @@
+[Unit]
+Description=PRHM Solo Developer Triage Agent (QA evidence only, no source writes)
+After=local-fs.target
+ConditionPathExists=/opt/prhm-developer-triage/collect.mjs
+
+[Service]
+Type=oneshot
+DynamicUser=yes
+StateDirectory=prhm-developer-triage
+StateDirectoryMode=0700
+RuntimeDirectory=prhm-developer-triage
+RuntimeDirectoryMode=0700
+Environment=SOLO_DEVELOPER_STATE_DIR=/var/lib/prhm-developer-triage
+ExecStartPre=+/usr/local/bin/prhm-node /opt/prhm-developer-triage/collect.mjs --export
+ExecStart=/usr/local/bin/prhm-node /opt/prhm-developer-triage/triage.mjs --once
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+PrivateNetwork=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX
+TimeoutStartSec=45
+MemoryMax=128M
+CPUQuota=20%
