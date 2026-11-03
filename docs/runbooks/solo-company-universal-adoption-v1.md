@@ -10,6 +10,10 @@ Status (2026-11-03): **NO-GO for production Universal Installer adoption**. This
 - The current Universal Installer engine is Python `/usr/local/libexec/deploy-control/universal/current`. Its v1 validator accepts only `static/node/php/compose` repository-backed service adapters and requires public HTTPS health markers tied to revision. Its deploy engine stages candidate releases, switches symlinks and can restart registered units.
 - Existing runtime DOES NOT satisfy the v1 contract; using `node`, inventing a public HTTPS route or wiring it as a normal deploy would risk unnecessary restarts/data effects.
 
+## Manifest status clarification (source-only)
+
+The static candidate records the **historical operational acceptance** of the installed Solo release (`OPERATIONAL_ACCEPTED_2026-11-03_PR233`). This is NOT a live health attestation. A fresh trusted live observation is required before admission. `host_action_registration_state=NOT_REGISTERED` and `managed_by_universal=false` explicitly distinguish two still-blocked formal registrations. `SOURCE_ONLY_NO_GO` refers to **Universal admission**, never to an uninstalled operational runtime.
+
 ## Review-only candidate
 
 `solo-company-universal-existing-service-adoption-v1.js` contains no CLI, I/O, deploy, install or service control. It **only** checks injected observation evidence. `solo-company-universal-adoption.production.candidate.json` is an exact candidate, NOT a file to copy into `/etc/deploy-control/projects`.
