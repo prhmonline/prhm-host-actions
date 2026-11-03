@@ -1,0 +1,38 @@
+name: Universal owner recovery — external OIDC evidence (NO INSTALL)
+on:
+  workflow_dispatch:
+    inputs:
+      challenge:
+        description: '64-character server-generated hex nonce (no secrets)'
+        required: true
+        type: string
+      server_transport_x25519_public_key_b64:
+        description: 'Base64 DER/SPKI host-generated X25519 public transport key'
+        required: true
+        type: string
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  externally-approved-owner-attestation:
+    if: ${{ github.ref == 'refs/heads/main' && github.actor_id == '193396069' }}
+    runs-on: ubuntu-latest
+    environment: prhm-universal-root-enrollment
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Seal short-lived GitHub OIDC JWT for exact host transport key
+        id: seal
+        env:
+          OWNER_CHALLENGE: ${{ inputs.challenge }}
+          OWNER_TRANSPORT_PUB_B64: ${{ inputs.server_transport_x25519_public_key_b64 }}
+        run: node universal-owner-oidc-sealed-transport-v1.cjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: universal-owner-oidc-sealed-${{ github.run_id }}
+          path: ${{ steps.seal.outputs.sealed_path }}
+          retention-days: 1
+          if-no-files-found: error
