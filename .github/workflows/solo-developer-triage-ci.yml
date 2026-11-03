@@ -20,4 +20,5 @@ jobs:
           node-version: '20'
       - run: node --check solo-developer-triage/collect.mjs
       - run: node --check solo-developer-triage/triage.mjs
+      - run: node --check solo-developer-triage/pipeline.mjs
       - run: node --test solo-developer-triage/test-triage.mjs
