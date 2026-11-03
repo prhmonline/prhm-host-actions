@@ -30,7 +30,6 @@ const EXPECTED = Object.freeze({
   rollback_policy: 'observe-only-preserve-state-and-unit'
 });
 const fail = code => { throw Error('solo_universal_adoption_' + code); };
-function stable(value) { return JSON.stringify(value, Object.keys(value).sort()); }
 function requireExactKeys(obj, expected) {
   if (!obj || typeof obj !== 'object' || Array.isArray(obj) ||
       Object.keys(obj).sort().join('|') !== Object.keys(expected).sort().join('|'))
@@ -64,7 +63,7 @@ function verifyObservation(profile, observation) {
     fail('network_not_private');
   if (!state || state.state_directory !== EXPECTED.state_directory ||
       state.root !== EXPECTED.state_root ||
-      state.persistent === false ||
+      state.persistent !== true ||
       state.data_mutated_by_admission !== false)
     fail('persistent_state_unverified');
   if (!health || health.http_status !== 200 ||
