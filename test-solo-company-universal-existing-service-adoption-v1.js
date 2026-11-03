@@ -29,6 +29,8 @@ test('static candidate is exact, unregistered and immutable in intent',()=>{
     'allow_open_public_route','managed_by_universal'])
     assert.equal(profile[key],false);
   assert.equal(profile.status,'SOURCE_ONLY_NO_GO');
+  assert.equal(profile.runtime_installation_record,'OPERATIONAL_ACCEPTED_2026-11-03_PR233');
+  assert.equal(profile.host_action_registration_state,'NOT_REGISTERED');
   assert.equal(profile.rollback_policy,'observe-only-preserve-state-and-unit');
   assert.equal(mod.EXPECTED.bind,'127.0.0.1:8782');
   assert.ok(!Object.keys(profile).some(k=>/password|secret|token|private_key/.test(k)));
