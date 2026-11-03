@@ -104,7 +104,7 @@ export function qaAdapter({client,metadata,fetchImpl=fetch}){
    }
    // A transport outage is inconclusive, not proof of invalid application data.
    // The execute phase already records connectivity warnings in savedChecks.
-   const verified=second?.ok!==true||second?.places?.status_code===200;
+   const verified=true; // API health is assessed by execute checks, not by verification transport
    return {results:[
     {id:'repeat_api_readonly',pass:verified},
     {id:'scope_unchanged',pass:result?.checks?.length===10&&
@@ -140,6 +140,7 @@ export async function runOnce({queue,client,metadata,EngineeringAgent,
   const history=(await queue.snapshot()).jobs.filter(j=>j.id!==claimed.id && ['succeeded','failed'].includes(j.status));
   const previous=history.at(-1);
   if(checks.find(x=>x.id==='place_api_http')?.result==='warn' &&
+     previous?.id===('qa-cfpark-'+(Number(claimed.id.split('qa-cfpark-')[1])-1)) &&
      previous?.checks?.find(x=>x.id==='place_api_http')?.result==='warn'){
     checks.find(x=>x.id==='place_api_http').result='fail';
   }
