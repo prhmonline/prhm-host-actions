@@ -42,3 +42,19 @@ test('even a fresh transport envelope has no Root execution interface',()=>{
  assert.equal(typeof seal.executeInstall,'undefined');
  assert.equal(typeof seal.issueSignedLevel4,'undefined');
 });
+
+test('accepts regional GitHub-hosted OIDC runtime URL from GitHub Actions',()=>{
+ assert.equal(seal.isTrustedGitHubOIDCRuntimeHost(new URL('https://pipelinesghubeus15.actions.githubusercontent.com/a/b?x=1')),true);
+ assert.equal(seal.isTrustedGitHubOIDCRuntimeHost(new URL('https://pipelines.actions.githubusercontent.com/_apis/idtoken?api-version=2.0')),true);
+});
+test('rejects lookalike OIDC hosts, scheme, ports and credentials',()=>{
+ for(const input of [
+  'https://pipelineevil.example.com/idtoken',
+  'https://pipelines.actions.githubusercontent.com.evil.example/idtoken',
+  'http://pipelinesghubeus15.actions.githubusercontent.com/idtoken',
+  'https://pipelinesghubeus15.actions.githubusercontent.com:8443/idtoken',
+  'https://u:password@pipelinesghubeus15.actions.githubusercontent.com/idtoken',
+  'https://notpipelines.actions.githubusercontent.com/idtoken',
+  'https://githubusercontent.com/idtoken'
+ ]) assert.equal(seal.isTrustedGitHubOIDCRuntimeHost(new URL(input)),false,input);
+});
