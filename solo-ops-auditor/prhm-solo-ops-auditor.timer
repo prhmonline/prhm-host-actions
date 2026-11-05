@@ -1,0 +1,12 @@
+[Unit]
+Description=Every 15 minutes: PRHM Solo Operations Auditor (read-only)
+
+[Timer]
+OnCalendar=*:0/15
+Persistent=false
+RandomizedDelaySec=20s
+AccuracySec=1min
+Unit=prhm-solo-ops-auditor.service
+
+[Install]
+WantedBy=timers.target
