@@ -1,0 +1,38 @@
+name: Honartik Agent 3 Bootstrap Dev Dependency Closure
+
+on:
+  pull_request:
+    paths:
+      - 'bootstrap-host-actions-honartik-staging-privilege-boundary-install-v1.js'
+      - 'honartik-staging-privilege-boundary-install-v1.js'
+      - 'test-honartik-staging-privilege-boundary-install-v1.js'
+      - 'prhm-action-registry-v2-*.cjs'
+      - 'prhm-action-registry-*.cjs'
+      - 'manifests/honartik-*'
+      - 'manifests/honartik-agent3-bootstrap-dev-test-source-closure-v1.json'
+      - 'scripts/check-honartik-agent3-bootstrap-dev-closure-v1.cjs'
+      - '.github/workflows/honartik-agent3-bootstrap-dev-closure-v1.yml'
+  push:
+    branches:
+      - integration/honartik-config-center-enrollment-action-v1-20261012
+    paths:
+      - 'manifests/honartik-agent3-bootstrap-dev-test-source-closure-v1.json'
+      - 'scripts/check-honartik-agent3-bootstrap-dev-closure-v1.cjs'
+      - '.github/workflows/honartik-agent3-bootstrap-dev-closure-v1.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verified-source-closure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: SHA-bound file and local-require closure, no runtime operations
+        run: node scripts/check-honartik-agent3-bootstrap-dev-closure-v1.cjs
+      - name: Reaffirm missing authorized host staging boundary
+        run: |
+          echo 'GIT_SOURCE_ONLY=true'
+          echo 'SIGNED_ROOT_INSTALLER_INSTALLED=false'
+          echo 'PRODUCTION_PURCHASE_ENABLED=false'

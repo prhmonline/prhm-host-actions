@@ -1,0 +1,19 @@
+{
+  "schema": "prhm.shared-registry.root-evidence-stage.v1",
+  "repo": "prhmonline/prhm-host-actions",
+  "source_commit": "cb8d30ffcbc73020f696d2def42977b3260c1245",
+  "asset": {
+    "git_path": "prhm-action-registry-root-evidence-v1.cjs",
+    "git_blob_sha1": "96cbc9819fea7cbade799dd48745b482870ada78",
+    "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v1/prhm-action-registry-root-evidence-v1.cjs"
+  },
+  "audit_directory": "/var/lib/prhm-agent-selfmaint-exec/registry-audit-v1",
+  "executor_socket": "/run/prhm-agent-selfmaint-exec/exec.sock",
+  "status": "NOT_STAGED",
+  "production_modified": false,
+  "requires_fresh_l4": true,
+  "executor_probe": "READ_ONLY_ONLY",
+  "mcp_discovery": "NOT_IMPLEMENTED",
+  "root_recovery_adapter": "NOT_IMPLEMENTED",
+  "signed_five_field_route": "NOT_INSTALLED"
+}

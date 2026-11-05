@@ -1,0 +1,24 @@
+{
+  "schema": "prhm.registry-v2.bootstrap-real-fs-lab-stage.v1",
+  "repo": "prhmonline/prhm-host-actions",
+  "project": "honartik",
+  "status": "LAB_ONLY_NOT_STAGED",
+  "source": {
+    "path": "prhm-action-registry-v2-bootstrap-real-fs-lab-v1.cjs",
+    "source_commit": "ad75c21a0923c2086ebc8df89b82d40def6c10c5",
+    "git_blob_sha1": "e50d2038413edd525473947dc958d10983a6c5bb"
+  },
+  "test": {
+    "path": "test-prhm-action-registry-v2-bootstrap-real-fs-lab-v1.cjs",
+    "source_commit": "dac66bf5203cfb2130d6523520aabaeb1df70107",
+    "git_blob_sha1": "d213b3790113bd754e1a6bb6264baea925c13311"
+  },
+  "lab_prefix": "prhm-registry-v2-lab-",
+  "scope": "PRIVATE_OS_TMPDIR_ONLY",
+  "journal": "EXCLUSIVE_LOCK_THEN_HEADER_THEN_INTENT_THEN_REAL_FS_STEP_THEN_DONE",
+  "intent_crash_policy": "NO_REPLAY_MANUAL_REVIEW",
+  "files_in_production_closure": 0,
+  "root_launcher_installed": false,
+  "production_mutated": false,
+  "l4_consumed": false
+}

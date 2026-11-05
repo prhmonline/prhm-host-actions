@@ -1,0 +1,19 @@
+{
+  "schema": "prhm.shared-registry.root-bootstrap-preflight-stage.v1",
+  "repo": "prhmonline/prhm-host-actions",
+  "source_commit": "4b9f8a861e521ee945987a91a24a4ab2577c72af",
+  "preflight_source_path": "prhm-action-registry-bootstrap-root-preflight-v1.cjs",
+  "preflight_git_blob_sha1": "08b9786a870a0553e104733cc78d69987d428822",
+  "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v1/prhm-action-registry-bootstrap-root-preflight-v1.cjs",
+  "trusted_runner_sandbox_source_commit": "d958b1ae55b6d9cd728af56b5fcaa1f75b4f194a",
+  "fixed_required_dir_count": 8,
+  "exact_transient_writepath_count": 9,
+  "readonly_preflight": true,
+  "live_missing_directories": 8,
+  "root_directory_provisioned": false,
+  "signed_five_field_route_installed": false,
+  "production_mutation": false,
+  "stage_status": "NOT_STAGED",
+  "require_fresh_level4": true,
+  "staging_parent_write_scope": "PARENT_READ_ONLY_CHILD_RW_ONLY"
+}

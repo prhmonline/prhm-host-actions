@@ -1,0 +1,161 @@
+name: Honartik Config Center Enrollment Action Contract
+
+on:
+  pull_request:
+    paths:
+      - 'honartik-config-center-enrollment-action-v1.cjs'
+      - 'test-honartik-config-center-enrollment-action-v1.cjs'
+      - 'honartik-config-center-registration-candidate-v1.cjs'
+      - 'honartik-config-center-owner-sha-readonly-preflight-v1.cjs'
+      - 'test-honartik-config-center-pinned-generic-release-v1.cjs'
+      - 'manifests/honartik-config-center-registry-release-v1.json'
+      - 'test-honartik-config-center-owner-sha-readonly-preflight-v1.cjs'
+      - 'honartik-config-center-shared-release-builder-v1.cjs'
+      - 'test-honartik-config-center-shared-release-builder-v1.cjs'
+      - 'honartik-config-center-trusted-adapter-v1.cjs'
+      - 'honartik-config-center-privileged-runner-v1.cjs'
+      - 'honartik-config-center-install-manifest-v1.json'
+      - 'honartik-config-center-atomic-registration-installer-v1.cjs'
+      - 'test-honartik-config-center-atomic-registration-installer-v1.cjs'
+      - 'tests/honartik_config_center_sqlite_contract_test.py'
+      - 'tests/honartik_config_center_mariadb_integration.php'
+      - 'prhm-action-registry-gateway-v1.cjs'
+      - 'prhm-action-registry-host-actions-v2-bridge-v1.cjs'
+      - 'test-prhm-action-registry-host-actions-v2-bridge-v1.cjs'
+      - 'test-prhm-action-registry-gateway-v1.cjs'
+      - 'honartik-config-center-signed-registration-approval-v1.cjs'
+      - 'test-honartik-config-center-signed-registration-approval-v1.cjs'
+      - 'test-honartik-config-center-install-manifest-v1.cjs'
+      - 'test-honartik-config-center-privileged-runner-v1.cjs'
+      - 'scripts/honartik-config-center-readonly-status-v1.php'
+      - 'scripts/honartik-config-center-prod-enroll-20261012.php'
+      - 'test-honartik-config-center-php-revocation-v1.cjs'
+      - 'test-honartik-config-center-trusted-adapter-v1.cjs'
+      - 'test-honartik-config-center-registration-candidate-v1.cjs'
+      - '.github/workflows/honartik-config-center-enrollment-contract-ci.yml'
+  push:
+    branches:
+      - 'integration/honartik-config-center-enrollment-action-v1-20261012'
+    paths:
+      - 'honartik-config-center-enrollment-action-v1.cjs'
+      - 'test-honartik-config-center-enrollment-action-v1.cjs'
+      - 'honartik-config-center-registration-candidate-v1.cjs'
+      - 'honartik-config-center-owner-sha-readonly-preflight-v1.cjs'
+      - 'test-honartik-config-center-pinned-generic-release-v1.cjs'
+      - 'manifests/honartik-config-center-registry-release-v1.json'
+      - 'test-honartik-config-center-owner-sha-readonly-preflight-v1.cjs'
+      - 'honartik-config-center-shared-release-builder-v1.cjs'
+      - 'test-honartik-config-center-shared-release-builder-v1.cjs'
+      - 'honartik-config-center-trusted-adapter-v1.cjs'
+      - 'honartik-config-center-privileged-runner-v1.cjs'
+      - 'honartik-config-center-install-manifest-v1.json'
+      - 'honartik-config-center-atomic-registration-installer-v1.cjs'
+      - 'test-honartik-config-center-atomic-registration-installer-v1.cjs'
+      - 'tests/honartik_config_center_sqlite_contract_test.py'
+      - 'tests/honartik_config_center_mariadb_integration.php'
+      - 'prhm-action-registry-gateway-v1.cjs'
+      - 'prhm-action-registry-host-actions-v2-bridge-v1.cjs'
+      - 'test-prhm-action-registry-host-actions-v2-bridge-v1.cjs'
+      - 'test-prhm-action-registry-gateway-v1.cjs'
+      - 'honartik-config-center-signed-registration-approval-v1.cjs'
+      - 'test-honartik-config-center-signed-registration-approval-v1.cjs'
+      - 'test-honartik-config-center-install-manifest-v1.cjs'
+      - 'test-honartik-config-center-privileged-runner-v1.cjs'
+      - 'scripts/honartik-config-center-readonly-status-v1.php'
+      - 'scripts/honartik-config-center-prod-enroll-20261012.php'
+      - 'test-honartik-config-center-php-revocation-v1.cjs'
+      - 'test-honartik-config-center-trusted-adapter-v1.cjs'
+      - 'test-honartik-config-center-registration-candidate-v1.cjs'
+      - '.github/workflows/honartik-config-center-enrollment-contract-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # verify the pinned immutable ancestor Git blob
+      - name: Validate syntax and offline fail-closed contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check honartik-config-center-enrollment-action-v1.cjs
+          node --check prhm-action-registry-gateway-v1.cjs
+          node --check test-prhm-action-registry-gateway-v1.cjs
+          node --test test-prhm-action-registry-gateway-v1.cjs
+          node --check test-honartik-config-center-enrollment-action-v1.cjs
+          node --check honartik-config-center-registration-candidate-v1.cjs
+          node --check test-honartik-config-center-registration-candidate-v1.cjs
+          node --check honartik-config-center-trusted-adapter-v1.cjs
+          node --check test-honartik-config-center-trusted-adapter-v1.cjs
+          node --check honartik-config-center-privileged-runner-v1.cjs
+          node --check test-honartik-config-center-privileged-runner-v1.cjs
+          node --check test-honartik-config-center-install-manifest-v1.cjs
+          node --check honartik-config-center-owner-sha-readonly-preflight-v1.cjs
+          node --check test-honartik-config-center-owner-sha-readonly-preflight-v1.cjs
+          node --check test-honartik-config-center-pinned-generic-release-v1.cjs
+          node --test test-honartik-config-center-pinned-generic-release-v1.cjs
+          node --check honartik-config-center-shared-release-builder-v1.cjs
+          node --check test-honartik-config-center-shared-release-builder-v1.cjs
+          node --test test-honartik-config-center-owner-sha-readonly-preflight-v1.cjs test-honartik-config-center-shared-release-builder-v1.cjs
+          node --check honartik-config-center-atomic-registration-installer-v1.cjs
+          node --check test-honartik-config-center-atomic-registration-installer-v1.cjs
+          node --check honartik-config-center-signed-registration-approval-v1.cjs
+          node --check test-honartik-config-center-signed-registration-approval-v1.cjs
+          node honartik-config-center-atomic-registration-installer-v1.cjs --selftest
+          python3 -m unittest discover -s tests -p 'honartik_config_center_sqlite_contract_test.py' -v
+          node --check test-honartik-config-center-php-revocation-v1.cjs
+          node --test test-honartik-config-center-enrollment-action-v1.cjs test-honartik-config-center-registration-candidate-v1.cjs test-honartik-config-center-trusted-adapter-v1.cjs test-honartik-config-center-php-revocation-v1.cjs test-honartik-config-center-privileged-runner-v1.cjs test-honartik-config-center-install-manifest-v1.cjs test-honartik-config-center-atomic-registration-installer-v1.cjs test-honartik-config-center-signed-registration-approval-v1.cjs
+          php -l scripts/honartik-config-center-prod-enroll-20261012.php
+          php -l scripts/honartik-config-center-readonly-status-v1.php
+          sha256sum scripts/honartik-config-center-readonly-status-v1.php honartik-config-center-privileged-runner-v1.cjs honartik-config-center-enrollment-action-v1.cjs honartik-config-center-trusted-adapter-v1.cjs
+          sha256sum scripts/honartik-config-center-prod-enroll-20261012.php
+          test "$(sha256sum scripts/honartik-config-center-prod-enroll-20261012.php | cut -d' ' -f1)" = "9ccbcbdba457691e1d140d6e32ad379cbe6d98d5448c13970220c72ba2e8278c"
+          test "$(git rev-parse a9da4735445dcd0833cd1ef5435c77884cb74e64:scripts/honartik-config-center-prod-enroll-20261012.php)" = "97de1aab42d2a7f67aeef66ead4a8a2bc1da9f1f"
+          test "$(git show a9da4735445dcd0833cd1ef5435c77884cb74e64:scripts/honartik-config-center-prod-enroll-20261012.php | sha256sum | cut -d' ' -f1)" = "9ccbcbdba457691e1d140d6e32ad379cbe6d98d5448c13970220c72ba2e8278c"
+          test "$(sha256sum scripts/honartik-config-center-readonly-status-v1.php | cut -d' ' -f1)" = "83a7491e86b9304ca27fbdbf292944d07071a1880cd9beda84c87ad706379624"
+
+  mariadb_integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_ROOT_PASSWORD: isolated_ci_only
+          MARIADB_DATABASE: cc_honartik_isolated
+          MARIADB_USER: ci_user
+          MARIADB_PASSWORD: isolated_ci_only
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql, mbstring
+          tools: composer:v2
+          coverage: none
+      - name: Real isolated Laravel + MariaDB issuance and revocation test
+        shell: bash
+        env:
+          HONARTIK_TEST_DB_PASSWORD: isolated_ci_only
+        run: |
+          set -euo pipefail
+          php -l tests/honartik_config_center_mariadb_integration.php
+          mkdir -p "$RUNNER_TEMP/honartik-laravel"
+          composer init --working-dir="$RUNNER_TEMP/honartik-laravel" --no-interaction --name=prhm/honartik-isolated-integration
+          composer require --working-dir="$RUNNER_TEMP/honartik-laravel" 'illuminate/database:^11.0' --no-interaction --no-progress --prefer-dist
+          export HONARTIK_TEST_VENDOR_AUTOLOAD="$RUNNER_TEMP/honartik-laravel/vendor/autoload.php"
+          php tests/honartik_config_center_mariadb_integration.php

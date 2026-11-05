@@ -16,15 +16,109 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # attest immutable two-commit source/release objects
       - name: Reusable registry, Ed25519, anti-replay and bootstrap-phase contracts
         run: |
           set -euo pipefail
           node --check prhm-action-registry-gateway-v1.cjs
+          node --check prhm-registry-v2-bootstrap-authorization-boundary-v1.cjs
+          node --check prhm-registry-v2-bootstrap-consumed-l4-v1.cjs
+          node --check test-prhm-registry-v2-bootstrap-consumed-l4-v1.cjs
+          node --test test-prhm-registry-v2-bootstrap-consumed-l4-v1.cjs
+          node --check test-prhm-registry-v2-bootstrap-authorization-boundary-v1.cjs
+          node --test test-prhm-registry-v2-bootstrap-authorization-boundary-v1.cjs
           node --check test-prhm-action-registry-gateway-v1.cjs
           node --check prhm-action-registry-host-actions-v2-bridge-v1.cjs
+          node --check prhm-action-registry-v2-five-field-approval-gate-v1.cjs
+          node --check test-prhm-action-registry-v2-five-field-approval-gate-v1.cjs
+          node --check prhm-action-registry-v2-approval-http-adapter-v1.cjs
+          node --check test-prhm-action-registry-v2-approval-http-adapter-v1.cjs
+          node --check prhm-action-registry-v2-base-http-patch-v1.cjs
+          node --check test-prhm-action-registry-v2-base-http-patch-v1.cjs
+          node --check prhm-action-registry-v2-isolated-socket-v1.cjs
+          node --check test-prhm-action-registry-v2-isolated-socket-v1.cjs
+          node --check prhm-action-registry-v2-root-attestation-v1.cjs
+          node --check test-prhm-action-registry-v2-root-attestation-v1.cjs
+          node --check prhm-action-registry-v2-root-approval-transport-v1.cjs
+          node --check test-prhm-action-registry-v2-root-approval-transport-v1.cjs
+          node --check prhm-action-registry-v2-root-sealed-token-vault-v1.cjs
+          node --check test-prhm-action-registry-v2-root-sealed-token-vault-v1.cjs
           node --check test-prhm-action-registry-host-actions-v2-bridge-v1.cjs
           node --check test-prhm-action-registry-postinstall-rollback-v1.cjs
-          node --test test-prhm-action-registry-gateway-v1.cjs test-prhm-action-registry-host-actions-v2-bridge-v1.cjs test-prhm-action-registry-postinstall-rollback-v1.cjs
+          node --check prhm-action-registry-durable-recovery-v1.cjs
+          node --check test-prhm-action-registry-durable-recovery-v1.cjs
+          node --check prhm-action-registry-v2-durable-recovery-v1.cjs
+          node --check test-prhm-action-registry-v2-durable-recovery-v1.cjs
+          node --check test-prhm-action-registry-v2-cold-restart-v1.cjs
+          node --check prhm-action-registry-v2-mcp-discovery-v1.cjs
+          node --check test-prhm-action-registry-v2-mcp-discovery-v1.cjs
+          node --check prhm-action-registry-one-time-fence-v1.cjs
+          node --check test-prhm-action-registry-one-time-fence-v1.cjs
+          node --check honartik-config-center-shared-release-builder-v1.cjs
+          node --check test-honartik-config-center-shared-release-builder-v1.cjs
+          node --check honartik-config-center-owner-sha-readonly-preflight-v1.cjs
+          node --check test-honartik-config-center-owner-sha-readonly-preflight-v1.cjs
+          node --check test-honartik-config-center-pinned-generic-release-v1.cjs
+          node --check test-honartik-shared-registry-pinned-release-v2.cjs
+          node --check test-prhm-action-registry-honartik-v2-identity-v1.cjs
+          node --check prhm-action-registry-v2-root-pinned-readers-v1.cjs
+          node --check test-prhm-action-registry-v2-root-pinned-readers-v1.cjs
+          node --check prhm-action-registry-v2-independent-runner-contract-v1.cjs
+          node --check test-prhm-action-registry-v2-independent-runner-contract-v1.cjs
+          node --check prhm-action-registry-v2-fixed-systemd-bridge-v1.cjs
+          node --check test-prhm-action-registry-v2-fixed-systemd-bridge-v1.cjs
+          node --check prhm-action-registry-v2-independent-runner-entry-v1.cjs
+          node --check test-prhm-action-registry-v2-independent-runner-entry-v1.cjs
+          node --check test-honartik-shared-registry-v2-reviewed-runtime-stage-v1.cjs
+          node --check test-honartik-shared-registry-bootstrap-source-closure-v1.cjs
+          node --check prhm-action-registry-independent-runner-contract-v1.cjs
+          node --check test-prhm-action-registry-independent-runner-contract-v1.cjs
+          node --check test-prhm-action-registry-cold-restart-v1.cjs
+          node --check prhm-action-registry-root-pinned-readers-v1.cjs
+          node --check test-prhm-action-registry-root-pinned-readers-v1.cjs
+          node --check prhm-action-registry-fixed-systemd-bridge-v1.cjs
+          node --check test-prhm-action-registry-fixed-systemd-bridge-v1.cjs
+          node --check test-honartik-shared-registry-trusted-host-io-stage-v1.cjs
+          node --check prhm-action-registry-independent-runner-entry-v1.cjs
+          node --check test-prhm-action-registry-independent-runner-entry-v1.cjs
+          node --check test-honartik-shared-registry-independent-runner-entry-stage-v1.cjs
+          node --check prhm-action-registry-root-evidence-v1.cjs
+          node --check test-prhm-action-registry-root-evidence-v1.cjs
+          node --check prhm-action-registry-root-original-state-v1.cjs
+          node --check test-prhm-action-registry-root-original-state-v1.cjs
+          node --check test-honartik-shared-registry-original-state-stage-v1.cjs
+          node --check prhm-action-registry-root-recovery-durable-v1.cjs
+          node --check test-prhm-action-registry-root-recovery-durable-v1.cjs
+          node --check test-honartik-shared-registry-root-recovery-stage-v1.cjs
+          node --check prhm-action-registry-bootstrap-root-preflight-v1.cjs
+          node --check test-prhm-action-registry-bootstrap-root-preflight-v1.cjs
+          node --check test-honartik-shared-registry-root-bootstrap-preflight-stage-v1.cjs
+          node --check prhm-action-registry-v2-root-bootstrap-layout-v1.cjs
+          node --check test-prhm-action-registry-v2-root-bootstrap-layout-v1.cjs
+          node --check test-honartik-shared-registry-v2-root-bootstrap-layout-stage-v1.cjs
+          node --check prhm-action-registry-v2-bootstrap-transaction-plan-v1.cjs
+          node --check test-prhm-action-registry-v2-bootstrap-transaction-plan-v1.cjs
+          node --check test-honartik-shared-registry-v2-bootstrap-transaction-stage-v1.cjs
+          node --check prhm-action-registry-v2-bootstrap-wal-v1.cjs
+          node --check prhm-action-registry-v2-bootstrap-lab-recovery-v1.cjs
+          node --check prhm-registry-v2-36-bundle-fs-lab-v1.cjs
+          node --check test-prhm-registry-v2-36-bundle-fs-lab-v1.cjs
+          node --test test-prhm-registry-v2-36-bundle-fs-lab-v1.cjs
+          node --check test-prhm-action-registry-v2-bootstrap-lab-recovery-v1.cjs
+          node --test test-prhm-action-registry-v2-bootstrap-lab-recovery-v1.cjs
+          node --check test-prhm-action-registry-v2-bootstrap-wal-v1.cjs
+          node --check test-honartik-shared-registry-v2-bootstrap-wal-stage-v1.cjs
+          node --check prhm-action-registry-v2-bootstrap-exclusive-lock-v1.cjs
+          node --check test-prhm-action-registry-v2-bootstrap-exclusive-lock-v1.cjs
+          node --check test-honartik-shared-registry-v2-bootstrap-exclusive-lock-stage-v1.cjs
+          node --check prhm-action-registry-v2-bootstrap-session-guard-v1.cjs
+          node --check test-prhm-action-registry-v2-bootstrap-session-guard-v1.cjs
+          node --check test-honartik-shared-registry-v2-bootstrap-session-guard-stage-v1.cjs
+          node --check prhm-action-registry-v2-trusted-base-capabilities-v1.cjs
+          node --check test-prhm-action-registry-v2-trusted-base-capabilities-v1.cjs
+          node --check test-honartik-shared-registry-v2-root-capabilities-stage-v1.cjs
+          node --test test-prhm-action-registry-gateway-v1.cjs test-prhm-action-registry-host-actions-v2-bridge-v1.cjs test-prhm-action-registry-v2-five-field-approval-gate-v1.cjs test-prhm-action-registry-v2-approval-http-adapter-v1.cjs test-prhm-action-registry-v2-base-http-patch-v1.cjs test-prhm-action-registry-v2-isolated-socket-v1.cjs test-prhm-action-registry-v2-root-attestation-v1.cjs test-prhm-action-registry-v2-root-approval-transport-v1.cjs test-prhm-action-registry-v2-root-sealed-token-vault-v1.cjs test-prhm-action-registry-postinstall-rollback-v1.cjs test-prhm-action-registry-durable-recovery-v1.cjs test-prhm-action-registry-v2-durable-recovery-v1.cjs test-prhm-action-registry-v2-cold-restart-v1.cjs test-prhm-action-registry-v2-mcp-discovery-v1.cjs test-prhm-action-registry-one-time-fence-v1.cjs test-honartik-config-center-shared-release-builder-v1.cjs test-honartik-config-center-owner-sha-readonly-preflight-v1.cjs test-honartik-config-center-pinned-generic-release-v1.cjs test-honartik-shared-registry-pinned-release-v2.cjs test-prhm-action-registry-honartik-v2-identity-v1.cjs test-prhm-action-registry-v2-root-pinned-readers-v1.cjs test-prhm-action-registry-v2-independent-runner-contract-v1.cjs test-prhm-action-registry-v2-fixed-systemd-bridge-v1.cjs test-prhm-action-registry-v2-independent-runner-entry-v1.cjs test-honartik-shared-registry-v2-reviewed-runtime-stage-v1.cjs test-honartik-shared-registry-bootstrap-source-closure-v1.cjs test-prhm-action-registry-independent-runner-contract-v1.cjs test-prhm-action-registry-cold-restart-v1.cjs test-prhm-action-registry-root-pinned-readers-v1.cjs test-prhm-action-registry-fixed-systemd-bridge-v1.cjs test-honartik-shared-registry-trusted-host-io-stage-v1.cjs test-prhm-action-registry-independent-runner-entry-v1.cjs test-honartik-shared-registry-independent-runner-entry-stage-v1.cjs test-prhm-action-registry-root-evidence-v1.cjs test-prhm-action-registry-root-original-state-v1.cjs test-honartik-shared-registry-original-state-stage-v1.cjs test-prhm-action-registry-root-recovery-durable-v1.cjs test-honartik-shared-registry-root-recovery-stage-v1.cjs test-prhm-action-registry-bootstrap-root-preflight-v1.cjs test-honartik-shared-registry-root-bootstrap-preflight-stage-v1.cjs test-prhm-action-registry-v2-root-bootstrap-layout-v1.cjs test-honartik-shared-registry-v2-root-bootstrap-layout-stage-v1.cjs test-prhm-action-registry-v2-bootstrap-transaction-plan-v1.cjs test-honartik-shared-registry-v2-bootstrap-transaction-stage-v1.cjs test-prhm-action-registry-v2-bootstrap-wal-v1.cjs test-honartik-shared-registry-v2-bootstrap-wal-stage-v1.cjs test-prhm-action-registry-v2-bootstrap-exclusive-lock-v1.cjs test-honartik-shared-registry-v2-bootstrap-exclusive-lock-stage-v1.cjs test-prhm-action-registry-v2-bootstrap-session-guard-v1.cjs test-honartik-shared-registry-v2-bootstrap-session-guard-stage-v1.cjs test-prhm-action-registry-v2-trusted-base-capabilities-v1.cjs test-honartik-shared-registry-v2-root-capabilities-stage-v1.cjs
       - name: Explicit Production not installed acknowledgment
         run: |
           # A successful source contract never means an MCP tool was installed.

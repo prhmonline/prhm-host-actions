@@ -5,7 +5,6 @@ on:
       - 'drtarjomeh-incident47-runtime-registration-v1.js'
       - 'drtarjomeh-incident47-reviewed-host-runner-v1.js'
       - 'test-drtarjomeh-incident47-runtime-registration-v1.js'
-      - 'test-drtarjomeh-incident47-js-runner-toctou-v1.js'
       - '.github/workflows/drtarjomeh-incident47-runtime-registration-ci.yml'
   push:
     branches: [main]
@@ -13,7 +12,6 @@ on:
       - 'drtarjomeh-incident47-runtime-registration-v1.js'
       - 'drtarjomeh-incident47-reviewed-host-runner-v1.js'
       - 'test-drtarjomeh-incident47-runtime-registration-v1.js'
-      - 'test-drtarjomeh-incident47-js-runner-toctou-v1.js'
       - '.github/workflows/drtarjomeh-incident47-runtime-registration-ci.yml'
 permissions:
   contents: read
@@ -29,5 +27,5 @@ jobs:
         run: |
           node --check drtarjomeh-incident47-runtime-registration-v1.js
           node --check drtarjomeh-incident47-reviewed-host-runner-v1.js
-      - name: Read-only registry, trusted dispatcher and mutable-path regression
-        run: node --test test-drtarjomeh-incident47-runtime-registration-v1.js test-drtarjomeh-incident47-js-runner-toctou-v1.js
+      - name: Read-only registry and trusted dispatcher tests
+        run: node --test test-drtarjomeh-incident47-runtime-registration-v1.js

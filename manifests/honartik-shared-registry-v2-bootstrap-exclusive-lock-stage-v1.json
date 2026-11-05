@@ -1,0 +1,25 @@
+{
+  "schema": "prhm.registry-v2.bootstrap-exclusive-lock-stage.v1",
+  "repo": "prhmonline/prhm-host-actions",
+  "project": "honartik",
+  "status": "NOT_STAGED",
+  "source_only": true,
+  "source": {
+    "path": "prhm-action-registry-v2-bootstrap-exclusive-lock-v1.cjs",
+    "commit": "c41f73c1fe171181bfeafa7f24d9eefa30d6b591",
+    "git_blob_sha1": "fc88310a8f1a674dc55cee6f86b7df6886c43d3a"
+  },
+  "test": {
+    "path": "test-prhm-action-registry-v2-bootstrap-exclusive-lock-v1.cjs",
+    "commit": "99925437b79d596a1d3aeaabf946ddeeabcac7f0",
+    "git_blob_sha1": "4a4e81d161471ff0f644c0eda6dacb2329d6fb41"
+  },
+  "lock_path": "/var/lib/prhm-agent-selfmaint-exec/registry-bootstrap-v2.lock",
+  "journal_path": "/var/lib/prhm-agent-selfmaint-exec/registry-bootstrap-v2-journal.json",
+  "lock_policy": "FIRST_WRITER_ROOT_0600_O_EXCL_FSYNC_FAIL_CLOSED_NO_AUTOMATIC_UNLOCK",
+  "signed_approval_transport_installed": false,
+  "actual_root_io_launcher_installed": false,
+  "operator_recovery_required_on_stale_lock": true,
+  "production_mutation": false,
+  "approval_consumed": false
+}

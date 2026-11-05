@@ -1,0 +1,80 @@
+{
+  "schema": "prhm.honartik.shared-registry-v2.root-capability-provider-stage.v1",
+  "repo": "prhmonline/prhm-host-actions",
+  "project": "honartik",
+  "status": "NOT_STAGED",
+  "installation_authorized": false,
+  "requires_fresh_signed_l4": true,
+  "production_mutation": false,
+  "root_capabilities_installed": false,
+  "independent_sidecar_installed": false,
+  "real_consumed_evidence_reader_installed": false,
+  "independent_root_launcher_installed": false,
+  "dual_mcp_discovery_verified": false,
+  "real_recovery_verified": false,
+  "runtime_manifest": "manifests/honartik-shared-registry-v2-reviewed-runtime-stage-v1.json",
+  "expected_immutable_runtime_files": 20,
+  "additional_root_files": 7,
+  "destination_root": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2",
+  "source": {
+    "path": "prhm-action-registry-v2-trusted-base-capabilities-v1.cjs",
+    "source_commit": "947c89b007f7d1956e3036587c12eb4196e27d6e",
+    "git_blob_sha1": "4812b3da7227d7200620e81194e771ebe74e46f7"
+  },
+  "test": {
+    "path": "test-prhm-action-registry-v2-trusted-base-capabilities-v1.cjs",
+    "source_commit": "da4c1686c2397856d5700b4b62ab017606ba6db1",
+    "git_blob_sha1": "fcbc38a7f439fb45bf999593d0110889bde683e4"
+  },
+  "files": [
+    {
+      "source_path": "prhm-action-registry-v2-trusted-base-capabilities-v1.cjs",
+      "source_commit": "947c89b007f7d1956e3036587c12eb4196e27d6e",
+      "git_blob_sha1": "4812b3da7227d7200620e81194e771ebe74e46f7",
+      "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-trusted-base-capabilities-v1.cjs"
+    },
+    {
+      "source_path": "prhm-action-registry-v2-isolated-socket-v1.cjs",
+      "source_commit": "d4266dc0ed6e5d1fb1010a433ae50ed617bfc3ea",
+      "git_blob_sha1": "c07efd813f6807f4f7f370edf8e3cb39156629ce",
+      "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-isolated-socket-v1.cjs"
+    },
+    {
+      "source_path": "prhm-action-registry-v2-root-approval-transport-v1.cjs",
+      "source_commit": "d4266dc0ed6e5d1fb1010a433ae50ed617bfc3ea",
+      "git_blob_sha1": "5b750894e73a5eee13d33a0f2ad414ab9fff7b38",
+      "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-root-approval-transport-v1.cjs"
+    },
+    {
+      "source_path": "prhm-action-registry-v2-root-sealed-token-vault-v1.cjs",
+      "source_commit": "d4266dc0ed6e5d1fb1010a433ae50ed617bfc3ea",
+      "git_blob_sha1": "66222251e2734a0003a420209195f22e164160f2",
+      "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-root-sealed-token-vault-v1.cjs"
+    },
+    {
+      "source_path": "prhm-action-registry-v2-root-attestation-v1.cjs",
+      "source_commit": "d4266dc0ed6e5d1fb1010a433ae50ed617bfc3ea",
+      "git_blob_sha1": "0f716df0242e982e4df57bf6f1f5fd4ba5d39166",
+      "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-root-attestation-v1.cjs"
+    },
+    {
+      "source_path": "manifests/honartik-shared-registry-v2-reviewed-runtime-stage-v1.json",
+      "source_commit": "d4266dc0ed6e5d1fb1010a433ae50ed617bfc3ea",
+      "git_blob_sha1": "5e98876da1121dae41cc8d8fd64ed604d011af47",
+      "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/manifests/honartik-shared-registry-v2-reviewed-runtime-stage-v1.json"
+    },
+    {
+      "source_path": "prhm-action-registry-v2-root-consumed-receipt-v1.cjs",
+      "source_commit": "541d0b49988b3159f36bcab2294a85e8b6a3bc23",
+      "git_blob_sha1": "a5ea90ba6681ee23d9cfe09080ce585b217638b2",
+      "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v2/prhm-action-registry-v2-root-consumed-receipt-v1.cjs"
+    }
+  ],
+  "consumed_ledger_reader_implemented_in_source": true,
+  "consumed_ledger_reader_installed": false,
+  "consumed_receipt_test": {
+    "path": "test-prhm-action-registry-v2-root-consumed-receipt-v1.cjs",
+    "source_commit": "54de0ebaf317f7838f7c6d47694d67639b31b265",
+    "git_blob_sha1": "53371efdadd267cbf253c8cd208f8bc5a372f13a"
+  }
+}

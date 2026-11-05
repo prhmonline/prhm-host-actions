@@ -22,7 +22,10 @@ function env(kind='success'){
   },
   verifyOriginalState:async()=>{state.verified++;return !state.installed;},
   readInstalledTool:async()=>{
-    state.discover++;return kind!=='discovery';
+    state.discover++;
+    // A successful installation is visible; a verified rollback must make
+    // it invisible again, including across MCP process caches.
+    return kind==='stale_discovery'||(state.installed&&kind!=='discovery');
   },
   audit:async x=>{
     state.audit.push(x);
@@ -54,6 +57,31 @@ test('install exception cannot masquerade as success; original state restored',a
  await assert.rejects(g.finalizeVerifiedInstall(callbacks),/failed_rollback_verified/);
  assert.equal(state.install,1);assert.equal(state.rollback,1);
  assert.equal(state.installed,false);
+});
+test('MCP stale discovery after file restore is an unverified rollback',async()=>{
+ const {state,callbacks}=env('stale_discovery');
+ // Force the failure branch by making the post-install audit fail.
+ const f={...callbacks,audit:async event=>{
+   state.audit.push(event);
+   if(event.result==='registered')throw Error('audit_failure');
+ }};
+ await assert.rejects(g.finalizeVerifiedInstall(f),/rollback_unverified/);
+ assert.equal(state.install,1);
+ assert.equal(state.rollback,1);
+ assert.equal(state.installed,false);
+ assert.equal(state.audit.at(-1).result,'registered');
+ assert.ok(state.discover>=2);
+});
+test('MCP discovery read error after restoring bytes blocks rollback success',async()=>{
+ const {state,callbacks}=env('audit');
+ const f={...callbacks,readInstalledTool:async()=>{
+   state.discover++;
+   if(!state.installed)throw Error('mcp_unreachable_after_rollback');
+   return true;
+ }};
+ await assert.rejects(g.finalizeVerifiedInstall(f),/rollback_unverified/);
+ assert.equal(state.installed,false);
+ assert.equal(state.rollback,1);
 });
 test('rollback failure is a hard stop, never a claim of safe restoration',async()=>{
  const {state,callbacks}=env('rollback');

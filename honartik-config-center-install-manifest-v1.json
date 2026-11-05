@@ -1,0 +1,77 @@
+{
+  "schema_version": "prhm.honartik.config-center-registration.v1",
+  "mode": "git_first_reviewed_install_manifest",
+  "action": "honartik_config_center_readonly_enroll_v1",
+  "installation_status": "NOT_INSTALLED",
+  "approval": {
+    "level": 4,
+    "requires_fresh_signed_one_time_confirmation": true,
+    "authority": "existing trusted Host Actions v2 executor; separate registration bootstrap",
+    "replay_permitted": false
+  },
+  "scope": {
+    "tenant": "honartik",
+    "revision": 1,
+    "capabilities": [
+      "config:read"
+    ],
+    "backend_sha": "7ae8b99677ec13b3498b4a5425267a49fc87806e",
+    "config_center_release": "git-9b41e4534382"
+  },
+  "control_plane_preimages": {
+    "base": {
+      "path": "/opt/prhm-agent-selfmaint/server.js",
+      "sha256": "4c29d01a248d59ee85754dfa5a59e8132fe22e6b34ef04324228c16c88727406"
+    },
+    "executor": {
+      "path": "/opt/prhm-agent-selfmaint-exec/server.js",
+      "sha256": "410406ba0965ef3a5cad6da6306a85335e38acc3637fb6ed60fa42200a10c2e0"
+    },
+    "policy": {
+      "path": "/opt/prhm-company-control-plane/config/approval-policy.json",
+      "sha256": "148fe2a724befc15cd8c731b0195d83e254d39215792a5084b70dd5b5c178174"
+    },
+    "mcp": {
+      "path": "/home/agent/ssh-mcp-server/src/plugins/hostActionsV2.js",
+      "sha256": "bd768f992dab75710558e3f47187c311c2ee5b5ec6f5751a74e0bbfa64729166"
+    }
+  },
+  "assets": [
+    {
+      "source": "honartik-config-center-enrollment-action-v1.cjs",
+      "target": "/opt/prhm-agent-selfmaint-exec/actions/honartik-config-center-enrollment-action-v1.cjs",
+      "sha256": "d8d453d881890bf539291cbce025a08f30996f525c6bd93d2103cbe77e28ca23"
+    },
+    {
+      "source": "honartik-config-center-trusted-adapter-v1.cjs",
+      "target": "/opt/prhm-agent-selfmaint-exec/actions/honartik-config-center-trusted-adapter-v1.cjs",
+      "sha256": "f0c0554546998f3638ec43013bcf4a6f255d9d6870140dcacc9261ea044e66a8"
+    },
+    {
+      "source": "honartik-config-center-privileged-runner-v1.cjs",
+      "target": "/opt/prhm-agent-selfmaint-exec/actions/honartik-config-center-privileged-runner-v1.cjs",
+      "sha256": "136bb3f5f72f1d46d8963a155a0471a9d6997d9c36a1986c84d9f6fa1bc61d07"
+    },
+    {
+      "source": "scripts/honartik-config-center-prod-enroll-20261012.php",
+      "target": "/opt/prhm-agent-selfmaint-exec/actions/honartik-config-center-prod-enroll-20261012.php",
+      "sha256": "9ccbcbdba457691e1d140d6e32ad379cbe6d98d5448c13970220c72ba2e8278c"
+    },
+    {
+      "source": "scripts/honartik-config-center-readonly-status-v1.php",
+      "target": "/opt/prhm-agent-selfmaint-exec/actions/honartik-config-center-readonly-status-v1.php",
+      "sha256": "83a7491e86b9304ca27fbdbf292944d07071a1880cd9beda84c87ad706379624"
+    }
+  ],
+  "acceptance": {
+    "unrelated_production_configs_modified": false,
+    "requires_atomic_preimage_backup": true,
+    "requires_atomic_restore_and_service_recovery": true,
+    "requires_signed_l4_registration": true,
+    "requires_live_test": "CONFIG_CENTER_READONLY_PASS tenant=honartik revision=1 source=remote",
+    "credential_file_mode": "0600",
+    "credential_owner": "honartik",
+    "remote_config_http": 200,
+    "remote_secrets_http": 403
+  }
+}

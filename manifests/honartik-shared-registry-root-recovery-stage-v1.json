@@ -1,0 +1,38 @@
+{
+  "schema": "prhm.shared-registry.root-recovery-stage.v1",
+  "repo": "prhmonline/prhm-host-actions",
+  "source_commit": "e5c4d83ab9912373e3ab6ffb345a95dc35bcf89d",
+  "asset": {
+    "git_path": "prhm-action-registry-root-recovery-durable-v1.cjs",
+    "git_blob_sha1": "4c62d939d6bedef66f3bfda044247dc5b28f8cc8",
+    "destination": "/opt/prhm-agent-selfmaint-exec/actions/shared-registry-v1/prhm-action-registry-root-recovery-durable-v1.cjs"
+  },
+  "dependencies": [
+    "prhm-action-registry-gateway-v1.cjs",
+    "prhm-action-registry-durable-recovery-v1.cjs",
+    "prhm-action-registry-one-time-fence-v1.cjs",
+    "prhm-action-registry-root-original-state-v1.cjs",
+    "prhm-action-registry-root-evidence-v1.cjs",
+    "prhm-action-registry-fixed-systemd-bridge-v1.cjs"
+  ],
+  "actual_approval_center_consumed_dir": {
+    "path": "/var/lib/prhm-company-approval/consumed",
+    "uid": 65039,
+    "gid": 65039,
+    "mode": "0700",
+    "read_only": true
+  },
+  "root_only_dirs_not_yet_provisioned": [
+    "/var/backups/prhm-honartik-config-center-registration-v1",
+    "/var/lib/prhm-agent-selfmaint-exec/registry-one-time-v1",
+    "/var/lib/prhm-agent-selfmaint-exec/registry-recovery-lock-v1",
+    "/var/lib/prhm-agent-selfmaint-exec/registry-audit-v1"
+  ],
+  "status": "NOT_STAGED",
+  "production_mutation": false,
+  "requires_fresh_l4": true,
+  "read_only_preflight_status": "UNIT_TESTED_NOT_RUN_ON_SERVER",
+  "live_recovery_status": "NOT_EXECUTED",
+  "mcp_discovery_status": "NOT_PROVEN",
+  "signed_five_field_route": "NOT_INSTALLED"
+}

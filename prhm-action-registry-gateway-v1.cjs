@@ -280,17 +280,24 @@ async function finalizeVerifiedInstall({release,approval,trustedInstaller,truste
   } catch(e) {
     failure=String(e?.message||e).slice(0,160);
   }
-  let restored=false;
-  try { restored=await verifyOriginalState(release)===true; } catch {}
+  // Restoring disk bytes is not sufficient: a restarted MCP worker may still
+  // advertise the failed action from a stale registry cache. The original
+  // state is verified only when BOTH disk preimages and tool absence agree.
+  // The discovery callback is trusted and checks the actual active servers.
+  async function originalAndUndiscoverable() {
+    try {
+      return await verifyOriginalState(release)===true &&
+        await readInstalledTool(release.normalized.action)===false;
+    } catch { return false; }
+  }
+  let restored=await originalAndUndiscoverable();
   if(!restored) {
     let rb;
     try {
       rb=await trustedRollback({release,approval,installed:result,
         reason:'failed_install_or_postcondition'});
     } catch {}
-    if(rb?.verified===true) {
-      try { restored=await verifyOriginalState(release)===true; } catch {}
-    }
+    if(rb?.verified===true) restored=await originalAndUndiscoverable();
   }
   if(!restored) throw new Error('registry_gateway_rollback_unverified');
   try {
@@ -306,7 +313,7 @@ async function finalizeVerifiedInstall({release,approval,trustedInstaller,truste
   throw new Error('registry_gateway_failed_rollback_verified');
 }
 async function executeAfterTrustedAuthorization({release, signedApprovalToken, args, trustedInstaller,
-    trustedRollback, verifyOriginalState, readInstalledTool, audit}) {
+    trustedClaimOnce, trustedRollback, verifyOriginalState, readInstalledTool, audit}) {
   // This method MUST be called only by the previously installed root-owned
   // trusted executor after independent signature verification and consumption.
   exactly(release && release.normalized && release.manifest_sha256 === args?.manifest_sha256 &&
@@ -317,7 +324,16 @@ async function executeAfterTrustedAuthorization({release, signedApprovalToken, a
   exactly(typeof trustedInstaller==='function' && typeof trustedRollback==='function' &&
     typeof verifyOriginalState==='function' && typeof readInstalledTool==='function' &&
     typeof audit==='function', 'trusted_rollback_capabilities_missing');
+  exactly(typeof trustedClaimOnce==='function','trusted_execution_claim_missing');
   const approval=verifyLiveConsumedRegistrationApproval({token:signedApprovalToken,args});
+  // Approval Center's consumed ledger does not prove the token has never been
+  // applied. The root executor must durably reserve it with O_EXCL first.
+  // This reservation survives service crashes and is never deleted on error.
+  const claim=await trustedClaimOnce(Object.freeze({approval,args}));
+  exactly(claim?.request_id===approval.request_id&&
+    claim?.arguments_sha256===approval.arguments_sha256&&
+    claim?.exclusive===true&&claim?.durable===true,
+    'trusted_execution_claim_unverified');
   exactly(typeof trustedInstaller === 'function' &&
     typeof readInstalledTool === 'function' && typeof audit === 'function',
     'trusted_executor_capabilities_missing');
