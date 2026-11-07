@@ -34,7 +34,7 @@ const EXPECTED_GIT_BLOBS = Object.freeze([
   ],
   [
     "4e99d70fe9cfe6aa10a1ce0aa4d9ae6ecf1a5a6d",
-    "1c7c0d472a6270199c3a8ae59b05494f1a968de"
+    "1c7c0d472a6270199c3a8ae59b05494f1a968de3"
   ],
   [
     "00a9d924a59bb713b5a0e5fc007cfc75f259d730",
