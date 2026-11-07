@@ -15,6 +15,37 @@ const ALLOWED_PATHS = Object.freeze([
   'src/ui/layout/header/style.module.scss'
 ]);
 const FULL_SHA40 = /^[0-9a-f]{40}$/;
+const EXPECTED_GIT_BLOBS = Object.freeze([
+  [
+    "489e5451032928115187b231b9275258553bd487",
+    "84266603167fad9264623910299cebcf01970efd"
+  ],
+  [
+    null,
+    "8ca4aac75d459e4c001dbb18177bee0200cb2b0e"
+  ],
+  [
+    "18a50ac13065f92b2e5f46eba3415dc4050b0be2",
+    "1e857f16715b7caac3a269a3b0ac03c9e46b62eb"
+  ],
+  [
+    "a2efbc537b2a8bc05b0ce3f2f03be97593dcd534",
+    "e34aeb02be4fcb87d7b4e8309fae8983a9633b34"
+  ],
+  [
+    "4e99d70fe9cfe6aa10a1ce0aa4d9ae6ecf1a5a6d",
+    "1c7c0d472a6270199c3a8ae59b05494f1a968de"
+  ],
+  [
+    "00a9d924a59bb713b5a0e5fc007cfc75f259d730",
+    "95c63a0797be06cab26b9b909cceb0459ab1cfde"
+  ],
+  [
+    "0b38d0066678deac4b12c4660ad76ac26267aab4",
+    "8cef9de9422ca21da2d44a8f9d75f8eef0239d02"
+  ]
+]);
+
 function fail(code) { throw new Error(code); }
 
 function validateManifest(m) {
@@ -47,6 +78,9 @@ function validateManifest(m) {
     const f = m.files[i];
     if (!f || f.path !== ALLOWED_PATHS[i]) fail('manifest_unexpected_path');
     if (f.requires_semantic_rebase !== true) fail('manifest_review_required');
+    if (f.baseline_blob !== EXPECTED_GIT_BLOBS[i][0] || f.source_blob !== EXPECTED_GIT_BLOBS[i][1]) {
+      fail('manifest_git_blob_pin_drift');
+    }
     if (!FULL_SHA40.test(f.source_blob)) fail('manifest_source_blob_invalid');
     if (f.path === 'src/components/GoftinoWidget.tsx') {
       if (f.change_kind !== 'create' || f.baseline_blob !== null) fail('manifest_creation_preimage_invalid');
