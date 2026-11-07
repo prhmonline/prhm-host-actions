@@ -58,7 +58,7 @@
       "path": "src/ui/assets/styles/globals.scss",
       "change_kind": "modify",
       "baseline_blob": "4e99d70fe9cfe6aa10a1ce0aa4d9ae6ecf1a5a6d",
-      "source_blob": "1c7c0d472a6270199c3a8ae59b05494f1a968de",
+      "source_blob": "1c7c0d472a6270199c3a8ae59b05494f1a968de3",
       "requires_semantic_rebase": true
     },
     {
