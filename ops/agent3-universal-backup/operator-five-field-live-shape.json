@@ -1,0 +1,123 @@
+{
+  "schema": "prhm.agent3.operator-five-field-live-shape.v1",
+  "capture_type": "user_supplied_server_terminal_output",
+  "tool": "ops/agent3-universal-backup/five-field-live-contract-inspector.cjs",
+  "pinned_git_commit": "3e26c8287b61d8d2554c7cc7ae4371e8382cd65e",
+  "target_host": "prhm-production",
+  "observed_mode": "READ_ONLY_SOURCE_SHAPE",
+  "observations": {
+    "base": {
+      "sha256": "4c29d01a248d59ee85754dfa5a59e8132fe22e6b34ef04324228c16c88727406",
+      "line_count": 560,
+      "anchor_counts": {
+        "canonical_json": 3,
+        "v2_approval_request": 52,
+        "signed_approval_boundary": 7
+      },
+      "sample_lines": {
+        "canonical_json": [
+          120,
+          123,
+          125
+        ],
+        "signed_approval_boundary": [
+          266,
+          446,
+          470
+        ]
+      }
+    },
+    "executor": {
+      "sha256": "410406ba0965ef3a5cad6da6306a85335e38acc3637fb6ed60fa42200a10c2e0",
+      "line_count": 1097,
+      "anchor_counts": {
+        "v2_spec_registry": 3,
+        "v2_request_handler": 9,
+        "v2_apply_dispatch": 4,
+        "request_signature_binding": 10
+      },
+      "sample_lines": {
+        "v2_spec_registry": [
+          30,
+          439,
+          895
+        ],
+        "v2_request_handler": [
+          437,
+          439,
+          440
+        ],
+        "v2_apply_dispatch": [
+          697,
+          700,
+          888
+        ],
+        "request_signature_binding": [
+          239,
+          240,
+          910
+        ]
+      }
+    },
+    "policy": {
+      "sha256": "148fe2a724befc15cd8c731b0195d83e254d39215792a5084b70dd5b5c178174",
+      "line_count": 1195,
+      "anchor_counts": {
+        "legacy_installer_operation": 2,
+        "typed_scopes": 1
+      },
+      "sample_lines": {
+        "legacy_installer_operation": [
+          226,
+          849
+        ],
+        "typed_scopes": [
+          346
+        ]
+      }
+    },
+    "mcp": {
+      "sha256": "bd768f992dab75710558e3f47187c311c2ee5b5ec6f5751a74e0bbfa64729166",
+      "line_count": 49,
+      "anchor_counts": {
+        "request_tool": 4,
+        "apply_tool": 2,
+        "request_schema": 8
+      },
+      "sample_lines": {
+        "request_tool": [
+          22,
+          25,
+          27
+        ],
+        "apply_tool": [
+          32,
+          34
+        ],
+        "request_schema": [
+          11,
+          31,
+          32
+        ]
+      }
+    }
+  },
+  "evidence_scope": {
+    "all_four_sha256_matched": true,
+    "anchor_occurrences_only": true,
+    "exact_source_bytes_available_to_reviewer": false,
+    "source_bytes_exposed": false,
+    "operator_supplied_not_machine_signed": true,
+    "independent_executor_attestation": false,
+    "five_field_mcp_binding_verified": false,
+    "executor_dispatch_wired": false,
+    "approved_four_owner_postimages": false,
+    "immutable_release_manifest_signed": false,
+    "level4_approval_requested": false,
+    "level4_approval_consumed": false,
+    "production_registration_performed": false,
+    "backup_28_files_completed": false
+  },
+  "next_gate": "REVIEW_RUNNABLE_EXACT_FIVE_FIELD_REQUEST_AND_EXECUTOR_DISPATCH_WITH_FOUR_OWNER_POSTIMAGES",
+  "disclaimer": "This is sanitized operator-reported read-only metadata. Anchor counts, line numbers and SHA pins cannot prove typed request semantics or authorize registry writes."
+}

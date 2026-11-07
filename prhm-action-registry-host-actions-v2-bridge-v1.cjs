@@ -88,7 +88,7 @@ function immutableManifest(input,bridge){
     fail('manifest_project_or_path_mismatch');
  return out;
 }
-async function applyAfterConsumption({input,approvalToken,capabilities}){
+async function applyAfterConsumption({input,approvalToken,capabilities,expectedRequestId}){
  const request=strictRequest(input);
  if(typeof approvalToken!=='string'||approvalToken.length<120)fail('signed_l4_token_missing');
  const cap=attestExistingRoute(capabilities);
@@ -98,7 +98,7 @@ async function applyAfterConsumption({input,approvalToken,capabilities}){
  if(typeof installer!=='function'||typeof rollback!=='function')
    fail('approved_installer_or_rollback_not_registered');
  return g.executeAfterTrustedAuthorization({
-  release,args:input,signedApprovalToken:approvalToken,
+  release,args:input,signedApprovalToken:approvalToken,expectedRequestId,
   trustedInstaller:async bound=>installer(bound), // project-specific reviewed atomic installer
   trustedRollback:async bound=>rollback(bound),
   verifyOriginalState:async bound=>cap.verifyOriginalState(bound),
