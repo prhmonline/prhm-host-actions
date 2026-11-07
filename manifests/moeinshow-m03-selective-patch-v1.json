@@ -1,0 +1,102 @@
+{
+  "schema_version": "prhm.moeinshow.m03.selective-patch-manifest.v1",
+  "ticket": "M03",
+  "linked_issue": "https://github.com/prhmonline/prhm-host-actions/issues/246",
+  "production": {
+    "project": "moeinshow_front_prod",
+    "root": "/home/moeinshow/domains/moeinshow.com/public_html",
+    "expected_branch": "main",
+    "expected_head": "87c9cfbe0117ab5c102ba21e7a30fa83e9761d0d"
+  },
+  "source": {
+    "ref": "feature/honartik-parity-no-iticket-20261030",
+    "commit": "b9b03e6036703a3cb12fd83d895efa53b9b4faf4"
+  },
+  "release_policy": {
+    "signed_single_use_level4_required": true,
+    "max_age_seconds": 180,
+    "allowed_mode": "reviewed-three-way-only",
+    "allow_direct_source_copy": false,
+    "allow_full_feature_merge": false,
+    "allow_unreviewed_paths": false,
+    "allow_production_before_build_and_qa": false,
+    "local_git_objects_only": true,
+    "release_authorized": false,
+    "database_mutation": false,
+    "rollback_required": true
+  },
+  "files": [
+    {
+      "path": "src/app/layout.tsx",
+      "change_kind": "modify",
+      "baseline_blob": "489e5451032928115187b231b9275258553bd487",
+      "source_blob": "84266603167fad9264623910299cebcf01970efd",
+      "requires_semantic_rebase": true
+    },
+    {
+      "path": "src/components/GoftinoWidget.tsx",
+      "change_kind": "create",
+      "baseline_blob": null,
+      "source_blob": "8ca4aac75d459e4c001dbb18177bee0200cb2b0e",
+      "requires_semantic_rebase": true
+    },
+    {
+      "path": "src/clients/home/sectionSliderHome/index.tsx",
+      "change_kind": "modify",
+      "baseline_blob": "18a50ac13065f92b2e5f46eba3415dc4050b0be2",
+      "source_blob": "1e857f16715b7caac3a269a3b0ac03c9e46b62eb",
+      "requires_semantic_rebase": true
+    },
+    {
+      "path": "src/clients/home/sectionSliderHome/style.scss",
+      "change_kind": "modify",
+      "baseline_blob": "a2efbc537b2a8bc05b0ce3f2f03be97593dcd534",
+      "source_blob": "e34aeb02be4fcb87d7b4e8309fae8983a9633b34",
+      "requires_semantic_rebase": true
+    },
+    {
+      "path": "src/ui/assets/styles/globals.scss",
+      "change_kind": "modify",
+      "baseline_blob": "4e99d70fe9cfe6aa10a1ce0aa4d9ae6ecf1a5a6d",
+      "source_blob": "1c7c0d472a6270199c3a8ae59b05494f1a968de3",
+      "requires_semantic_rebase": true
+    },
+    {
+      "path": "src/ui/layout/header/index.tsx",
+      "change_kind": "modify",
+      "baseline_blob": "00a9d924a59bb713b5a0e5fc007cfc75f259d730",
+      "source_blob": "95c63a0797be06cab26b9b909cceb0459ab1cfde",
+      "requires_semantic_rebase": true
+    },
+    {
+      "path": "src/ui/layout/header/style.module.scss",
+      "change_kind": "modify",
+      "baseline_blob": "0b38d0066678deac4b12c4660ad76ac26267aab4",
+      "source_blob": "8cef9de9422ca21da2d44a8f9d75f8eef0239d02",
+      "requires_semantic_rebase": true
+    }
+  ],
+  "checks": {
+    "must_be_exactly_seven_files": true,
+    "reject_payment_and_booking_paths": true,
+    "proof_git_blob_sha_before_patch": true,
+    "verify_deployed_sha": true,
+    "smoke_public_urls": [
+      "https://moeinshow.com/",
+      "https://moeinshow.com/home"
+    ],
+    "visual_widths": [
+      375,
+      768,
+      1024,
+      1440
+    ],
+    "verify_brand_logo": true,
+    "verify_mobile_slider": true,
+    "verify_header_center": true,
+    "verify_no_overflow": true,
+    "verify_goftino_hidden_on_home": true,
+    "verify_nonhome_navigation": true,
+    "rollback_on_failure": true
+  }
+}
