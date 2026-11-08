@@ -57,6 +57,25 @@ test('valid synthetic Ed25519 receipt verifies exact action, SHA, key pin and TT
  assert.equal(proof.plan_sha256,verifier.hashPlan(s.plan));
  assert.equal(proof.level,4);assert.equal(proof.operation,verifier.OPERATION);
 });
+test('owner-governed L4 receipt cannot impersonate Provider and is consumed once',()=>{
+  const s=signer(),ownerToken=s.sign({...s.payload,iss:verifier.OWNER_ISSUER});
+  const args={token:ownerToken,publicKeyPem:s.publicKeyPem,
+    pinnedPublicKeySha256:s.pin,plan:s.plan,requestId,
+    nowSeconds:issuedAt+29};
+  assert.throws(()=>verifier.verifyReceipt(args),/scope_invalid/);
+  const owner=verifier.verifyOwnerReceipt(args);
+  assert.equal(owner.verified,true);
+  assert.equal(owner.level,4);
+  assert.equal(owner.operation,verifier.OPERATION);
+  assert.throws(()=>verifier.verifyOwnerReceipt({...args,token:s.token}),/scope_invalid/);
+  assert.throws(()=>verifier.verifyOwnerReceipt({...args,pinnedPublicKeySha256:'f'.repeat(64)}),/pin_mismatch/);
+  const ledger=fs.mkdtempSync(path.join(os.tmpdir(),'prhm-owner-l4-receipt-'));
+  try{
+    fs.chmodSync(ledger,0o700);
+    assert.equal(verifier.verifyAndConsumeOwner({...args,ledgerDir:ledger}).consumed,true);
+    assert.throws(()=>verifier.verifyAndConsumeOwner({...args,ledgerDir:ledger}),/receipt_replay/);
+  }finally{fs.rmSync(ledger,{recursive:true,force:true})}
+});
 test('signature, key, action, plan or release tampering fails closed',()=>{
  const s=signer();
  assert.throws(()=>check(s,{token:s.token.replace(/.$/,'X')}),/receipt_/);
