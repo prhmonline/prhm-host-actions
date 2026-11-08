@@ -26,10 +26,32 @@ const SOURCE_FILES=Object.freeze([
  'solo-company-runtime-owner-root-dispatcher-v1.cjs'
 ]);
 const fail=x=>{throw Error('solo_owner_plan_'+x)};
-function git(dir,args,{maxBuffer=1024*1024}={}){
- const r=cp.spawnSync('/usr/bin/git',['-C',dir,...args],{
+function git(dir,args,{maxBuffer=1024*1024,label='git'}={}){
+ // Git config must not depend on the operator's HOME, otherwise a valid
+ // root-owned review directory may work in a shell but fail in this child.
+ // Use -c safe.directory for THIS verified fixed review directory only,
+ // never safe.directory='*' or a global production setting.
+ if(dir!==HOST&&dir!==SSH)fail('git_directory_not_allowlisted');
+ secureReview(dir);
+ const gitBinary=['/usr/bin/git','/usr/local/bin/git'].find(p=>{
+   try{const st=fs.statSync(p);return st.isFile()&&(st.mode&0o111)!==0}
+   catch{return false}
+ });
+ if(!gitBinary)fail('git_executable_missing');
+ const r=cp.spawnSync(gitBinary,['-c','safe.directory='+dir,'-C',dir,...args],{
    encoding:null,timeout:12000,maxBuffer,env:{PATH:'/usr/bin:/bin',LANG:'C'}});
- if(r.error||r.status!==0)fail('pinned_git_unavailable');
+ if(r.error)fail('git_spawn_failed:'+String(r.error.code||'unknown'));
+ if(r.signal)fail('git_timeout_or_signal:'+label);
+ if(r.status!==0){
+   const err=String(r.stderr||'');
+   const kind=/dubious ownership|unsafe repository/i.test(err)?'unsafe_repository':
+     /not a git repository/i.test(err)?'not_repository':
+     /bad object|invalid object|unknown revision|not a valid object/i.test(err)?'missing_commit':
+     /does not exist in|exists on disk, but not in|path .*not in/i.test(err)?'missing_path':
+     /not permitted|permission denied/i.test(err)?'permission':
+     'other';
+   fail('git_failed:'+label+':'+kind+':'+r.status);
+ }
  return r.stdout;
 }
 function secureReview(dir){
@@ -48,7 +70,7 @@ function attestHostCheckout(){
    const file=path.join(HOST,rel),st=fs.lstatSync(file);
    if(!st.isFile()||st.isSymbolicLink()||st.uid!==0||(st.mode&0o022)!==0)
      fail('review_source_unsafe:'+rel);
-   const pinned=git(HOST,['show',head+':'+rel]);
+   const pinned=git(HOST,['show',head+':'+rel],{label:'host-file:'+rel});
    if(!fs.readFileSync(file).equals(pinned))fail('source_bytes_drift:'+rel);
  }
  return head;
@@ -70,7 +92,7 @@ function pinnedGitRead({repository,commit,path:p}){
  if(p!==allowed)fail('source_path_unapproved');
  const base=key==='host'?HOST:SSH;
  secureReview(base);
- return git(base,['show',commit+':'+p],{maxBuffer:1024*1024});
+ return git(base,['show',commit+':'+p],{maxBuffer:1024*1024,label:key+'-source:'+p});
 }
 function prepareExactPlan(){
  if(process.getuid()!==0)fail('root_required');
@@ -101,7 +123,7 @@ if(require.main===module){
      fail('read_only_only');
    console.log(JSON.stringify(readOnlyPlan(),null,2));
  }catch(e){
-   process.stderr.write('OWNER_PLAN_FAILED='+String(e.message).slice(0,170)+'\\n');
+   process.stderr.write('OWNER_PLAN_FAILED='+String(e.message).slice(0,220)+'\n');
    process.exitCode=2;
  }
 }
