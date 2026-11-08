@@ -20,7 +20,8 @@ function syntheticPlan(){
       const bytes=Buffer.from('fixture-'+kind);
       return {kind,path:tx.TARGETS[kind],bytes,
         before_sha256:kind==='worker'?null:kind==='core'?tx.PINS.core_before:reg.EXPECTED[kind],
-        after_sha256:tx.hash(bytes),uid:0,gid:0,mode:0o600};
+        after_sha256:tx.hash(bytes),uid:0,gid:0,
+        mode:kind==='worker'?0o700:kind==='core'?0o644:0o600};
     })
   };
 }
@@ -39,6 +40,8 @@ test('exact asset before-images reject drift and unexpected worker under native 
   const mapped=bridge.convertExactPlan(p);
   assert.equal(mapped.assets[0].expectedBeforeSha,tx.PINS.core_before);
   assert.equal(mapped.assets[1].expectedBeforeSha,null);
+  assert.equal(mapped.assets[0].expectedPostMode,0o644);
+  assert.equal(mapped.assets[1].expectedPostMode,0o700);
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'prhm-solo-asset-preimage-'));
   try{
     fs.chmodSync(dir,0o700);
@@ -47,14 +50,18 @@ test('exact asset before-images reject drift and unexpected worker under native 
     const initial=Buffer.from('approved-existing-core');
     const coreAfter=Buffer.from('new-core');
     const workerAfter=Buffer.from('new-worker');
-    fs.writeFileSync(corePath,initial,{mode:0o600});
+    fs.writeFileSync(corePath,initial,{mode:0o644});
     const assets=[
       {path:corePath,nextBytes:coreAfter,afterSha:tx.hash(coreAfter),
-        expectedBeforeSha:tx.hash(initial)},
+        expectedBeforeSha:tx.hash(initial),expectedPostMode:0o644},
       {path:workerPath,nextBytes:workerAfter,afterSha:tx.hash(workerAfter),
-        expectedBeforeSha:null}
+        expectedBeforeSha:null,expectedPostMode:0o700}
     ];
     assert.equal(native.verifyAssetPreimages(assets)[0].beforeSha,tx.hash(initial));
+    assert.equal(native.verifyAssetPreimages([assets[1]])[0].mode,0o700);
+    fs.chmodSync(corePath,0o600);
+    assert.throws(()=>native.verifyAssetPreimages(assets),/asset_existing_mode_mismatch:0/);
+    fs.chmodSync(corePath,0o644);
     fs.writeFileSync(corePath,'concurrent-core-drift');
     assert.throws(()=>native.verifyAssetPreimages(assets),/asset_pinned_preimage_mismatch:0/);
     fs.writeFileSync(corePath,initial);
@@ -66,6 +73,46 @@ test('exact asset before-images reject drift and unexpected worker under native 
     assert.equal(native.verifyAssetPreimages([assets[1]])[0].existed,false);
   }finally{
     fs.rmSync(dir,{recursive:true,force:true});
+  }
+});
+test('native registrar installs new worker with pinned 0700, retains core 0644',async()=>{
+  const root=fs.mkdtempSync(path.join(os.tmpdir(),'prhm-solo-native-mode-'));
+  const work=path.join(root,'journal');
+  fs.mkdirSync(work,{mode:0o700});
+  try{
+    const uid=process.getuid(),gid=process.getgid();
+    const steps=native.KEYS.map((key,i)=>{
+      const loc=path.join(root,'owner-'+i+'.js');
+      const before=Buffer.from('owner-old-'+i),nextBytes=Buffer.from('owner-new-'+i);
+      fs.writeFileSync(loc,before,{mode:0o600});
+      return {key,path:loc,nextBytes,beforeSha:tx.hash(before),
+        afterSha:tx.hash(nextBytes),expectedUid:uid,expectedGid:gid,
+        expectedMode:0o600};
+    });
+    const core=path.join(root,'core.js'),worker=path.join(root,'worker.js');
+    const coreBefore=Buffer.from('core-original');
+    fs.writeFileSync(core,coreBefore,{mode:0o644});
+    const coreNext=Buffer.from('core-candidate'),workerNext=Buffer.from('worker-candidate');
+    const assets=[
+      {path:core,nextBytes:coreNext,afterSha:tx.hash(coreNext),
+        expectedBeforeSha:tx.hash(coreBefore),expectedPostMode:0o644},
+      {path:worker,nextBytes:workerNext,afterSha:tx.hash(workerNext),
+        expectedBeforeSha:null,expectedPostMode:0o700},
+    ];
+    const result=await native.executeCore({
+      schema:'prhm.registrar.native-transaction.v1',
+      sourceCommit:tx.SOURCE_COMMITS.host,
+      manifestSha256:'a'.repeat(64),steps,assets
+    },{workRoot:work,postInstall:async()=>true,postRollback:async()=>true});
+    assert.equal(result.status,'COMMITTED');
+    assert.equal(fs.statSync(core).mode&0o777,0o644);
+    assert.equal(fs.statSync(worker).mode&0o777,0o700);
+    assert.equal(tx.hash(fs.readFileSync(worker)),tx.hash(workerNext));
+    const journal=JSON.parse(fs.readFileSync(path.join(result.transaction,'journal.json')));
+    assert.equal(journal.status,'COMMITTED');
+    assert.equal(journal.assets[1].mode,0o700);
+  }finally{
+    fs.rmSync(root,{recursive:true,force:true});
   }
 });
 test('unknown path, mutated SHA or unsafe permissions are rejected',()=>{
