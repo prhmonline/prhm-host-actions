@@ -65,6 +65,13 @@ test('signature, key, action, plan or release tampering fails closed',()=>{
  assert.throws(()=>check(s,{token:s.sign({...s.payload,plan_sha256:'a'.repeat(64)})}),/plan_binding_invalid/);
  assert.throws(()=>check(s,{token:s.sign({...s.payload,level:3})}),/approval_binding_invalid/);
  assert.throws(()=>check(s,{plan:{...s.plan,steps:s.plan.steps.slice(0,5)}}),/installation_plan_binding_invalid/);
+ // Metadata is part of the signed six-file transaction, never a caller override.
+ const alteredMode={...s.plan,steps:s.plan.steps.map((x,i)=>
+   i===0?{...x,mode:0o700}:x)};
+ assert.throws(()=>check(s,{plan:alteredMode}),/plan_binding_invalid/);
+ const alteredOwner={...s.plan,steps:s.plan.steps.map((x,i)=>
+   i===0?{...x,uid:1}:x)};
+ assert.throws(()=>check(s,{plan:alteredOwner}),/plan_binding_invalid/);
  assert.throws(()=>check(s,{requestId:'55555555-5555-4555-8555-555555555555'}),/approval_binding_invalid/);
 });
 test('expired, excessive TTL or noncanonical claims reject',()=>{
