@@ -18,6 +18,7 @@ const STEPS=Object.freeze([
   Object.freeze({key:'mcp_green',unit:'prhm-agent-mcp-green.service'})
 ]);
 const WITNESSES=Object.freeze([
+  'prhm-company-approval-bridge.service',
   'prhm-agent-mcp-router.service',
   'prhm-agent-api-router.service',
   'prhm-agent-api-blue.service',
