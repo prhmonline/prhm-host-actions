@@ -4,6 +4,9 @@ const assert=require('node:assert/strict');
 const crypto=require('node:crypto');
 const child=require('node:child_process');
 const path=require('node:path');
+const fs=require('node:fs');
+const os=require('node:os');
+const native=require('./honartik-universal-installer-owner-bootstrap-native-fs-v1.cjs');
 const reg=require('./solo-company-runtime-l4-registration-candidate-v1.js');
 const tx=require('./solo-company-runtime-signed-registration-transaction-v1.js');
 const receipt=require('./solo-company-runtime-provider-signed-receipt-v1.js');
@@ -30,6 +33,40 @@ test('six owners/assets exactly match native atomic registrar',()=>{
   assert.equal(converted.sourceCommit,tx.SOURCE_COMMITS.host);
   assert.equal(converted.manifestSha256,receipt.hashPlan(p));
   assert.equal(converted.steps.length+converted.assets.length,6);
+});
+test('exact asset before-images reject drift and unexpected worker under native lock',()=>{
+  const p=syntheticPlan();
+  const mapped=bridge.convertExactPlan(p);
+  assert.equal(mapped.assets[0].expectedBeforeSha,tx.PINS.core_before);
+  assert.equal(mapped.assets[1].expectedBeforeSha,null);
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'prhm-solo-asset-preimage-'));
+  try{
+    fs.chmodSync(dir,0o700);
+    const corePath=path.join(dir,'core.js');
+    const workerPath=path.join(dir,'worker.js');
+    const initial=Buffer.from('approved-existing-core');
+    const coreAfter=Buffer.from('new-core');
+    const workerAfter=Buffer.from('new-worker');
+    fs.writeFileSync(corePath,initial,{mode:0o600});
+    const assets=[
+      {path:corePath,nextBytes:coreAfter,afterSha:tx.hash(coreAfter),
+        expectedBeforeSha:tx.hash(initial)},
+      {path:workerPath,nextBytes:workerAfter,afterSha:tx.hash(workerAfter),
+        expectedBeforeSha:null}
+    ];
+    assert.equal(native.verifyAssetPreimages(assets)[0].beforeSha,tx.hash(initial));
+    fs.writeFileSync(corePath,'concurrent-core-drift');
+    assert.throws(()=>native.verifyAssetPreimages(assets),/asset_pinned_preimage_mismatch:0/);
+    fs.writeFileSync(corePath,initial);
+    fs.writeFileSync(workerPath,'unexpected-existing-worker');
+    assert.throws(()=>native.verifyAssetPreimages(assets),/asset_pinned_preimage_mismatch:1/);
+    fs.unlinkSync(workerPath);
+    fs.unlinkSync(corePath);
+    assert.throws(()=>native.verifyAssetPreimages(assets),/asset_missing_pinned_preimage:0/);
+    assert.equal(native.verifyAssetPreimages([assets[1]])[0].existed,false);
+  }finally{
+    fs.rmSync(dir,{recursive:true,force:true});
+  }
 });
 test('unknown path, mutated SHA or unsafe permissions are rejected',()=>{
   const p=syntheticPlan();p.steps[2].path='/etc/arbitrary';
