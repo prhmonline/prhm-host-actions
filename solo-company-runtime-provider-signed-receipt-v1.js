@@ -16,6 +16,8 @@ const ACTION='solo_company_runtime_registration_v1';
 const OPERATION='host_action.'+ACTION;
 const TYPE='PRHM-SOLO-ROOT-REGISTRATION';
 const ISSUER='prhm-provider-root-of-trust';
+// Separate owner-governed authority. An owner receipt is NEVER a Provider receipt.
+const OWNER_ISSUER='prhm-owner-root-of-trust';
 const AUDIENCE='prhm-agent-selfmaint-exec';
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SHA=/^[a-f0-9]{64}$/;
@@ -55,7 +57,7 @@ function bindPlan(plan){
 function hashPlan(plan){
   return tx.hash(Buffer.from(JSON.stringify(bindPlan(plan))));
 }
-function verifyReceipt({token,publicKeyPem,pinnedPublicKeySha256,plan,requestId,nowSeconds}={}){
+function verifyReceiptWithIssuer({token,publicKeyPem,pinnedPublicKeySha256,plan,requestId,nowSeconds}={},requiredIssuer){
   if(!SHA.test(pinnedPublicKeySha256||''))FAIL('provider_key_pin_required');
   if(typeof token!=='string'||token.length<110||token.length>32000)FAIL('token_invalid');
   if(!UUID.test(requestId||''))FAIL('request_id_invalid');
@@ -76,7 +78,7 @@ function verifyReceipt({token,publicKeyPem,pinnedPublicKeySha256,plan,requestId,
   if(!keysExact(payload,['iss','aud','env','operation','action','release_sha','plan_sha256',
     'request_id','jti','level','risk','one_time_use','iat','exp','source_commits']))
     FAIL('claims_invalid');
-  if(payload.iss!==ISSUER||payload.aud!==AUDIENCE||payload.env!=='production'||
+  if(payload.iss!==requiredIssuer||payload.aud!==AUDIENCE||payload.env!=='production'||
      payload.action!==ACTION||payload.operation!==OPERATION)
      FAIL('scope_invalid');
   if(payload.release_sha!=='0eb43d72aab3f10db22172c8be4c0411cf22d074'||
@@ -97,6 +99,8 @@ function verifyReceipt({token,publicKeyPem,pinnedPublicKeySha256,plan,requestId,
     provider_public_key_sha256:keySha
   });
 }
+function verifyReceipt(args){return verifyReceiptWithIssuer(args,ISSUER)}
+function verifyOwnerReceipt(args){return verifyReceiptWithIssuer(args,OWNER_ISSUER)}
 function consumeReceipt(receipt,ledgerDir,nowSeconds){
   if(!receipt||receipt.verified!==true||receipt.consumed!==false||
      receipt.operation!==OPERATION||receipt.level!==4||receipt.risk!=='critical'||
@@ -129,8 +133,17 @@ function verifyAndConsume({token,publicKeyPem,pinnedPublicKeySha256,plan,request
     plan,requestId,nowSeconds});
   return consumeReceipt(verified,ledgerDir,nowSeconds);
 }
-module.exports=Object.freeze({ACTION,OPERATION,TYPE,ISSUER,AUDIENCE,UUID,SHA,
-  bindPlan,hashPlan,verifyReceipt,consumeReceipt,verifyAndConsume});
+function verifyAndConsumeOwner({token,publicKeyPem,pinnedPublicKeySha256,plan,requestId,
+  nowSeconds,ledgerDir}={}){
+  // Explicit owner governance path: privileged caller must pin owner key in
+  // immutable code/config; owner receipts cannot impersonate Provider issuer.
+  const verified=verifyOwnerReceipt({token,publicKeyPem,pinnedPublicKeySha256,
+    plan,requestId,nowSeconds});
+  return consumeReceipt(verified,ledgerDir,nowSeconds);
+}
+module.exports=Object.freeze({ACTION,OPERATION,TYPE,ISSUER,OWNER_ISSUER,AUDIENCE,UUID,SHA,
+  bindPlan,hashPlan,verifyReceipt,verifyOwnerReceipt,consumeReceipt,
+  verifyAndConsume,verifyAndConsumeOwner});
 if(require.main===module){
   process.stderr.write('NO_CLI: real Provider signing key + authenticated dispatcher required\n');
   process.exitCode=64;
