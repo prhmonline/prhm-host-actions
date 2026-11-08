@@ -89,7 +89,10 @@ function checkPlan(plan){
    HASH(a.nextBytes)!==a.afterSha||
    (Object.hasOwn(a,'expectedBeforeSha')&&
      a.expectedBeforeSha!==null&&
-     !/^[a-f0-9]{64}$/.test(a.expectedBeforeSha))))
+     !/^[a-f0-9]{64}$/.test(a.expectedBeforeSha))||
+   (Object.hasOwn(a,'expectedPostMode')&&
+     (!Number.isInteger(a.expectedPostMode)||a.expectedPostMode<0o400||
+      a.expectedPostMode>0o755||(a.expectedPostMode&0o022)!==0))))
    fail('asset_plan_invalid');
  const targets=[...plan.steps.map(s=>s.path),...assets.map(a=>a.path)];
  if(new Set(targets).size!==targets.length)fail('duplicate_target');
@@ -124,7 +127,8 @@ function verifyAssetPreimages(assets){
       fail('asset_missing_pinned_preimage:'+i);
     return {key:'asset-'+i,path:a.path,
       existed:false,beforeSha:null,uid:process.getuid(),
-      gid:process.getgid(),mode:0o600,bytes:null,afterSha:a.afterSha};
+      gid:process.getgid(),mode:a.expectedPostMode??0o600,
+      bytes:null,afterSha:a.afterSha};
    }
    throw e;
   }
@@ -132,6 +136,9 @@ function verifyAssetPreimages(assets){
      fs.realpathSync(a.path)!==a.path||(st.mode&0o022)!==0)
    fail('asset_file_unsafe:'+i);
   const before=fs.readFileSync(a.path),beforeSha=HASH(before);
+  if(Object.hasOwn(a,'expectedPostMode')&&
+     (st.mode&0o777)!==a.expectedPostMode)
+    fail('asset_existing_mode_mismatch:'+i);
   // Optional for legacy transactions; mandatory in Solo's exact six-file plan.
   // Enforce inside executeCore after acquiring the filesystem lock.
   if(Object.hasOwn(a,'expectedBeforeSha')&&beforeSha!==a.expectedBeforeSha)
