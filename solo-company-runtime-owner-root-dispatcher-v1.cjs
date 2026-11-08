@@ -118,8 +118,8 @@ async function restartAndVerify(mode='candidate'){
 }
 function waiverFromDisk(hostHead){
   const pem=readRootFile(owner.KEY_FILE);
-  const message=readRootFile(owner.WAIVER_DIR+'/waiver.txt');
-  const signature=readRootFile(owner.WAIVER_DIR+'/waiver.sig');
+  const message=readRootFile(owner.WAIVER_DIR+'/solo-owner-final-waiver.txt');
+  const signature=readRootFile(owner.WAIVER_DIR+'/solo-owner-final-waiver.sig');
   return owner.verifyWaiver({publicKeyPem:pem,message,signature,hostHead});
 }
 async function inspectReadOnly(){
