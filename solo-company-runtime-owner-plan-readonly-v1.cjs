@@ -20,7 +20,9 @@ const SOURCE_FILES=Object.freeze([
  'solo-company-runtime-provider-signed-receipt-v1.js',
  'solo-company-runtime-owner-root-admission-v1.cjs',
  'solo-company-runtime-owner-plan-readonly-v1.cjs',
- 'honartik-universal-installer-owner-bootstrap-native-fs-v1.cjs'
+ 'honartik-universal-installer-owner-bootstrap-native-fs-v1.cjs',
+ 'solo-company-runtime-root-cutover-contract-v1.cjs',
+ 'solo-company-runtime-root-live-health-v1.cjs'
 ]);
 const fail=x=>{throw Error('solo_owner_plan_'+x)};
 function git(dir,args,{maxBuffer=1024*1024}={}){
@@ -69,7 +71,7 @@ function pinnedGitRead({repository,commit,path:p}){
  secureReview(base);
  return git(base,['show',commit+':'+p],{maxBuffer:1024*1024});
 }
-function readOnlyPlan(){
+function prepareExactPlan(){
  if(process.getuid()!==0)fail('root_required');
  const hostHead=attestHostCheckout();
  const pub=fs.readFileSync(owner.KEY_FILE);
@@ -79,6 +81,10 @@ function readOnlyPlan(){
  const native=require('./solo-company-runtime-native-registration-bridge-v1.js')
    .convertExactPlan(plan);
  if(native.manifestSha256!==receipt.hashPlan(plan))fail('native_plan_mismatch');
+ return Object.freeze({hostHead,plan,native});
+}
+function readOnlyPlan(){
+ const {hostHead,plan,native}=prepareExactPlan();
  return {host_head:hostHead,plan_sha256:native.manifestSha256,
    release_sha:plan.release_sha,
    source_commits:plan.source_commits,
@@ -98,4 +104,4 @@ if(require.main===module){
    process.exitCode=2;
  }
 }
-module.exports=Object.freeze({HOST,SSH,SOURCE_FILES,readOnlyPlan});
+module.exports=Object.freeze({HOST,SSH,SOURCE_FILES,prepareExactPlan,readOnlyPlan});
