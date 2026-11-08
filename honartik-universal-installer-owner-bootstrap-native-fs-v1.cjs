@@ -136,13 +136,13 @@ function verifyAssetPreimages(assets){
      fs.realpathSync(a.path)!==a.path||(st.mode&0o022)!==0)
    fail('asset_file_unsafe:'+i);
   const before=fs.readFileSync(a.path),beforeSha=HASH(before);
+  // Fail first on the exact content/absence pin, before mode validation.
+  // This also identifies unexpected pre-existing worker assets unambiguously.
+  if(Object.hasOwn(a,'expectedBeforeSha')&&beforeSha!==a.expectedBeforeSha)
+    fail('asset_pinned_preimage_mismatch:'+i);
   if(Object.hasOwn(a,'expectedPostMode')&&
      (st.mode&0o777)!==a.expectedPostMode)
     fail('asset_existing_mode_mismatch:'+i);
-  // Optional for legacy transactions; mandatory in Solo's exact six-file plan.
-  // Enforce inside executeCore after acquiring the filesystem lock.
-  if(Object.hasOwn(a,'expectedBeforeSha')&&beforeSha!==a.expectedBeforeSha)
-    fail('asset_pinned_preimage_mismatch:'+i);
   return {key:'asset-'+i,path:a.path,existed:true,
    beforeSha,uid:st.uid,gid:st.gid,mode:st.mode&0o777,
    bytes:before,afterSha:a.afterSha};
