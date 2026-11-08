@@ -33,7 +33,10 @@ function convertExactPlan(plan){
     const s=byKind.get(kind);
     if(!s)fail('missing_asset_'+kind);
     if(s.uid!==0||s.gid!==0||(s.mode&0o022)!==0)fail('unsafe_asset_metadata_'+kind);
-    return {path:s.path,nextBytes:Buffer.from(s.bytes),afterSha:s.after_sha256};
+    // Enforce core's exact existing SHA and worker's required absence INSIDE
+    // native executeCore under its own lock; not only at plan construction.
+    return {path:s.path,nextBytes:Buffer.from(s.bytes),afterSha:s.after_sha256,
+      expectedBeforeSha:s.before_sha256};
   });
   if(byKind.get('worker').before_sha256!==null||
      byKind.get('core').before_sha256!==tx.PINS.core_before)
