@@ -47,7 +47,8 @@ function bindPlan(plan){
     source_commits:plan.source_commits,
     files:plan.steps.map(s=>({
       kind:s.kind,path:s.path,
-      before_sha256:s.before_sha256,after_sha256:s.after_sha256
+      before_sha256:s.before_sha256,after_sha256:s.after_sha256,
+      uid:s.uid,gid:s.gid,mode:s.mode
     }))
   };
 }
