@@ -36,7 +36,7 @@ function convertExactPlan(plan){
     // Enforce core's exact existing SHA and worker's required absence INSIDE
     // native executeCore under its own lock; not only at plan construction.
     return {path:s.path,nextBytes:Buffer.from(s.bytes),afterSha:s.after_sha256,
-      expectedBeforeSha:s.before_sha256};
+      expectedBeforeSha:s.before_sha256,expectedPostMode:s.mode};
   });
   if(byKind.get('worker').before_sha256!==null||
      byKind.get('core').before_sha256!==tx.PINS.core_before)
