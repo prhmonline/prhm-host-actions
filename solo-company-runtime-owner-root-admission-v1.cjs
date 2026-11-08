@@ -46,7 +46,7 @@ function verifyWaiver({publicKeyPem,message,signature,hostHead}={}){
     FAIL('waiver_bytes_invalid');
   const m=message.toString('ascii');
   if(!Buffer.from(m,'ascii').equals(message))FAIL('waiver_encoding_invalid');
-  const date=m.match(/^PRHM-SOLO-OWNER-REVIEW-WAIVER-V1\\|DATE=(20[0-9]{2}-[0-9]{2}-[0-9]{2})\\|/);
+  const date=m.match(/^PRHM-SOLO-OWNER-REVIEW-WAIVER-V1\|DATE=(20[0-9]{2}-[0-9]{2}-[0-9]{2})\|/);
   if(!date||m!==waiverMessage(hostHead,date[1]))FAIL('waiver_commit_mismatch');
   if(!crypto.verify(null,message,key,signature))FAIL('waiver_signature_invalid');
   return Object.freeze({verified:true,review_waived:true,host_head:hostHead,
@@ -76,6 +76,6 @@ function admitOwner({token,plan,requestId,nowSeconds,hostHead}={}){
 module.exports=Object.freeze({KEY_PIN,KEY_FILE,WAIVER_DIR,KIND,
   waiverMessage,pinnedPublicKey,verifyWaiver,verifyOwnerPermit,admitOwner});
 if(require.main===module){
-  process.stderr.write('NO_CLI: owner admission alone does not install or authorize root writes\\n');
+  process.stderr.write('NO_CLI: owner admission alone does not install or authorize root writes\n');
   process.exitCode=64;
 }
