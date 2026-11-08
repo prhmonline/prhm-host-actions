@@ -66,8 +66,8 @@ function admitOwner({token,plan,requestId,nowSeconds,hostHead}={}){
   // Fixed root-only inputs. No caller-selected public key / signer / waiver.
   if(process.getuid()!==0||process.geteuid()!==0)FAIL('root_required');
   const publicKeyPem=trustedRegular(KEY_FILE,0o600);
-  const message=trustedRegular(WAIVER_DIR+'/waiver.txt',0o600);
-  const signature=trustedRegular(WAIVER_DIR+'/waiver.sig',0o600);
+  const message=trustedRegular(WAIVER_DIR+'/solo-owner-final-waiver.txt',0o600);
+  const signature=trustedRegular(WAIVER_DIR+'/solo-owner-final-waiver.sig',0o600);
   const waiver=verifyWaiver({publicKeyPem,message,signature,hostHead});
   const grant=verifyOwnerPermit({token,plan,requestId,nowSeconds,publicKeyPem});
   return Object.freeze({waiver,grant,public_key_pin:KEY_PIN,
