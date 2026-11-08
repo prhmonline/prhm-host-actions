@@ -76,13 +76,44 @@ async function settleHealth(){
   }
   fail('health_not_recovered:'+String(last?.message||'unknown').slice(0,90));
 }
-async function restartAndVerify(){
-  // Each iteration witnesses BOTH MCP lanes + router BEFORE any restart.
-  for(const step of cutover.STEPS){
-    await settleHealth();
-    restartFixedService(step.unit);
-    await settleHealth();
+async function awaitUnitRunning(unit){
+  for(let attempt=0;attempt<40;attempt++){
+    try{
+      const s=health.readUnit(unit);
+      if(s.active==='active'&&s.sub==='running'&&s.pid>0)return true;
+    }catch(_){}
+    await new Promise(done=>setTimeout(done,250));
   }
+  fail('service_not_running_after_restart');
+}
+async function restartAndVerify(mode='candidate'){
+  if(mode!=='candidate'&&mode!=='baseline')fail('invalid_cutover_mode');
+  // Candidates are re-verified after EACH individual change. Rollback must
+  // recover even when a candidate service is already broken.
+  if(mode==='candidate')await settleHealth();
+  let failed=false;
+  for(const step of cutover.STEPS){
+    try{
+      if(mode==='candidate'&&step.key.startsWith('mcp_')){
+        const other=step.key==='mcp_blue'?
+          'prhm-agent-mcp-green.service':'prhm-agent-mcp-blue.service';
+        const peer=health.readUnit(other);
+        const router=health.readUnit('prhm-agent-mcp-router.service');
+        if(peer.active!=='active'||peer.sub!=='running'||
+           router.active!=='active'||router.sub!=='running')
+          fail('mcp_standby_or_router_unhealthy');
+      }
+      restartFixedService(step.unit);
+      await awaitUnitRunning(step.unit);
+      if(mode==='candidate')await settleHealth();
+    }catch(error){
+      if(mode==='candidate')throw error;
+      // Keep attempting remaining baseline restarts to maximize recovery.
+      failed=true;
+    }
+  }
+  if(failed)fail('baseline_restart_incomplete');
+  await settleHealth();
   return true;
 }
 function waiverFromDisk(hostHead){
@@ -127,8 +158,8 @@ async function apply(){
     fail('receipt_not_consumed');
   const result=await native.executeCore(prepared,{
     workRoot:WORK_ROOT,
-    postInstall:restartAndVerify,
-    postRollback:restartAndVerify
+    postInstall:()=>restartAndVerify('candidate'),
+    postRollback:()=>restartAndVerify('baseline')
   });
   if(result.status!=='COMMITTED')fail('transaction_not_committed');
   await health.attest();
@@ -186,7 +217,7 @@ async function recover(){
   const result=await native.recoverAfterCrash({
     workRoot:WORK_ROOT,transaction:pending.path,
     expectedTargets:OWNERS,expectedAssets:ASSETS,
-    postRollback:restartAndVerify
+    postRollback:()=>restartAndVerify('baseline')
   });
   if(result.status!=='ROLLED_BACK')fail('recovery_incomplete');
   await health.attest();
