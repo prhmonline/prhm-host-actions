@@ -121,6 +121,14 @@ else {
       assert.equal(native.recover(f.params,j.dir).status,'ROLLED_BACK');
       oldState(f);
     });
+    runFixture('unsigned transaction cancelled before any protected asset changes',f=>{
+      const j=native.prepare(f.params);
+      const preBytes=fs.readFileSync(path.join(f.params.prefix,'installation.json'));
+      assert.equal(native.cancelPrepared(f.params,j.dir).status,'ROLLED_BACK');
+      assert(!fs.existsSync(path.join(f.params.journalRoot,'active.lock')));
+      assert.deepEqual(fs.readFileSync(path.join(f.params.prefix,'installation.json')),preBytes);
+      oldState(f);
+    });
     runFixture('successful four-artifact commit, no stale lock',f=>{
       const j=native.prepare(f.params);
       native.markApplying(f.params,j.dir);
