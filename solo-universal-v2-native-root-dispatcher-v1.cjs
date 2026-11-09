@@ -184,6 +184,7 @@ function makeProductionHost(){
       if(driverGitSha!==internal.sourceSha)FAIL('source_sha_drift');
       const result=permit.verifyConsumeProduction();
       if(result.driver_git_sha!==internal.sourceSha)FAIL('receipt_git_drift');
+      native.attachConsumedPermit(CFG,j.dir,result);
       internal.receiptConsumed=true;
       return result;
     },
