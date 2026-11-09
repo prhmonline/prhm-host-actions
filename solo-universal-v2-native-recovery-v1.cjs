@@ -122,7 +122,8 @@ function params(args){
     profile:path.join(registry,PROFILE),
     lock:path.join(journalRoot,'active.lock')});
 }
-function attestBefore(cfg){
+function attestBefore(input){
+  const cfg=params(input);
   const target=exactCurrent(cfg.prefix,cfg.expectedCurrent);
   const wrapperSt=regular(cfg.wrapper),manifestSt=regular(cfg.manifest);
   const wrapper=fs.readFileSync(cfg.wrapper),manifest=fs.readFileSync(cfg.manifest);
