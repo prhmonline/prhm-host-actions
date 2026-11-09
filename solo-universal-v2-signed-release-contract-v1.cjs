@@ -122,6 +122,12 @@ function verifySignedPermit({token, publicKeyPem, expectedKeySha, driverGitSha,
   });
 }
 
+/** Strict production-only owner key pin. The token cannot select its issuer key. */
+function verifyProductionOwnerPermit({token, publicKeyPem, driverGitSha, nowSec} = {}) {
+  return verifySignedPermit({token, publicKeyPem,
+    expectedKeySha:PINS.owner_spki_sha256,driverGitSha,nowSec});
+}
+
 /** Strictly validate signed-permit consumption and frozen preflight evidence. */
 function checkPreflight(v) {
   const names=['installed_digest','actual_bundle_digest',
@@ -210,7 +216,7 @@ async function coordinateSignedRelease(host,driverGitSha) {
     if (lease) await host.releaseLock(lease);
   }
 }
-module.exports=Object.freeze({PINS,verifySignedPermit,checkPreflight,
+module.exports=Object.freeze({PINS,verifySignedPermit,verifyProductionOwnerPermit,checkPreflight,
   checkGrant,HOST_METHODS,coordinateSignedRelease});
 if(require.main===module){
   process.stderr.write('SOURCE_ONLY_NO_CLI_NO_APPROVAL_ISSUER_NO_ROOT_INSTALL\n');
