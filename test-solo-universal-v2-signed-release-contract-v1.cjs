@@ -37,7 +37,7 @@ function issued(claims={}) {
   return input+'.'+sig;
 }
 function verify(token,options={}) {
-  return contract.verifySignedPermit({token,publicKeyPem,
+  return contract.verifySignedPermit({token,publicKeyPem:publicPem,
     expectedKeySha:fakePin,driverGitSha:driver,nowSec:now,...options});
 }
 function negative(label,change,pattern) {
