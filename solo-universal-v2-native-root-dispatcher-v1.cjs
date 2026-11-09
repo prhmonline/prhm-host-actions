@@ -275,6 +275,75 @@ function makeProductionHost(){
   });
 }
 /**
+ * Crash recovery is distinct from new authorization: it may ONLY reconcile
+ * a journal that already exists under the fixed protected root.
+ * APPLYING/ROLLING_BACK must have a separately verified and durably consumed
+ * receipt JTI bound to the exact driver commit, operation and candidate.
+ * Recovery NEVER restarts Solo, overwrites its StateDirectory or deploys code.
+ */
+function reconcileInterruptedRelease(){
+  assertRoot();directory(JOURNALS);
+  const sourceSha=permit.attestSourceSha();
+  const st=fs.lstatSync(GUARD);
+  if(!st.isFile()||st.isSymbolicLink()||st.uid!==0||st.gid!==0||
+     (st.mode&0o777)!==0o600)FAIL('stale_guard_not_trusted');
+  const lockId=fs.readFileSync(GUARD,'utf8').trim();
+  if(!/^[a-f0-9-]{36}$/i.test(lockId))FAIL('stale_guard_id_invalid');
+  const txns=fs.readdirSync(JOURNALS).filter(n=>
+    /^tx-[a-f0-9-]{36}$/i.test(n));
+  if(txns.length>1)FAIL('multiple_recovery_transactions');
+  if(txns.length===0){
+    native.attestBefore(CFG);
+    if(fs.existsSync(path.join(JOURNALS,'active.lock')))
+      FAIL('missing_journal_with_native_lock');
+    fs.unlinkSync(GUARD);fsyncDir(JOURNALS);
+    return {status:'STALE_GUARD_CLEARED',changed:false};
+  }
+  const dir=path.join(JOURNALS,txns[0]);
+  directory(dir);
+  const raw=regular(path.join(dir,'journal.json'),0o600,32768);
+  let j;try{j=JSON.parse(raw.toString('utf8'))}
+  catch(_){FAIL('journal_parse_invalid')}
+  if(j.id!==txns[0]||j.operation!==P.operation)
+    FAIL('recovery_journal_identity_mismatch');
+  if(['APPLYING','ROLLING_BACK','COMMITTED'].includes(j.status)){
+    if(!/^[a-f0-9]{40}$/.test(j.driverGitSha||'')||
+       j.driverGitSha!==sourceSha||
+       !/^[a-f0-9-]{36}$/i.test(j.permitJti||'')||
+       !/^[a-f0-9-]{36}$/i.test(j.requestId||''))
+      FAIL('journal_signed_identity_untrusted');
+    directory(permit.LEDGER);
+    const marker=regular(path.join(permit.LEDGER,j.permitJti+'.json'),
+      0o600,32768);
+    let receipt;try{receipt=JSON.parse(marker.toString('utf8'))}
+    catch(_){FAIL('ledger_invalid')}
+    if(receipt.schema!=='prhm.solo-universal-v2.consumed-owner-l4.v1'||
+       receipt.jti!==j.permitJti||receipt.request_id!==j.requestId||
+       receipt.operation!==P.operation||
+       receipt.driver_git_sha!==sourceSha||
+       receipt.candidate_digest!==P.candidate_digest||
+       receipt.profile_sha256!==P.profile_sha256)
+      FAIL('recovery_ledger_not_bound');
+  }else if(j.status==='PREPARED'&&j.permitJti!==undefined){
+    // Permit was consumed but no active-payload phase was started; safely
+    // cancel journal, never modify the already-running Universal pointer.
+    directory(permit.LEDGER);
+    regular(path.join(permit.LEDGER,j.permitJti+'.json'),0o600,32768);
+  }
+  let result;
+  if(j.status==='PREPARED')result=native.cancelPrepared(CFG,dir);
+  else if(['APPLYING','ROLLING_BACK','ROLLED_BACK','COMMITTED'].includes(j.status))
+    result=native.recover(CFG,dir);
+  else FAIL('unrecognized_recovery_state');
+  if(result.status!=='COMMITTED'&&result.status!=='ROLLED_BACK')
+    FAIL('recovery_not_terminal');
+  // No root guard release on uncertain or unverifiable state.
+  fs.unlinkSync(GUARD);fsyncDir(JOURNALS);
+  return {status:result.status,changed:result.changed===true,
+    profile_registry_owned_by_universal:result.status==='COMMITTED'};
+}
+
+/**
  * Fixed-scope callable by a FUTURE independently registered root dispatcher.
  * No built-in CLI or service route. Do not install this candidate by hand.
  * The owner receipt must already exist and be freshly valid when invoked.
@@ -286,7 +355,7 @@ async function applyAuthorizedRelease(){
 }
 module.exports=Object.freeze({
   JOURNALS,PAYLOAD,SOURCE_BUNDLE,SOURCE_PROFILE,CFG,
-  makeProductionHost,applyAuthorizedRelease,
+  makeProductionHost,applyAuthorizedRelease,reconcileInterruptedRelease,
 });
 if(require.main===module){
   process.stderr.write('NO_CLI: fixed signed Host Action registration missing\n');
