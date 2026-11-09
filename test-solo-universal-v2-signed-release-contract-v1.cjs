@@ -100,6 +100,9 @@ async function main() {
     assert.notEqual(fakePin,P.owner_spki_sha256);
     assert.throws(()=>verify(issued(),{
       expectedKeySha:P.owner_spki_sha256}),/owner_key_pin_mismatch/);
+    assert.throws(()=>contract.verifyProductionOwnerPermit({token:issued(),
+      publicKeyPem:publicPem,driverGitSha:driver,nowSec:now}),
+      /owner_key_pin_mismatch/);
   });
   negative('other operation denied',()=>issued({operation:'host_action.solo_company_runtime_registration_v1'}),'scope_or_time');
   negative('unrelated issuer denied',()=>issued({iss:'prhm-provider-root-of-trust'}),'scope_or_time');
