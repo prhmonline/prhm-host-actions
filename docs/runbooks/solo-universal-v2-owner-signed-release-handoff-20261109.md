@@ -51,3 +51,17 @@ The new SOURCE-ONLY `solo-universal-v2-native-recovery-v1.cjs` implements a real
 **Verified on the actual `prhm-production` Linux kernel via RDC**, from disposable `/var/tmp/prhm-solo-v2-crash-lab-*` only, cleaned afterward: `SOLO_V2_NATIVE_REAL_LINUX_TESTS=13 PASS`, `SERVER_NATIVE_SIGKILL_TESTS=PASS`. Installed Universal pointer still `08889c18a570cc2bff408dfbe78b7e5f4f8da24f465b4fdd445640cd7f89d17d`, production Solo profile ABSENT, Solo Runtime systemd active, health HTTP 200. The corresponding source GitHub Actions tests passed.
 
 **Critical distinction:** this is an **auditable native transaction core**, not yet the production-owned root dispatcher integrating source provenance, live receipt verification/consumption and a signed Python `install_bundle()` activation. Test and production have no authorization equivalence. A fresh one-time L4 signed permit and a separately reviewed/installed root driver remain blockers. No production install was attempted.
+
+## 2026-11-09 — Native Root Dispatcher source integration and live veto
+
+New source-only modules: `solo-universal-v2-native-root-dispatcher-v1.cjs` and `solo-universal-v2-root-permit-ledger-v1.cjs`. These are NOT installed or registered Root Actions, contain no signer/private key and expose no executable CLI.
+
+Production bridge checks a clean root-owned Git checkout at a fixed root path with the driver SHA bound to a NEW Owner Ed25519 Level-4 signed JWS. It validates the pinned v2 bundle using the already-installed Universal v1 Python verifier BEFORE loading candidate code. The immutable owner public key SHA is fixed, never token-selected.
+
+The rollback snapshots four exact assets: `current` symlink, `deploy-project`, `installation.json`, initially absent `solo_company.production.json`. The consumed JTI ledger is created with `wx` + file/dir fsync and bound into the durable transaction journal before any protected install/profile change. Native `APPLYING` now requires this persisted permit binding. Signed activation delegates to the installed versioned Python `install_bundle`; success additionally requires read-only `observe-existing`, seven valid registry profiles and identical Solo runtime PID. `reconcileInterruptedRelease` requires a matching consumed JTI and exact Git SHA before replaying rollback; uncertain locks stay in place.
+
+**Direct actual `prhm-production` Linux tests, all in cleaned disposable `/var/tmp` directories:** Native recovery **15 PASS** including 2 real `SIGKILL` scenarios, unsigned journal cancellation and forged-asset denials; Ed25519 synthetic-key/replay-ledger **6 PASS**; L4 signed-release coordinator **27 PASS**. Root dispatcher has no CLI and an unauthorized apply attempt was denied before any protected write because the independently reviewed source checkout is absent.
+
+**Still absent from Production:** reviewed source checkout; root-owned pinned v2 payload; Root journal directory; Root replay ledger directory; fresh `universal-stateful-v2-l4.jws`; official Solo v2 registry profile. Universal v1 current pointer unchanged; Solo `active`, `/health` and `/status` HTTP 200. Source-only driver is NOT a trusted installed Host Action. Requires independent final SHA/code review, authorized fixed-scope registration, genuine Owner-issued fresh one-time L4 signature and signed root activation. Existing Solo Root registration permit cannot be reused.
+
+STATUS: SOURCE_NATIVE_DRIVER_AND_RECOVERY_TESTS_PASS; PRODUCTION_INSTALL_NO_GO; PRODUCTION_MODIFICATION_NONE.
