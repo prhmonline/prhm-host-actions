@@ -205,6 +205,19 @@ function prepare(config) {
     throw e;
   }
 }
+/**
+ * Abort BEFORE signed authorization or any protected asset mutation.
+ * Only the private journal and lock change, never installer/profile bytes.
+ */
+function cancelPrepared(config,dir){
+  const cfg=params(config),j=readJournal(dir,cfg);
+  lockedFor(cfg,j.id);
+  if(j.status!=='PREPARED')FAIL('cancel_only_prepared_allowed');
+  attestBefore(cfg);
+  writeJournal(dir,{...j,status:'ROLLED_BACK'});
+  releaseLock(cfg,j.id);
+  return {status:'ROLLED_BACK',production_assets_changed:false};
+}
 function markApplying(config,dir){
   const cfg=params(config),j=readJournal(dir,cfg);
   lockedFor(cfg,j.id);
@@ -289,7 +302,7 @@ function recover(config,dir){
   releaseLock(cfg,j.id);
   return {status:'ROLLED_BACK',changed:true};
 }
-module.exports=Object.freeze({prepare,markApplying,installProfile,verifyPost,
+module.exports=Object.freeze({prepare,cancelPrepared,markApplying,installProfile,verifyPost,
   finish,recover,attestBefore});
 if(require.main===module){
   process.stderr.write('NO_CLI: requires independently signed trusted root driver\n');
