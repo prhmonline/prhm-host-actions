@@ -51,6 +51,15 @@ function candidateManifest(f){
   fs.writeFileSync(path.join(p,'installation.json'),JSON.stringify(current)+'\n',
     {mode:0o600});
 }
+function attachTestPermit(f,j){
+  // A fake grant is safe only for the isolated filesystem core fixture.
+  // The real privileged dispatcher MUST verify and consume Ed25519 first.
+  const g={verified:true,consumed:true,operation:PINS.operation,
+    candidate_digest:PINS.candidate_digest,profile_sha256:PINS.profile_sha256,
+    request_id:crypto.randomUUID(),jti:crypto.randomUUID(),
+    driver_git_sha:'a'.repeat(40)};
+  assert.equal(native.attachConsumedPermit(f.params,j.dir,g),true);
+}
 function emulateInstall(f,{pointer=true,manifest=true,profile=true}={}){
   if(pointer)candidatePointer(f);
   if(manifest)candidateManifest(f);
@@ -86,7 +95,8 @@ if(process.argv[2]==='--crash-child'){
   if(!f.base.startsWith(os.tmpdir()+'/solo-v2-native-linux-'))
     throw Error('test_fixture_only');
   const j=native.prepare(f.params);
-  native.markApplying(f.params,j.dir);
+  attachTestPermit(f,j);
+      native.markApplying(f.params,j.dir);
   emulateInstall(f,{pointer:true,manifest:false,profile:false});
   process.kill(process.pid,'SIGKILL');
 }
@@ -96,7 +106,8 @@ else if(process.argv[2]==='--crash-after-commit'){
   if(!f.base.startsWith(os.tmpdir()+'/solo-v2-native-linux-'))
     throw Error('test_fixture_only');
   const j=native.prepare(f.params);
-  native.markApplying(f.params,j.dir);
+  attachTestPermit(f,j);
+      native.markApplying(f.params,j.dir);
   emulateInstall(f);
   const original=fs.unlinkSync;
   fs.unlinkSync=function(name){
@@ -129,8 +140,16 @@ else {
       assert.deepEqual(fs.readFileSync(path.join(f.params.prefix,'installation.json')),preBytes);
       oldState(f);
     });
+    runFixture('unbound permit must not authorize writing phase',f=>{
+      const j=native.prepare(f.params);
+      assert.throws(()=>native.markApplying(f.params,j.dir),
+        /apply_requires_durably_bound_consumed_l4/);
+      native.cancelPrepared(f.params,j.dir);
+      oldState(f);
+    });
     runFixture('successful four-artifact commit, no stale lock',f=>{
       const j=native.prepare(f.params);
+      attachTestPermit(f,j);
       native.markApplying(f.params,j.dir);
       emulateInstall(f);newState(f);
       assert.equal(native.finish(f.params,j.dir).status,'COMMITTED');
@@ -140,6 +159,7 @@ else {
     });
     runFixture('rollback pointer-only interrupted upgrade',f=>{
       const j=native.prepare(f.params);
+      attachTestPermit(f,j);
       native.markApplying(f.params,j.dir);
       emulateInstall(f,{pointer:true,manifest:false,profile:false});
       assert.equal(native.recover(f.params,j.dir).status,'ROLLED_BACK');
@@ -147,6 +167,7 @@ else {
     });
     runFixture('rollback after manifest changed but profile absent',f=>{
       const j=native.prepare(f.params);
+      attachTestPermit(f,j);
       native.markApplying(f.params,j.dir);
       emulateInstall(f,{pointer:true,manifest:true,profile:false});
       assert.equal(native.recover(f.params,j.dir).status,'ROLLED_BACK');
@@ -154,6 +175,7 @@ else {
     });
     runFixture('rollback from full candidate without commit',f=>{
       const j=native.prepare(f.params);
+      attachTestPermit(f,j);
       native.markApplying(f.params,j.dir);
       emulateInstall(f);newState(f);
       assert.equal(native.recover(f.params,j.dir).status,'ROLLED_BACK');
@@ -162,6 +184,7 @@ else {
     });
     runFixture('foreign user-supplied registry file cannot be deleted',f=>{
       const j=native.prepare(f.params);
+      attachTestPermit(f,j);
       native.markApplying(f.params,j.dir);
       candidatePointer(f);
       const p=path.join(f.params.registry,'solo_company.production.json');
@@ -172,6 +195,7 @@ else {
     });
     runFixture('foreign current symlink cannot be overwritten',f=>{
       const j=native.prepare(f.params);
+      attachTestPermit(f,j);
       native.markApplying(f.params,j.dir);
       const p=path.join(f.params.prefix,'current');
       fs.unlinkSync(p);
