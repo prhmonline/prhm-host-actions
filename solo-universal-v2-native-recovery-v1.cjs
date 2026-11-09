@@ -24,6 +24,8 @@ const FAIL=s=>{throw Error('solo_universal_v2_native_'+s)};
 const hash=b=>crypto.createHash('sha256').update(b).digest('hex');
 const SHA=/^[a-f0-9]{64}$/;
 const IDS=/^tx-[a-f0-9-]{36}$/;
+const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const SHA40=/^[a-f0-9]{40}$/;
 const PROFILE='solo_company.production.json';
 const manifestName='installation.json';
 const wrapperName='deploy-project';
@@ -155,7 +157,10 @@ function readJournal(dir,cfg){
     j.candidateDigest!==cfg.candidateDigest||
     j.originalTarget!==path.join(cfg.prefix,'versions',cfg.expectedCurrent)||
     !['PREPARED','APPLYING','ROLLING_BACK','ROLLED_BACK','COMMITTED'].includes(j.status)||
-    j.profileBefore!=='ABSENT')FAIL('journal_untrusted');
+    j.profileBefore!=='ABSENT'||
+    (j.permitJti!==undefined&&(!UUID.test(j.permitJti)||
+      !UUID.test(j.requestId)||!SHA40.test(j.driverGitSha))))
+    FAIL('journal_untrusted');
   return j;
 }
 function readSnapshot(dir,name,sha){
@@ -218,10 +223,27 @@ function cancelPrepared(config,dir){
   releaseLock(cfg,j.id);
   return {status:'ROLLED_BACK',production_assets_changed:false};
 }
+function attachConsumedPermit(config,dir,grant) {
+  const cfg=params(config),j=readJournal(dir,cfg);
+  lockedFor(cfg,j.id);
+  if(j.status!=='PREPARED'||j.permitJti!==undefined||
+     !grant||grant.verified!==true||grant.consumed!==true||
+     grant.operation!==PINS.operation||
+     grant.candidate_digest!==PINS.candidate_digest||
+     grant.profile_sha256!==PINS.profile_sha256||
+     !UUID.test(grant.jti||'')||!UUID.test(grant.request_id||'')||
+     !SHA40.test(grant.driver_git_sha||''))
+    FAIL('consumed_owner_permit_required');
+  writeJournal(dir,{...j,permitJti:grant.jti,
+    requestId:grant.request_id,driverGitSha:grant.driver_git_sha});
+  return true;
+}
 function markApplying(config,dir){
   const cfg=params(config),j=readJournal(dir,cfg);
   lockedFor(cfg,j.id);
-  if(j.status!=='PREPARED')FAIL('apply_transition_invalid');
+  if(j.status!=='PREPARED'||!UUID.test(j.permitJti||'')||
+     !UUID.test(j.requestId||'')||!SHA40.test(j.driverGitSha||''))
+    FAIL('apply_requires_durably_bound_consumed_l4');
   attestBefore(cfg);
   writeJournal(dir,{...j,status:'APPLYING'});
 }
@@ -302,7 +324,7 @@ function recover(config,dir){
   releaseLock(cfg,j.id);
   return {status:'ROLLED_BACK',changed:true};
 }
-module.exports=Object.freeze({prepare,cancelPrepared,markApplying,installProfile,verifyPost,
+module.exports=Object.freeze({prepare,cancelPrepared,attachConsumedPermit,markApplying,installProfile,verifyPost,
   finish,recover,attestBefore});
 if(require.main===module){
   process.stderr.write('NO_CLI: requires independently signed trusted root driver\n');
