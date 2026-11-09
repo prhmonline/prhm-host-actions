@@ -11,6 +11,9 @@ on:
       - solo-universal-v2-live-readonly-preflight-v1.cjs
       - solo-universal-v2-native-recovery-v1.cjs
       - test-solo-universal-v2-native-recovery-v1.cjs
+      - solo-universal-v2-root-permit-ledger-v1.cjs
+      - test-solo-universal-v2-root-permit-ledger-v1.cjs
+      - solo-universal-v2-native-root-dispatcher-v1.cjs
       - .github/workflows/solo-universal-v2-signed-release-ci.yml
   workflow_dispatch:
 
@@ -38,6 +41,11 @@ jobs:
           node --check solo-universal-v2-native-recovery-v1.cjs
           node --check test-solo-universal-v2-native-recovery-v1.cjs
           node test-solo-universal-v2-native-recovery-v1.cjs
+          node --check solo-universal-v2-root-permit-ledger-v1.cjs
+          node --check test-solo-universal-v2-root-permit-ledger-v1.cjs
+          node test-solo-universal-v2-root-permit-ledger-v1.cjs
+          node --check solo-universal-v2-native-root-dispatcher-v1.cjs
+          if node solo-universal-v2-native-root-dispatcher-v1.cjs >/dev/null 2>&1; then echo 'Unsafe root CLI'; exit 1; fi
           node test-solo-universal-v2-signed-release-contract-v1.cjs
           if node solo-universal-v2-live-readonly-preflight-v1.cjs >/dev/null 2>&1; then echo 'Unsafe CLI default'; exit 1; fi
       - name: Confirm no live-release entrypoint or signing authority
