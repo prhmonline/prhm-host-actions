@@ -71,20 +71,29 @@ function payloadProof(){
   directory(PAYLOAD);
   directory(SOURCE_BUNDLE);
   const p=regular(SOURCE_PROFILE,0o600,8192);
-  // Python validates exact bundle digest AND proposed strict-v2 profile digest;
-  // the source path is a frozen root-only path, never a runtime argument.
-  const script=[
-    "import sys,json",
+  // First use ONLY the already-installed, pinned Universal v1 verifier to
+  // digest candidate bytes; do not execute the untrusted candidate code.
+  const digestProof=[
+    "import sys",
     "sys.path.insert(0,"+quote(PREFIX+'/current')+")",
     "from universal.install import bundle_digest",
-    "if bundle_digest("+quote(SOURCE_BUNDLE)+")!="+quote(P.candidate_digest)+": raise ValueError('bundle digest drift')",
+    "assert bundle_digest("+quote(SOURCE_BUNDLE)+")=="+quote(P.candidate_digest)+")",
+    "print('EXACT_CANDIDATE_DIGEST_OK')",
+  ].join('\n');
+  if(fixedPython(digestProof)!=='EXACT_CANDIDATE_DIGEST_OK')
+    FAIL('candidate_bundle_untrusted');
+  // Only now, after the immutable digest matches, import the staged v2
+  // config and verify the canonical profile digest.
+  const profileProof=[
+    "import sys,json",
     "sys.path.insert(0,"+quote(SOURCE_BUNDLE)+")",
     "from universal.solo_stateful_v2 import validate_profile",
     "d=json.load(open("+quote(SOURCE_PROFILE)+",'r',encoding='utf8'))",
-    "if validate_profile(d).digest!="+quote(P.profile_sha256)+": raise ValueError('profile digest drift')",
-    "print('EXACT_SOURCE_V2_OK')",
+    "assert validate_profile(d).digest=="+quote(P.profile_sha256),
+    "print('EXACT_PROFILE_DIGEST_OK')",
   ].join('\n');
-  if(fixedPython(script)!=='EXACT_SOURCE_V2_OK')FAIL('source_payload_untrusted');
+  if(fixedPython(profileProof)!=='EXACT_PROFILE_DIGEST_OK')
+    FAIL('candidate_profile_untrusted');
   return p;
 }
 function runtimePid(){
