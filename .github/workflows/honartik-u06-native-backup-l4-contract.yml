@@ -1,0 +1,46 @@
+name: Honartik U06 Native Backup Level-4 Registration — Source Only
+
+on:
+  pull_request:
+    paths:
+      - 'honartik-u06-native-backup-registration-review-v1.cjs'
+      - 'test-honartik-u06-native-backup-registration-review-v1.cjs'
+      - 'manifests/honartik-u06-native-backup-registration-review-v1.json'
+      - 'docs/runbooks/honartik-u06-native-backup-l4-registration-20261110.md'
+      - '.github/workflows/honartik-u06-native-backup-l4-contract.yml'
+  push:
+    branches:
+      - 'review/honartik-u06-native-backup-l4-registration-20261110'
+
+permissions:
+  contents: read
+
+jobs:
+  source-only-no-provider-registration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Syntax and strict no-execution/refusal contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --version
+          node --check honartik-u06-native-backup-registration-review-v1.cjs
+          node --check test-honartik-u06-native-backup-registration-review-v1.cjs
+          node --test test-honartik-u06-native-backup-registration-review-v1.cjs
+          node - <<'NODE'
+          'use strict';
+          const assert = require('node:assert/strict');
+          const m = require('./honartik-u06-native-backup-registration-review-v1.cjs');
+          assert.equal(m.EXPECTED.level,4);
+          assert.equal(m.EXPECTED.installed_host_action_binding,false);
+          assert.equal(m.EXPECTED.signed_root_registration_authority_pinned,false);
+          assert.equal(m.noRuntimeArguments([]).production_deploy_authorized,false);
+          console.log('U06_REGISTRATION_REVIEW_ONLY=PASS');
+          console.log('TRUSTED_PROVIDER_REGISTRATION=NOT_PERFORMED');
+          console.log('PRODUCTION_MYSQL_CREDENTIAL_CREATED=FALSE');
+          console.log('PRODUCTION_DEPLOY_AUTHORIZED=FALSE');
+          NODE
