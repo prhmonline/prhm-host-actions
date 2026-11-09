@@ -27,6 +27,19 @@ const IDS=/^tx-[a-f0-9-]{36}$/;
 const PROFILE='solo_company.production.json';
 const manifestName='installation.json';
 const wrapperName='deploy-project';
+const WRAPPER_SHA='4c67a86046d0f2eb511a5fabe81b14e35ab9c17aaadf33c2064fa9d68e8989ce';
+function canonical(v){
+  if(Array.isArray(v))return v.map(canonical);
+  if(v!==null&&typeof v==='object'){
+    const out={};for(const k of Object.keys(v).sort())out[k]=canonical(v[k]);
+    return out;
+  }
+  return v;
+}
+function profileHash(bytes){
+  let v;try{v=JSON.parse(bytes.toString('utf8'))}catch(_){FAIL('profile_json_invalid')}
+  return hash(Buffer.from(JSON.stringify(canonical(v))));
+}
 
 function directory(p,uid=process.getuid()){
   const st=fs.lstatSync(p);
@@ -97,7 +110,7 @@ function params(args){
                    candidateDigest,profileSha]){
     if(typeof s!=='string'||!SHA.test(s))FAIL('sha_invalid');
   }
-  if(expectedCurrent!==PINS.installed_digest||
+  if(wrapperSha!==WRAPPER_SHA||expectedCurrent!==PINS.installed_digest||
      expectedManifestSha!==PINS.manifest_preimage_sha256||
      candidateDigest!==PINS.candidate_digest||
      profileSha!==PINS.profile_sha256)
@@ -119,7 +132,7 @@ function attestBefore(cfg){
      exists(cfg.profile))FAIL('preimage_mismatch');
   const obj=JSON.parse(manifest.toString('utf8'));
   if(obj.digest!==cfg.expectedCurrent||
-     obj.entrypoint!==path.join(cfg.prefix,wrapperName))
+     obj.entrypoint!==path.join(PINS.installer_prefix,wrapperName))
     FAIL('preimage_manifest_invalid');
   return {target,wrapper,manifest};
 }
@@ -206,7 +219,7 @@ function verifyCandidateOnDisk(cfg){
 }
 function installProfile(config,profileBytes){
   const cfg=params(config);
-  if(!Buffer.isBuffer(profileBytes)||hash(profileBytes)!==cfg.profileSha)
+  if(!Buffer.isBuffer(profileBytes)||profileHash(profileBytes)!==cfg.profileSha)
     FAIL('candidate_profile_digest_mismatch');
   if(exists(cfg.profile))FAIL('profile_already_exists');
   const current=fs.readlinkSync(cfg.current);
@@ -219,7 +232,7 @@ function verifyPost(config){
   verifyCandidateOnDisk(cfg);
   exactCurrent(cfg.prefix,cfg.candidateDigest);
   if(hash(fs.readFileSync(cfg.wrapper))!==cfg.wrapperSha||
-     hash(fs.readFileSync(cfg.profile))!==cfg.profileSha)FAIL('postimage_digest_invalid');
+     profileHash(fs.readFileSync(cfg.profile))!==cfg.profileSha)FAIL('postimage_digest_invalid');
   const m=JSON.parse(fs.readFileSync(cfg.manifest,'utf8'));
   if(m.digest!==cfg.candidateDigest||m.previous!==cfg.expectedCurrent)
     FAIL('postimage_manifest_invalid');
@@ -237,8 +250,15 @@ function finish(config,dir){
 }
 function recover(config,dir){
   const cfg=params(config),j=readJournal(dir,cfg);
-  if(j.status==='COMMITTED')return {status:'COMMITTED',changed:false};
-  if(j.status==='ROLLED_BACK')return {status:'ROLLED_BACK',changed:false};
+  if(j.status==='COMMITTED'||j.status==='ROLLED_BACK'){
+    if(exists(cfg.lock)){
+      lockedFor(cfg,j.id);
+      if(j.status==='COMMITTED')verifyPost(cfg);
+      else attestBefore(cfg);
+      releaseLock(cfg,j.id);
+    }
+    return {status:j.status,changed:false};
+  }
   lockedFor(cfg,j.id);
   const wrapper=readSnapshot(dir,'before-wrapper.bin',cfg.wrapperSha);
   const manifest=readSnapshot(dir,'before-manifest.bin',cfg.expectedManifestSha);
@@ -246,7 +266,7 @@ function recover(config,dir){
   if(exists(cfg.profile)){
     const st=regular(cfg.profile);
     if((st.mode&0o777)!==0o600||
-       hash(fs.readFileSync(cfg.profile))!==cfg.profileSha)
+       profileHash(fs.readFileSync(cfg.profile))!==cfg.profileSha)
       FAIL('foreign_profile_recovery_refused');
   }
   // Protect from unrelated current-pointer manipulation.
