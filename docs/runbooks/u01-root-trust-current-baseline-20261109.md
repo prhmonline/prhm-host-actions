@@ -15,6 +15,37 @@ This attestation is from read-only RDC inspection of prhm-production, corroborat
 - Current package: 28 Python source files
 - Independent signed provenance of the November 6 privileged engine installation: **not established by this inspection**.
 
+## Additional direct current/previous source closure attestation (2026-11-09 16:25 +03:30)
+
+Read-only `universal.install.bundle_digest()` was invoked on the actual installed
+`current` and previous `versions/47e248...` directories. Both recomputed
+SHA256 source-closure digests **exactly match** the installation manifest:
+`08889c18...` and `47e248...`. Both contain **28 source files**, and the
+only differences between their relative file SHA256 maps are exactly:
+
+| Changed source | Previous SHA256 | Current SHA256 |
+| --- | --- | --- |
+| `universal/backup.py` | `6e8b8f65eec3638900f70059ccf7c265fe45010fadd98e0de45f5cdf1e6dcdea` | `c61de39ba53aa41d6b1619c2991a944d0dcace16ae720497625a7bd8af0de052` |
+| `universal/engine.py` | `7f14d40066776d6f0757bb014ce21973dcb63948121f2a6e7514f655a05787a4` | `42a24579e3d7916ff7cf599310779c415eb5a8410242999cc0a9e6ab83083a35` |
+
+Current installation.json SHA256 is
+`b11c7f601307b702f3c7380485851ecf9a23e15fd91c93b7796373f817a2a2a3`,
+mode 0600, root-owned. Its only keys are
+`activated_as_legacy_entrypoint`, `digest`, `entrypoint` and
+`previous`: it **does not record** the signed Provider/Approval Center
+request, signing authority or Git source commit.
+
+The two changed files are **not byte-identical** to the corresponding files
+at `prhmonline/deploy-control` PR #71 head commit
+`04b8cb4c9f4613ada1743fc9f954cd197dafb8bd`. Git SHA-1 blob
+comparison on the actual installed files gives `backup.py=f76a4d9b0c...`
+and `engine.py=694f05be187...`; GitHub source blobs at that commit
+are `9493c53cec98...` and `977a79f23f6...` respectively.
+This difference **does not establish maliciousness**, but does mean that
+PR #71 alone cannot attest the installed bundle's source provenance.
+The current preflight therefore checks the **full 28-file source closure**
+as well as both changed file SHA values, without implying signed provenance.
+
 ## Current authority-owner SHA256 preimages
 
 | Authority file | SHA256 | uid/mode |
