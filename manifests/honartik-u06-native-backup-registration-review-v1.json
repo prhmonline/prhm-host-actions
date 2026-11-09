@@ -1,0 +1,80 @@
+{
+  "schema": "prhm.host_actions.honartik_u06.review_registration_manifest.v1",
+  "action": "honartik_u06_native_backup_register_v1",
+  "operation": "host_action.honartik_u06_native_backup_register_v1",
+  "purpose": "U06 native Universal Honartik backup account and mandatory encrypted Node1 offsite admission",
+  "risk": "critical",
+  "level": 4,
+  "source_repository": "prhmonline/prhm-host-actions",
+  "source_commit": "f9ea5379af7bbaaa6a6b87b59f05fa382f4e56eb",
+  "source_commit_is_separate_from_this_manifest_commit": true,
+  "source_blobs": [
+    {
+      "path": "honartik-u06-native-backup-registration-review-v1.cjs",
+      "git_blob_sha1": "2c181fb6eecfb19eb8df49d068314e734a18aba4"
+    },
+    {
+      "path": "test-honartik-u06-native-backup-registration-review-v1.cjs",
+      "git_blob_sha1": "f9729cccd922fd81b86131686ee2da3cc9d6c533"
+    },
+    {
+      "path": ".github/workflows/honartik-u06-native-backup-l4-contract.yml",
+      "git_blob_sha1": "d43f96019a2b884899e9fc2e4beb09652c7a51e1"
+    },
+    {
+      "path": "docs/runbooks/honartik-u06-native-backup-l4-registration-20261110.md",
+      "git_blob_sha1": "562253fcb8e0da3ccb41bee29cf920225ed27f63"
+    }
+  ],
+  "trusted_host_preimages": {
+    "host": "prhm-production.prhm.ir",
+    "profile_path": "/etc/deploy-control/projects/honartik_back.production.json",
+    "profile_sha256": "79783874cb5170eec3dedcc536f713c4567c585e118f881c1035862a7bba8698",
+    "native_adapter_path": "/usr/local/libexec/deploy-control/universal/current/universal/adapters/database.py",
+    "native_adapter_sha256": "d81223e31bde684f83d1b8b3c93a8fdf2bd4797db33159bf681e6d3898ade2a3",
+    "native_secret_path": "/etc/deploy-control/secrets/honartik_back/mysql.cnf",
+    "native_secret_present": false,
+    "profile_offsite_required": false,
+    "independent_provider_bootstrap_key_present": false,
+    "live_u06_action_binding_present": false
+  },
+  "explicit_denials": {
+    "source_review_only": true,
+    "automatically_installable": false,
+    "trusted_provider_registration_complete": false,
+    "level4_user_approval_obtained": false,
+    "signed_one_time_receipt_consumed": false,
+    "database_credentials_installed": false,
+    "production_database_modified": false,
+    "native_production_backup_verified": false,
+    "backend_production_deploy_authorized": false
+  },
+  "registration_requirements": {
+    "root_provider_trust_anchor": "independently authenticated, reviewed and SHA-pinned; unavailable now",
+    "control_plane_owners": [
+      "Agent API",
+      "Host Action Executor",
+      "Approval Center Policy",
+      "MCP action registry"
+    ],
+    "signed_approval_scope": "host_action.honartik_u06_native_backup_register_v1",
+    "approval_max_age_seconds": 180,
+    "single_use": true,
+    "executor_side_native_provenance_checks": true,
+    "tested_crash_rollback_required": true,
+    "no_arbitrary_command_or_sql_arguments": true
+  },
+  "further_gates": [
+    "separately approved registry/bootstrap transaction",
+    "purpose-limited backup account and executor-owned 0600 client options",
+    "actual installed native Universal backup and isolated restore with full financial mysqlcheck",
+    "profile offsite_required=true with restart persistence",
+    "independent recent encrypted Node1 offsite restore attestation",
+    "separate U05 migration admission and U03 PHP/Apache cutover"
+  ],
+  "source_test": {
+    "workflow_url": "https://github.com/prhmonline/prhm-host-actions/actions/runs/42711675352",
+    "result": "16/16 PASS",
+    "production_test": false
+  }
+}
