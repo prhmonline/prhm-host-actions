@@ -174,6 +174,11 @@ function makeProductionHost(){
       // Verify exact durable readbacks, not a caller-provided boolean.
       const files=['journal.json','before-wrapper.bin','before-manifest.bin'];
       for(const f of files)regular(path.join(j.dir,f),0o600,32768);
+      const wrapperSnapshot=fs.readFileSync(path.join(j.dir,'before-wrapper.bin'));
+      const manifestSnapshot=fs.readFileSync(path.join(j.dir,'before-manifest.bin'));
+      if(crypto.createHash('sha256').update(wrapperSnapshot).digest('hex')!==WRAPPER_SHA||
+         crypto.createHash('sha256').update(manifestSnapshot).digest('hex')!==P.manifest_preimage_sha256)
+        FAIL('durable_snapshot_drift');
       const x=JSON.parse(fs.readFileSync(path.join(j.dir,'journal.json'),'utf8'));
       if(x.status!=='PREPARED'||x.operation!==P.operation)
         FAIL('prepared_journal_untrusted');
@@ -261,6 +266,8 @@ function makeProductionHost(){
     },
     releaseLock:async(lease)=>{
       leaseMatches(lease);
+      if(!internal.journal&&fs.existsSync(path.join(JOURNALS,'active.lock')))
+        FAIL('RECOVERY_REQUIRED_UNCERTAIN_JOURNAL');
       if(internal.journal){
         const j=JSON.parse(fs.readFileSync(path.join(internal.journal.dir,'journal.json'),'utf8'));
         if(j.status==='PREPARED'&&!internal.receiptConsumed){
@@ -268,6 +275,8 @@ function makeProductionHost(){
         }else if(!['ROLLED_BACK','COMMITTED'].includes(j.status)){
           FAIL('RECOVERY_REQUIRED_GUARD_RETAINED');
         }
+        if(j.status==='COMMITTED')native.verifyPost(CFG);
+        if(j.status==='ROLLED_BACK')native.attestBefore(CFG);
       }
       fs.unlinkSync(GUARD);fsyncDir(JOURNALS);
       internal.lease=null;
