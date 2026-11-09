@@ -41,3 +41,13 @@ The owner signature from `host_action.solo_company_runtime_registration_v1` is a
 `SOURCE_GATE=PASS`, `LIVE_READ_ONLY_PREFLIGHT=PASS`, `TRUSTED_NATIVE_ROOT_ADAPTER=NOT_INSTALLED`, `FRESH_SIGNED_V2_LEVEL4=NOT_ISSUED`, `PRODUCTION_UNIVERSAL_V2=NOT_INSTALLED`, `SOLO_PROFILE_REGISTERED=FALSE`.
 
 **No production mutation permitted until the distinct signed release, reviewed root driver and crash recovery are ready.**
+
+## 2026-11-09 — Native durable recovery implementation and direct host tests
+
+The new SOURCE-ONLY `solo-universal-v2-native-recovery-v1.cjs` implements a real fsync-backed four-asset PREPARED/APPLYING/COMMITTED/ROLLING_BACK/ROLLED_BACK journal for the existing Universal `current` symlink, exact `deploy-project` wrapper, exact `installation.json`, and initially absent `solo_company.production.json` profile. The original wrapper SHA-256 is independently pinned to `4c67a86046d0f2eb511a5fabe81b14e35ab9c17aaadf33c2064fa9d68e8989ce`; old manifest digest and canonical v2 profile digest are pinned. It requires an externally trusted, fixed-root driver and exposes **NO executable installer or signer CLI**.
+
+`test-solo-universal-v2-native-recovery-v1.cjs` includes actual Linux filesystem fixtures using exact production wrapper+manifest bytes and the reviewed v2 profile, durable snapshot and lock, successful commit, three levels of partial rollback, foreign-file and pointer refusal, and **two real child-process SIGKILL tests** (after pointer flip and after durable COMMITTED before releasing lock).
+
+**Verified on the actual `prhm-production` Linux kernel via RDC**, from disposable `/var/tmp/prhm-solo-v2-crash-lab-*` only, cleaned afterward: `SOLO_V2_NATIVE_REAL_LINUX_TESTS=13 PASS`, `SERVER_NATIVE_SIGKILL_TESTS=PASS`. Installed Universal pointer still `08889c18a570cc2bff408dfbe78b7e5f4f8da24f465b4fdd445640cd7f89d17d`, production Solo profile ABSENT, Solo Runtime systemd active, health HTTP 200. The corresponding source GitHub Actions tests passed.
+
+**Critical distinction:** this is an **auditable native transaction core**, not yet the production-owned root dispatcher integrating source provenance, live receipt verification/consumption and a signed Python `install_bundle()` activation. Test and production have no authorization equivalence. A fresh one-time L4 signed permit and a separately reviewed/installed root driver remain blockers. No production install was attempted.
