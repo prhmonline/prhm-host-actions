@@ -18,9 +18,13 @@ const FIXED = Object.freeze({
   currentBundle: digest,
   previousBundle: '47e248686971fd373fd32ebe50f593deae6e98e0196ae7e7021508ecabb3c181',
   backupSha256: 'c61de39ba53aa41d6b1619c2991a944d0dcace16ae720497625a7bd8af0de052',
+  engineSha256: '42a24579e3d7916ff7cf599310779c415eb5a8410242999cc0a9e6ab83083a35',
+  expectedBundleFileCount: 28,
+  previousBundleDir: '/usr/local/libexec/deploy-control/universal/versions/47e248686971fd373fd32ebe50f593deae6e98e0196ae7e7021508ecabb3c181',
   installation: '/usr/local/libexec/deploy-control/universal/installation.json',
   pointer: '/usr/local/libexec/deploy-control/universal/current',
   backup: '/usr/local/libexec/deploy-control/universal/current/universal/backup.py',
+  engine: '/usr/local/libexec/deploy-control/universal/current/universal/engine.py',
   providerAnchor: '/var/lib/prhm-agent-selfmaint-exec/root-of-trust/provider-bootstrap-ed25519-public.pem',
   nativeRegistrar: '/opt/prhm-agent-selfmaint-exec/actions/prhm-action-registry-install-native-v1.cjs',
   ownerPreimages: Object.freeze({
@@ -78,6 +82,46 @@ function safeFile(file, maxBytes=2_000_000) {
     return {present:false,safe:false};
   }
 }
+
+/**
+ * Exact, bounded read-only implementation of universal.install.bundle_digest.
+ * Walk all package files (including ignored __pycache__ subtrees to reject
+ * symlinks), reject non-Python source content and verify exact file closure.
+ * This establishes byte integrity, NOT independent Git or signer provenance.
+ */
+function bundleSourceDigest(sourceRoot) {
+  const base=path.join(sourceRoot,'universal');
+  const sources=[];
+  let visited=0;
+  function walk(dir,parts) {
+    const entries=fs.readdirSync(dir,{withFileTypes:true}).sort((a,b)=>
+      a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
+    for(const entry of entries) {
+      visited++;
+      if(visited>2000) throw Error('source_inventory_limit');
+      const nextParts=[...parts,entry.name],full=path.join(dir,entry.name);
+      const st=fs.lstatSync(full);
+      if(st.isSymbolicLink()) throw Error('source_symlink_forbidden');
+      if(st.isDirectory()) { walk(full,nextParts);continue; }
+      if(!st.isFile()) throw Error('source_special_file_forbidden');
+      if(nextParts.includes('__pycache__')) continue;
+      if(!entry.name.endsWith('.py')||st.nlink!==1||st.size>2_000_000)
+        throw Error('source_non_python_or_unsafe_file');
+      sources.push({rel:'universal/'+nextParts.join('/'),file:full});
+    }
+  }
+  walk(base,[]);
+  sources.sort((a,b)=>a.rel < b.rel ? -1 : a.rel > b.rel ? 1 : 0);
+  if(!sources.some(x=>x.rel==='universal/cli.py'))
+    throw Error('source_cli_missing');
+  const hasher=crypto.createHash('sha256');
+  for(const source of sources) {
+    hasher.update(source.rel,'utf8').update(Buffer.from([0]));
+    hasher.update(fs.readFileSync(source.file)).update(Buffer.from([0]));
+  }
+  return Object.freeze({digest:hasher.digest('hex'),fileCount:sources.length});
+}
+
 function snapshotLive() {
   const manifest=safeFile(FIXED.installation);
   let installed={};
@@ -103,6 +147,10 @@ function snapshotLive() {
   const anchor=safeFile(FIXED.providerAnchor,4096);
   const native=safeFile(FIXED.nativeRegistrar,500_000);
   const backup=safeFile(FIXED.backup);
+  const engine=safeFile(FIXED.engine);
+  let currentSource=null,previousSource=null;
+  try { currentSource=bundleSourceDigest(FIXED.pointer); } catch {}
+  try { previousSource=bundleSourceDigest(FIXED.previousBundleDir); } catch {}
   const policy=safeFile(FIXED.ownerPreimages.policy.path);
   let policyRegistration=false;
   if(policy.safe) {
@@ -116,7 +164,9 @@ function snapshotLive() {
     } catch {}
   }
   return {installed,manifestSafe:manifest.safe,currentPointerValid,
-    backupSha256:backup.safe?backup.sha256:null,owners,
+    backupSha256:backup.safe?backup.sha256:null,
+    engineSha256:engine.safe?engine.sha256:null,
+    currentSource,previousSource,owners,
     providerAnchorSafe:anchor.safe&&anchor.uid===0&&(anchor.mode&0o022)===0,
     nativeRegistrarSafe:native.safe&&native.uid===0&&(native.mode&0o022)===0&&
       native.bytes.includes(Buffer.from(FIXED.action)),
@@ -128,7 +178,12 @@ function classify(s) {
       s.installed?.previous===FIXED.previousBundle,
     safeInstallationManifest:s.manifestSafe===true,
     correctCurrentPointer:s.currentPointerValid===true,
-    exactBackup:s.backupSha256===FIXED.backupSha256
+    exactBackup:s.backupSha256===FIXED.backupSha256,
+    exactEngine:s.engineSha256===FIXED.engineSha256,
+    currentBundleBytesVerified:s.currentSource?.digest===FIXED.currentBundle &&
+      s.currentSource?.fileCount===FIXED.expectedBundleFileCount,
+    previousBundleBytesVerified:s.previousSource?.digest===FIXED.previousBundle &&
+      s.previousSource?.fileCount===FIXED.expectedBundleFileCount
   };
   for(const [name,pin] of Object.entries(FIXED.ownerPreimages)) {
     const current=s.owners?.[name];
@@ -149,7 +204,8 @@ function classify(s) {
     legacyBackupOnlyCandidateIsObsolete:s.installed?.digest!==LEGACY.base,
     gates,blockers,
     sourcePreimageExact:Object.keys(gates).filter(k=>k.startsWith('owner_'))
-      .every(k=>gates[k]) && gates.exactCurrentBundle && gates.correctCurrentPointer,
+      .every(k=>gates[k]) && gates.exactCurrentBundle && gates.correctCurrentPointer &&
+      gates.exactEngine && gates.currentBundleBytesVerified && gates.previousBundleBytesVerified,
     nativeRegistrationReadyForIndependentReview:blockers.length===0,
     rootOfTrustMutationAuthorized:false,
     signedProviderBootstrapAccepted:false,
@@ -158,7 +214,7 @@ function classify(s) {
     productionChanged:false
   });
 }
-module.exports=Object.freeze({FIXED,LEGACY,classify,snapshotLive,safeFile,
+module.exports=Object.freeze({FIXED,LEGACY,classify,snapshotLive,safeFile,bundleSourceDigest,
   ROOT_ACTION_REGISTERED_BY_THIS_MODULE:false,PRODUCTION_AUTHORIZED:false});
 if(require.main===module) {
   if(process.argv.length!==2) {
