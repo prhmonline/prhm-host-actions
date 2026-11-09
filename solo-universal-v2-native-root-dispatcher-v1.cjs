@@ -306,7 +306,8 @@ function reconcileInterruptedRelease(){
   catch(_){FAIL('journal_parse_invalid')}
   if(j.id!==txns[0]||j.operation!==P.operation)
     FAIL('recovery_journal_identity_mismatch');
-  if(['APPLYING','ROLLING_BACK','COMMITTED'].includes(j.status)){
+  if(['APPLYING','ROLLING_BACK','COMMITTED'].includes(j.status)||
+     (j.status==='PREPARED'&&j.permitJti!==undefined)){
     if(!/^[a-f0-9]{40}$/.test(j.driverGitSha||'')||
        j.driverGitSha!==sourceSha||
        !/^[a-f0-9-]{36}$/i.test(j.permitJti||'')||
@@ -324,11 +325,6 @@ function reconcileInterruptedRelease(){
        receipt.candidate_digest!==P.candidate_digest||
        receipt.profile_sha256!==P.profile_sha256)
       FAIL('recovery_ledger_not_bound');
-  }else if(j.status==='PREPARED'&&j.permitJti!==undefined){
-    // Permit was consumed but no active-payload phase was started; safely
-    // cancel journal, never modify the already-running Universal pointer.
-    directory(permit.LEDGER);
-    regular(path.join(permit.LEDGER,j.permitJti+'.json'),0o600,32768);
   }
   let result;
   if(j.status==='PREPARED')result=native.cancelPrepared(CFG,dir);
@@ -337,6 +333,9 @@ function reconcileInterruptedRelease(){
   else FAIL('unrecognized_recovery_state');
   if(result.status!=='COMMITTED'&&result.status!=='ROLLED_BACK')
     FAIL('recovery_not_terminal');
+  // Prove the exact terminal state *before* clearing a stale guard.
+  if(result.status==='COMMITTED')native.verifyPost(CFG);
+  else native.attestBefore(CFG);
   // No root guard release on uncertain or unverifiable state.
   fs.unlinkSync(GUARD);fsyncDir(JOURNALS);
   return {status:result.status,changed:result.changed===true,
