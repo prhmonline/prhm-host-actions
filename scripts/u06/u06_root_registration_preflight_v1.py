@@ -14,6 +14,7 @@ import socket
 import stat
 import subprocess
 import sys
+from typing import Optional
 
 HOST = "prhm-production.prhm.ir"
 ACTION = "honartik_u06_native_backup_register_v1"
@@ -29,7 +30,7 @@ OWNERS = {
     "approval_policy": "/opt/prhm-company-control-plane/config/approval-policy.json",
 }
 
-def file_metadata(filename: str, expected: str | None = None, digest: bool = True) -> dict:
+def file_metadata(filename: str, expected: Optional[str] = None, digest: bool = True) -> dict:
     """Return only filesystem metadata and SHA, never file contents."""
     p = Path(filename)
     try:
@@ -62,7 +63,10 @@ def file_metadata(filename: str, expected: str | None = None, digest: bool = Tru
             raise RuntimeError("file_changed_between_stat_and_open")
         h = hashlib.sha256()
         with os.fdopen(fd, "rb", closefd=False) as f:
-            while chunk := f.read(1024 * 1024):
+            while True:
+                chunk = f.read(1024 * 1024)
+                if not chunk:
+                    break
                 h.update(chunk)
         out["sha256"] = h.hexdigest()
     finally:
