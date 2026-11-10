@@ -34,3 +34,23 @@ jobs:
         run: |
           grep -F 'production_deploy_authorized": False' scripts/u06/u06_root_registration_preflight_v1.py
           ! grep -Eq 'mysqldump|mariadb-dump|chown\(|chmod\(|write_bytes\(' scripts/u06/u06_root_registration_preflight_v1.py
+
+  python36-container:
+    name: Python 3.6.15 (networkless container)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pull immutable-runtime family (legacy compatibility only)
+        run: docker pull python:3.6.15-slim-buster
+      - name: Verify exact Python 3.6 interpreter and run offline unit tests
+        run: |
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges \
+            -e PYTHONDONTWRITEBYTECODE=1 \
+            -v "$PWD:/repo:ro" -w /repo python:3.6.15-slim-buster \
+            python -B -c "import sys; assert sys.version_info[:2] == (3, 6); print(sys.version)"
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges \
+            -e PYTHONDONTWRITEBYTECODE=1 \
+            -v "$PWD:/repo:ro" -w /repo python:3.6.15-slim-buster \
+            python -B -m unittest discover -s tests/u06 -p 'test_u06_root_registration_preflight_v1.py' -v
