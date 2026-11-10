@@ -1,0 +1,52 @@
+{
+  "schema": "prhm.u06.native-root-registration.owner-preimages.v1",
+  "project": "honartik_back.production",
+  "host": "prhm-production.prhm.ir",
+  "operation": "honartik_u06_native_backup_register_v1",
+  "evidence_source": "owner root-terminal sha256sum/stat, 2026-11-11",
+  "expected_policy_sha": "79783874cb5170eec3dedcc536f713c4567c585e118f881c1035862a7bba8698",
+  "expected_adapter_sha": "d81223e31bde684f83d1b8b3c93a8fdf2bd4797db33159bf681e6d3898ade2a3",
+  "owner_files": [
+    {
+      "key": "agent_api",
+      "path": "/opt/prhm-agent-selfmaint/server.js",
+      "sha256": "57828b344aca1d1fb51e74cc2c64094edb03c5fd86fe68420d7185f0d12b6530",
+      "owner": "root",
+      "group": "root",
+      "mode": "0644",
+      "bytes": 34605
+    },
+    {
+      "key": "root_executor",
+      "path": "/opt/prhm-agent-selfmaint-exec/server.js",
+      "sha256": "4c136a210681ee07a45d96d38d91c1253afcce67feed0a9d062f9f14d0557169",
+      "owner": "root",
+      "group": "root",
+      "mode": "0755",
+      "bytes": 115918
+    },
+    {
+      "key": "agent3_mcp",
+      "path": "/home/agent/ssh-mcp-server/src/plugins/hostActionsV2.js",
+      "sha256": "0c6a74757696a0d85840a0aec1bc53c91431481024f2be56e4ecb02f789073ef",
+      "owner": "root",
+      "group": "root",
+      "mode": "0600",
+      "bytes": 12321
+    },
+    {
+      "key": "approval_policy",
+      "path": "/opt/prhm-company-control-plane/config/approval-policy.json",
+      "sha256": "26359a31efdfe0acde07cc9f4001afddee98efaa206e4528880068bf93c425f5",
+      "owner": "root",
+      "group": "root",
+      "mode": "0644",
+      "bytes": 31167
+    }
+  ],
+  "native_action_installed": false,
+  "root_operation_authorized": false,
+  "application_deployment_allowed": false,
+  "requires_actual_live_byte_review": true,
+  "requires_rollback_journal_before_write": true
+}
