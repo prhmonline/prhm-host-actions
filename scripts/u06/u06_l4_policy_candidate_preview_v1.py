@@ -82,8 +82,140 @@ def candidate(source):
     return target
 
 
+# Actual Root-controlled source fingerprints measured by owner on
+# prhm-production; this tool can only inspect and refuse drift.
+OWNER_SOURCES = {
+    'agent_api': (
+        '/opt/prhm-agent-selfmaint/server.js',
+        '57828b344aca1d1fb51e74cc2c64094edb03c5fd86fe68420d7185f0d12b6530',
+        34605, 0o644
+    ),
+    'root_executor': (
+        '/opt/prhm-agent-selfmaint-exec/server.js',
+        '4c136a210681ee07a45d96d38d91c1253afcce67feed0a9d062f9f14d0557169',
+        115918, 0o755
+    ),
+    'agent3_mcp': (
+        '/home/agent/ssh-mcp-server/src/plugins/hostActionsV2.js',
+        '0c6a74757696a0d85840a0aec1bc53c91431481024f2be56e4ecb02f789073ef',
+        12321, 0o600
+    )
+}
+API_REGISTRY = ("  host_action_v2_installer_v1: { operation: "
+                "'host_action.host_action_v2_installer_v1', rollback: "
+                "'host-action-v2:host-action-v2-installer-v1:four-file-restore' },")
+EXEC_REGISTRY = ("  host_action_v2_installer_v1:{operation:"
+                 "'host_action.host_action_v2_installer_v1',"
+                 "kind:'host_action_v2_installer_v1'},")
+MC_ENUM = 'const HostActionV2=z.enum(['
+ROOT_DISPATCH = 'applyHostActionV2=async function(action){'
+AUTH_CONSUME = ("const authz=await callBase("
+                "'/v2/host-actions/authorize-consume','POST',"
+                "{action,approval_token:token});")
+EXEC_APPLY = 'const result=await applyHostActionV2(action);'
+DENY = ("if(action==='" + ACTION +
+        "')throw new Error('u06_native_root_dispatch_not_installed');")
+NEW_API = ("  " + ACTION + ": { operation: '" + OPERATION +
+           "', rollback: '" + ROLLBACK + "' },")
+NEW_EXEC = ("  " + ACTION + ":{operation:'" + OPERATION +
+            "',kind:'" + ACTION + "'},")
+NEW_MCP = "'" + ACTION + "',"
+
+
+def read_exact_root(path, pin, size, mode):
+    """Check root ownership, no symlink and inode stability, read only."""
+    original = os.lstat(path)
+    require(stat.S_ISREG(original.st_mode) and
+            original.st_uid == 0 and original.st_gid == 0 and
+            stat.S_IMODE(original.st_mode) == mode and
+            original.st_nlink == 1 and original.st_size == size,
+            'OWNER_SOURCE_TRUST_DRIFT')
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+        opened = os.fstat(fd)
+        require(opened.st_dev == original.st_dev and
+                opened.st_ino == original.st_ino and
+                opened.st_size == original.st_size and
+                opened.st_uid == 0 and opened.st_gid == 0 and
+                stat.S_IMODE(opened.st_mode) == mode,
+                'OWNER_SOURCE_RACED')
+        with os.fdopen(fd, 'rb', closefd=False) as f:
+            raw = f.read(size + 1)
+        require(len(raw) == size and sha(raw) == pin,
+                'OWNER_SOURCE_SHA_DRIFT')
+        return raw
+    finally:
+        os.close(fd)
+
+
+def audit_routes(read_sources):
+    """Pure in-memory route review; actual Root file checks happen at call site."""
+    require(set(read_sources) == set(OWNER_SOURCES), 'ROUTE_SOURCE_SHAPE')
+    try:
+        api = read_sources['agent_api'].decode('utf-8')
+        exe = read_sources['root_executor'].decode('utf-8')
+        mcp = read_sources['agent3_mcp'].decode('utf-8')
+    except (UnicodeDecodeError, AttributeError):
+        raise ValueError('U06_L4_POLICY_PREVIEW_OWNER_NOT_UTF8')
+    for text, anchor in [
+        (api, API_REGISTRY), (exe, EXEC_REGISTRY),
+        (mcp, MC_ENUM), (exe, ROOT_DISPATCH),
+        (exe, AUTH_CONSUME), (exe, EXEC_APPLY),
+        (api, 'const HOST_ACTION_V2_LEVEL3 = new Set('),
+        (api, 'function hostActionV2ApprovalMeta(action)'),
+        (exe, 'host_actions_v2: Object.keys(HOST_ACTION_V2_SPECS)')
+    ]:
+        require(text.count(anchor) == 1, 'ROUTE_ANCHOR_MISSING_OR_DUPLICATE')
+    require(ACTION not in api and ACTION not in exe and ACTION not in mcp,
+            'ROUTE_U06_ALREADY_REGISTERED')
+    require(exe.index(AUTH_CONSUME) < exe.index(EXEC_APPLY),
+            'APPROVAL_MUST_PRECEDE_DISPATCH')
+    start = api.index('const HOST_ACTION_V2_LEVEL3 = new Set(')
+    end = api.index('function hostActionV2ApprovalMeta(action)')
+    require(start < end and ACTION not in api[start:end],
+            'U06_MUST_NOT_BE_LEVEL3')
+    candidates = {
+        'agent_api': api.replace(API_REGISTRY, NEW_API + '\n' + API_REGISTRY),
+        'root_executor': exe.replace(
+            EXEC_REGISTRY, NEW_EXEC + '\n' + EXEC_REGISTRY
+        ).replace(ROOT_DISPATCH, ROOT_DISPATCH + DENY),
+        'agent3_mcp': mcp.replace(MC_ENUM, MC_ENUM + NEW_MCP)
+    }
+    require(candidates['root_executor'].count(DENY) == 1,
+            'FINAL_DISPATCH_NOT_DENIED')
+    require(candidates['root_executor'].index(AUTH_CONSUME) <
+            candidates['root_executor'].index(EXEC_APPLY),
+            'AUTH_ORDER_CHANGED')
+    require(ACTION not in candidates['agent_api'][start:
+            candidates['agent_api'].index(
+                'function hostActionV2ApprovalMeta(action)')],
+            'LEVEL3_PROMOTION')
+    return {key: sha(value.encode('utf-8'))
+            for key, value in candidates.items()}
+
+
+def inspect_all_routes():
+    files = {key: read_exact_root(*info)
+             for key, info in OWNER_SOURCES.items()}
+    first = {key: sha(blob) for key, blob in files.items()}
+    proposed = audit_routes(files)
+    # Check no source changed between the fingerprint and result generation.
+    for key, info in OWNER_SOURCES.items():
+        require(sha(read_exact_root(*info)) == first[key],
+                'OWNER_SOURCE_CHANGED_DURING_READ')
+    return {
+        'owner_preimage_sha256': first,
+        'candidate_sha256': proposed,
+        'candidate_root_dispatch_deny_only': True,
+        'existing_authorize_consume_before_apply': True,
+        'registration_source_written': False,
+        'registered_action_ready_to_execute': False,
+        'production_installer_authorized': False
+    }
+
+
 def main():
-    require(sys.argv[1:] == ['--preview'], 'ONLY_PREVIEW_SUPPORTED')
+    require(sys.argv[1:] in (['--preview'], ['--audit-all']), 'ONLY_READONLY_AUDIT_SUPPORTED')
     require(socket.getfqdn().lower() == HOST, 'HOST_MISMATCH')
     st = os.lstat(POLICY)
     require(stat.S_ISREG(st.st_mode) and st.st_uid == 0 and
@@ -121,9 +253,11 @@ def main():
         'root_executor_installed': False,
         'prod_db_mutated': False
     }
-    print(json.dumps(report, sort_keys=True))
+    if sys.argv[1:] == ['--audit-all']:
+        report['four_owner_inmemory_preview'] = inspect_all_routes()
     require(sha(open(POLICY, 'rb').read()) == PINNED,
             'POLICY_CHANGED_DURING_READ')
+    print(json.dumps(report, sort_keys=True))
 
 
 if __name__ == '__main__':
