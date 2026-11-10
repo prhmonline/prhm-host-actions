@@ -227,7 +227,7 @@ test('journal preparation interrupted retains lease even without journal ID',asy
    const x=fakeNative({prepareDurableRollbackJournal:()=>{throw Error('fixture_partial_fsync')}});
    await assert.rejects(core.coordinateOwnerU06(x.native,ownerProof(),options(dir)),
      /CRITICAL_PREPARE_OUTCOME_UNKNOWN_LEASE_RETAINED/);
-   assert.ok(x.calls.includes('journal'));
+   assert.ok(x.calls.includes('offsite'));
    assert.ok(!x.calls.includes('unlock'));
    assert.ok(!x.calls.includes('provision'));
    assert.ok(!x.calls.includes('rollback'),'unknown journal is not safe to reverse');
