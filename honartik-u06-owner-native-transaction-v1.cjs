@@ -89,16 +89,21 @@ async function coordinateOwnerU06(native,proof,{ledgerDir=fence.LEDGER,ledgerOwn
     REQUIRED.every(k=>typeof native[k]==='function'),
     'trusted_fixed_native_adapter_not_supplied');
   let locked=false,journal=null,mutationAttempted=false,committed=false,post=null;
+  let journalPrepareStarted=false,journalDurable=false,commitAttempted=false,retainRecoveryLease=false;
   try{
     await native.exclusiveU06Lock(F);locked=true;
     const pre=checkPreimage(await native.readExactPreimage(F));
     need(await native.verifyIndependentNode1Recovery(F,pre)===true,
       'remote_offsite_recovery_not_verified');
+    // From this point, a failed/partial write may exist even if the call
+    // throws before returning a journal ID. Never silently free the lease.
+    journalPrepareStarted=true;
     journal=await native.prepareDurableRollbackJournal(F,pre);
     need(journal&&typeof journal.id==='string'&&
       /^[a-z0-9_-]{12,100}$/i.test(journal.id),'journal_not_created');
     need(await native.assertRollbackJournalDurable(F,journal)===true,
       'journal_not_durable');
+    journalDurable=true;
     // Owner proof is permanently consumed BEFORE any attempt to change MySQL.
     // A failed/rolled-back action needs a NEW signed owner approval.
     fence.consumeVerifiedOwnerEvidence(proof,{
@@ -110,23 +115,42 @@ async function coordinateOwnerU06(native,proof,{ledgerDir=fence.LEDGER,ledgerOwn
     await native.verifyIsolatedRestoreAndFinancialIntegrity(F,journal);
     await native.enableRequiredOffsiteWithRollback(F,journal);
     post=checkPostflight(await native.verifyExactPostflight(F,journal));
+    // Commit might have reached disk before the function throws or falsely
+    // returns. Rollback on an ambiguous commit could corrupt a good backup.
+    commitAttempted=true;
     need(await native.commitDurableJournal(F,journal,post)===true,
       'journal_commit_unverified');
     committed=true;
   }catch(error){
-    if(journal&&mutationAttempted&&!committed){
+    if(commitAttempted||journalPrepareStarted&&!journalDurable){
+      // A commit could already be durable, or a journal write could be
+      // incomplete; neither may be safely rolled back from a guess.
+      retainRecoveryLease=true;
+      const reason=commitAttempted?
+        'CRITICAL_COMMIT_OUTCOME_UNKNOWN_LEASE_RETAINED':
+        'CRITICAL_PREPARE_OUTCOME_UNKNOWN_LEASE_RETAINED';
+      const err=new Error('prhm_u06_native_owner_'+reason);
+      err.cause=error;
+      throw err;
+    }
+    if(journal&&journalDurable&&!committed){
+      // Even if approval consumption failed/replayed, close the durable
+      // prepared journal via verified exact rollback before unlocking.
       try{
         await native.rollbackExactPreimage(F,journal);
         need(await native.verifyExactRollback(F,journal)===true,
           'rollback_not_verified');
       }catch(rollbackFailure){
+        retainRecoveryLease=true;
         const err=new Error('prhm_u06_native_owner_CRITICAL_RECOVERY_JOURNAL_RETAINED');
         err.cause=rollbackFailure;throw err;
       }
     }
     throw error;
   }finally{
-    if(locked)await native.releaseU06Lock(F);
+    // Release is safe after verified commit, verified rollback or a
+    // pre-journal rejection ONLY. A failed rollback retains the file lease.
+    if(locked&&!retainRecoveryLease)await native.releaseU06Lock(F);
   }
   // This return value is a coordinator-level proof only; a local *test* can
   // simulate native callbacks. Real release admission requires independent
