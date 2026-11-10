@@ -65,6 +65,15 @@ test('symlink preimage and credential creation are rejected',()=>{
   assert.equal(a.inspect().lease_present,true);
  }finally{remove(f)}
 });
+test('dangling credential symlink is NOT treated as absent',()=>{
+ const f=create();
+ try{
+  fs.symlinkSync('/nonexistent/u06-credential',f.credential);
+  const a=open(f);a.acquire();
+  assert.throws(()=>a.prepareJournal(),/credential_preimage_mismatch/);
+  assert.equal(a.inspect().lease_present,true);
+ }finally{remove(f)}
+});
 test('fixture refuses root and production scope, never registers action',()=>{
  assert.equal(Lease.ROOT_ACTION_REGISTERED,false);
  assert.equal(Lease.PRODUCTION_BACKUP_IMPLEMENTED,false);
