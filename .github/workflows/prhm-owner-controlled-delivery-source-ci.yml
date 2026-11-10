@@ -1,0 +1,36 @@
+name: PRHM owner-controlled delivery policy — source only
+on:
+  pull_request:
+    paths:
+      - 'AGENTS.md'
+      - 'ops/prhm-owner-controlled-delivery-policy-v1.cjs'
+      - 'ops/prhm-owner-controlled-delivery-policy-v1.test.cjs'
+      - 'docs/runbooks/prhm-owner-controlled-delivery-no-provider-20261110.md'
+      - '.github/workflows/prhm-owner-controlled-delivery-source-ci.yml'
+  push:
+    branches: ['policy/owner-controlled-git-ci-no-provider-20261110']
+permissions:
+  contents: read
+jobs:
+  owner-policy-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Owner coding no Provider; critical Production still fail-closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check ops/prhm-owner-controlled-delivery-policy-v1.cjs
+          node --test ops/prhm-owner-controlled-delivery-policy-v1.test.cjs
+          node - <<'NODE'
+          const {POLICY,classify}=require('./ops/prhm-owner-controlled-delivery-policy-v1.cjs');
+          if(POLICY.ordinary_development_external_provider_required||
+             POLICY.ordinary_development_level4_required||
+             classify('production_mutation').production_approved)process.exit(1);
+          console.log('PROGRAMMING_PROVIDER_APPROVAL_REQUIRED=FALSE');
+          console.log('OWNER_CONTROLLED_PRODUCTION_POLICY=REVIEW_ONLY');
+          console.log('PRODUCTION_DEPLOY_AUTHORIZED=FALSE');
+          NODE
