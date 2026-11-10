@@ -1,0 +1,146 @@
+'use strict';
+/**
+ * Bounded U06 owner-approved transaction coordinator.
+ *
+ * NO CLI, no built-in DB/SSH/fs writes other than the separate one-use
+ * evidence fence, no privileged service entrypoint, no universal deploy.
+ *
+ * This coordinator is NOT an installed Root executor. A real native adapter
+ * must be independently approved, pinned, installed and host-bound before any
+ * production operation; mock adapters in tests have ZERO authority.
+ */
+const owner=require('./honartik-u06-owner-oidc-identity-gate-v1.cjs');
+const fence=require('./honartik-u06-owner-oidc-once-fence-v1.cjs');
+const F=Object.freeze({
+  operation:owner.INTENT.operation,
+  host:owner.INTENT.host,
+  project:owner.INTENT.project,
+  database:'honartik_db',
+  account:'honartik_universal_backup',
+  account_host:'127.0.0.1',
+  grants:Object.freeze(['SELECT','SHOW VIEW','TRIGGER','EVENT']),
+  adapter_sha256:owner.INTENT.adapter_sha256,
+  profile_sha256_before:owner.INTENT.profile_sha256,
+  require_offsite:true,
+  auto_deploy:false,
+  yii_migrations:false,
+  apache_cutover:false
+});
+const REQUIRED=Object.freeze([
+  'exclusiveU06Lock',
+  'readExactPreimage',
+  'verifyIndependentNode1Recovery',
+  'prepareDurableRollbackJournal',
+  'assertRollbackJournalDurable',
+  'provisionBackupOnlyIdentityAndPrivateCredential',
+  'runInstalledUniversalNativeBackup',
+  'verifyIsolatedRestoreAndFinancialIntegrity',
+  'enableRequiredOffsiteWithRollback',
+  'verifyExactPostflight',
+  'commitDurableJournal',
+  'rollbackExactPreimage',
+  'verifyExactRollback',
+  'releaseU06Lock'
+]);
+const fail=m=>{throw new Error('prhm_u06_native_owner_'+m)};
+const need=(x,m)=>{if(!x)fail(m)};
+function checkPreimage(v){
+  need(v&&Object.keys(v).sort().join('|')===
+    ['host','project','adapter_sha256','profile_sha256','native_credential_absent',
+      'offsite_required_before','database','provider_dependency_removed'].sort().join('|'),
+    'untrusted_preimage_shape');
+  need(v.host===F.host&&v.project===F.project&&v.database===F.database&&
+    v.adapter_sha256===F.adapter_sha256&&
+    v.profile_sha256===F.profile_sha256_before&&
+    v.native_credential_absent===true&&
+    v.offsite_required_before===false&&
+    v.provider_dependency_removed===true,
+    'production_preimage_drift');
+  return v;
+}
+function checkPostflight(v){
+  need(v&&Object.keys(v).sort().join('|')===
+    ['native_backup_sha256','actual_native_functions_executed',
+     'restored_tables','restored_fk_count','finance_counts_and_amounts_unchanged',
+     'wallet_and_reserve_integrity_verified','full_mysqlcheck_pass',
+     'offsite_required_true','offsite_remote_evidence_fresh',
+     'credential_file_private','root_journal_durable',
+     'production_application_unchanged','yii_migrations_unchanged'].sort().join('|'),
+    'untrusted_postflight_shape');
+  need(typeof v.native_backup_sha256==='string'&&/^[0-9a-f]{64}$/.test(v.native_backup_sha256)&&
+    v.actual_native_functions_executed===true&&
+    Number.isInteger(v.restored_tables)&&v.restored_tables>=69&&
+    Number.isInteger(v.restored_fk_count)&&v.restored_fk_count>=49&&
+    v.finance_counts_and_amounts_unchanged===true&&
+    v.wallet_and_reserve_integrity_verified===true&&
+    v.full_mysqlcheck_pass===true&&
+    v.offsite_required_true===true&&v.offsite_remote_evidence_fresh===true&&
+    v.credential_file_private===true&&v.root_journal_durable===true&&
+    v.production_application_unchanged===true&&v.yii_migrations_unchanged===true,
+    'native_backup_postflight_not_proven');
+  return v;
+}
+async function coordinateOwnerU06(native,proof,{ledgerDir=fence.LEDGER,ledgerOwnerUid=0}={}){
+  need(owner.proofVerifiedInCurrentProcess(proof),'owner_identity_not_cryptographically_verified');
+  need(proof.intent_digest===owner.intentDigest()&&
+    proof.backend_deploy_authorized===false&&
+    proof.approval_to_modify_production===false,'owner_proof_scope_invalid');
+  need(native&&typeof native==='object'&&
+    REQUIRED.every(k=>typeof native[k]==='function'),
+    'trusted_fixed_native_adapter_not_supplied');
+  let locked=false,journal=null,mutationAttempted=false,committed=false,post=null;
+  try{
+    await native.exclusiveU06Lock(F);locked=true;
+    const pre=checkPreimage(await native.readExactPreimage(F));
+    need(await native.verifyIndependentNode1Recovery(F,pre)===true,
+      'remote_offsite_recovery_not_verified');
+    journal=await native.prepareDurableRollbackJournal(F,pre);
+    need(journal&&typeof journal.id==='string'&&
+      /^[a-z0-9_-]{12,100}$/i.test(journal.id),'journal_not_created');
+    need(await native.assertRollbackJournalDurable(F,journal)===true,
+      'journal_not_durable');
+    // Owner proof is permanently consumed BEFORE any attempt to change MySQL.
+    // A failed/rolled-back action needs a NEW signed owner approval.
+    fence.consumeVerifiedOwnerEvidence(proof,{
+      directory:ledgerDir,trustedUid:ledgerOwnerUid
+    });
+    mutationAttempted=true;
+    await native.provisionBackupOnlyIdentityAndPrivateCredential(F,journal);
+    await native.runInstalledUniversalNativeBackup(F,journal);
+    await native.verifyIsolatedRestoreAndFinancialIntegrity(F,journal);
+    await native.enableRequiredOffsiteWithRollback(F,journal);
+    post=checkPostflight(await native.verifyExactPostflight(F,journal));
+    need(await native.commitDurableJournal(F,journal,post)===true,
+      'journal_commit_unverified');
+    committed=true;
+  }catch(error){
+    if(journal&&mutationAttempted&&!committed){
+      try{
+        await native.rollbackExactPreimage(F,journal);
+        need(await native.verifyExactRollback(F,journal)===true,
+          'rollback_not_verified');
+      }catch(rollbackFailure){
+        const err=new Error('prhm_u06_native_owner_CRITICAL_RECOVERY_JOURNAL_RETAINED');
+        err.cause=rollbackFailure;throw err;
+      }
+    }
+    throw error;
+  }finally{
+    if(locked)await native.releaseU06Lock(F);
+  }
+  // This return value is a coordinator-level proof only; a local *test* can
+  // simulate native callbacks. Real release admission requires independent
+  // installed Root binding plus verified host receipts outside this library.
+  return Object.freeze({
+    operation:F.operation,
+    coordinator_completed:true,
+    source_only_callback_contract:true,
+    installed_root_binding_proven:false,
+    backend_deployment_authorized:false,
+    verified_native_postflight:post
+  });
+}
+module.exports=Object.freeze({
+  F,REQUIRED,checkPreimage,checkPostflight,coordinateOwnerU06,
+  INSTALLED_ROOT_BINDING:false,AUTO_DEPLOY:false
+});
