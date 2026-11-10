@@ -1,0 +1,26 @@
+name: U06 actual owner routing — source review only
+on:
+  push:
+    paths:
+      - 'honartik-u06-owner-root-routing-preview-v1.cjs'
+      - 'test-honartik-u06-owner-root-routing-preview-v1.cjs'
+      - 'docs/runbooks/honartik-u06-owner-root-routing-20261111.md'
+      - '.github/workflows/honartik-u06-owner-root-routing-preview-ci.yml'
+  pull_request:
+    paths:
+      - 'honartik-u06-owner-root-routing-preview-v1.cjs'
+      - 'test-honartik-u06-owner-root-routing-preview-v1.cjs'
+      - 'docs/runbooks/honartik-u06-owner-root-routing-20261111.md'
+      - '.github/workflows/honartik-u06-owner-root-routing-preview-ci.yml'
+permissions:
+  contents: read
+jobs:
+  source-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check honartik-u06-owner-root-routing-preview-v1.cjs
+      - run: node --test test-honartik-u06-owner-root-routing-preview-v1.cjs
