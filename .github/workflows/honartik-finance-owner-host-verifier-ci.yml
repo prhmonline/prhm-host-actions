@@ -1,0 +1,44 @@
+name: Honartik finance owner host verifier — source security CI
+on:
+  pull_request:
+    paths:
+      - 'honartik-finance-owner-host-verifier-v1.cjs'
+      - 'test-honartik-finance-owner-host-verifier-v1.cjs'
+      - 'scripts/install-honartik-finance-owner-host-verifier-v1.sh'
+      - '.github/workflows/honartik-finance-owner-host-verifier-ci.yml'
+      - 'docs/runbooks/honartik-finance-owner-host-install-20261111.md'
+  push:
+    branches:
+      - 'feature/honartik-finance-owner-host-verifier-20261111'
+permissions:
+  contents: read
+jobs:
+  no-root-execution-synthetic-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify host identity-only module and negative security tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/install-honartik-finance-owner-host-verifier-v1.sh
+          node --check honartik-finance-owner-host-verifier-v1.cjs
+          node --test test-honartik-finance-owner-host-verifier-v1.cjs
+          node --test test-honartik-finance-owner-oidc-v1.cjs
+          node - <<'NODE'
+          const m=require('./honartik-finance-owner-host-verifier-v1.cjs');
+          const g=require('./honartik-finance-owner-oidc-identity-v1.cjs');
+          if(m.DEPLOY_AUTHORIZED!==false||m.ROOT_RELEASE_EXPORTED!==false||
+             g.PRODUCTION_AUTHORIZED!==false||
+             g.INTENT.operation!=='honartik_back.production.finance_release')
+             process.exit(1);
+          console.log('ROOT_ONLY_FINANCE_IDENTITY_VERIFIER=SOURCE_TEST_PASS');
+          console.log('GITHUB_ENV_ADMIN_BYPASS=STILL_REQUIRES_FALSE');
+          console.log('SENSITIVE_PRODUCTION_RELEASE_AUTHORIZED=FALSE');
+          NODE
