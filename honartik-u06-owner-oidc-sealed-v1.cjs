@@ -1,6 +1,6 @@
 'use strict';
 /**
- * U06-only GitHub-hosted protected-environment identity evidence transport.
+ * U06-only GitHub-hosted owner-direct identity evidence transport.
  *
  * The OIDC JWT is cryptographically scoped to a fixed U06 operation plus the
  * server's one-time nonce. It is sealed to host-generated X25519 public key

@@ -13,10 +13,10 @@ const kid='test-key-u06-coordinator',now=1800000000,nonce='b'.repeat(64),sha='c'
 function ownerProof(){
  const claims={
    iss:G.issuer,aud:gate.audience(nonce),
-   sub:'repo:prhmonline/prhm-host-actions:environment:'+gate.W.environment,
+   sub:'repo:prhmonline/prhm-host-actions:ref:refs/heads/main',
    repository:'prhmonline/prhm-host-actions',repository_id:gate.W.repoId,
    repository_owner_id:gate.W.ownerId,workflow_ref:gate.W.workflowRef,
-   workflow_sha:sha,environment:gate.W.environment,ref:'refs/heads/main',
+   workflow_sha:sha,ref:'refs/heads/main',
    event_name:'workflow_dispatch',runner_environment:'github-hosted',
    actor_id:gate.W.actorId,run_id:'100001',run_attempt:'1',
    jti:'owner-core-test-jti-12345',iat:now-40,nbf:now-50,exp:now+100

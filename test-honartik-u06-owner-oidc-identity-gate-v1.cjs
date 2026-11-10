@@ -19,11 +19,11 @@ const run={id:483729,actor:{id:Number(gate.W.actorId)},event:'workflow_dispatch'
 const approvals=[{user:{id:Number(gate.W.approverId)},state:'approved'}];
 const claims=Object.freeze({
   iss:G.issuer,aud:gate.audience(nonce),
-  sub:'repo:prhmonline/prhm-host-actions:environment:'+gate.W.environment,
+  sub:'repo:prhmonline/prhm-host-actions:ref:refs/heads/main',
   repository:'prhmonline/prhm-host-actions',
   repository_id:gate.W.repoId,repository_owner_id:gate.W.ownerId,
   workflow_ref:gate.W.workflowRef,workflow_sha:sha,
-  environment:gate.W.environment,ref:'refs/heads/main',
+  ref:'refs/heads/main',
   event_name:'workflow_dispatch',runner_environment:'github-hosted',
   actor_id:gate.W.actorId,run_id:String(run.id),run_attempt:'1',
   jti:'u06-synthetic-jti-34999342',
@@ -43,7 +43,8 @@ test('owner approval is correctly RSA-signed and scope-bound identity only',()=>
   const result=valid();
   assert.equal(result.owner_identity_verified,true);
   assert.equal(result.github_oidc_signature_valid,true);
-  assert.equal(result.protected_environment_approval_valid,true);
+  assert.equal(result.protected_environment_approval_valid,false);
+  assert.equal(result.owner_oidc_direct,true);
   assert.equal(result.intent_digest,gate.intentDigest());
   assert.equal(result.external_provider_approval_required,false);
   assert.equal(result.approval_to_modify_production,false);
@@ -94,21 +95,18 @@ test('source SHA drift denied in official claim',()=>{
 test('official GitHub run source SHA drift denied',()=>{
   reject('official_run_not_pinned',{run:{...run,head_sha:'f'.repeat(40)}});
 });
-test('owner requestor cannot self-approve',()=>{
-  reject('explicit_owner_approval_missing',{approvals:[
-    {user:{id:Number(gate.W.actorId)},state:'approved'}]});
+test('direct owner OIDC requires no second reviewer',()=>{
+  const proof=valid({approvals:[],environment:undefined,branches:undefined});
+  assert.equal(proof.owner_oidc_direct,true);
+  assert.equal(proof.approved_reviewer_id,null);
 });
-test('missing external owner approval denied, including admin bypass',()=>{
-  reject('explicit_owner_approval_missing',{approvals:[]});
+test('OIDC from protected environment cannot masquerade as direct owner workflow',()=>{
+  reject('workflow_claims_mismatch',{token:jwt({...claims,environment:gate.W.environment||'production'})});
+  reject('subject_mismatch',{token:jwt({...claims,sub:'repo:prhmonline/prhm-host-actions:environment:production'})});
 });
-test('prevent_self_review policy cannot be relaxed',()=>{
-  const altered={...env,protection_rules:[{...env.protection_rules[0],
-    prevent_self_review:false}]};
-  assert.throws(()=>valid({environment:altered}),/environment_owner_review_not_required/);
-});
-test('unexpected branches and wildcard rules rejected',()=>{
-  assert.throws(()=>valid({branches:{branch_policies:[{name:'*',type:'branch'}]}}),
-    /branch_policy_drift/);
+test('unexpected branch in signed JWT or official run denied',()=>{
+  reject('workflow_claims_mismatch',{token:jwt({...claims,ref:'refs/heads/develop'})});
+  reject('official_run_not_pinned',{run:{...run,head_branch:'develop'}});
 });
 test('stale, expired or future OIDC rejected',()=>{
   reject('expired_or_stale',{nowSec:now+400});

@@ -28,13 +28,13 @@ test('reused sealed X25519 transport keeps original JWT private and scoped',()=>
   assert.throws(()=>openSealedJwt(env,'8'.repeat(64),own.privateKey),
     /challenge_mismatch/);
 });
-test('dedicated workflow requires owner and protected environment; no deploy',()=>{
+test('dedicated workflow requires only pinned owner, no reviewer or deploy',()=>{
   const f=fs.readFileSync(
     require('node:path').join(__dirname,
       '.github/workflows/honartik-u06-owner-approval-oidc-v1.yml'),'utf8');
   assert.match(f,/workflow_dispatch:/);
   assert.match(f,/github.actor_id == '193396069'/);
-  assert.match(f,/environment: prhm-universal-root-enrollment/);
+  assert.doesNotMatch(f,/^\s+environment: prhm-universal-root-enrollment/m);
   assert.match(f,/id-token: write/);
   assert.match(f,/persist-credentials: false/);
   assert.match(f,/retention-days: 1/);
