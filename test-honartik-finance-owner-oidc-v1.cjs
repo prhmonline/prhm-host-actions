@@ -75,6 +75,22 @@ test('cryptographic success is only owner identity, never production approval',(
   assert.equal(proof.protected_restore_verified,false);
   assert.equal(proof.production_mutated,false);
 });
+test('real GitHub numeric repository-ID subject is accepted only for exact owner/repo IDs',()=>{
+  const idBound='repo:prhmonline@193396069/prhm-host-actions@1332133091:environment:honartik-finance-production';
+  const proof=valid({token:jwt({...claims,sub:idBound})});
+  assert.equal(proof.owner_identity_verified,true);
+  assert.equal(proof.finance_release_authorized,false);
+  for(const wrong of [
+    'repo:prhmonline@193396069/prhm-host-actions@1332133092:environment:honartik-finance-production',
+    'repo:prhmonline@193396070/prhm-host-actions@1332133091:environment:honartik-finance-production',
+    'repo:other@193396069/prhm-host-actions@1332133091:environment:honartik-finance-production',
+    'repo:prhmonline@193396069/other@1332133091:environment:honartik-finance-production',
+    'repo:prhmonline@193396069/prhm-host-actions@1332133091:environment:production',
+    'repo:prhmonline@193396069/prhm-host-actions@1332133091:environment:*',
+  ]) {
+    rejected('wrong_protected_environment_subject',{token:jwt({...claims,sub:wrong})});
+  }
+});
 test('finance intent cannot reuse U06 native backup audience',()=>{
   assert.match(gate.audience(challenge),/^urn:prhm:honartik:finance-owner:v1:/);
   assert.notEqual(gate.audience(challenge),
