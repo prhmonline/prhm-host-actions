@@ -186,9 +186,11 @@ def audit_routes(read_sources):
     require(candidates['root_executor'].index(AUTH_CONSUME) <
             candidates['root_executor'].index(EXEC_APPLY),
             'AUTH_ORDER_CHANGED')
-    require(ACTION not in candidates['agent_api'][start:
-            candidates['agent_api'].index(
-                'function hostActionV2ApprovalMeta(action)')],
+    level3_start = candidates['agent_api'].index(
+        'const HOST_ACTION_V2_LEVEL3 = new Set(')
+    level3_end = candidates['agent_api'].index(
+        'function hostActionV2ApprovalMeta(action)')
+    require(ACTION not in candidates['agent_api'][level3_start:level3_end],
             'LEVEL3_PROMOTION')
     return {key: sha(value.encode('utf-8'))
             for key, value in candidates.items()}
