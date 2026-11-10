@@ -219,12 +219,7 @@ def inspect_all_routes():
 def main():
     require(sys.argv[1:] in (['--preview'], ['--audit-all']), 'ONLY_READONLY_AUDIT_SUPPORTED')
     require(socket.getfqdn().lower() == HOST, 'HOST_MISMATCH')
-    st = os.lstat(POLICY)
-    require(stat.S_ISREG(st.st_mode) and st.st_uid == 0 and
-            st.st_gid == 0 and not (st.st_mode & 0o022) and
-            st.st_nlink == 1 and st.st_size <= 200000, 'OWNER_MODE')
-    with open(POLICY, 'rb') as f:
-        raw = f.read(200001)
+    raw = read_exact_root(POLICY, PINNED, 31167, 0o644)
     require(len(raw) == st.st_size and sha(raw) == PINNED,
             'POLICY_PREIMAGE_SHA_DRIFT')
     policy = json.loads(raw.decode('utf-8'))
@@ -257,7 +252,7 @@ def main():
     }
     if sys.argv[1:] == ['--audit-all']:
         report['four_owner_inmemory_preview'] = inspect_all_routes()
-    require(sha(open(POLICY, 'rb').read()) == PINNED,
+    require(sha(read_exact_root(POLICY, PINNED, 31167, 0o644)) == PINNED,
             'POLICY_CHANGED_DURING_READ')
     print(json.dumps(report, sort_keys=True))
 
