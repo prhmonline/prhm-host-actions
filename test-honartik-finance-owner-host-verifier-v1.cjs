@@ -11,7 +11,7 @@ const gate=require('./honartik-finance-owner-oidc-identity-v1.cjs');
 test('host verifier pins privileged paths, never exports application cutover',()=>{
   assert.equal(c.STATE,'/var/lib/prhm-honartik-finance-owner');
   assert.equal(c.CONFIG,'/etc/prhm-honartik-finance-owner/identity.json');
-  assert.equal(c.API_TOKEN,'/etc/prhm-honartik-finance-owner/github-api-read.token');
+  assert.equal(c.API_TOKEN,undefined);
   assert.equal(c.ROOT_RELEASE_EXPORTED,false);
   assert.equal(c.DEPLOY_AUTHORIZED,false);
   for(const name of ['deploy','installRoot','executeRelease','apply','creditWallet','migrate','reset'])
@@ -19,13 +19,33 @@ test('host verifier pins privileged paths, never exports application cutover',()
 });
 test('host verifier rejects unapproved network endpoints before fetch',()=>{
   assert.throws(
-    ()=>c.githubJSON('https://attacker.example/api/run','bogus'),
+    ()=>c.githubJSON('https://attacker.example/api/run'),
     /endpoint_not_allowlisted/
   );
   assert.throws(
-    ()=>c.githubJSON('http://api.github.com/repos/prhmonline/prhm-host-actions/actions/runs/1','bogus'),
+    ()=>c.githubJSON('http://api.github.com/repos/prhmonline/prhm-host-actions/actions/runs/1'),
     /endpoint_not_allowlisted/
   );
+});
+test('public GitHub API allowlist refuses arbitrary run subpaths and lookalike domains',()=>{
+  const base='https://api.github.com/repos/prhmonline/prhm-host-actions';
+  for(const url of [
+    base+'/actions/runs/1/attempts',
+    base+'/actions/runs/1/approvals',
+    base+'/actions/runs/1/../secrets',
+    base+'/actions/runs/1?x=1',
+    'https://api.github.com.evil.invalid/repos/prhmonline/prhm-host-actions/actions/runs/1',
+    base+'/environments/honartik-finance-production/secrets',
+    'https://api.github.com/repos/other/repo/actions/runs/1'
+  ]) assert.throws(()=>c.githubJSON(url),/endpoint_not_allowlisted/,url);
+});
+test('public GitHub verifier does not require or send an API credential',()=>{
+  const src=fs.readFileSync(path.join(__dirname,
+    'honartik-finance-owner-host-verifier-v1.cjs'),'utf8');
+  assert.equal(c.API_TOKEN,undefined);
+  assert.doesNotMatch(src,/github-api-read\.token|headers\.Authorization|Bearer\s*\+/);
+  assert.match(src,/githubJSON\(G\.jwks,250000\)/);
+  assert.match(src,/verifyFinanceOwnerIdentity/);
 });
 test('root-owned directory guard refuses mode, UID and symlink drift',()=>{
   const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'honartik-finance-host-unit-'));

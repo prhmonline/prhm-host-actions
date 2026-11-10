@@ -41,10 +41,29 @@ INSTALL_SOURCE_SHA="<reviewed FULL SHA>" \
   bash "<clean immutable repository checkout>/scripts/install-honartik-finance-owner-host-verifier-v1.sh"
 \`\`\`
 
-Private GitHub repository API run/environment verification requires a
-read-only credential placed independently by an authorized operator as
-\`/etc/prhm-honartik-finance-owner/github-api-read.token\`, mode 0600,
-root:root. Never print it or commit it. Missing credential fails closed.
+The GitHub repository `prhmonline/prhm-host-actions` is **public**. On
+2026-11-11 the trusted host received HTTP 200 without authentication for
+the official REST GitHub run endpoint, protected Environment configuration,
+and the main-only branch policies. The reviewed v2 verifier reads those
+fixed HTTPS endpoints **without creating or accepting a GitHub API token**.
+It verifies the JWT's RS256 signature against the independent GitHub OIDC
+JWKS and checks the official immutable workflow run and environment state.
+Network errors, HTTP 403/404/429, a private-repository visibility change,
+unexpected URL origins or changed environment bypass settings fail closed.
+
+Upgrade from the **installed prior** finance identity-only verifier:
+```bash
+INSTALL_SOURCE_SHA="<reviewed merged main full SHA>" \
+ bash "<clean exact-sha checkout>/scripts/upgrade-honartik-finance-owner-public-api-v2.sh"
+```
+The upgrade requires the fixed previous installed source and clean Git
+tree, retains the existing root-owned replay ledger unchanged, refuses
+an outstanding unconsumed challenge, copies new source into a separate
+root-owned immutable path, backs up the previous config and atomically
+updates the workflow/installed SHA pin. It does not modify sudoers,
+finance release policy, app working trees, MySQL or systemd.
+The previous version and config preimage remain available for audited
+identity-verifier rollback only.
 
 ## Root operator verifier usage (NO DEPLOY)
 
@@ -75,19 +94,16 @@ root:root. Never print it or commit it. Missing credential fails closed.
 - exact custom deployment branch allowlist \`main\`;
 - \`Allow administrators to bypass configured protection rules\` **unchecked**.
 
-As of source authoring the GitHub API reported
-\`can_admins_bypass=true\`, and the connected GitHub environment tool does
-not expose this edit. GitHub's standard REST create/update environment
-endpoint also has no documented \`can_admins_bypass\` write field. **Do
-not** replace this with a weaker rule or accept the owner JWT while this
-flag remains true. GitHub authenticated Settings UI is required to change
-it, followed by independent read-back verification.
+GitHub's official API was independently rechecked after owner action:
+`can_admins_bypass=false`, and the one approved deployment branch is
+`main`. Every live verification reads the current Environment and refuses
+configuration drift, regardless of historical checks.
 
 ## Final status contract
 
 \`OWNER_IDENTITY_VERIFIER_INSTALLED\` is independent from
 \`FINANCE_RELEASE_ALLOWED\`. Both an unconfigured GitHub environment and a
-missing private-repository read-only token are intentional barriers.
+an absent/invalid genuine owner OIDC token are intentional barriers.
 Even when a genuine OIDC identity is consumed, the host module always
 outputs \`finance_release_authorized:false\`. It cannot perform the PHP
 production cutover. Do not claim completion before a separate trusted

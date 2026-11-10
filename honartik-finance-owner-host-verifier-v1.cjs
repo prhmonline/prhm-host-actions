@@ -4,8 +4,8 @@
  * finance OWNER IDENTITY proof. It does NOT execute PHP, Git deployment,
  * MariaDB, restore, wallet credit, service restart or a generic root action.
  *
- * All runtime state/keys stay in root-owned paths, and every authenticated
- * GitHub API request is read-only. This is a prerequisite to a SEPARATE,
+ * All runtime state/keys stay in root-owned paths. Official GitHub API
+ * reads use unauthenticated HTTPS ONLY for this verified PUBLIC repository. This is a prerequisite to a SEPARATE,
  * reviewed, bounded finance release coordinator, not that coordinator.
  */
 const fs=require('node:fs');
@@ -20,7 +20,6 @@ const {G,parseToken}=require('./universal-owner-oidc-recovery-gate-v1.cjs');
 
 const STATE='/var/lib/prhm-honartik-finance-owner';
 const CONFIG='/etc/prhm-honartik-finance-owner/identity.json';
-const API_TOKEN='/etc/prhm-honartik-finance-owner/github-api-read.token';
 const HEX64=/^[0-9a-f]{64}$/;
 const HEX40=/^[0-9a-f]{40}$/;
 const deny=s=>{throw Error('HONARTIK_FINANCE_OWNER_BLOCKED='+s)};
@@ -99,18 +98,26 @@ function createChallenge(){
     identity_only:true,production_authorized:false
   };
 }
-function githubJSON(url,bearer,max=350000){
-  const allowed=(
-    url===G.jwks||
-    url.startsWith(G.api+'/repos/'+G.owner+'/'+G.repo+'/actions/runs/')||
-    url===G.api+'/repos/'+G.owner+'/'+G.repo+'/environments/'+gate.W.environment||
-    url===G.api+'/repos/'+G.owner+'/'+G.repo+'/environments/'+gate.W.environment+'/deployment-branch-policies'
-  );
+function githubJSON(url,max=350000){
+  // Reject lookalike hosts: ALL official run/environment metadata must
+  // come from the exact GitHub HTTPS origin, never a regex URL substring.
+  let target;
+  try{target=new URL(url)}catch{deny('endpoint_not_allowlisted')}
+  const repo='/repos/'+G.owner+'/'+G.repo;
+  const env=repo+'/environments/'+gate.W.environment;
+  const runPrefix=repo+'/actions/runs/';
+  const officialRun=target.pathname.startsWith(runPrefix)&&
+    /^[0-9]{1,20}$/.test(target.pathname.slice(runPrefix.length));
+  const allowedPath=officialRun||target.pathname===env||
+    target.pathname===env+'/deployment-branch-policies';
+  const officialAPI=target.protocol==='https:'&&target.hostname==='api.github.com'&&
+    target.port===''&&target.username===''&&target.password===''&&
+    target.search===''&&target.hash===''&&target.toString()===url;
+  const allowed=url===G.jwks||(officialAPI&&allowedPath);
   need(allowed,'endpoint_not_allowlisted');
   return new Promise((resolve,reject)=>{
     const headers={'User-Agent':'prhm-honartik-finance-owner-host-verifier-v1',
       'Accept':'application/vnd.github+json'};
-    if(url!==G.jwks)headers.Authorization='Bearer '+bearer;
     const req=https.get(url,{headers,timeout:9000},res=>{
       if(res.statusCode!==200){res.resume();reject(Error('github_http_'+res.statusCode));return}
       let count=0,buffers=[];
@@ -150,13 +157,11 @@ async function consumeChallenge(nonce){
   const claims=parseToken(token).claims; // untrusted: used solely to choose official read endpoint
   need(/^[0-9]{1,20}$/.test(String(claims.run_id)),'bad_run_id');
   const root=G.api+'/repos/'+G.owner+'/'+G.repo;
-  const auth=rootFile(API_TOKEN,4096).trim();
-  need(/^[^\s]{30,400}$/.test(auth),'untrusted_api_credential');
   const [jwks,run,env,branches]=await Promise.all([
-    githubJSON(G.jwks,null,250000),
-    githubJSON(root+'/actions/runs/'+String(claims.run_id),auth),
-    githubJSON(root+'/environments/'+gate.W.environment,auth),
-    githubJSON(root+'/environments/'+gate.W.environment+'/deployment-branch-policies',auth)
+    githubJSON(G.jwks,250000),
+    githubJSON(root+'/actions/runs/'+String(claims.run_id)),
+    githubJSON(root+'/environments/'+gate.W.environment),
+    githubJSON(root+'/environments/'+gate.W.environment+'/deployment-branch-policies')
   ]);
   // Critically rejects can_admins_bypass=true, a missing environment,
   // wrong repo/actor, wrong workflow SHA, incorrect nonce and expired JWT.
@@ -188,7 +193,7 @@ async function main(){
   else deny('unsupported_operator_command');
 }
 module.exports=Object.freeze({
-  STATE,CONFIG,API_TOKEN,createChallenge,consumeChallenge,
+  STATE,CONFIG,createChallenge,consumeChallenge,
   rootFile,rootDir,githubJSON,ROOT_RELEASE_EXPORTED:false,
   DEPLOY_AUTHORIZED:false
 });
