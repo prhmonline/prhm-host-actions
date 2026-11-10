@@ -22,9 +22,13 @@ and the fsynced U06 journal.
 \`tests/u06/test_u06_mariadb_minimal_grants_integration.cjs\` creates
 a throwaway pinned MariaDB 10.11 Docker container under \`--network none\`,
 provisions the named account **inside that disposable database only**,
-verifies live grants, queries a disposable finance-like row, proves
-CREATE TABLE is denied and verifies that adding INSERT causes the U06
-scope verifier to reject. Container is removed in \`finally\`.
+verifies live `SHOW GRANTS` for the exact production-shaped `@127.0.0.1`
+principal. Because Docker `--network none` disables TCP loopback, a separate
+**fixture-only** `@localhost` user is created with identical four privileges
+to exercise socket-based SQL SELECT success and CREATE TABLE refusal. The
+`@127.0.0.1` identity is *not* tested for TCP login in this CI. Adding
+INSERT to the exact `@127.0.0.1` account causes the U06 grant verifier to
+reject. No real Production database is accessed. Container is removed in \`finally\`.
 
 This adds a real tested, non-Production MariaDB privilege boundary to the
 existing native lease and adapter fixture. The installed Universal adapter
