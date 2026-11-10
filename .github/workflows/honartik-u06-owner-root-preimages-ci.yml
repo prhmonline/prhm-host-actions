@@ -1,0 +1,26 @@
+name: U06 pinned owner preimages — immutable review only
+on:
+  push:
+    paths:
+      - 'honartik-u06-owner-root-preimages-v1.cjs'
+      - 'test-honartik-u06-owner-root-preimages-v1.cjs'
+      - 'manifests/honartik-u06-owner-root-preimages-20261111.json'
+      - '.github/workflows/honartik-u06-owner-root-preimages-ci.yml'
+  pull_request:
+    paths:
+      - 'honartik-u06-owner-root-preimages-v1.cjs'
+      - 'test-honartik-u06-owner-root-preimages-v1.cjs'
+      - 'manifests/honartik-u06-owner-root-preimages-20261111.json'
+      - '.github/workflows/honartik-u06-owner-root-preimages-ci.yml'
+permissions:
+  contents: read
+jobs:
+  bounded:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check honartik-u06-owner-root-preimages-v1.cjs
+      - run: node --test test-honartik-u06-owner-root-preimages-v1.cjs
