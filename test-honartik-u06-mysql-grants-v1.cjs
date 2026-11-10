@@ -19,9 +19,10 @@ test('exact MariaDB minimal privileges match and never authorize production',()=
  assert.equal(x.ROOT_HANDLER_INSTALLED,false);
 });
 test('grant ordering and MariaDB quoting accepted only when privileges exact',()=>{
+ const q=String.fromCharCode(96),quoted=q+'honartik_universal_backup'+q+'@'+q+'127.0.0.1'+q;
  const rows=[
- "GRANT USAGE ON *.* TO `honartik_universal_backup``127.0.0.1`",
- "GRANT EVENT, TRIGGER, SELECT, SHOW VIEW ON `honartik_db`.* TO `honartik_universal_backup``127.0.0.1`"
+ "GRANT USAGE ON *.* TO "+quoted,
+ "GRANT EVENT, TRIGGER, SELECT, SHOW VIEW ON "+q+"honartik_db"+q+".* TO "+quoted
  ];
  assert.equal(verify(rows).granted_scope_review_matches,true);
 });
