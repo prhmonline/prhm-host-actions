@@ -29,7 +29,7 @@ OWNERS = {
     "approval_policy": "/opt/prhm-company-control-plane/config/approval-policy.json",
 }
 
-def file_metadata(filename: str, expected: str | None = None) -> dict:
+def file_metadata(filename: str, expected: str | None = None, digest: bool = True) -> dict:
     """Return only filesystem metadata and SHA, never file contents."""
     p = Path(filename)
     try:
@@ -48,6 +48,10 @@ def file_metadata(filename: str, expected: str | None = None) -> dict:
     }
     if not out["regular_file"] or out["symlink"]:
         out["trusted_candidate"] = False
+        return out
+    if not digest:
+        # The credential is a secret: never open it even for hashing.
+        out["trusted_candidate"] = not out["group_or_world_writable"]
         return out
     # O_NOFOLLOW protects leaf. lstat/fstat inode identity prevents leaf swap.
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
@@ -92,7 +96,7 @@ def audit(*, root_required=True, path_overrides=None, detected_host=None) -> dic
     profile = file_metadata(paths["profile"], PROFILE_SHA)
     adapter = file_metadata(paths["adapter"], ADAPTER_SHA)
     owners = {key: file_metadata(paths[key]) for key in OWNERS}
-    credential = file_metadata(paths["credential"])
+    credential = file_metadata(paths["credential"], digest=False)
     offsite = None
     if profile.get("expected_sha_match") is True:
         try:
