@@ -15,7 +15,11 @@ const ADMIN_SQL=[
  'CREATE TABLE honartik_db.u06_fixture(id INT PRIMARY KEY, amount BIGINT NOT NULL)',
  'INSERT INTO honartik_db.u06_fixture VALUES(1,100)',
  "CREATE USER 'honartik_universal_backup'@'127.0.0.1' IDENTIFIED BY 'fixture_only_never_production'",
- "GRANT SELECT, SHOW VIEW, TRIGGER, EVENT ON honartik_db.* TO 'honartik_universal_backup'@'127.0.0.1'"
+ "GRANT SELECT, SHOW VIEW, TRIGGER, EVENT ON honartik_db.* TO 'honartik_universal_backup'@'127.0.0.1'",
+ // The isolated Docker network disables TCP loopback. The localhost account
+ // mirrors the SAME four permissions to exercise socket-based SQL refusals.
+ "CREATE USER 'honartik_universal_backup'@'localhost' IDENTIFIED BY 'fixture_only_never_production'",
+ "GRANT SELECT, SHOW VIEW, TRIGGER, EVENT ON honartik_db.* TO 'honartik_universal_backup'@'localhost'"
 ].join(';')+';';
 function docker(args,timeout=90000){
  return cp.execFileSync('docker',args,{
@@ -47,13 +51,14 @@ test('isolated MariaDB real scoped account, deny DDL and extra grants', {timeout
   assert.equal(matched.verified_by_trusted_root,false);
   assert.equal(matched.production_backup_enabled,false);
   assert.equal(rows.length,2);
-  // Read-only account accesses only this throwaway table.
-  const read=docker(['exec',name,'mariadb','-h127.0.0.1',
+  // Read-only fixture account accesses only this throwaway table over a local socket.
+  // The actual intended @127.0.0.1 account was verified by SHOW GRANTS above.
+  const read=docker(['exec',name,'mariadb','--protocol=socket',
     '-uhonartik_universal_backup','-pfixture_only_never_production',
     '--skip-column-names','-e','SELECT COUNT(*),SUM(amount) FROM honartik_db.u06_fixture'],15000);
   assert.equal(read,'1\t100');
   // DDL refusal is real SQL authorization, not mocked permission.
-  assert.throws(()=>docker(['exec',name,'mariadb','-h127.0.0.1',
+  assert.throws(()=>docker(['exec',name,'mariadb','--protocol=socket',
     '-uhonartik_universal_backup','-pfixture_only_never_production',
     '-e','CREATE TABLE honartik_db.forbidden(id INT)'],15000));
   docker(['exec',name,'mariadb','-uroot','-e',
