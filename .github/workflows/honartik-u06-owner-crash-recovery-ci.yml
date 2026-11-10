@@ -1,0 +1,54 @@
+name: U06 actual Linux SIGKILL crash-journal recovery (sandbox)
+
+on:
+  pull_request:
+    paths:
+      - 'tests/u06/u06_owner_native_crash_recovery_drill.py'
+      - '.github/workflows/honartik-u06-owner-crash-recovery-ci.yml'
+      - 'docs/runbooks/honartik-u06-owner-crash-recovery-20261110.md'
+  push:
+    branches: ['test/u06-owner-native-crash-recovery-20261110']
+
+permissions:
+  contents: read
+
+jobs:
+  actual-kill-fsync-restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Linux real SIGKILL, fsync, atomic rollback and idempotent recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile tests/u06/u06_owner_native_crash_recovery_drill.py
+          python3 -m py_compile tests/u06/u06_owner_actual_native_sandbox_e2e.py
+          if python3 tests/u06/u06_owner_actual_native_sandbox_e2e.py --apply >/dev/null 2>&1; then
+            echo 'ERROR: live Production apply unexpectedly enabled' >&2
+            exit 1
+          fi
+          echo 'U06_NATIVE_EXECUTOR_LIVE_APPLY=DISABLED'
+          python3 tests/u06/u06_owner_native_crash_recovery_drill.py | tee /tmp/u06-crash-report.json
+          python3 - <<'PY'
+          import json
+          x=json.load(open('/tmp/u06-crash-report.json'))
+          assert x['result']=='PASS'
+          assert len(x['cases'])==3
+          assert x['db_connection_used'] is False
+          assert x['profile_live_file_read_or_written'] is False
+          assert x['root_policy_modified'] is False
+          assert x['production_release_authorized'] is False
+          e=json.load(open('evidence/u06/honartik-20261110-actual-native-sandbox-and-sigkill.json'))
+          assert e['disposable_execution']['native_verify_restore']=='PASS'
+          assert e['disposable_execution']['full_mariadb_check']=='PASS'
+          assert e['disposable_execution']['mysql_user_deleted'] is True
+          assert e['limitations']['production_native_backup_completed'] is False
+          assert e['limitations']['production_database_mutated'] is False
+          assert len(e['actual_linux_crash_drill']['stages'])==3
+          print('U06_NATIVE_FIXTURE_EVIDENCE=PASS')
+          print('U06_REAL_SIGKILL_CRASH_RECOVERY=PASS')
+          print('PRODUCTION_CHANGED=FALSE')
+          PY
