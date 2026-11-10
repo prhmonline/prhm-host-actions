@@ -143,3 +143,67 @@ test('source module never exports command, credential, registry or production au
   assert.equal(gate.ROOT_EXECUTION_EXPORTED,false);
   assert.equal(gate.PRODUCTION_AUTHORIZED,false);
 });
+
+const fs=require('node:fs');
+const os=require('node:os');
+const path=require('node:path');
+const fence=require('./honartik-u06-owner-oidc-once-fence-v1.cjs');
+function testDir(){
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'u06-owner-fence-'));
+  fs.chmodSync(dir,0o700);
+  return dir;
+}
+test('verified signed U06 identity is durably consumed once in 0700 ledger',()=>{
+  const directory=testDir();
+  try{
+    const receipt=valid();
+    const result=fence.consumeVerifiedOwnerEvidence(receipt,{
+      directory,trustedUid:process.getuid()
+    });
+    assert.equal(result.consumed,true);
+    assert.equal(result.receipt_fsynced,true);
+    assert.equal(result.directory_fsynced,true);
+    assert.equal(result.native_root_action_authorized,false);
+    assert.equal(result.production_mutated,false);
+    const files=fs.readdirSync(directory);
+    assert.equal(files.length,1);
+    assert.equal(fs.statSync(path.join(directory,files[0])).mode&0o777,0o600);
+    assert.throws(()=>fence.consumeVerifiedOwnerEvidence(receipt,{
+      directory,trustedUid:process.getuid()}),/replayed_receipt/);
+  }finally{fs.rmSync(directory,{recursive:true,force:true})}
+});
+test('fake caller booleans and JSON copy of genuine proof cannot consume lease',()=>{
+  const directory=testDir();
+  try{
+    const verified=valid();
+    const forged={...verified,owner_identity_verified:true};
+    assert.throws(()=>fence.consumeVerifiedOwnerEvidence(forged,{
+      directory,trustedUid:process.getuid()}),
+    /not_cryptographically_verified_in_process/);
+    const serialized=JSON.parse(JSON.stringify(verified));
+    assert.throws(()=>fence.consumeVerifiedOwnerEvidence(serialized,{
+      directory,trustedUid:process.getuid()}),
+    /not_cryptographically_verified_in_process/);
+    assert.deepEqual(fs.readdirSync(directory),[]);
+  }finally{fs.rmSync(directory,{recursive:true,force:true})}
+});
+test('weak private ledger mode refuses receipt rather than granting privilege',()=>{
+  const directory=testDir();
+  try{
+    fs.chmodSync(directory,0o755);
+    assert.throws(()=>fence.consumeVerifiedOwnerEvidence(valid(),{
+      directory,trustedUid:process.getuid()}),/untrusted_ledger_directory/);
+    assert.equal(fs.readdirSync(directory).length,0);
+  }finally{fs.rmSync(directory,{recursive:true,force:true})}
+});
+test('symlinked ledger directory and UID drift refused',()=>{
+  const directory=testDir(),alias=directory+'-alias';
+  try{
+    fs.symlinkSync(directory,alias);
+    assert.throws(()=>fence.consumeVerifiedOwnerEvidence(valid(),{
+      directory:alias,trustedUid:process.getuid()}),/untrusted_ledger_directory/);
+    assert.throws(()=>fence.consumeVerifiedOwnerEvidence(valid(),{
+      directory,trustedUid:process.getuid()+2}),/untrusted_ledger_directory/);
+    assert.equal(fs.readdirSync(directory).length,0);
+  }finally{fs.rmSync(alias,{force:true});fs.rmSync(directory,{recursive:true,force:true})}
+});
