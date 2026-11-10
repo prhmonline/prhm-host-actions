@@ -25,6 +25,12 @@ jobs:
         run: |
           set -euo pipefail
           python3 -m py_compile tests/u06/u06_owner_native_crash_recovery_drill.py
+          python3 -m py_compile tests/u06/u06_owner_actual_native_sandbox_e2e.py
+          if python3 tests/u06/u06_owner_actual_native_sandbox_e2e.py --apply >/dev/null 2>&1; then
+            echo 'ERROR: live Production apply unexpectedly enabled' >&2
+            exit 1
+          fi
+          echo 'U06_NATIVE_EXECUTOR_LIVE_APPLY=DISABLED'
           python3 tests/u06/u06_owner_native_crash_recovery_drill.py | tee /tmp/u06-crash-report.json
           python3 - <<'PY'
           import json
