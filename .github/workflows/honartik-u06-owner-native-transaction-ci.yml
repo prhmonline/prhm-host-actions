@@ -1,0 +1,41 @@
+name: U06 owner bounded native transaction — source-only safety CI
+
+on:
+  pull_request:
+    paths:
+      - 'honartik-u06-owner-native-transaction-v1.cjs'
+      - 'test-honartik-u06-owner-native-transaction-v1.cjs'
+      - '.github/workflows/honartik-u06-owner-native-transaction-ci.yml'
+      - 'docs/runbooks/honartik-u06-owner-bounded-native-coordinator-20261110.md'
+  push:
+    branches:
+      - 'feature/u06-owner-bounded-native-transaction-20261110'
+
+permissions:
+  contents: read
+jobs:
+  reviewed-transaction-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Verify owner signed proof is required before ANY native mutation
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check honartik-u06-owner-native-transaction-v1.cjs
+          node --test test-honartik-u06-owner-native-transaction-v1.cjs
+          node - <<'NODE'
+          const c=require('./honartik-u06-owner-native-transaction-v1.cjs');
+          if(c.INSTALLED_ROOT_BINDING!==false||c.AUTO_DEPLOY!==false||
+             c.F.apache_cutover!==false||c.F.yii_migrations!==false)
+            process.exit(1);
+          console.log('U06_OWNER_NATIVE_TRANSACTION_CONTRACT=PASS');
+          console.log('ACTUAL_HOST_ROOT_ADAPTER_INSTALLED=FALSE');
+          console.log('PRODUCTION_DEPLOY_AUTHORIZED=FALSE');
+          NODE
