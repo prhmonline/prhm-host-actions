@@ -101,7 +101,7 @@ class CandidateTests(unittest.TestCase):
 
     def test_no_runtime_apply_mode_or_credential_content(self):
         source = PATH.read_text(encoding='utf-8')
-        self.assertIn("sys.argv[1:] == ['--preview']", source)
+        self.assertIn("sys.argv[1:] in (['--preview'], ['--audit-all'])", source)
         self.assertNotIn('open(POLICY, "wb")', source)
         self.assertNotIn('subprocess', source)
         self.assertNotIn('CREATE USER', source)
