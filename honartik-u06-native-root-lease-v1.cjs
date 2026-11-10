@@ -24,6 +24,10 @@ const SHA=/^[a-f0-9]{64}$/;
 const fail=m=>{throw Error('u06_root_lease_'+m)};
 const need=(v,m)=>{if(!v)fail(m)};
 const hash=b=>crypto.createHash('sha256').update(b).digest('hex');
+function strictlyAbsentLeaf(file){
+ try{fs.lstatSync(file);return false}
+ catch(e){if(e.code==='ENOENT')return true;throw e}
+}
 function syncDir(dir){
  const fd=fs.openSync(dir,fs.constants.O_RDONLY|fs.constants.O_DIRECTORY|fs.constants.O_NOFOLLOW);
  try{fs.fsyncSync(fd)}finally{fs.closeSync(fd)}
@@ -74,7 +78,7 @@ class Lease {
   const adapter=strictFile(this.pins.adapter,this.uid,8000000);
   need(hash(profile)===this.pins.profile_sha256,'profile_sha_drift');
   need(hash(adapter)===this.pins.adapter_sha256,'adapter_sha_drift');
-  need(!fs.existsSync(this.pins.credential),'credential_preimage_mismatch');
+  need(strictlyAbsentLeaf(this.pins.credential),'credential_preimage_mismatch');
   let json;
   try{json=JSON.parse(profile.toString('utf8'))}catch{fail('profile_not_json')}
   need(json&&json.backup&&json.backup.offsite_required===false,
@@ -141,7 +145,7 @@ class Lease {
   need(hash(original)===j.profile_sha256,'journal_preimage_corrupt');
   const actual=strictFile(this.pins.profile,this.uid);
   need(hash(actual)===hash(original),'profile_not_rolled_back');
-  need(!fs.existsSync(this.pins.credential),'credential_not_rolled_back');
+  need(strictlyAbsentLeaf(this.pins.credential),'credential_not_rolled_back');
   const done=Buffer.from(JSON.stringify({
    ...j,state:'ROLLED_BACK',
    rollback_original_profile_verified:true,
