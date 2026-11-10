@@ -239,7 +239,7 @@ test('ambiguous commit retains lease and refuses rollback of possibly committed 
    const x=fakeNative({commitDurableJournal:()=>{throw Error('fixture_committed_then_connection_lost')}});
    await assert.rejects(core.coordinateOwnerU06(x.native,ownerProof(),options(dir)),
      /CRITICAL_COMMIT_OUTCOME_UNKNOWN_LEASE_RETAINED/);
-   assert.ok(x.calls.includes('commit'));
+   assert.ok(x.calls.includes('post'),'arrived at commit boundary');
    assert.ok(!x.calls.includes('rollback'),'uncertain commit cannot be reverted');
    assert.ok(!x.calls.includes('unlock'),'commit ambiguity must retain lease');
  }finally{fs.rmSync(dir,{recursive:true,force:true})}
