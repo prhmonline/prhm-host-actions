@@ -1,0 +1,40 @@
+name: Honartik U06 — explicit owner OIDC approval (IDENTITY ONLY)
+on:
+  workflow_dispatch:
+    inputs:
+      challenge:
+        description: 'Exactly 64 lowercase hex nonce issued by the designated U06 host verifier'
+        required: true
+        type: string
+      host_transport_x25519_public_key_b64:
+        description: 'Ephemeral host X25519 public key (DER/SPKI base64), not a secret'
+        required: true
+        type: string
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  signed-owner-identity-evidence:
+    if: ${{ github.ref == 'refs/heads/main' && github.actor_id == '193396069' }}
+    runs-on: ubuntu-latest
+    environment: prhm-universal-root-enrollment
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Create encrypted U06-only GitHub OIDC identity evidence
+        id: seal
+        env:
+          U06_OWNER_CHALLENGE: ${{ inputs.challenge }}
+          U06_TRANSPORT_PUBLIC_B64: ${{ inputs.host_transport_x25519_public_key_b64 }}
+        run: node honartik-u06-owner-oidc-sealed-v1.cjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: u06-owner-identity-encrypted-${{ github.run_id }}
+          path: ${{ steps.seal.outputs.sealed_path }}
+          retention-days: 1
+          if-no-files-found: error
