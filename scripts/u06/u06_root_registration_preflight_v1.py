@@ -5,7 +5,6 @@ Run only on prhm-production as root after exact-source review. This program
 does not write files, query MySQL, call Docker, read secret contents, modify
 systemd, install a Host Action, or authorize any Production operation.
 """
-from __future__ import annotations
 import hashlib
 import json
 import os
@@ -79,7 +78,8 @@ def detect_service() -> str:
     try:
         p = subprocess.run(
             ["/usr/bin/systemctl", "is-active", "prhm-agent-selfmaint-exec.service"],
-            capture_output=True, text=True, timeout=10, check=False
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            universal_newlines=True, timeout=10, check=False
         )
         return p.stdout.strip() if p.returncode == 0 else "not-active"
     except (OSError, subprocess.SubprocessError):
