@@ -6,6 +6,7 @@ on:
       - 'test-honartik-finance-owner-host-verifier-v1.cjs'
       - 'scripts/install-honartik-finance-owner-host-verifier-v1.sh'
       - 'scripts/upgrade-honartik-finance-owner-public-api-v2.sh'
+      - 'scripts/upgrade-honartik-finance-owner-oidc-subject-v3.sh'
       - '.github/workflows/honartik-finance-owner-host-verifier-ci.yml'
       - 'docs/runbooks/honartik-finance-owner-host-install-20261111.md'
   push:
@@ -30,6 +31,7 @@ jobs:
           set -euo pipefail
           bash -n scripts/install-honartik-finance-owner-host-verifier-v1.sh
           bash -n scripts/upgrade-honartik-finance-owner-public-api-v2.sh
+          bash -n scripts/upgrade-honartik-finance-owner-oidc-subject-v3.sh
           node --check honartik-finance-owner-host-verifier-v1.cjs
           node --test test-honartik-finance-owner-host-verifier-v1.cjs
           node --test test-honartik-finance-owner-oidc-v1.cjs

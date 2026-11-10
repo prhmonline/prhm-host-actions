@@ -91,7 +91,15 @@ function verifyFinanceOwnerIdentity({
     claims.event_name==='workflow_dispatch'&&
     claims.runner_environment==='github-hosted',
     'workflow_claims_mismatch');
-  need(claims.sub==='repo:'+G.owner+'/'+G.repo+':environment:'+W.environment,
+  // GitHub may issue either legacy slug-scoped or immutable numeric-ID
+  // scoped subject. Both are bound to exact owner/repo/environment;
+  // never accept a wildcard or a subject from another project.
+  const allowedSubjects=[
+    'repo:'+G.owner+'/'+G.repo+':environment:'+W.environment,
+    'repo:'+G.owner+'@'+W.ownerId+'/'+G.repo+'@'+W.repositoryId+
+      ':environment:'+W.environment
+  ];
+  need(allowedSubjects.includes(claims.sub),
        'wrong_protected_environment_subject');
   need([claims.iat,claims.nbf,claims.exp].every(Number.isSafeInteger)&&
        claims.exp>claims.iat&&claims.exp-claims.iat<=600&&
