@@ -1,0 +1,43 @@
+name: U06 Honartik owner OIDC — source-only cryptographic CI
+
+on:
+  pull_request:
+    paths:
+      - 'honartik-u06-owner-oidc-**'
+      - 'test-honartik-u06-owner-oidc-**'
+      - '.github/workflows/honartik-u06-owner-approval-oidc-v1.yml'
+      - '.github/workflows/honartik-u06-owner-oidc-source-ci.yml'
+      - 'docs/runbooks/honartik-u06-owner-oidc-bridge-20261110.md'
+  push:
+    branches:
+      - 'feature/u06-owner-oidc-native-authorization-20261110'
+permissions:
+  contents: read
+jobs:
+  cryptographic-authority-and-replay-refusal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Cryptographic owner decision and durable nonce refusal
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check honartik-u06-owner-oidc-identity-gate-v1.cjs
+          node --check honartik-u06-owner-oidc-sealed-v1.cjs
+          node --check honartik-u06-owner-oidc-once-fence-v1.cjs
+          node --test test-honartik-u06-owner-oidc-identity-gate-v1.cjs test-honartik-u06-owner-oidc-sealed-v1.cjs
+          node - <<'NODE'
+          const gate=require('./honartik-u06-owner-oidc-identity-gate-v1.cjs');
+          if(gate.PRODUCTION_AUTHORIZED!==false||gate.ROOT_EXECUTION_EXPORTED!==false||
+            gate.INTENT.application_deploy!==false)process.exit(1);
+          console.log('U06_OWNER_OIDC_SCOPE_TESTED=PASS');
+          console.log('PROVIDER_REQUIRED_FOR_DEVELOPMENT=FALSE');
+          console.log('LIVE_ROOT_APPROVAL_BRIDGE_INSTALLED=FALSE');
+          console.log('PRODUCTION_DEPLOY_AUTHORIZED=FALSE');
+          NODE
