@@ -9,7 +9,7 @@
  */
 const crypto=require('node:crypto');
 const https=require('node:https');
-const {G,parseToken,approvalRules}=require('./universal-owner-oidc-recovery-gate-v1.cjs');
+const {G,parseToken}=require('./universal-owner-oidc-recovery-gate-v1.cjs');
 const INTENT=Object.freeze({
   schema:'prhm.u06.honartik.owner-oidc-intent.v1',
   operation:'honartik_back.production.native_backup',
@@ -29,11 +29,12 @@ const INTENT=Object.freeze({
 const W=Object.freeze({
   workflowPath:'.github/workflows/honartik-u06-owner-approval-oidc-v1.yml',
   workflowRef:'prhmonline/prhm-host-actions/.github/workflows/honartik-u06-owner-approval-oidc-v1.yml@refs/heads/main',
-  environment:G.environment,
+  // Direct owner JWT on pinned main; no second reviewer or protected Environment.
+  environment:null,
   ownerId:G.ownerId,
   repoId:G.repositoryId,
   actorId:G.invokingActorId,
-  approverId:G.requiredApproverId
+  approverId:null
 });
 const fail=(m)=>{throw new Error('prhm_u06_owner_oidc_'+m)};
 const need=(ok,m)=>{if(!ok)fail(m)};
@@ -70,12 +71,11 @@ function verifyU06OwnerIdentity({
     claims.workflow_ref===W.workflowRef&&
     claims.workflow_sha===expectedRunSha&&
     claims.ref==='refs/heads/main'&&
-    claims.environment===W.environment&&
+    claims.environment===undefined&&
     claims.event_name==='workflow_dispatch'&&
     claims.runner_environment==='github-hosted','workflow_claims_mismatch');
   const allowedSubjects=[
-    'repo:'+G.owner+'/'+G.repo+':environment:'+W.environment,
-    'repo:'+G.owner+'@'+W.ownerId+'/'+G.repo+'@'+W.repoId+':environment:'+W.environment
+    'repo:'+G.owner+'/'+G.repo+':ref:refs/heads/main'
   ];
   need(allowedSubjects.includes(claims.sub),'subject_mismatch');
   need([claims.iat,claims.nbf,claims.exp].every(Number.isSafeInteger)&&
@@ -84,23 +84,23 @@ function verifyU06OwnerIdentity({
     claims.exp>=nowSec&&nowSec-claims.iat<=300,'expired_or_stale');
   need(typeof claims.jti==='string'&&claims.jti.length>=12&&
     claims.jti.length<256,'jti_missing');
-  approvalRules(environment,branches);
+  // No GitHub environment/reviewer dependency. Owner actor and main SHA
+  // remain cryptographically bound to the official GitHub run.
   need(run&&String(run.id)===String(claims.run_id)&&
     String(run.actor?.id)===W.actorId&&
     run.event==='workflow_dispatch'&&run.head_branch==='main'&&
     run.head_sha===expectedRunSha&&run.run_attempt===1&&
     run.conclusion==='success'&&run.path===W.workflowPath&&
     String(claims.run_attempt)==='1','official_run_not_pinned');
-  need(Array.isArray(approvals),'review_history_missing');
-  const approved=approvals.find(a=>String(a.user?.id)===W.approverId&&
-    String(a.state).toLowerCase()==='approved');
-  need(!!approved,'explicit_owner_approval_missing');
+  // No human review: GitHub-signed, exact actor, run, SHA, nonce and audience
+  // still constitute *identity evidence*, not authorization to modify Root.
   const proof=Object.freeze({
     schema:'prhm.u06.honartik.owner-identity-evidence.v1',
     owner_identity_verified:true,
     github_oidc_signature_valid:true,
-    protected_environment_approval_valid:true,
-    approved_reviewer_id:W.approverId,
+    protected_environment_approval_valid:false,
+    owner_oidc_direct:true,
+    approved_reviewer_id:null,
     workflow_sha:expectedRunSha,
     run_id:String(run.id),
     intent_digest:intentDigest(),
@@ -148,14 +148,11 @@ async function verifyFromOfficialGitHub({token,challenge,expectedRunSha,nowSec})
     (typeof claims.run_id==='string'&&/^[0-9]{1,20}$/.test(claims.run_id))),
     'run_id_invalid');
   const id=String(claims.run_id),root=G.api+'/repos/'+G.owner+'/'+G.repo;
-  const [jwks,environment,branches,run,approvals]=await Promise.all([
+  const [jwks,run]=await Promise.all([
     httpsJson(G.jwks,250000),
-    httpsJson(root+'/environments/'+W.environment),
-    httpsJson(root+'/environments/'+W.environment+'/deployment-branch-policies'),
-    httpsJson(root+'/actions/runs/'+id),
-    httpsJson(root+'/actions/runs/'+id+'/approvals')
+    httpsJson(root+'/actions/runs/'+id)
   ]);
-  return verifyU06OwnerIdentity({token,jwks,environment,branches,run,approvals,
+  return verifyU06OwnerIdentity({token,jwks,run,
     challenge,expectedRunSha,nowSec});
 }
 module.exports=Object.freeze({
