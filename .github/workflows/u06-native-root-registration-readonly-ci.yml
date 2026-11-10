@@ -1,0 +1,28 @@
+name: U06 root binding exact-preimage metadata audit (offline only)
+on:
+  push:
+    paths:
+      - 'scripts/u06/u06_root_registration_preflight_v1.py'
+      - 'tests/u06/test_u06_root_registration_preflight_v1.py'
+      - '.github/workflows/u06-native-root-registration-readonly-ci.yml'
+  pull_request:
+    paths:
+      - 'scripts/u06/u06_root_registration_preflight_v1.py'
+      - 'tests/u06/test_u06_root_registration_preflight_v1.py'
+      - '.github/workflows/u06-native-root-registration-readonly-ci.yml'
+permissions:
+  contents: read
+jobs:
+  unit-preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m py_compile scripts/u06/u06_root_registration_preflight_v1.py
+      - run: python -m unittest discover -s tests/u06 -p 'test_u06_root_registration_preflight_v1.py' -v
+      - name: Assert no installation or Production action
+        run: |
+          grep -F 'production_deploy_authorized": False' scripts/u06/u06_root_registration_preflight_v1.py
+          ! grep -Eq 'mysqldump|mariadb-dump|chown\(|chmod\(|write_bytes\(' scripts/u06/u06_root_registration_preflight_v1.py
