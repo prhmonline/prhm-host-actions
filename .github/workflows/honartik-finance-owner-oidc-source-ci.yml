@@ -1,0 +1,51 @@
+name: Honartik finance-owner OIDC — source-only security CI
+
+on:
+  pull_request:
+    paths:
+      - 'honartik-finance-owner-oidc-identity-v1.cjs'
+      - 'honartik-finance-owner-oidc-sealed-v1.cjs'
+      - 'honartik-finance-owner-once-fence-v1.cjs'
+      - 'test-honartik-finance-owner-oidc-v1.cjs'
+      - '.github/workflows/honartik-finance-owner-approval-oidc-v1.yml'
+      - '.github/workflows/honartik-finance-owner-oidc-source-ci.yml'
+      - 'docs/runbooks/honartik-finance-owner-identity-boundary-20261111.md'
+  push:
+    branches:
+      - 'feature/honartik-finance-owner-oidc-proof-20261111'
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-signed-owner-proof-and-replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Verify signed owner-only finance scope, one-use receipt and no deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check honartik-finance-owner-oidc-identity-v1.cjs
+          node --check honartik-finance-owner-oidc-sealed-v1.cjs
+          node --check honartik-finance-owner-once-fence-v1.cjs
+          node --test test-honartik-finance-owner-oidc-v1.cjs
+          node - <<'NODE'
+          const g=require('./honartik-finance-owner-oidc-identity-v1.cjs');
+          const f=require('./honartik-finance-owner-once-fence-v1.cjs');
+          if(g.PRODUCTION_AUTHORIZED!==false ||
+             g.INTENT.operation!=='honartik_back.production.finance_release' ||
+             g.INTENT.source_sha!=='d1a64e640c9c2cf4788d55566c17728be5813941' ||
+             g.INTENT.production_base_sha!=='4ac602e874a128c3328f27f3dab473857512cdbf' ||
+             f.PRODUCTION_AUTHORIZED!==false ||
+             g.ROOT_EXECUTION_EXPORTED!==false)process.exit(1);
+          console.log('FINANCE_OIDC_IDENTITY_CONTRACT=PASS');
+          console.log('ROOT_VERIFIER_INSTALLED=FALSE');
+          console.log('PRODUCTION_FINANCE_RELEASE_AUTHORIZED=FALSE');
+          NODE
