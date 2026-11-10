@@ -99,12 +99,21 @@ function createChallenge(){
   };
 }
 function githubJSON(url,max=350000){
-  const allowed=(
-    url===G.jwks||
-    new RegExp('^'+G.api+'/repos/'+G.owner+'/'+G.repo+'/actions/runs/[0-9]{1,20}
-    url===G.api+'/repos/'+G.owner+'/'+G.repo+'/environments/'+gate.W.environment||
-    url===G.api+'/repos/'+G.owner+'/'+G.repo+'/environments/'+gate.W.environment+'/deployment-branch-policies'
-  );
+  // Reject lookalike hosts: ALL official run/environment metadata must
+  // come from the exact GitHub HTTPS origin, never a regex URL substring.
+  let target;
+  try{target=new URL(url)}catch{deny('endpoint_not_allowlisted')}
+  const repo='/repos/'+G.owner+'/'+G.repo;
+  const env=repo+'/environments/'+gate.W.environment;
+  const runPrefix=repo+'/actions/runs/';
+  const officialRun=target.pathname.startsWith(runPrefix)&&
+    /^[0-9]{1,20}$/.test(target.pathname.slice(runPrefix.length));
+  const allowedPath=officialRun||target.pathname===env||
+    target.pathname===env+'/deployment-branch-policies';
+  const officialAPI=target.protocol==='https:'&&target.hostname==='api.github.com'&&
+    target.port===''&&target.username===''&&target.password===''&&
+    target.search===''&&target.hash===''&&target.toString()===url;
+  const allowed=url===G.jwks||(officialAPI&&allowedPath);
   need(allowed,'endpoint_not_allowlisted');
   return new Promise((resolve,reject)=>{
     const headers={'User-Agent':'prhm-honartik-finance-owner-host-verifier-v1',
