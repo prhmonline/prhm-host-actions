@@ -18,6 +18,8 @@ HOST = 'prhm-production.prhm.ir'
 ACTION = 'honartik_u06_native_backup_register_v1'
 OPERATION = 'host_action.' + ACTION
 ROLLBACK = 'host-action-v2:honartik-u06-native-backup:durable-verified-root-rollback'
+EXPECTED_CANDIDATE_SHA256 = 'aa1563b168aea2725a0539373c54c45b2317b6320334c80a6d3a5e2723520934'
+EXPECTED_CANDIDATE_SIZE = 32036
 
 
 def require(ok, msg):
@@ -94,6 +96,9 @@ def main():
     policy = json.loads(raw.decode('utf-8'))
     out = candidate(policy)
     payload = (json.dumps(out, ensure_ascii=False, indent=2) + '\n').encode('utf-8')
+    require(sha(payload) == EXPECTED_CANDIDATE_SHA256 and
+            len(payload) == EXPECTED_CANDIDATE_SIZE,
+            'PRODUCTION_CANDIDATE_SHA_DRIFT')
     report = {
         'schema': 'prhm.u06.approval-policy.readonly-candidate.v1',
         'host': HOST,
@@ -102,6 +107,7 @@ def main():
         'preimage_sha256': PINNED,
         'candidate_sha256': sha(payload),
         'candidate_size': len(payload),
+        'owner_confirmed_sha_bound': True,
         'operations_before': len(policy['operations']),
         'operations_after': len(out['operations']),
         'typed_scopes_before': len(policy['typed_scopes']),
