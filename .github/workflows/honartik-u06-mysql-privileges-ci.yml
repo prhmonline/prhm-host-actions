@@ -1,0 +1,40 @@
+name: U06 real MariaDB backup-only grants and fail-closed scope
+on:
+  push:
+    paths:
+      - 'honartik-u06-mysql-grants-v1.cjs'
+      - 'test-honartik-u06-mysql-grants-v1.cjs'
+      - 'tests/u06/test_u06_mariadb_minimal_grants_integration.cjs'
+      - '.github/workflows/honartik-u06-mysql-privileges-ci.yml'
+  pull_request:
+    paths:
+      - 'honartik-u06-mysql-grants-v1.cjs'
+      - 'test-honartik-u06-mysql-grants-v1.cjs'
+      - 'tests/u06/test_u06_mariadb_minimal_grants_integration.cjs'
+      - '.github/workflows/honartik-u06-mysql-privileges-ci.yml'
+permissions:
+  contents: read
+jobs:
+  fixed-grant-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check honartik-u06-mysql-grants-v1.cjs
+      - run: node --test test-honartik-u06-mysql-grants-v1.cjs
+  real-networkless-mariadb:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Real MariaDB 10.11 / no network / expendable account only
+        run: node --test tests/u06/test_u06_mariadb_minimal_grants_integration.cjs
