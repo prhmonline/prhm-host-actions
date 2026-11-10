@@ -172,7 +172,9 @@ def scenario(fault_after_credential=False):
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL
             )
-            with gzip.open(archive, "rb") as sql:
+            with archive.open("rb") as probe:
+                magic = probe.read(2)
+            with (gzip.open(archive, "rb") if magic == bytes.fromhex("1f8b") else archive.open("rb")) as sql:
                 while True:
                     chunk = sql.read(64 * 1024)
                     if not chunk:
