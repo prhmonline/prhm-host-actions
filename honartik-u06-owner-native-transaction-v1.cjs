@@ -89,7 +89,7 @@ async function coordinateOwnerU06(native,proof,{ledgerDir=fence.LEDGER,ledgerOwn
     REQUIRED.every(k=>typeof native[k]==='function'),
     'trusted_fixed_native_adapter_not_supplied');
   let locked=false,journal=null,mutationAttempted=false,committed=false,post=null;
-  let journalPrepareStarted=false,commitAttempted=false,retainRecoveryLease=false;
+  let journalPrepareStarted=false,journalDurable=false,commitAttempted=false,retainRecoveryLease=false;
   try{
     await native.exclusiveU06Lock(F);locked=true;
     const pre=checkPreimage(await native.readExactPreimage(F));
@@ -103,6 +103,7 @@ async function coordinateOwnerU06(native,proof,{ledgerDir=fence.LEDGER,ledgerOwn
       /^[a-z0-9_-]{12,100}$/i.test(journal.id),'journal_not_created');
     need(await native.assertRollbackJournalDurable(F,journal)===true,
       'journal_not_durable');
+    journalDurable=true;
     // Owner proof is permanently consumed BEFORE any attempt to change MySQL.
     // A failed/rolled-back action needs a NEW signed owner approval.
     fence.consumeVerifiedOwnerEvidence(proof,{
@@ -121,18 +122,20 @@ async function coordinateOwnerU06(native,proof,{ledgerDir=fence.LEDGER,ledgerOwn
       'journal_commit_unverified');
     committed=true;
   }catch(error){
-    if(journalPrepareStarted&&(!journal||!mutationAttempted||commitAttempted)){
-      // Prepare/durability/approval may be half-written; commit may already
-      // be durable. Only a trusted independent reconciler may clear the lease.
+    if(commitAttempted||journalPrepareStarted&&!journalDurable){
+      // A commit could already be durable, or a journal write could be
+      // incomplete; neither may be safely rolled back from a guess.
       retainRecoveryLease=true;
       const reason=commitAttempted?
         'CRITICAL_COMMIT_OUTCOME_UNKNOWN_LEASE_RETAINED':
-        'CRITICAL_PREPARE_OR_APPROVAL_OUTCOME_UNKNOWN_LEASE_RETAINED';
+        'CRITICAL_PREPARE_OUTCOME_UNKNOWN_LEASE_RETAINED';
       const err=new Error('prhm_u06_native_owner_'+reason);
       err.cause=error;
       throw err;
     }
-    if(journal&&mutationAttempted&&!committed){
+    if(journal&&journalDurable&&!committed){
+      // Even if approval consumption failed/replayed, close the durable
+      // prepared journal via verified exact rollback before unlocking.
       try{
         await native.rollbackExactPreimage(F,journal);
         need(await native.verifyExactRollback(F,journal)===true,
