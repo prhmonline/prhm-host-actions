@@ -41,6 +41,14 @@ jobs:
           assert x['profile_live_file_read_or_written'] is False
           assert x['root_policy_modified'] is False
           assert x['production_release_authorized'] is False
+          e=json.load(open('evidence/u06/honartik-20261110-actual-native-sandbox-and-sigkill.json'))
+          assert e['disposable_execution']['native_verify_restore']=='PASS'
+          assert e['disposable_execution']['full_mariadb_check']=='PASS'
+          assert e['disposable_execution']['mysql_user_deleted'] is True
+          assert e['limitations']['production_native_backup_completed'] is False
+          assert e['limitations']['production_database_mutated'] is False
+          assert len(e['actual_linux_crash_drill']['stages'])==3
+          print('U06_NATIVE_FIXTURE_EVIDENCE=PASS')
           print('U06_REAL_SIGKILL_CRASH_RECOVERY=PASS')
           print('PRODUCTION_CHANGED=FALSE')
           PY
