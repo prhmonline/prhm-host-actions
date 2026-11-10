@@ -17,13 +17,13 @@ test('host verifier pins privileged paths, never exports application cutover',()
   for(const name of ['deploy','installRoot','executeRelease','apply','creditWallet','migrate','reset'])
     assert.equal(c[name],undefined,name);
 });
-test('host verifier rejects unapproved network endpoints before fetch',async()=>{
-  await assert.rejects(
-    c.githubJSON('https://attacker.example/api/run','bogus'),
+test('host verifier rejects unapproved network endpoints before fetch',()=>{
+  assert.throws(
+    ()=>c.githubJSON('https://attacker.example/api/run','bogus'),
     /endpoint_not_allowlisted/
   );
-  await assert.rejects(
-    c.githubJSON('http://api.github.com/repos/prhmonline/prhm-host-actions/actions/runs/1','bogus'),
+  assert.throws(
+    ()=>c.githubJSON('http://api.github.com/repos/prhmonline/prhm-host-actions/actions/runs/1','bogus'),
     /endpoint_not_allowlisted/
   );
 });
