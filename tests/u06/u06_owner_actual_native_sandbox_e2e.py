@@ -166,8 +166,10 @@ def scenario(fault_after_credential=False):
             bounded_docker(restored)
             restore_container_alive = True
             wait_for_final_sandbox_server(restored, False)
+            run(["docker", "exec", restored, "mariadb", "-uroot", "-e",
+                 "CREATE DATABASE honartik_db"], timeout=25)
             imp = subprocess.Popen(
-                ["docker", "exec", "-i", restored, "mariadb", "-uroot"],
+                ["docker", "exec", "-i", restored, "mariadb", "-uroot", "honartik_db"],
                 stdin=subprocess.PIPE,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL
