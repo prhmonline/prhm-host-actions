@@ -37,6 +37,7 @@ const W=Object.freeze({
 });
 const fail=(m)=>{throw new Error('prhm_u06_owner_oidc_'+m)};
 const need=(ok,m)=>{if(!ok)fail(m)};
+const VERIFIED_PROOFS=new WeakSet();
 const HEX64=/^[0-9a-f]{64}$/;
 const HEX40=/^[0-9a-f]{40}$/;
 function intentDigest(){
@@ -94,7 +95,7 @@ function verifyU06OwnerIdentity({
   const approved=approvals.find(a=>String(a.user?.id)===W.approverId&&
     String(a.state).toLowerCase()==='approved');
   need(!!approved,'explicit_owner_approval_missing');
-  return Object.freeze({
+  const proof=Object.freeze({
     schema:'prhm.u06.honartik.owner-identity-evidence.v1',
     owner_identity_verified:true,
     github_oidc_signature_valid:true,
@@ -114,6 +115,8 @@ function verifyU06OwnerIdentity({
     native_backup_completed:false,
     backend_deploy_authorized:false
   });
+  VERIFIED_PROOFS.add(proof);
+  return proof;
 }
 function httpsJson(url,max=450000){
   need(url===G.jwks||url.startsWith(G.api+'/'),'endpoint_denied');
@@ -157,5 +160,6 @@ async function verifyFromOfficialGitHub({token,challenge,expectedRunSha,nowSec})
 }
 module.exports=Object.freeze({
   INTENT,W,intentDigest,audience,verifyU06OwnerIdentity,verifyFromOfficialGitHub,
+  proofVerifiedInCurrentProcess:(candidate)=>VERIFIED_PROOFS.has(candidate),
   ROOT_EXECUTION_EXPORTED:false,PRODUCTION_AUTHORIZED:false
 });
