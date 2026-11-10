@@ -152,9 +152,10 @@ test('non-durable journal rejects before receipt and write',async()=>{
  try{
    const x=fakeNative({assertRollbackJournalDurable:()=>false});
    await assert.rejects(core.coordinateOwnerU06(x.native,ownerProof(),options(dir)),
-     /journal_not_durable/);
+     /CRITICAL_PREPARE_OUTCOME_UNKNOWN_LEASE_RETAINED/);
    assert.equal(fs.readdirSync(dir).length,0);
    assert.ok(!x.calls.includes('provision'));
+    assert.ok(!x.calls.includes('unlock'),'uncertain prepare must retain lease');
  }finally{fs.rmSync(dir,{recursive:true,force:true})}
 });
 test('native partial backup failure rolls back and does not refund approval',async()=>{
@@ -181,6 +182,7 @@ test('failed rollback retains critical recovery state and consumed approval',asy
    await assert.rejects(core.coordinateOwnerU06(x.native,ownerProof(),options(dir)),
      /CRITICAL_RECOVERY_JOURNAL_RETAINED/);
    assert.equal(fs.readdirSync(dir).length,1);
+    assert.ok(!x.calls.includes('unlock'),'failed rollback must retain lease');
  }finally{fs.rmSync(dir,{recursive:true,force:true})}
 });
 test('postflight financial integrity failure triggers exact rollback',async()=>{
@@ -193,6 +195,7 @@ test('postflight financial integrity failure triggers exact rollback',async()=>{
      /native_backup_postflight_not_proven/);
    assert.ok(x.calls.includes('rollback'));
    assert.ok(x.calls.includes('verifyRollback'));
+    assert.ok(x.calls.includes('unlock'),'verified rollback must free lease');
    assert.ok(!x.calls.includes('commit'));
  }finally{fs.rmSync(dir,{recursive:true,force:true})}
 });
@@ -206,6 +209,9 @@ test('cannot use successful receipt twice to write credentials twice',async()=>{
      /replayed_receipt/);
    assert.ok(!x.calls.includes('provision'));
    assert.ok(!x.calls.includes('commit'));
+    assert.ok(x.calls.includes('rollback'),'replayed proof closes prepared journal');
+    assert.ok(x.calls.includes('verifyRollback'));
+    assert.ok(x.calls.includes('unlock'));
  }finally{fs.rmSync(dir,{recursive:true,force:true})}
 });
 test('profile before and after exact shape refuses extra command arguments',()=>{
@@ -213,4 +219,38 @@ test('profile before and after exact shape refuses extra command arguments',()=>
  assert.throws(()=>core.checkPostflight({...post(),host:'other'}),/untrusted_postflight_shape/);
  assert.throws(()=>core.checkPostflight({...post(),full_mysqlcheck_pass:false}),
    /native_backup_postflight_not_proven/);
+});
+
+test('journal preparation interrupted retains lease even without journal ID',async()=>{
+ const dir=tempLedger();
+ try{
+   const x=fakeNative({prepareDurableRollbackJournal:()=>{throw Error('fixture_partial_fsync')}});
+   await assert.rejects(core.coordinateOwnerU06(x.native,ownerProof(),options(dir)),
+     /CRITICAL_PREPARE_OUTCOME_UNKNOWN_LEASE_RETAINED/);
+   assert.ok(x.calls.includes('journal'));
+   assert.ok(!x.calls.includes('unlock'));
+   assert.ok(!x.calls.includes('provision'));
+   assert.ok(!x.calls.includes('rollback'),'unknown journal is not safe to reverse');
+ }finally{fs.rmSync(dir,{recursive:true,force:true})}
+});
+test('ambiguous commit retains lease and refuses rollback of possibly committed backup',async()=>{
+ const dir=tempLedger();
+ try{
+   const x=fakeNative({commitDurableJournal:()=>{throw Error('fixture_committed_then_connection_lost')}});
+   await assert.rejects(core.coordinateOwnerU06(x.native,ownerProof(),options(dir)),
+     /CRITICAL_COMMIT_OUTCOME_UNKNOWN_LEASE_RETAINED/);
+   assert.ok(x.calls.includes('commit'));
+   assert.ok(!x.calls.includes('rollback'),'uncertain commit cannot be reverted');
+   assert.ok(!x.calls.includes('unlock'),'commit ambiguity must retain lease');
+ }finally{fs.rmSync(dir,{recursive:true,force:true})}
+});
+test('false commit acknowledgement retains lease and never rolls back',async()=>{
+ const dir=tempLedger();
+ try{
+   const x=fakeNative({commitDurableJournal:()=>false});
+   await assert.rejects(core.coordinateOwnerU06(x.native,ownerProof(),options(dir)),
+     /CRITICAL_COMMIT_OUTCOME_UNKNOWN_LEASE_RETAINED/);
+   assert.ok(!x.calls.includes('rollback'));
+   assert.ok(!x.calls.includes('unlock'));
+ }finally{fs.rmSync(dir,{recursive:true,force:true})}
 });
