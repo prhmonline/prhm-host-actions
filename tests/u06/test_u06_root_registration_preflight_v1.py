@@ -67,6 +67,9 @@ class PreflightTests(unittest.TestCase):
         self.assertNotIn('"--apply"', source)
         self.assertNotIn("CREATE USER", source)
         self.assertNotIn("DROP USER", source)
+        self.assertNotIn("from __future__ import annotations", source)
+        self.assertNotIn("capture_output=True", source)
+        self.assertNotIn("text=True", source)
 
 if __name__ == "__main__":
     unittest.main()
