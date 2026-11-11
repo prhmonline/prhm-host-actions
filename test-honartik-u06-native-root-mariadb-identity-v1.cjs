@@ -40,6 +40,10 @@ test('live creation needs Root trust and official signed-consumed L4 before any 
  assert.ok(src.includes('fs.fsyncSync(fd)'));
  assert.ok(src.includes('SELECT COUNT(*) FROM mysql.user WHERE User='));
  assert.ok(src.includes('rollback'));
+ assert.ok(src.includes('let created=false,credentialOwned=false;'));
+ assert.ok(src.includes('credential(password);credentialOwned=true;'));
+ assert.ok(src.includes('if(credentialOwned&&!fileAbsent(P.credential))'));
+ assert.ok(src.includes("' AND Host='+HEX_HOST+';')==='0'&&fileAbsent(P.credential)"));
  assert.ok(!src.includes('process.argv'));
  assert.ok(!src.includes('execSync('));
  assert.ok(!src.includes('new Function'));
