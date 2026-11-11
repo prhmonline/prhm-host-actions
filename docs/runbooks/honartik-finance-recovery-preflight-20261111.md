@@ -34,3 +34,18 @@
 ### Required next resolution (NO database writes)
 
 Build a separate read-only **migration inventory reconciliation** using Yii's actual effective `migrationLookup` and a network-disconnected restored schema. Determine which migrations represent already-existing schema, which belong to unconfigured legacy folders, and which truly require a change. Review any baseline repair or migration operation separately, with its own scoped owner authorization, safety analysis and rollback. **Do not backfill migration history or run `migrate/up` against production** merely to clear this gate. Continue to forbid finance deployment and wallet activation.
+
+## Effective migrationLookup reconciliation (read-only audit, 2026-11-11)
+
+See [Honartik actual Yii effective-migration audit](honartik-finance-yii-effective-migration-audit-20261111.md).
+The previously reported 56 filenames came from a broad static scan; the
+**registered Yii module lookup** resolves to only 21 active migration PHP files.
+For 19 structural migrations, the target tables/columns (including four
+custom-prefixed RBAC tables) exist in the verified backup. Two data/seed
+migrations remain unverifiable from schema alone. The official
+\`system_db_migration\` table has no data in the backup.
+
+This is evidence of a historical migration-state discrepancy; it is **not**
+proof that all active migrations executed. The finance restore issuer remains
+fail-closed. Neither alter the production migration history nor run migrations
+to satisfy this report.
