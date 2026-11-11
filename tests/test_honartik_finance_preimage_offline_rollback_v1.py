@@ -27,7 +27,7 @@ class Checks(unittest.TestCase):
   self.assertIn("--one-file-system",args)
   self.assertIn("--no-devices",args)
   self.assertIn("--no-specials",args)
-  self.assertIn("-aH",args)
+  self.assertIn("-aHAX",args)
   self.assertNotIn("--copy-links",args)
   self.assertTrue(any(a.startswith("--exclude=") for a in args))
   self.assertNotIn("--delete",args)
