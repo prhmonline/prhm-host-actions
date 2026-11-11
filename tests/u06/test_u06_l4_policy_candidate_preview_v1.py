@@ -1,4 +1,7 @@
 import copy
+import io
+import sys
+from unittest.mock import patch
 import importlib.util
 import json
 import pathlib
@@ -208,6 +211,84 @@ class JoinedPolicyAndRootTests(unittest.TestCase):
         self.assertNotIn('--apply', script)
         self.assertNotIn('CREATE USER', script)
         self.assertNotIn('mysql.cnf', script)
+
+
+class ActualEntrypointRegressionTests(unittest.TestCase):
+    """Run main(), not just candidate(): catches undefined st runtime regressions."""
+
+    @staticmethod
+    def fake_production_policy_bytes():
+        # Match the exact 31,167-byte root file preimage length with valid
+        # fixture JSON plus whitespace, never read a live policy.
+        data = json.dumps(fixture(), ensure_ascii=False).encode('utf-8')
+        assert len(data) < 31167
+        return data + b' ' * (31167 - len(data))
+
+    def execute_mode(self, flag):
+        raw = self.fake_production_policy_bytes()
+        expected_policy = module.candidate(json.loads(raw.decode('utf-8')))
+        expected_candidate = (
+            json.dumps(expected_policy, ensure_ascii=False, indent=2) + '\n'
+        ).encode('utf-8')
+        checked_paths = []
+
+        def fake_exact_read(path, expected_sha, size, mode):
+            self.assertEqual(path, module.POLICY)
+            self.assertEqual(expected_sha, module.sha(raw))
+            self.assertEqual(size, 31167)
+            self.assertEqual(mode, 0o644)
+            checked_paths.append(path)
+            return raw
+
+        stream = io.StringIO()
+        with patch.object(module, 'PINNED', module.sha(raw)), \
+                patch.object(module, 'EXPECTED_CANDIDATE_SHA256',
+                             module.sha(expected_candidate)), \
+                patch.object(module, 'EXPECTED_CANDIDATE_SIZE',
+                             len(expected_candidate)), \
+                patch.object(module, 'read_exact_root',
+                             side_effect=fake_exact_read), \
+                patch.object(module.socket, 'getfqdn', return_value=module.HOST), \
+                patch.object(sys, 'argv', ['u06.py', flag]), \
+                patch('sys.stdout', stream), \
+                patch.object(module, 'inspect_all_routes',
+                             return_value={'fixture_verified': True}) as inspect:
+            module.main()
+
+        result = json.loads(stream.getvalue())
+        self.assertEqual(len(checked_paths), 2, 'read and recheck exact policy')
+        self.assertEqual(result['candidate_sha256'], module.sha(expected_candidate))
+        self.assertTrue(result['owner_confirmed_sha_bound'])
+        self.assertFalse(result['live_policy_modified'])
+        self.assertFalse(result['action_registered'])
+        self.assertFalse(result['root_executor_installed'])
+        self.assertFalse(result['prod_db_mutated'])
+        if flag == '--audit-all':
+            inspect.assert_called_once_with()
+            self.assertEqual(result['four_owner_inmemory_preview'],
+                             {'fixture_verified': True})
+        else:
+            inspect.assert_not_called()
+
+    def test_main_preview_entrypoint_without_old_st(self):
+        self.execute_mode('--preview')
+
+    def test_main_audit_all_entrypoint_without_old_st(self):
+        self.execute_mode('--audit-all')
+
+    def test_main_rejects_policy_length_or_sha_drift(self):
+        raw = self.fake_production_policy_bytes()
+        for bad in (raw[:-1], raw[:-1] + b'X'):
+            with patch.object(module, 'read_exact_root', return_value=bad), \
+                    patch.object(module, 'PINNED', module.sha(raw)), \
+                    patch.object(module.socket, 'getfqdn', return_value=module.HOST), \
+                    patch.object(sys, 'argv', ['u06.py', '--audit-all']):
+                with self.assertRaises(ValueError):
+                    module.main()
+
+    def test_undefined_st_name_never_in_entrypoint(self):
+        source = PATH.read_text(encoding='utf-8')
+        self.assertNotIn('st.st_size', source)
 
 
 if __name__ == '__main__':
