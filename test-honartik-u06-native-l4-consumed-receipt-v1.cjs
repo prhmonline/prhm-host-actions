@@ -29,8 +29,10 @@ function fixture(){
    principals:[{principal_id:'mohammad',roles:['mcp-operator']}]
   }]
  };
- const bytes=Buffer.from(JSON.stringify(policy));
+ const bytes=Buffer.from(JSON.stringify(policy,null,2)+'\n');
  const sha=H(bytes);
+ const issuerPolicyHash=H(Buffer.from(JSON.stringify(policy)));
+ assert.notEqual(sha,issuerPolicyHash,'actual issuer policy hash is compact JSON, not raw file bytes');
  const header={alg:'EdDSA',typ:'PRHM-COMPANY-APPROVAL',kid};
  const claims={
   approval_id:AID,request_id:RID,jti:AID,iss:'prhm-company-approval',
@@ -38,7 +40,7 @@ function fixture(){
   project:'control_plane',environment:'production',tool:'host_action_v2_apply',
   principal_id:'mohammad',role:'mcp-operator',level:4,risk:'critical',
   decision:'accept',one_time_use:true,
-  policy_version:ver,policy_hash:sha,
+  policy_version:ver,policy_hash:issuerPolicyHash,
   arguments_sha256:v.argDigest(),request_hash:v.argDigest(),
   iat:now-40,nbf:now-40,exp:now+80
  };
@@ -59,7 +61,7 @@ function fixture(){
  };
  const args=()=>({token:sign(),issuerPublicKey:key,consumedLedger:seal(ledger),
   policyBytes:bytes,reviewedPolicySha256:sha,nowSec:now});
- return {args,sign,seal,claims,header,ledger,bytes,policy,sha,key,now};
+ return {args,sign,seal,claims,header,ledger,bytes,policy,sha,issuerPolicyHash,key,now};
 }
 test('real Ed25519 signed U06 receipt + exact consumed ledger validates, never authorizes Root',()=>{
  const f=fixture(),result=v.verifySignedConsumedL4(f.args());
@@ -68,6 +70,8 @@ test('real Ed25519 signed U06 receipt + exact consumed ledger validates, never a
  assert.equal(result.level4_scope_exact,true);
  assert.equal(result.action,v.ACTION);
  assert.equal(result.reviewed_policy_sha256,f.sha);
+ assert.equal(f.claims.policy_hash,f.issuerPolicyHash);
+ assert.notEqual(result.reviewed_policy_sha256,f.claims.policy_hash);
  assert.equal(result.root_owned_sources_attested,false);
  assert.equal(result.native_root_binding_installed,false);
  assert.equal(result.replay_fence_reserved,false);
@@ -82,6 +86,7 @@ test('any action, identity, project, Level 3, replay hash, time or issuer drift 
   {principal_id:'other'},{project:'honartik_back'},
   {level:3},{decision:'deny'},
   {arguments_sha256:'0'.repeat(64)},{request_hash:'f'.repeat(64)},
+  {policy_hash:f.sha},
   {exp:f.now-1},{iat:f.now+2},{exp:f.now+500},
   {one_time_use:false},{jti:'other'}
  ]){
@@ -143,4 +148,19 @@ test('reverified real L4 still fail-closed on installation until exact host poli
  assert.equal(v.install,undefined);
  assert.equal(v.issueApproval,undefined);
  assert.equal(v.consumeApproval,undefined);
+});
+
+test('actual Approval Center policy-hash contract uses JSON.stringify parsed policy, not raw file',()=>{
+ const f=fixture();
+ const info=v.verifyPolicyAndOperation(f.bytes,f.sha);
+ assert.equal(info.sha256,f.sha);
+ assert.equal(info.issuer_policy_hash_sha256,f.issuerPolicyHash);
+ assert.notEqual(info.sha256,info.issuer_policy_hash_sha256);
+ const a=v.verifySignedConsumedL4(f.args());
+ assert.equal(a.signature_verified,true);
+ // Raw bytes can only prove exact installed policy, never replace
+ // the independent signed policy_hash in a real Approval Center receipt.
+ assert.throws(()=>v.verifySignedConsumedL4({...f.args(),
+   token:f.sign({...f.claims,policy_hash:f.sha})}),
+   /signed_scope_or_freshness_mismatch/);
 });

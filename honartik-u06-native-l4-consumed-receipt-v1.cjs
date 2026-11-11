@@ -57,7 +57,12 @@ function verifyPolicyAndOperation(bytes,pinnedSha){
   s.environment===EXPECTED.environment&&s.risk===EXPECTED.risk&&
   jsonEq(s.principals,[{principal_id:EXPECTED.principal,roles:[EXPECTED.role]}]),
   'u06_typed_scope_drift');
+ // Approval Center signs sha256(JSON.stringify(parsedPolicy)), whereas the
+ // Root source preimage pin is sha256(rawPrettyPrintedPolicyBytes).
+ // These independent hashes MUST NOT be conflated.
+ const issuerPolicyHash=HASH(Buffer.from(JSON.stringify(p),'utf8'));
  return Object.freeze({version:p.version,sha256:pinnedSha,
+  issuer_policy_hash_sha256:issuerPolicyHash,
   action:ACTION,operation:OPERATION,level:4});
 }
 function verifySignedConsumedL4({
@@ -75,7 +80,8 @@ function verifySignedConsumedL4({
   c.tool===EXPECTED.tool&&c.principal_id===EXPECTED.principal&&
   c.role===EXPECTED.role&&c.level===4&&c.risk==='critical'&&
   c.decision==='accept'&&c.one_time_use===true&&
-  c.policy_version===policy.version&&c.policy_hash===policy.sha256&&
+  c.policy_version===policy.version&&
+  c.policy_hash===policy.issuer_policy_hash_sha256&&
   c.arguments_sha256===requestHash&&c.request_hash===requestHash&&
   Number.isSafeInteger(c.iat)&&Number.isSafeInteger(c.nbf)&&
   Number.isSafeInteger(c.exp)&&c.iat<=nowSec&&c.nbf<=nowSec&&
