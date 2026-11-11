@@ -1,0 +1,31 @@
+name: U06 owner-confirmed four live candidate SHAs and strict signed L4 native admission
+on:
+  pull_request:
+    paths:
+      - 'manifests/honartik-u06-owner-confirmed-four-postimages-20261111.json'
+      - 'test-honartik-u06-four-postimages-and-l4-native-fence-v1.cjs'
+      - 'honartik-u06-owner-native-transaction-v1.cjs'
+      - 'test-honartik-u06-owner-native-transaction-v1.cjs'
+      - '.github/workflows/honartik-u06-confirmed-four-postimages-ci.yml'
+  push:
+    paths:
+      - 'manifests/honartik-u06-owner-confirmed-four-postimages-20261111.json'
+      - 'test-honartik-u06-four-postimages-and-l4-native-fence-v1.cjs'
+      - 'honartik-u06-owner-native-transaction-v1.cjs'
+      - 'test-honartik-u06-owner-native-transaction-v1.cjs'
+      - '.github/workflows/honartik-u06-confirmed-four-postimages-ci.yml'
+permissions:
+  contents: read
+jobs:
+  source-only-boundary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check honartik-u06-owner-native-transaction-v1.cjs
+      - run: node --test test-honartik-u06-four-postimages-and-l4-native-fence-v1.cjs test-honartik-u06-owner-native-transaction-v1.cjs
+      - run: node --test test-honartik-u06-native-l4-consumed-receipt-v1.cjs
