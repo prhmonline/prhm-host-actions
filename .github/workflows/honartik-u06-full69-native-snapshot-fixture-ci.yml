@@ -1,0 +1,48 @@
+name: U06 full 69-table native Universal backup replica fixture guard
+on:
+  pull_request:
+    paths:
+      - 'tests/u06/u06_full69_native_adapter_from_central_snapshot_v1.py'
+      - '.github/workflows/honartik-u06-full69-native-snapshot-fixture-ci.yml'
+  push:
+    paths:
+      - 'tests/u06/u06_full69_native_adapter_from_central_snapshot_v1.py'
+      - '.github/workflows/honartik-u06-full69-native-snapshot-fixture-ci.yml'
+permissions:
+  contents: read
+jobs:
+  static-source-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python3 -m py_compile tests/u06/u06_full69_native_adapter_from_central_snapshot_v1.py
+      - name: Fail closed on live Production paths, network and execution
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('tests/u06/u06_full69_native_adapter_from_central_snapshot_v1.py').read_text()
+          for x in [
+            'ONLY --isolated-fixture IS SUPPORTED; NO LIVE APPLY',
+            'from universal.adapters.database import (',
+            'backup_database, verify_database_restore',
+            'mariadb@sha256:',
+            '114d40be36852d0a019afd8458f7e1cc63fd300403b115b1f32e31130d5f671b',
+            '5adf9397c2cbc8045d29ef7b11bd34ab17ed26a4920106a79f036fa24e85de15',
+            'SNAPSHOT_SHA256',
+            'real_schema(name)==(69,49)',
+            'real_schema(restored)==(69,49)',
+            'finance_snapshot(restored)==restored_source_finance',
+            'production_database_connected',
+            '--network=none',
+            'DROP USER IF EXISTS',
+          ]: assert x in s, x
+          for x in ['docker run --network=host','127.0.0.1:3306','--privileged','--live','--production-apply']:
+            assert x not in s, x
+          print('U06_FULL69_REPLICA_SOURCE_GUARDS=PASS; NO_PRODUCTION_APPLY=TRUE')
+          PY
