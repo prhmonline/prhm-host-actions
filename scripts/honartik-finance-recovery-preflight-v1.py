@@ -36,7 +36,7 @@ BACKUP_REL="db/prhm-mariadb/honartik_db.sql.gz"
 HELPER=Path("/usr/local/libexec/deploy-control/honartik-backend-prepare")
 HELPER_SHA256="bb6d94b1db5babef628876a41c66178b046f1e983e4a0612700cea55dadb1b61"
 OUT_DIR=Path("/var/lib/prhm-honartik-finance-recovery")
-LOCK=Path("/run/lock/prhm-honartik-finance-recovery-preflight.lock")
+LOCK=OUT_DIR/"finance-preflight.lock"
 SHA40=re.compile(r"^[a-f0-9]{40}$")
 SNAP=re.compile(r"^20[0-9]{6}T[0-9]{6}Z$")
 EXPECTED={
@@ -155,7 +155,8 @@ def select_fresh_backup(now):
    m=re.fullmatch(r"([a-f0-9]{64})  \*?(?:\./)?(.+)",line)
    if m and m.group(2)==BACKUP_REL:matches.append(m.group(1))
   need(len(matches)==1,"archive_manifest_entry_ambiguous")
-  actual=hashlib.file_digest(archive.open("rb"),"sha256").hexdigest()
+  with archive.open("rb") as stream:
+   actual=hashlib.file_digest(stream,"sha256").hexdigest()
   need(actual==matches[0],"backup_manifest_digest_mismatch")
   bytes_uncompressed=0
   with gzip.open(archive,"rb") as src:
@@ -265,8 +266,7 @@ def main():
  args=ap.parse_args()
  need(os.geteuid()==0,"root_only")
  now=dt.datetime.now(dt.timezone.utc)
- need(os.environ.get("REVIEWED_SOURCE_SHA")=="4410fc559c15690e7cdaa68884f9bda642e68dbe" or
-      re.fullmatch("[0-9a-f]{40}",os.environ.get("REVIEWED_SOURCE_SHA","")),
+ need(bool(re.fullmatch("[0-9a-f]{40}",os.environ.get("REVIEWED_SOURCE_SHA",""))),
       "reviewed_source_sha_required")
  # Source checkout must be rooted in an immutable exact-SHA clean Git tree.
  src=Path(__file__).resolve().parents[1]
