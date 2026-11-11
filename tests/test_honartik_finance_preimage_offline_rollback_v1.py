@@ -59,6 +59,8 @@ class Checks(unittest.TestCase):
             '"production_modified":False',
             '"finance_release_executor_installed":False'):
    self.assertIn(x,source)
+  self.assertIn('source_fence(source)',source)
+  self.assertLess(source.index('source_fence(source)',source.index('def create_preimage():')),source.index('live_fence()',source.index('def create_preimage():')))
   self.assertIn('shutil.rmtree(stage)',source)
   self.assertIn('shutil.rmtree(restored)',source)
   self.assertIn('isolated_pinned_git_rollback_helper',source)
