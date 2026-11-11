@@ -298,10 +298,19 @@ def main():
   print("FINANCE_RECOVERY_PREFLIGHT=PASS",flush=True)
   print("FINANCE_RELEASE_AUTHORIZED=FALSE",flush=True)
  return 0
+def safe_failure_label(error):
+ if isinstance(error,Blocked):
+  return str(error)
+ if isinstance(error,RuntimeError):
+  # Importer's fixed refusal reason only; never print SQL, rows or credentials.
+  code=str(error).split(':',1)[0]
+  return code if re.fullmatch(r'[a-z][a-z0-9_]{2,79}',code) else 'unclassified_runtime_error'
+ return type(error).__name__
+
 if __name__=="__main__":
  try:raise SystemExit(main())
  except (Blocked,ValueError,KeyError,FileNotFoundError,OSError,subprocess.TimeoutExpired,
          ImportError,RuntimeError,BlockingIOError) as e:
-  label=str(e) if isinstance(e,Blocked) else type(e).__name__
+  label=safe_failure_label(e)
   print("FINANCE_RECOVERY_PREFLIGHT=BLOCKED reason="+label,file=sys.stderr)
   raise SystemExit(2)

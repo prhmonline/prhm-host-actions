@@ -86,6 +86,13 @@ class Tests(unittest.TestCase):
     with self.assertRaises(m.Blocked):
      m.write_evidence("20261111T092019Z","a"*64,"42917752557",
                       69,45,{},dt.datetime.now(dt.timezone.utc))
+ def test_runtime_failure_codes_are_safe_and_do_not_log_sql(self):
+  self.assertEqual(m.safe_failure_label(RuntimeError("pending_migrations_in_isolated_restore")),
+                   "pending_migrations_in_isolated_restore")
+  self.assertEqual(m.safe_failure_label(RuntimeError("command_failed:/usr/bin/docker:1")),
+                   "command_failed")
+  self.assertEqual(m.safe_failure_label(RuntimeError("SELECT * FROM users WHERE token=secret")),
+                   "unclassified_runtime_error")
  def test_no_deploy_powers_are_defined(self):
   s=SCRIPT.read_text()
   self.assertNotIn("subprocess.Popen(['deploy'",s)
