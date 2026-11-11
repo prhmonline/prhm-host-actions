@@ -220,7 +220,9 @@ def main():
     require(sys.argv[1:] in (['--preview'], ['--audit-all']), 'ONLY_READONLY_AUDIT_SUPPORTED')
     require(socket.getfqdn().lower() == HOST, 'HOST_MISMATCH')
     raw = read_exact_root(POLICY, PINNED, 31167, 0o644)
-    require(len(raw) == st.st_size and sha(raw) == PINNED,
+    # read_exact_root() already validates exact length, SHA, owner and inode.
+    # Do not use the obsolete `st` variable from the replaced lstat path.
+    require(len(raw) == 31167 and sha(raw) == PINNED,
             'POLICY_PREIMAGE_SHA_DRIFT')
     policy = json.loads(raw.decode('utf-8'))
     out = candidate(policy)
