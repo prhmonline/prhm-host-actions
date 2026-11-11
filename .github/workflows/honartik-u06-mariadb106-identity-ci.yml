@@ -1,0 +1,51 @@
+name: U06 real MariaDB10.6 constrained backup identity native component
+on:
+  pull_request:
+    paths:
+      - 'honartik-u06-native-root-mariadb-identity-v1.cjs'
+      - 'test-honartik-u06-native-root-mariadb-identity-v1.cjs'
+      - 'tests/u06/u06_prod_mariadb106_exact_identity_fixture_v1.py'
+      - '.github/workflows/honartik-u06-mariadb106-identity-ci.yml'
+  push:
+    paths:
+      - 'honartik-u06-native-root-mariadb-identity-v1.cjs'
+      - 'test-honartik-u06-native-root-mariadb-identity-v1.cjs'
+      - 'tests/u06/u06_prod_mariadb106_exact_identity_fixture_v1.py'
+      - '.github/workflows/honartik-u06-mariadb106-identity-ci.yml'
+permissions:
+  contents: read
+jobs:
+  restricted-identity-code:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: node --check honartik-u06-native-root-mariadb-identity-v1.cjs
+      - run: node --test test-honartik-u06-native-root-mariadb-identity-v1.cjs
+      - run: python3 -m py_compile tests/u06/u06_prod_mariadb106_exact_identity_fixture_v1.py
+      - name: Require immutable networkless fixture and no Production CLI
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('tests/u06/u06_prod_mariadb106_exact_identity_fixture_v1.py').read_text()
+          assert 'ONLY --isolated-fixture; NO LIVE APPLY' in p
+          assert '--network=none' in p
+          assert 'prhm.u06.sandbox=1' in p
+          assert 'mariadb@sha256:114d40be36852d0a019afd8458f7e1cc63fd300403b115b1f32e31130d5f671b' in p
+          assert 'DROP USER' in p
+          q=Path('honartik-u06-native-root-mariadb-identity-v1.cjs').read_text()
+          assert 'createLiveBoundProvider' in q
+          assert 'reserveNativeLevel4ReplayFence' in q
+          assert 'fs.constants.O_EXCL' in q
+          assert 'password_exposed:true' not in q
+          print('U06_MINIMAL_DB_IDENTITY=PASS; PRODUCTION_NOT_APPLIED=TRUE')
+          PY
