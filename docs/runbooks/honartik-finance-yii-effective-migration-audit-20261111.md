@@ -1,5 +1,7 @@
 # Honartik finance: actual Yii migrationLookup vs restored-schema reconciliation (read-only, 2026-11-11)
 
+> **SUPERSEDED / NOT A RELEASE GATE (2026-11-11):** This document's 26-file count is an INCOMPLETE STATIC SUBSET, NOT the actual Yii migration controller inventory. The live `MultiLocationMigrationsController::lookupMigrations()` also merges the default `migrationPath` containing 28 legacy `app/migrations/` classes: **54 effective migration names**. The 23/26 schema evidence below covers only that static subset and is NOT a verified total. **See [authoritative corrected 54-class NO-GO audit](honartik-finance-migration-54-no-go-20261111.md).** Migration-history repair, manual replay and finance production publication remain BLOCKED.
+
 ## Decision and trust boundary
 
 **No migrations, no migration-history backfill, no production release.**
@@ -75,4 +77,4 @@ Live backend/frontend/payment feature flags: **unchanged/OFF**.
 
 ## Correction record
 
-The initial count of 21 omitted the core Rabint alias. Source inspection found `Yii::setAlias('@rabint', RABINT_BASE_DIR . '/vendor/rabint/base')` in `common/config/bootstrap.php`; the corresponding core migration directory has five files. Their four `createTable` targets exist in the snapshot, and the fifth is a city-data seed. The verified effective lookup count is **26**, not 21. No production data or release authorization was modified during this correction.
+The initial count of 21 omitted the core Rabint alias. Source inspection found `Yii::setAlias('@rabint', RABINT_BASE_DIR . '/vendor/rabint/base')` in `common/config/bootstrap.php`; the corresponding core migration directory has five files. Their four `createTable` targets exist in the snapshot, and the fifth is a city-data seed. The static configured-path subset is **26**, not 21; the actual effective controller lookup adds 28 legacy `app/migrations/` classes for **54 total**. This report is superseded. No production data or release authorization was modified during this correction.
