@@ -23,6 +23,8 @@ import subprocess
 import sys
 import tempfile
 
+sys.dont_write_bytecode=True
+
 HOST="prhm-production.prhm.ir"
 BACK=Path("/home/honartik/domains/dashboard.honartik.ir/public_html")
 FRONT=Path("/home/honartik/domains/honartik.ir/public_html")
@@ -144,6 +146,8 @@ def rollback_git_dry_run(sandbox):
  return True
 def create_preimage():
  os.umask(0o077)
+ source=Path(__file__).resolve().parents[1]
+ source_fence(source)
  live_fence()
  trusted_root(ROOT_AUDIT,True)
  # Root-only first-time parent creation, no mutations in live app directories.
