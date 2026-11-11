@@ -95,7 +95,7 @@ def source_fence(source):
 def rsync_args(source,dest,excludes,verify=False):
  # Archive mode preserves permissions, numeric owners, symlinks, and mtimes;
  # --one-file-system forbids traversing new mounts; never follows symlinks.
- args=["/usr/bin/rsync","-aH","--numeric-ids","--one-file-system",
+ args=["/usr/bin/rsync","-aHAX","--numeric-ids","--one-file-system",
        "--no-devices","--no-specials"]
  if verify:args.extend(["-n","-c","-i","--delete"])
  for ex in excludes:args.append("--exclude="+ex)
