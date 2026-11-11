@@ -1,0 +1,27 @@
+name: U06 native Root L4 Ed25519, consumed ledger, fsync and SIGKILL
+on:
+  pull_request:
+    paths:
+      - 'honartik-u06-native-root-l4-admission-v1.cjs'
+      - 'test-honartik-u06-native-root-l4-admission-v1.cjs'
+      - '.github/workflows/honartik-u06-root-l4-fsync-ci.yml'
+  push:
+    paths:
+      - 'honartik-u06-native-root-l4-admission-v1.cjs'
+      - 'test-honartik-u06-native-root-l4-admission-v1.cjs'
+      - '.github/workflows/honartik-u06-root-l4-fsync-ci.yml'
+permissions:
+  contents: read
+jobs:
+  linux-real-ed25519-sigkill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check honartik-u06-native-root-l4-admission-v1.cjs
+      - run: node --test test-honartik-u06-native-root-l4-admission-v1.cjs
