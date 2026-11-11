@@ -1,0 +1,37 @@
+name: Honartik finance root recovery preflight — source-only security CI
+on:
+  pull_request:
+    paths:
+      - 'scripts/honartik-finance-recovery-preflight-v1.py'
+      - 'tests/test_honartik_finance_recovery_preflight_v1.py'
+      - '.github/workflows/honartik-finance-recovery-preflight-ci.yml'
+      - 'docs/runbooks/honartik-finance-recovery-preflight-20261111.md'
+permissions:
+  contents: read
+jobs:
+  no-production-release-and-synthetic-recovery:
+    name: Verify exact finance preflight is fail-closed and cannot deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Python syntax and negative security contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile scripts/honartik-finance-recovery-preflight-v1.py
+          python3 -m unittest -v tests/test_honartik_finance_recovery_preflight_v1.py
+          python3 - <<'PY'
+          from pathlib import Path
+          t=Path('scripts/honartik-finance-recovery-preflight-v1.py').read_text()
+          assert 'finance_release_authorized":False' in t
+          assert 'bounded_finance_release_executor_installed":False' in t
+          assert 'rollback_preimage_verified":False' in t
+          assert 'h.restore_isolated(archive)' in t
+          assert 'HELPER_SHA256=' in t
+          assert 'no_fresh_complete_backup' in t
+          print('SOURCE_ONLY_RECOVERY_PREFLIGHT=PASS')
+          print('PRODUCTION_FINANCE_RELEASE_AUTHORIZED=FALSE')
+          PY
