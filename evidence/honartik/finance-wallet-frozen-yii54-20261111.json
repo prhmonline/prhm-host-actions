@@ -1,0 +1,291 @@
+{
+  "schema": "prhm.honartik.finance.wallet-isolated-schema-review.v1",
+  "source_provenance": "deploy-control draft PR #79 frozen live Yii 2026-11-10",
+  "live_base_sha": "4ac602e874a128c3328f27f3dab473857512cdbf",
+  "finance_candidate_sha": "d1a64e640c9c2cf4788d55566c17728be5813941",
+  "required_migration_count": 54,
+  "config_sha256": {
+    "console/config/web.php": "7ff011267f6409a6e054c25184653e2b6f1673b88d2cadbf1878eadf502faa32",
+    "common/config/bootstrap.php": "dd9b65989b69a5409c8c70d25877b4eef2b2b2461c007e13da83066455f1294d",
+    "common/config/modules.php": "ea40baaf9cb9a2b1b928ef759f507fcd649902e5e422705b65e7b0526be64035",
+    "common/config/apps.php": "dede7417a13231330eda5ad6d565360e52228e85489ded0995867640cc0a67ce",
+    "vendor/rabint/base/commands/MultiLocationMigrationsController.php": "274f8ff003c06d9ee19fa072105c330af7b927043f32ef1572bcecc36935d964",
+    "vendor/composer/autoload_psr4.php": "3ba07eac9bb31d4dafa90ab67e830e4cae5b5cfc2f1c001b5a5446edc8bf48c2"
+  },
+  "migration_files": [
+    {
+      "version": "m140703_123000_user",
+      "path": "app/modules/user/migrations/db/m140703_123000_user.php",
+      "sha256": "a4db33e7d3525e1eefa3fc911967d1c997897fa364b2489f333e318ec03c6e40"
+    },
+    {
+      "version": "m140703_123813_rbac",
+      "path": "app/modules/user/migrations/db/m140703_123813_rbac.php",
+      "sha256": "a2d96ca0d23e452bdebb571c700c8018beb2cb4d7ec45cda120954b6a4f209d2"
+    },
+    {
+      "version": "m150725_192740_seed_data",
+      "path": "app/modules/user/migrations/db/m150725_192740_seed_data.php",
+      "sha256": "e737ac74d0bdc9bda8798321ce1e259cd6a0d5697563a4282276cc4ad2c243fa"
+    },
+    {
+      "version": "m160203_095604_user_token",
+      "path": "app/modules/user/migrations/db/m160203_095604_user_token.php",
+      "sha256": "0fc6601a70a6ff479cb64bf90e0bceb28b5f0fcf4811bbcf3ebcc7d63d4c3af2"
+    },
+    {
+      "version": "m181113_071904_create_db_session",
+      "path": "vendor/rabint/base/migrations/db/m181113_071904_create_db_session.php",
+      "sha256": "b9d7a4adc1a28df2313794984e7bff624095ae48a65c763ba8cddd2303cde491"
+    },
+    {
+      "version": "m181201_123000_user_profile",
+      "path": "app/modules/user/migrations/db/m181201_123000_user_profile.php",
+      "sha256": "12299d25b46896c5c315c3bc9f0a7ccedf2df53cd1d5ffe317a29765e013b506"
+    },
+    {
+      "version": "m190101_111234_create_table_attachment",
+      "path": "vendor/rabint/attachment/migrations/db/m190101_111234_create_table_attachment.php",
+      "sha256": "26d4ed7ccf16d706b69ac222344dad38ba3014f807f386b2be26d8687af21018"
+    },
+    {
+      "version": "m190101_111234_create_table_notify",
+      "path": "vendor/rabint/notify/migrations/db/m190101_111234_create_table_notify.php",
+      "sha256": "3609399a9d7e1732fb3d1e7fd146c56a859d0f055f0581458b2ed56b9d6b17f1"
+    },
+    {
+      "version": "m190101_111234_create_table_option",
+      "path": "vendor/rabint/option/migrations/db/m190101_111234_create_table_option.php",
+      "sha256": "72731886328fa720ce55b665a6fe522ab0aa023f37e6416eaf986dfc0f5711b4"
+    },
+    {
+      "version": "m190508_093200_create_table_finance_draft",
+      "path": "app/modules/finance/migrations/db/m190508_093200_create_table_finance_draft.php",
+      "sha256": "dfb7e2c0529b3cde713d0b8b20a12bfa0c8bec40515e1ec1a78b3186066ff755"
+    },
+    {
+      "version": "m190508_093200_create_table_finance_transactions",
+      "path": "app/modules/finance/migrations/db/m190508_093200_create_table_finance_transactions.php",
+      "sha256": "ce595c912e8e11e90a57f3cd0d3b95cafa4ee03bb73fc5ebb140d5dacbaa1e78"
+    },
+    {
+      "version": "m190508_093200_create_table_finance_wallet",
+      "path": "app/modules/finance/migrations/db/m190508_093200_create_table_finance_wallet.php",
+      "sha256": "d7f589adbe784d34f50503d40047dd3e1f3f9c72dc41f1316d840813bad8d96d"
+    },
+    {
+      "version": "m191104_141811_create_table_system_city",
+      "path": "vendor/rabint/base/migrations/db/m191104_141811_create_table_system_city.php",
+      "sha256": "a54a7c18e10637e1e6b2c2414ff18d9f6da7728c3e4f5a7a68d45208bc69c0a0"
+    },
+    {
+      "version": "m191104_141811_create_table_system_log",
+      "path": "vendor/rabint/base/migrations/db/m191104_141811_create_table_system_log.php",
+      "sha256": "a3c1ef98d48802cce6b9740537f144962bcbfa24d36a5dc00d0763bed334c6e5"
+    },
+    {
+      "version": "m191104_141812_001_create_table_contact",
+      "path": "vendor/rabint/contact/migrations/db/m191104_141812_001_create_table_contact.php",
+      "sha256": "2ce011a1716d66ed70c5779d7dafd393faaa88eaceba9b75a4ca024d7babec16"
+    },
+    {
+      "version": "m191104_141812_002_create_table_page",
+      "path": "app/modules/page/migrations/db/m191104_141812_002_create_table_page.php",
+      "sha256": "ef04523894668299b80ce17b9d7daac8c3f86a69c0d9f61e4595b6d472abb07e"
+    },
+    {
+      "version": "m191104_141812_003_create_table_stat_dailies",
+      "path": "vendor/rabint/stats/migrations/db/m191104_141812_003_create_table_stat_dailies.php",
+      "sha256": "70f9c11b77a0364f2d43feb4b37deb3b31d4704c320037f3474f0a0aa269eb4b"
+    },
+    {
+      "version": "m191104_141812_004_create_table_stats",
+      "path": "vendor/rabint/stats/migrations/db/m191104_141812_004_create_table_stats.php",
+      "sha256": "0c7a40605da7c64a5b9dd1827de29b9ddee29457debb15f14ea282a65ffa4344"
+    },
+    {
+      "version": "m191104_141812_create_table_system_change_logs",
+      "path": "vendor/rabint/base/migrations/db/m191104_141812_create_table_system_change_logs.php",
+      "sha256": "ecd4503b06ff7e37edae6ec0dd121b56e7232cdd0af50a349f52fc027f669c4b"
+    },
+    {
+      "version": "m191104_151812_city_seed_data",
+      "path": "vendor/rabint/base/migrations/db/m191104_151812_city_seed_data.php",
+      "sha256": "b1147d4250e50fbc0b3fc8f51a651da829e945702052b3d8972b3b638871db54"
+    },
+    {
+      "version": "m200515_110726_create_table_user_message",
+      "path": "vendor/rabint/pm/migrations/db/m200515_110726_create_table_user_message.php",
+      "sha256": "077e526bbb5a7f1126a8a0a34952bc53a36544a64ecb300bd3ec262a075c00b2"
+    },
+    {
+      "version": "m210424_123000_user_profile_other",
+      "path": "app/modules/user/migrations/db/m210424_123000_user_profile_other.php",
+      "sha256": "68f75a9a27fc3fcdd806c779b251f8256c693eecada544d5caae96f905d54d83"
+    },
+    {
+      "version": "m210501_095604_user_token_detail",
+      "path": "app/modules/user/migrations/db/m210501_095604_user_token_detail.php",
+      "sha256": "9a3eca6c06baae6dacd3c9288eec1171bf8ea6bd89450183f0a0fc7102d21ab8"
+    },
+    {
+      "version": "m210806_095604_profile_sejel",
+      "path": "app/modules/user/migrations/db/m210806_095604_profile_sejel.php",
+      "sha256": "0fd42236da2a9d7e0766bc5141b0f3edb8d88a00ac12e7971340cd8bcc633aa5"
+    },
+    {
+      "version": "m211015_171721_add_tabel_offline_pay",
+      "path": "app/modules/finance/migrations/db/m211015_171721_add_tabel_offline_pay.php",
+      "sha256": "866eef82b4438dde481632bc5b5ff2d2224d2f1753a106f919bbd102d26577c5"
+    },
+    {
+      "version": "m220803_171721_seed_create_account_user",
+      "path": "app/modules/finance/migrations/db/m220803_171721_seed_create_account_user.php",
+      "sha256": "b2028aeb62d1461999e507b6e4b239f7d60afe14abeacf85d0085ba7f47acd4e"
+    },
+    {
+      "version": "m240915_101917_create_table_comback_mony",
+      "path": "app/migrations/m240915_101917_create_table_comback_mony.php",
+      "sha256": "c431d5d96fd8ee55e4273558a064b0979060e3f196e81ff66dcbe6a18e5e6bb3"
+    },
+    {
+      "version": "m240915_112940_add_column_cart_num_for_comeback_money",
+      "path": "app/migrations/m240915_112940_add_column_cart_num_for_comeback_money.php",
+      "sha256": "13fbd0911075857d226dd6e10a4e735cb83cac39de5016f128d258bfc8bf4a67"
+    },
+    {
+      "version": "m240917_022424_add_event_ord",
+      "path": "app/migrations/m240917_022424_add_event_ord.php",
+      "sha256": "10a2250576fe729c9f026b750190110ff4ba627305423d9d621f03a88c0aba45"
+    },
+    {
+      "version": "m240917_024109_add_actor_job",
+      "path": "app/migrations/m240917_024109_add_actor_job.php",
+      "sha256": "c1418a60ea399fb267578b24acf01018f0ea9ce63090f8c7406fa6f1cfa697a6"
+    },
+    {
+      "version": "m240926_113940_all_score_for_artists",
+      "path": "app/migrations/m240926_113940_all_score_for_artists.php",
+      "sha256": "4562904e75d76d5984803a1d50fae0f99e9b149f07ac09dd74dbd6051091d17d"
+    },
+    {
+      "version": "m240927_072757_add_command_offer",
+      "path": "app/migrations/m240927_072757_add_command_offer.php",
+      "sha256": "1b18bc865885893af35fb0d73b47064fcfc1efbf2b301bbfc9249da413a79587"
+    },
+    {
+      "version": "m241003_143833_add_check_box_for_show_commends",
+      "path": "app/migrations/m241003_143833_add_check_box_for_show_commends.php",
+      "sha256": "769e431a33016bda566481d33bdb8d78695f7ce2068e1cb0fc001417293dc0b7"
+    },
+    {
+      "version": "m241004_145938_add_table_for_accoun",
+      "path": "app/migrations/m241004_145938_add_table_for_accoun.php",
+      "sha256": "921344c7de9ae088a46bda5b482935c64e59ab84930167f8f82e410f3cf8c2cf"
+    },
+    {
+      "version": "m241009_094647_add_table_for_origans",
+      "path": "app/migrations/m241009_094647_add_table_for_origans.php",
+      "sha256": "5f4fa083ce3ed61e683a8a6084a0163d2dd5deb8d955e36fd792335d7107c6a5"
+    },
+    {
+      "version": "m241014_155002_alter_culumn_in_faq",
+      "path": "app/migrations/m241014_155002_alter_culumn_in_faq.php",
+      "sha256": "bf687d4d0fa3c4967f80afd9c983dd78a7b436bf78e5bc1e0758d3d8345d7d47"
+    },
+    {
+      "version": "m241018_191227_add_culomn_for_price_in_schadules",
+      "path": "app/migrations/m241018_191227_add_culomn_for_price_in_schadules.php",
+      "sha256": "f49c9e8761c3f394cc650b0254cccb1cf422a2bff7362d8a87e44813d5834d9d"
+    },
+    {
+      "version": "m241126_083420_create_coupon_table",
+      "path": "app/migrations/m241126_083420_create_coupon_table.php",
+      "sha256": "c1c5f94f13d73249605f913c495a2896c0cef539d08a1be7fda5c482498f5f77"
+    },
+    {
+      "version": "m241126_083905_create_coupon_use_table",
+      "path": "app/migrations/m241126_083905_create_coupon_use_table.php",
+      "sha256": "217bc56979bb30beeeac4cabdc4545037df9e31bea37287ec9185c0240444eba"
+    },
+    {
+      "version": "m241126_152137_remove_places_and_events_from_coupon_table",
+      "path": "app/migrations/m241126_152137_remove_places_and_events_from_coupon_table.php",
+      "sha256": "8f825c79b31087c50a2dd6dacc3d9dbff64933630fd80800de7bf3d75e198320"
+    },
+    {
+      "version": "m241126_153427_create_coupon_place_table",
+      "path": "app/migrations/m241126_153427_create_coupon_place_table.php",
+      "sha256": "bd7750ee37a3bafb926a91016b3134de5d351eda59a9e5d69891c86892e5d61e"
+    },
+    {
+      "version": "m241126_153442_create_coupon_event_table",
+      "path": "app/migrations/m241126_153442_create_coupon_event_table.php",
+      "sha256": "d1e23715b534f442ed0de9e59f775af2400f502c89f01a1d31e082b82867af8a"
+    },
+    {
+      "version": "m241201_133026_modify_coupon_use_table",
+      "path": "app/migrations/m241201_133026_modify_coupon_use_table.php",
+      "sha256": "12208fba792a3ebbab6a3d440451334233537521d9bb8c83d9e04130d14c1e3b"
+    },
+    {
+      "version": "m241202_102314_add_paying_amount_to_finance_transactions",
+      "path": "app/migrations/m241202_102314_add_paying_amount_to_finance_transactions.php",
+      "sha256": "5f27b8d1eeee115d0e3db83b597d8f484d726d1480f37d5ef5272aa2820f259a"
+    },
+    {
+      "version": "m241206_171629_create_sold_event_table",
+      "path": "app/migrations/m241206_171629_create_sold_event_table.php",
+      "sha256": "cfd4158de6bc039bd84003cf0a88db77907005d3b61d5df7b6c666c9bf01f815"
+    },
+    {
+      "version": "m241216_145836_alter_agent_column_to_text_in_user_token_table",
+      "path": "app/migrations/m241216_145836_alter_agent_column_to_text_in_user_token_table.php",
+      "sha256": "390b23763d1db255b889a95401c7c06bff69f21488a95cc869079f2e18aa18bd"
+    },
+    {
+      "version": "m241218_110512_create_sold_event_table",
+      "path": "app/migrations/m241218_110512_create_sold_event_table.php",
+      "sha256": "1bb14ad0dd229b0c4dc9b8fd16b07a83a5277f618ef9aaccb50638b1e6ab2639"
+    },
+    {
+      "version": "m241218_110900_create_sold_event_schedule",
+      "path": "app/migrations/m241218_110900_create_sold_event_schedule.php",
+      "sha256": "49130989f0bf724c141dc97c02c335af8756e93c13ca62b22ded3a143fbce41b"
+    },
+    {
+      "version": "m241218_110955_create_sold_event_schedule_reserve_table",
+      "path": "app/migrations/m241218_110955_create_sold_event_schedule_reserve_table.php",
+      "sha256": "845945facd0190b8797defed4cd0014733df1da6cce16137199554131ed144a4"
+    },
+    {
+      "version": "m250106_125112_add_shaba_number_to_account_settlement_table",
+      "path": "app/migrations/m250106_125112_add_shaba_number_to_account_settlement_table.php",
+      "sha256": "76d9f3e9a41c172f112105f7c9eded2a7e1de2bb37ea0721864c946229f4f931"
+    },
+    {
+      "version": "m250106_135149_add_shaba_number_to_user_profile_table",
+      "path": "app/migrations/m250106_135149_add_shaba_number_to_user_profile_table.php",
+      "sha256": "b114a1173530b843198fbaf9ab2df71a6a64e77d030c6b21a71d6467d4b53e83"
+    },
+    {
+      "version": "m250107_072448_update_account_settlement_table",
+      "path": "app/migrations/m250107_072448_update_account_settlement_table.php",
+      "sha256": "f83dcbf2fc6fdcbf2a360bd1211e9df64153157fe11fa05dee8c901f03ccaf70"
+    },
+    {
+      "version": "m260703_220000_harden_coupon_payment_v1",
+      "path": "app/migrations/m260703_220000_harden_coupon_payment_v1.php",
+      "sha256": "5c8c5ce6ba1a34572d3b6d480950e979dc569a8d8291caa2ecb26b4e3f1925ad"
+    },
+    {
+      "version": "m261026_013000_create_iticket_checkout",
+      "path": "app/migrations/m261026_013000_create_iticket_checkout.php",
+      "sha256": "75c9d0e499ec8747e98dd30aa4e52d0ec7c0c2f035d7e81e55f1c6a2cfbdce70"
+    }
+  ],
+  "allow_any_historical_migration_replay": false,
+  "allow_migration_ledger_stamping": false,
+  "production_migration_authorized": false,
+  "production_release_authorized": false
+}
