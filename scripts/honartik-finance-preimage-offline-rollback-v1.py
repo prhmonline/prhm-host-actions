@@ -105,10 +105,21 @@ def copy_one(source,dest,excludes):
  dest.mkdir(mode=0o700)
  output=command(*rsync_args(source,dest,excludes),timeout=1200)
  require(output=="","unexpected_copy_output")
-def verify_against_live(source,dest,excludes):
- # Checksum dry-run against source flags a file changing during the snapshot.
- delta=command(*rsync_args(source,dest,excludes,verify=True),timeout=1200)
- require(delta=="","source_changed_during_preimage")
+def verify_against_live(source,dest,excludes,max_repairs=2):
+ # A live site can transiently create/remove cache or media files while the
+ # snapshot is being captured. Retry at most twice; never suppress mismatches
+ # or downgrade checksum/ACL/xattr comparisons. Only a zero-delta final pass
+ # can qualify for a protected private preimage.
+ require(isinstance(max_repairs,int) and 0<=max_repairs<=2,
+         "unbounded_preimage_retries_refused")
+ for attempt in range(max_repairs+1):
+  delta=command(*rsync_args(source,dest,excludes,verify=True),timeout=1200)
+  if delta=="":
+   print("PREIMAGE_SOURCE_CHECKSUM_CONVERGED repairs="+str(attempt),flush=True)
+   return attempt
+  if attempt<max_repairs:
+   command(*rsync_args(source,dest,excludes),timeout=1200)
+ raise Blocked("source_changed_during_preimage")
 def verify_restored_tree(stage,restored):
  delta=command(*rsync_args(stage,restored,(),verify=True),timeout=1200)
  require(delta=="","isolated_preimage_restore_mismatch")
@@ -176,7 +187,7 @@ def create_preimage():
    require(bundle.stat().st_size>1048576,"preimage_archive_truncated")
    archive_hash=sha(bundle)
    print("PREIMAGE_ARCHIVE_SHA256="+archive_hash,flush=True)
-   command("/usr/bin/tar","-xzf",str(bundle),"-C",str(restored),timeout=1800)
+   command("/usr/bin/tar","--acls","--xattrs","-xzf",str(bundle),"-C",str(restored),timeout=1800)
    verify_restored_tree(stage/"backend",restored/"backend")
    verify_restored_tree(stage/"frontend",restored/"frontend")
    print("ISOLATED_PREIMAGE_BYTE_RESTORE=PASS",flush=True)

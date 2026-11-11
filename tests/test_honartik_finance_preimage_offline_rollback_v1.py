@@ -41,10 +41,19 @@ class Checks(unittest.TestCase):
     m.verify_restored_tree(Path("/stage"),Path("/restore"))
   with patch.object(m,"command",return_value=""):
    m.verify_restored_tree(Path("/stage"),Path("/restore"))
- def test_changing_media_fails_closed(self):
-  with patch.object(m,"command",return_value="changed-images"):
+ def test_bounded_transient_mismatch_requires_final_checksum_clean(self):
+  with patch.object(m,"command",side_effect=["changed", "", ""]):
+   self.assertEqual(m.verify_against_live(Path("/source"),Path("/copy"),()),1)
+  with patch.object(m,"command",return_value=""):
+   self.assertEqual(m.verify_against_live(Path("/source"),Path("/copy"),()),0)
+ def test_persistent_media_mismatch_fails_closed_even_after_two_copies(self):
+  with patch.object(m,"command",side_effect=["changed","", "changed","", "changed"]) as tool:
    with self.assertRaisesRegex(m.Blocked,"source_changed_during_preimage"):
     m.verify_against_live(Path("/source"),Path("/copy"),())
+   self.assertEqual(tool.call_count,5)
+  with patch.object(m,"command",return_value=""):
+   with self.assertRaisesRegex(m.Blocked,"unbounded_preimage_retries_refused"):
+    m.verify_against_live(Path("/source"),Path("/copy"),(),max_repairs=3)
  def test_live_shas_and_wallet_flags_must_be_exact(self):
   with patch.object(m,"command",side_effect=[
     "prhm-production.prhm.ir",m.BACK_SHA,"",m.FRONT_SHA,""]):
@@ -59,6 +68,7 @@ class Checks(unittest.TestCase):
             '"production_modified":False',
             '"finance_release_executor_installed":False'):
    self.assertIn(x,source)
+  self.assertIn('"--acls","--xattrs","-xzf"',source)
   self.assertIn('source_fence(source)',source)
   self.assertLess(source.index('source_fence(source)',source.index('def create_preimage():')),source.index('live_fence()',source.index('def create_preimage():')))
   self.assertIn('shutil.rmtree(stage)',source)
