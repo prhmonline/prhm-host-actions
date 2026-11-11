@@ -126,3 +126,23 @@ test('no Production action installed, no root file edits and live requires root'
  assert.equal(gate.install,undefined);
  assert.equal(gate.apply,undefined);
 });
+
+test('live Root trust uses exact systemd PrivateStateDirectory alias, not forged root ownership',()=>{
+ assert.equal(gate.APPROVAL_ALIAS,'/var/lib/prhm-company-approval');
+ assert.equal(gate.APPROVAL_BASE,'/var/lib/private/prhm-company-approval');
+ assert.equal(gate.APPROVAL_UID,65039);
+ assert.equal(gate.FIXED.issuer,
+   '/var/lib/private/prhm-company-approval/ed25519-public.pem');
+ assert.equal(gate.FIXED.consumed,
+   '/var/lib/private/prhm-company-approval/consumed');
+ assert.equal(gate.FIXED.policy_sha256,
+   'aa1563b168aea2725a0539373c54c45b2317b6320334c80a6d3a5e2723520934');
+ assert.equal(typeof gate.attestFixedSystemdApprovalAlias,'function');
+ const file=require('node:fs').readFileSync(
+   require('node:path').join(__dirname,
+   'honartik-u06-native-root-l4-admission-v1.cjs'),'utf8');
+ assert.match(file,/private\/prhm-company-approval/);
+ assert.match(file,/systemd_state_alias_drift/);
+ assert.match(file,/ownerUid:fixture\?rootUid:APPROVAL_UID/);
+ assert.equal(gate.ROOT_ACTION_REGISTERED,false);
+});
