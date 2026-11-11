@@ -1,0 +1,42 @@
+name: Honartik finance preimage and rollback - source-only security CI
+on:
+  pull_request:
+    paths:
+      - 'scripts/honartik-finance-preimage-offline-rollback-v1.py'
+      - 'tests/test_honartik_finance_preimage_offline_rollback_v1.py'
+      - '.github/workflows/honartik-finance-preimage-rollback-ci.yml'
+      - 'docs/runbooks/honartik-finance-preimage-offline-rollback-20261111.md'
+permissions:
+  contents: read
+jobs:
+  preimage-offline-restore-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify no privileged release authority and exact isolated rollback source
+        run: |
+          set -euo pipefail
+          PYTHONDONTWRITEBYTECODE=1 python3 -B -m unittest -v tests/test_honartik_finance_preimage_offline_rollback_v1.py
+          PYTHONDONTWRITEBYTECODE=1 python3 -B - <<'PY'
+          import ast
+          from pathlib import Path
+          src=Path('scripts/honartik-finance-preimage-offline-rollback-v1.py').read_text()
+          ast.parse(src)
+          for phrase in [
+            'shutil.rmtree(stage)',
+            'verify_against_live(BACK,stage/"backend",BACK_EXCLUDES)',
+            'verify_against_live(FRONT,stage/"frontend",FRONT_EXCLUDES)',
+            'rollback_git_dry_run(temp)',
+            'live_fence()',
+            '"finance_release_authorized":False',
+            '"production_modified":False',
+            '"runtime_cutover_rollback_tested":False',
+            '"db_rollback_tested":False',
+          ]:
+            assert phrase in src, phrase
+          print('FINANCE_PREIMAGE_OFFLINE_SOURCE_CI=PASS')
+          print('FINANCE_DEPLOY_AUTHORIZED=FALSE')
+          PY
