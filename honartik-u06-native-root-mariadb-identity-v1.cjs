@@ -139,6 +139,9 @@ function provisionAfterOfficialL4(){
      must(s.isFile()&&!s.isSymbolicLink()&&s.uid===0&&
       (s.mode&0o777)===0o600,'rollback_file_untrusted');
      fs.unlinkSync(P.credential);
+     const dir=fs.openSync(path.dirname(P.credential),fs.constants.O_RDONLY|
+       fs.constants.O_DIRECTORY|fs.constants.O_NOFOLLOW);
+     try{fs.fsyncSync(dir)}finally{fs.closeSync(dir)}
     }
     sql('DROP USER '+Q+';');
     ok=sql('SELECT COUNT(*) FROM mysql.user WHERE User='+HEX_USER+
