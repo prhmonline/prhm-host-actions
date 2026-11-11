@@ -1,0 +1,34 @@
+{
+  "schema": "prhm.u06.owner-confirmed-four-postimage-readonly.v1",
+  "host": "prhm-production.prhm.ir",
+  "project": "honartik_back.production",
+  "action": "honartik_u06_native_backup_register_v1",
+  "observation": "2026-11-11 owner root terminal on prhm-production; SHA pinned Python 3.6.8 --audit-all",
+  "script_source_commit": "47ee1537e3e91d00483a56813105a435063defb0",
+  "script_git_blob_sha1": "0bffbb8992c27d07fd36d4f4f2bfb1847df735c3",
+  "preimages": {
+    "agent_api": "57828b344aca1d1fb51e74cc2c64094edb03c5fd86fe68420d7185f0d12b6530",
+    "root_executor": "4c136a210681ee07a45d96d38d91c1253afcce67feed0a9d062f9f14d0557169",
+    "agent3_mcp": "0c6a74757696a0d85840a0aec1bc53c91431481024f2be56e4ecb02f789073ef",
+    "approval_policy": "26359a31efdfe0acde07cc9f4001afddee98efaa206e4528880068bf93c425f5"
+  },
+  "proposed_postimages_sha256": {
+    "agent_api": "649941e1a2f77a9a1515327e47fa7176a0ae8f4602042750d53847e568deed0e",
+    "root_executor": "ca81b0bd06e4c05fabc503a648f9b64dae90bd7ec6b19aa487c59e40d40600fb",
+    "agent3_mcp": "01eb930e8e9177b8754ab5cf36a004cb69141d44b74e70b4d42dc3f0f33f1c56",
+    "approval_policy": "aa1563b168aea2725a0539373c54c45b2317b6320334c80a6d3a5e2723520934"
+  },
+  "candidate_policy_size_bytes": 32036,
+  "policy_operations_before": 76,
+  "policy_operations_after": 77,
+  "policy_typed_scopes_before": 53,
+  "policy_typed_scopes_after": 54,
+  "u06_level": 4,
+  "executor_proposed_dispatch": "DENY_ONLY_unimplemented_root_handler",
+  "authorize_consume_before_apply": true,
+  "observed_action_registered": false,
+  "observed_root_executor_installed": false,
+  "observed_policy_mutated": false,
+  "observed_db_mutated": false,
+  "owner_sha_evidence_not_signed_live_install_approval": true
+}

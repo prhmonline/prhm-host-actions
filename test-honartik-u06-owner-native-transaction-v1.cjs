@@ -62,6 +62,17 @@ function fakeNative(custom={}){
    verifyIndependentNode1Recovery:()=>{calls.push('offsite');return true},
    prepareDurableRollbackJournal:()=>{calls.push('journal');return {id:'u06fixturejournal123456'}},
    assertRollbackJournalDurable:()=>{calls.push('durable');return true},
+   verifyNativeConsumedSignedLevel4:()=>{
+     calls.push('l4-verify');
+     return {
+       operation:'host_action.honartik_u06_native_backup_register_v1',
+       level:4,signature_verified:true,consumed_ledger_verified:true,
+       policy_sha256:core.F.reviewed_l4_policy_sha256,
+       request_id:'22222222-2222-4222-8222-222222222222',
+       approval_id:'11111111-1111-4111-8111-111111111111'
+     };
+   },
+   reserveNativeLevel4ReplayFence:()=>{calls.push('l4-fence');return true},
    provisionBackupOnlyIdentityAndPrivateCredential:()=>{calls.push('provision')},
    runInstalledUniversalNativeBackup:()=>{calls.push('backup')},
    verifyIsolatedRestoreAndFinancialIntegrity:()=>{calls.push('restore')},
@@ -87,7 +98,7 @@ test('exact identity, account, privileges and required adapters are pinned',()=>
  assert.equal(core.F.auto_deploy,false);
  assert.equal(core.F.yii_migrations,false);
  assert.equal(core.F.apache_cutover,false);
- assert.equal(core.REQUIRED.length,14);
+ assert.equal(core.REQUIRED.length,16);
  assert.equal(core.INSTALLED_ROOT_BINDING,false);
 });
 test('signed owner evidence and durable journal govern exact success order',async()=>{
@@ -99,8 +110,8 @@ test('signed owner evidence and durable journal govern exact success order',asyn
    assert.equal(r.installed_root_binding_proven,false);
    assert.equal(r.backend_deployment_authorized,false);
    assert.deepEqual(calls,[
-     'lock','pre','offsite','journal','durable','provision','backup',
-     'restore','enable','post','commit','unlock'
+     'lock','pre','offsite','journal','durable','l4-verify','l4-fence',
+     'provision','backup','restore','enable','post','commit','unlock'
    ]);
    assert.equal(fs.readdirSync(dir).length,1);
  }finally{fs.rmSync(dir,{recursive:true,force:true})}
@@ -253,4 +264,65 @@ test('false commit acknowledgement retains lease and never rolls back',async()=>
    assert.ok(!x.calls.includes('rollback'));
    assert.ok(!x.calls.includes('unlock'));
  }finally{fs.rmSync(dir,{recursive:true,force:true})}
+});
+
+test('signed L4 is mandatory independently of GitHub owner OIDC before any mutation',async()=>{
+ const dir=tempLedger();
+ try{
+   const x=fakeNative({verifyNativeConsumedSignedLevel4:()=>null});
+   await assert.rejects(core.coordinateOwnerU06(x.native,ownerProof(),options(dir)),
+     /native_l4_receipt_missing_or_invalid/);
+   assert.ok(!x.calls.includes('provision'));
+   assert.ok(!x.calls.includes('backup'));
+   assert.ok(x.calls.includes('rollback'));
+   assert.ok(x.calls.includes('verifyRollback'));
+   assert.ok(x.calls.includes('unlock'));
+   assert.equal(fs.readdirSync(dir).length,0,'owner OIDC not burned before independent L4');
+ }finally{fs.rmSync(dir,{recursive:true,force:true})}
+});
+test('Level3, wrong operation or policy hash cannot authorize DB credentials',async()=>{
+ const dir=tempLedger();
+ try{
+   for(const bad of [
+     {level:3},{operation:'host_action.host_action_v2_installer_v1'},
+     {policy_sha256:'0'.repeat(64)},{signature_verified:false},
+     {consumed_ledger_verified:false}
+   ]){
+     const orig=fakeNative().native.verifyNativeConsumedSignedLevel4();
+     const x=fakeNative({verifyNativeConsumedSignedLevel4:()=>({...orig,...bad})});
+     await assert.rejects(core.coordinateOwnerU06(x.native,ownerProof(),options(dir)),
+       /native_l4_receipt_missing_or_invalid/);
+     assert.ok(!x.calls.includes('provision'));
+     assert.ok(!x.calls.includes('l4-fence'));
+   }
+ }finally{fs.rmSync(dir,{recursive:true,force:true})}
+});
+test('durable independent L4 replay-fence is mandatory before owner OIDC and MySQL writes',async()=>{
+ const dir=tempLedger();
+ try{
+   const x=fakeNative({reserveNativeLevel4ReplayFence:()=>false});
+   await assert.rejects(core.coordinateOwnerU06(x.native,ownerProof(),options(dir)),
+     /native_l4_replay_fence_not_durable/);
+   assert.ok(x.calls.includes('rollback'));
+   assert.ok(x.calls.includes('verifyRollback'));
+   assert.ok(!x.calls.includes('provision'));
+   assert.ok(!x.calls.includes('backup'));
+   assert.equal(fs.readdirSync(dir).length,0);
+ }finally{fs.rmSync(dir,{recursive:true,force:true})}
+});
+test('missing L4 native capability rejects before locking, journal or MySQL writes',async()=>{
+ const dir=tempLedger();
+ try{
+   const x=fakeNative();
+   delete x.native.reserveNativeLevel4ReplayFence;
+   await assert.rejects(core.coordinateOwnerU06(x.native,ownerProof(),options(dir)),
+     /trusted_fixed_native_adapter_not_supplied/);
+   assert.deepEqual(x.calls,[]);
+ }finally{fs.rmSync(dir,{recursive:true,force:true})}
+});
+test('policy postimage SHA is explicitly owner-confirmed and signed-L4 fixed',()=>{
+ assert.equal(core.F.reviewed_l4_policy_sha256,
+  'aa1563b168aea2725a0539373c54c45b2317b6320334c80a6d3a5e2723520934');
+ assert.equal(core.F.operation,'honartik_back.production.native_backup');
+ assert.equal(core.INSTALLED_ROOT_BINDING,false);
 });
