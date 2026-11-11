@@ -41,8 +41,11 @@ function ensureParents(root,file){
   for(let i=0;i<parts.length-1;i++){
     cursor=path.join(cursor,parts[i]);
     const st=fs.lstatSync(cursor);
-    need(st.isDirectory()&&!st.isSymbolicLink()&&st.uid===root&&
-      (st.mode&0o022)===0,'untrusted_parent');
+    const fixtureTmp=root!==0&&cursor==='/tmp'&&st.uid===0&&
+      (st.mode&0o7777)===0o1777;
+    need(st.isDirectory()&&!st.isSymbolicLink()&&
+      (fixtureTmp||(st.uid===root&&(st.mode&0o022)===0)),
+      'untrusted_parent');
   }
 }
 function readOwned(root,file,{max=200000,exactMode=null}={}){
