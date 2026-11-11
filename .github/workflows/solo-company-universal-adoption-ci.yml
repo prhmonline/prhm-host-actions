@@ -3,6 +3,8 @@ on:
   push:
     paths:
       - 'solo-company-universal-existing-service-adoption-v1.js'
+      - 'solo-universal-v2-host-action-binding-candidate-v1.cjs'
+      - 'test-solo-universal-v2-host-action-binding-candidate-v1.cjs'
       - 'solo-company-universal-adoption.production.candidate.json'
       - 'test-solo-company-universal-existing-service-adoption-v1.js'
       - 'docs/runbooks/solo-company-universal-adoption-v1.md'
@@ -10,6 +12,8 @@ on:
   pull_request:
     paths:
       - 'solo-company-universal-existing-service-adoption-v1.js'
+      - 'solo-universal-v2-host-action-binding-candidate-v1.cjs'
+      - 'test-solo-universal-v2-host-action-binding-candidate-v1.cjs'
       - 'solo-company-universal-adoption.production.candidate.json'
       - 'test-solo-company-universal-existing-service-adoption-v1.js'
       - 'docs/runbooks/solo-company-universal-adoption-v1.md'
@@ -30,3 +34,7 @@ jobs:
           node -e "const a=require('./solo-company-universal-existing-service-adoption-v1.js'); a.verifyCandidate(require('./solo-company-universal-adoption.production.candidate.json'))"
       - name: Test preservation, rollback non-mutation, loopback and dark-mode refusal
         run: node --test test-solo-company-universal-existing-service-adoption-v1.js
+      - name: Test fixed Host Action v2 binding as SOURCE-ONLY
+        run: |
+          node --check solo-universal-v2-host-action-binding-candidate-v1.cjs
+          node --test test-solo-universal-v2-host-action-binding-candidate-v1.cjs
