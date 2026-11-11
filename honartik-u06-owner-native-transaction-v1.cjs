@@ -32,6 +32,11 @@ const REQUIRED=Object.freeze([
   'verifyIndependentNode1Recovery',
   'prepareDurableRollbackJournal',
   'assertRollbackJournalDurable',
+  // Separate trusted Root operations. The verifier MUST independently read
+  // the official Ed25519 issuer key + consumed ledger + SHA-pinned live
+  // Level-4 policy, and the replay fence MUST be fsynced before MySQL writes.
+  'verifyNativeConsumedSignedLevel4',
+  'reserveNativeLevel4ReplayFence',
   'provisionBackupOnlyIdentityAndPrivateCredential',
   'runInstalledUniversalNativeBackup',
   'verifyIsolatedRestoreAndFinancialIntegrity',
@@ -104,8 +109,29 @@ async function coordinateOwnerU06(native,proof,{ledgerDir=fence.LEDGER,ledgerOwn
     need(await native.assertRollbackJournalDurable(F,journal)===true,
       'journal_not_durable');
     journalDurable=true;
-    // Owner proof is permanently consumed BEFORE any attempt to change MySQL.
-    // A failed/rolled-back action needs a NEW signed owner approval.
+    // Source-level coordinator cannot authenticate callback provenance.
+    // The only future eligible live binding is a trusted exact-source Root
+    // adapter which independently verifies the signed Level-4 receipt and
+    // authoritative consumed ledger, then persists the no-replay fence.
+    // GitHub OIDC identity alone MUST NEVER authorize production mutation.
+    const approval=await native.verifyNativeConsumedSignedLevel4(F,journal);
+    const expectedL4Operation='host_action.honartik_u06_native_backup_register_v1';
+    need(approval&&Object.keys(approval).sort().join('|')===
+      ['operation','level','signature_verified','consumed_ledger_verified',
+       'policy_sha256','request_id','approval_id'].sort().join('|')&&
+      approval.operation===expectedL4Operation&&approval.level===4&&
+      approval.signature_verified===true&&
+      approval.consumed_ledger_verified===true&&
+      typeof approval.policy_sha256==='string'&&
+      /^[0-9a-f]{64}$/.test(approval.policy_sha256)&&
+      /^[0-9a-f-]{36}$/i.test(approval.approval_id)&&
+      /^[0-9a-f-]{36}$/i.test(approval.request_id),
+      'native_l4_receipt_missing_or_invalid');
+    need(await native.reserveNativeLevel4ReplayFence(F,journal,approval)===true,
+      'native_l4_replay_fence_not_durable');
+    // Both independent L4 and owner OIDC one-use proofs MUST be burned
+    // before the first MySQL/account/credential operation. Failure burns
+    // whichever proof was already consumed, never silently refunds it.
     fence.consumeVerifiedOwnerEvidence(proof,{
       directory:ledgerDir,trustedUid:ledgerOwnerUid
     });
