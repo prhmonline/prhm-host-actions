@@ -22,14 +22,17 @@ function fixture(){
   typed_scopes:[{tool:'host_action_v2_apply',project:'control_plane',
    environment:'production',action:action.ACTION,operation:action.OPERATION,
    risk:'critical',principals:[{principal_id:'mohammad',roles:['mcp-operator']}]}]};
- const policyBytes=Buffer.from(JSON.stringify(p));const policy_sha256=H(policyBytes);
+ const policyBytes=Buffer.from(JSON.stringify(p,null,2)+'\n');
+ const policy_sha256=H(policyBytes);
+ const issuerPolicyHash=H(Buffer.from(JSON.stringify(p)));
+ assert.notEqual(policy_sha256,issuerPolicyHash);
  fs.writeFileSync(policy,policyBytes,{mode:0o600});
  fs.writeFileSync(issuer,publicKey.export({format:'pem',type:'spki'}),{mode:0o600});
  const claims={approval_id:AID,request_id:RID,jti:AID,iss:'prhm-company-approval',
   action:action.ACTION,operation:action.OPERATION,project:'control_plane',
   environment:'production',tool:'host_action_v2_apply',principal_id:'mohammad',
   role:'mcp-operator',level:4,risk:'critical',decision:'accept',one_time_use:true,
-  policy_version:version,policy_hash:policy_sha256,
+  policy_version:version,policy_hash:issuerPolicyHash,
   arguments_sha256:action.argDigest(),request_hash:action.argDigest(),
   iat:now-25,nbf:now-25,exp:now+80};
  const sign=c=>{
@@ -48,7 +51,7 @@ function fixture(){
  const paths={policy,issuer,consumed,fence,policy_sha256};
  const F={operation:'honartik_back.production.native_backup',reviewed_l4_policy_sha256:policy_sha256};
  const journal={id:'u06_real_native_fixture_journal_20261111'};
- return {root,paths,F,journal,claims,sign,ledgerFile};
+ return {root,paths,F,journal,claims,sign,ledgerFile,issuerPolicyHash};
 }
 const open=(f,token=f.sign(f.claims))=>gate.createDisposableRootL4Fixture(RID,()=>token,f.paths);
 const clean=f=>fs.rmSync(f.root,{recursive:true,force:true});
@@ -57,6 +60,8 @@ test('real Ed25519 + consumed ledger + O_EXCL fsync, replay denied',()=>{
   const bridge=open(f),receipt=bridge.verifyNativeConsumedSignedLevel4(f.F,f.journal);
   assert.equal(receipt.operation,action.OPERATION);
   assert.equal(receipt.level,4);
+  assert.equal(f.claims.policy_hash,f.issuerPolicyHash);
+  assert.notEqual(f.claims.policy_hash,f.paths.policy_sha256);
   assert.equal(bridge.reserveNativeLevel4ReplayFence(f.F,f.journal,receipt),true);
   const file=path.join(f.paths.fence,AID+'.json');
   assert.equal(fs.statSync(file).mode&0o777,0o600);
