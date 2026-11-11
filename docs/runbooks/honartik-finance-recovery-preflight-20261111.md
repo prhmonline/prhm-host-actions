@@ -39,10 +39,12 @@ Build a separate read-only **migration inventory reconciliation** using Yii's ac
 
 See [Honartik actual Yii effective-migration audit](honartik-finance-yii-effective-migration-audit-20261111.md).
 The previously reported 56 filenames came from a broad static scan; the
-**registered Yii module lookup** resolves to only 21 active migration PHP files.
-For 19 structural migrations, the target tables/columns (including four
-custom-prefixed RBAC tables) exist in the verified backup. Two data/seed
-migrations remain unverifiable from schema alone. The official
+**effective Yii migrationLookup** resolves to 26 migration PHP files: five from
+core `@rabint/migrations/db` (defined as `vendor/rabint/base/migrations/db`),
+plus 21 from registered module roots. For 23 structural migrations, the
+target tables/columns (including four custom-prefixed RBAC tables) exist in
+the verified backup. Three data/seed migrations remain unverifiable from
+schema alone. The official
 \`system_db_migration\` table has no data in the backup.
 
 This is evidence of a historical migration-state discrepancy; it is **not**
