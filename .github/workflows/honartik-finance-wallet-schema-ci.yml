@@ -1,0 +1,40 @@
+name: Honartik wallet offline schema proof — source-only tests
+on:
+  pull_request:
+    paths:
+      - 'scripts/honartik-finance-wallet-schema-diagnostic-v1.py'
+      - 'tests/test_honartik_finance_wallet_schema_diagnostic_v1.py'
+      - 'evidence/honartik/finance-wallet-frozen-yii54-20261111.json'
+      - '.github/workflows/honartik-finance-wallet-schema-ci.yml'
+      - 'docs/runbooks/honartik-finance-wallet-schema-diagnostic-20261111.md'
+permissions:
+  contents: read
+jobs:
+  verify-no-finance-authorization:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Python syntax + frozen 54 sources and no-go policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONDONTWRITEBYTECODE=1 python3 -B -m unittest -v tests/test_honartik_finance_wallet_schema_diagnostic_v1.py
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          data=json.loads(Path('evidence/honartik/finance-wallet-frozen-yii54-20261111.json').read_text())
+          assert len(data['migration_files'])==54
+          assert len({r['version'] for r in data['migration_files']})==54
+          assert not any(data[k] for k in (
+            'allow_any_historical_migration_replay','allow_migration_ledger_stamping',
+            'production_migration_authorized','production_release_authorized'))
+          src=Path('scripts/honartik-finance-wallet-schema-diagnostic-v1.py').read_text()
+          assert 'h.restore_isolated(ARCHIVE)' in src
+          assert '"release_authorized":False' in src
+          assert '"production_modified":False' in src
+          print('WALLET_SCHEMA_SOURCE_CI=PASS')
+          print('FINANCE_PRODUCTION_AUTHORIZED=FALSE')
+          PY
