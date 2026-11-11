@@ -144,6 +144,8 @@ def select_fresh_backup(now):
   if age < -120: continue
   if age > 2700: break
   root_trusted(snapshot,True)
+  root_trusted(snapshot/'db',True)
+  root_trusted(snapshot/'db/prhm-mariadb',True)
   archive=snapshot/BACKUP_REL
   manifest=snapshot/"SHA256SUMS"
   complete=snapshot/"COMPLETE"
@@ -265,6 +267,7 @@ def main():
  ap.add_argument("command",choices=("preflight",))
  args=ap.parse_args()
  need(os.geteuid()==0,"root_only")
+ os.umask(0o077)
  now=dt.datetime.now(dt.timezone.utc)
  need(bool(re.fullmatch("[0-9a-f]{40}",os.environ.get("REVIEWED_SOURCE_SHA",""))),
       "reviewed_source_sha_required")
