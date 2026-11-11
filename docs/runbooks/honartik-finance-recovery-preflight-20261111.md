@@ -1,5 +1,7 @@
 # Honartik finance recovery preflight — source-only, no production cutover
 
+> **CORRECTION / FINANCE RELEASE NO-GO (2026-11-11):** The 26-file inventory at the end of this runbook omitted the default Yii `migrationPath` (`app/migrations/`, 28 additional classes). The actual `MultiLocationMigrationsController::lookupMigrations()` discovers **54 migration classes**, verified by read-only source-level reconstruction and prior U05 runtime lookup. The previous 23 structural matches cover only a partial subset; they are NOT a release-ready assessment. See [actual 54-class migration no-go evidence](honartik-finance-migration-54-no-go-20261111.md). Never apply historical migrations wholesale or change the ledger to force success.
+
 **Scope:** one exact finance candidate, app base `4ac602e874a128c3328f27f3dab473857512cdbf`, backend candidate `d1a64e640c9c2cf4788d55566c17728be5813941`, owner OIDC run already consumed and root-only, in environment `honartik-finance-production`. This root audit is **not the finance release executor** and never confers authority to deploy or enable money movement.
 
 ## Positive controls (root-only after CI and reviewed SHA)
@@ -39,12 +41,13 @@ Build a separate read-only **migration inventory reconciliation** using Yii's ac
 
 See [Honartik actual Yii effective-migration audit](honartik-finance-yii-effective-migration-audit-20261111.md).
 The previously reported 56 filenames came from a broad static scan; the
-**effective Yii migrationLookup** resolves to 26 migration PHP files: five from
+**partial configured-path subset** contains 26 migration PHP files: five from
 core `@rabint/migrations/db` (defined as `vendor/rabint/base/migrations/db`),
-plus 21 from registered module roots. For 23 structural migrations, the
-target tables/columns (including four custom-prefixed RBAC tables) exist in
-the verified backup. Three data/seed migrations remain unverifiable from
-schema alone. The official
+plus 21 from registered module roots. The Yii controller **also includes 28
+legacy default `app/migrations/` classes**, for **54 effective migrations**.
+The 23 structural matches and three seed unknowns examined in the earlier
+report apply only to the 26-file subset. No full 54-file schema/migration
+history attestation has passed. The official
 \`system_db_migration\` table has no data in the backup.
 
 This is evidence of a historical migration-state discrepancy; it is **not**
