@@ -21,6 +21,10 @@ const F=Object.freeze({
   grants:Object.freeze(['SELECT','SHOW VIEW','TRIGGER','EVENT']),
   adapter_sha256:owner.INTENT.adapter_sha256,
   profile_sha256_before:owner.INTENT.profile_sha256,
+  // Owner-confirmed LIVE read-only candidate from 2026-11-11; this MUST
+  // match the installed Root-reviewed policy after separate authorization.
+  // Source pinning is not evidence of installation or signature consumption.
+  reviewed_l4_policy_sha256:'aa1563b168aea2725a0539373c54c45b2317b6320334c80a6d3a5e2723520934',
   require_offsite:true,
   auto_deploy:false,
   yii_migrations:false,
@@ -122,8 +126,7 @@ async function coordinateOwnerU06(native,proof,{ledgerDir=fence.LEDGER,ledgerOwn
       approval.operation===expectedL4Operation&&approval.level===4&&
       approval.signature_verified===true&&
       approval.consumed_ledger_verified===true&&
-      typeof approval.policy_sha256==='string'&&
-      /^[0-9a-f]{64}$/.test(approval.policy_sha256)&&
+      approval.policy_sha256===F.reviewed_l4_policy_sha256&&
       /^[0-9a-f-]{36}$/i.test(approval.approval_id)&&
       /^[0-9a-f-]{36}$/i.test(approval.request_id),
       'native_l4_receipt_missing_or_invalid');
