@@ -119,11 +119,11 @@ function provisionAfterOfficialL4(){
  preflight();
  const password=crypto.randomBytes(48).toString('base64url');
  must(password.length===64,'entropy');
- let created=false;
+ let created=false,credentialOwned=false;
  try{
   sql('CREATE USER '+Q+" IDENTIFIED BY '"+password+"';");created=true;
   sql('GRANT SELECT, SHOW VIEW, TRIGGER, EVENT ON honartik_db.* TO '+Q+';');
-  grantsExact();credential(password);verifyClient();
+  grantsExact();credential(password);credentialOwned=true;verifyClient();
   return Object.freeze({schema:'prhm.u06.native-mariadb-identity.v1',
    account:P.account,host:P.account_host,database:P.database,
    grants_exact:true,private_credential_fsynced:true,
@@ -134,7 +134,7 @@ function provisionAfterOfficialL4(){
   if(created){
    let ok=false;
    try{
-    if(!fileAbsent(P.credential)){
+    if(credentialOwned&&!fileAbsent(P.credential)){
      const s=fs.lstatSync(P.credential);
      must(s.isFile()&&!s.isSymbolicLink()&&s.uid===0&&
       (s.mode&0o777)===0o600,'rollback_file_untrusted');
@@ -145,7 +145,7 @@ function provisionAfterOfficialL4(){
     }
     sql('DROP USER '+Q+';');
     ok=sql('SELECT COUNT(*) FROM mysql.user WHERE User='+HEX_USER+
-      ' AND Host='+HEX_HOST+';')==='0';
+      ' AND Host='+HEX_HOST+';')==='0'&&fileAbsent(P.credential);
    }catch{}
    if(!ok)fail('CRITICAL_ROLLBACK_UNVERIFIED_RETAIN_JOURNAL');
   }
