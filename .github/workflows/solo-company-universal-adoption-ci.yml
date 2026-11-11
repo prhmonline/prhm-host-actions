@@ -5,6 +5,8 @@ on:
       - 'solo-company-universal-existing-service-adoption-v1.js'
       - 'solo-universal-v2-host-action-binding-candidate-v1.cjs'
       - 'test-solo-universal-v2-host-action-binding-candidate-v1.cjs'
+      - 'solo-universal-v2-owner-permit-v1.cjs'
+      - 'test-solo-universal-v2-owner-permit-v1.cjs'
       - 'solo-company-universal-adoption.production.candidate.json'
       - 'test-solo-company-universal-existing-service-adoption-v1.js'
       - 'docs/runbooks/solo-company-universal-adoption-v1.md'
@@ -14,6 +16,8 @@ on:
       - 'solo-company-universal-existing-service-adoption-v1.js'
       - 'solo-universal-v2-host-action-binding-candidate-v1.cjs'
       - 'test-solo-universal-v2-host-action-binding-candidate-v1.cjs'
+      - 'solo-universal-v2-owner-permit-v1.cjs'
+      - 'test-solo-universal-v2-owner-permit-v1.cjs'
       - 'solo-company-universal-adoption.production.candidate.json'
       - 'test-solo-company-universal-existing-service-adoption-v1.js'
       - 'docs/runbooks/solo-company-universal-adoption-v1.md'
@@ -38,3 +42,7 @@ jobs:
         run: |
           node --check solo-universal-v2-host-action-binding-candidate-v1.cjs
           node --test test-solo-universal-v2-host-action-binding-candidate-v1.cjs
+      - name: Validate independently scoped owner Ed25519 permits in offline fixture
+        run: |
+          node --check solo-universal-v2-owner-permit-v1.cjs
+          node --test test-solo-universal-v2-owner-permit-v1.cjs
