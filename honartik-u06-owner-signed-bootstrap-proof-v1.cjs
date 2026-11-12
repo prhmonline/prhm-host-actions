@@ -112,10 +112,7 @@ function canonicalManifest(bytes,computed){
  }
  return m;
 }
-function verify({manifestBytes,armor,computed,fixtureAuthorizedKeys}){
- const manifest=canonicalManifest(manifestBytes,computed);
- const key=fixtureAuthorizedKeys?
-  parseTrustedAuthorizedKey(fixtureAuthorizedKeys):liveTrustedKey();
+function verifyPayloadSignature(manifestBytes,armor,key){
  const s=readSSHSig(armor);
  yes(s.keyWire.equals(key.wire),'signature_embedded_public_key_wrong');
  const publicKey=crypto.createPublicKey({key:Buffer.concat([
@@ -126,6 +123,12 @@ function verify({manifestBytes,armor,computed,fixtureAuthorizedKeys}){
    W(Buffer.alloc(0)),W(Buffer.from('sha512')),W(hash)]);
  yes(crypto.verify(null,data,publicKey,s.signature),
   'signature_cryptographic_failure');
+ return true;
+}
+function verify({manifestBytes,armor,computed}){
+ const manifest=canonicalManifest(manifestBytes,computed);
+ const key=liveTrustedKey();
+ verifyPayloadSignature(manifestBytes,armor,key);
  return Object.freeze({
   schema:'prhm.u06.independent-owner-registration-proof.v1',
   independent_owner_ssh_ed25519_verified:true,
@@ -136,7 +139,7 @@ function verify({manifestBytes,armor,computed,fixtureAuthorizedKeys}){
  });
 }
 module.exports=Object.freeze({
- PIN,parseTrustedAuthorizedKey,readSSHSig,canonicalManifest,verify,
+ PIN,parseTrustedAuthorizedKey,readSSHSig,canonicalManifest,verifyPayloadSignature,verify,
  LIVE_INSTALL_EXPORTED:false,NO_APPROVAL_ISSUER:true
 });
 if(require.main===module){
