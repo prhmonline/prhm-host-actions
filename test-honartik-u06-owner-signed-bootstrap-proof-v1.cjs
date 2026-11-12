@@ -62,5 +62,5 @@ test('manifest exact canonical 4-owner closure and TTL cannot self-authorize ins
  assert.throws(()=>S.canonicalManifest(raw,{
    ...expected,postimage_sha256:{root_executor:'f'.repeat(64)}
  }),/signed_manifest_not_reviewed_package/);
- assert.equal(S.verify.apply,undefined);
+ assert.equal(S.install,undefined);
 });
