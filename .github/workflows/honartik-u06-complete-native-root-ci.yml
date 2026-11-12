@@ -3,6 +3,10 @@ on:
   pull_request:
     paths:
       - 'honartik-u06-real-root-callback-adapter-v1.cjs'
+      - 'honartik-u06-owner-signed-bootstrap-proof-v1.cjs'
+      - 'test-honartik-u06-owner-signed-bootstrap-proof-v1.cjs'
+      - 'honartik-u06-owner-signed-bootstrap-proof-v1.cjs'
+      - 'test-honartik-u06-owner-signed-bootstrap-proof-v1.cjs'
       - 'honartik-u06-native-root-lease-v1.cjs'
       - 'honartik-u06-native-root-mariadb-identity-v1.cjs'
       - 'scripts/u06/u06_live_native_root_worker_v1.py'
@@ -35,10 +39,11 @@ jobs:
         with:
           python-version: '3.11'
       - run: node --check honartik-u06-real-root-callback-adapter-v1.cjs
+      - run: node --check honartik-u06-owner-signed-bootstrap-proof-v1.cjs
       - run: node --check honartik-u06-native-root-lease-v1.cjs
       - run: node --check honartik-u06-native-root-mariadb-identity-v1.cjs
       - run: python3 -m py_compile scripts/u06/u06_live_native_root_worker_v1.py
-      - run: node --test test-honartik-u06-real-root-callback-adapter-v1.cjs test-honartik-u06-native-root-lease-v1.cjs test-honartik-u06-native-root-mariadb-identity-v1.cjs
+      - run: node --test test-honartik-u06-real-root-callback-adapter-v1.cjs test-honartik-u06-native-root-lease-v1.cjs test-honartik-u06-native-root-mariadb-identity-v1.cjs test-honartik-u06-owner-signed-bootstrap-proof-v1.cjs
       - name: Imported Python has no direct Root mutating command
         shell: bash
         run: |
