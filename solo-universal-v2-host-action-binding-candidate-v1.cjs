@@ -24,7 +24,7 @@ const PIN = Object.freeze({
   universal_v1_before: '08889c18a570cc2bff408dfbe78b7e5f4f8da24f465b4fdd445640cd7f89d17d',
   universal_v2_candidate: '20d8a4f5a972fcfb33812c67e935b38a65d9b71be8a4c7cf21d9f7b4999b929a',
   profile_sha256: 'f767738f3059650e22c137c22e9b4c93f6f28db14ebe8ee3d20eb9c99e7a6df4',
-  deploy_control_source_commit: '356231335e1bc813ac481e3b95e912369d257772',
+  deploy_control_source_commit: 'eb780b7d518270e23a0e0b813e554a7ac6d8cfc9',
   risk: 'critical',
   level: 4,
   one_time_use: true,
