@@ -323,8 +323,12 @@ def native_offsite(run_id,approval_id):
     out=run([str(RESTIC),*opts,"backup","--json",
              "--tag","prhm-u06-native-v1","--tag","run-"+run_id,
              str(d/"native")],timeout=3600,max_output=10000000,env=env)
-    snapshots=[json.loads(l) for l in out.decode().splitlines()
-               if l.startswith("{") and '"message_type":"summary"' in l]
+    snapshots=[]
+    for line in out.decode().splitlines():
+        if not line.startswith("{"): continue
+        try: message=json.loads(line)
+        except ValueError: continue
+        if message.get("message_type")=="summary": snapshots.append(message)
     demand(len(snapshots)==1,"REMOTE_RECEIPT_INVALID")
     snap=snapshots[0].get("snapshot_id")
     demand(isinstance(snap,str) and re.fullmatch(r"[0-9a-f]{64}",snap),
