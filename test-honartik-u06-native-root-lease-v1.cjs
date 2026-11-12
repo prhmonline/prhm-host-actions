@@ -77,8 +77,33 @@ test('dangling credential symlink is NOT treated as absent',()=>{
 test('fixture refuses root and production scope, never registers action',()=>{
  assert.equal(Lease.ROOT_ACTION_REGISTERED,false);
  assert.equal(Lease.PRODUCTION_BACKUP_IMPLEMENTED,false);
- assert.equal(Lease.COMMIT_IMPLEMENTED,false);
+ assert.equal(Lease.COMMIT_IMPLEMENTED,true);
  assert.equal(Lease.MYSQL_ACCESS_EXPORTED,false);
  assert.equal(Lease.install,undefined);
  assert.equal(Lease.run,undefined);
+});
+
+test('complete native financial+Node1 receipt yields durable COMMITTED but fake receipt is denied',()=>{
+ const f=create();
+ try{
+  const l=open(f);l.acquire();l.prepareJournal();
+  const sha=require('node:crypto').createHash('sha256');
+  const original={backup:{offsite_required:true}};
+  fs.writeFileSync(f.profile,JSON.stringify(original)+'\n');
+  const h=sha.update(fs.readFileSync(f.profile)).digest('hex');
+  fs.writeFileSync(f.credential,'[client]\nuser=fixture\npassword=fixture\n',{mode:0o600});
+  const att={full_real_native_verified:true,independent_native_node1_verified:true,
+    backup_sha256:'d'.repeat(64),post_profile_sha256:h};
+  assert.throws(()=>l.verifyAndRecordCommit({...att,independent_native_node1_verified:false}),
+    /commit_attestation_incomplete/);
+  assert.throws(()=>l.verifyAndRecordCommit({...att,post_profile_sha256:'0'.repeat(64)}),
+    /committed_profile_digest_drift/);
+  assert.equal(l.journalState(),'PREPARED');
+  assert.equal(l.verifyAndRecordCommit(att).committed,true);
+  assert.equal(l.journalState(),'COMMITTED');
+  assert.equal(l.release().released,true);
+  const j=JSON.parse(fs.readFileSync(path.join(f.root,'u06-rollback.json')));
+  assert.equal(j.state,'COMMITTED');
+  assert.equal(j.native_node1_offsite_verified,true);
+ }finally{remove(f)}
 });
