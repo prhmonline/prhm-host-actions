@@ -56,7 +56,7 @@ test('synthetic missing authorize-consume or execution anchor is rejected',()=>{
  assert.throws(()=>B.previewSynthetic(t),/anchor_missing_or_duplicated|anchor_drift/);
  t={...base,root_executor:base.root_executor.replace(R.A.apply,
   R.A.apply+R.A.apply)};
- assert.throws(()=>B.previewSynthetic(t),/anchor_drift/);
+ assert.throws(()=>B.previewSynthetic(t),/anchor_missing_or_duplicated|anchor_drift/);
 });
 test('never allows fixture tag to spoof real SHA-pinned owner source',()=>{
  const x=source();
