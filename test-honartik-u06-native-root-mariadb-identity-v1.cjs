@@ -32,7 +32,9 @@ test('live creation needs Root trust and official signed-consumed L4 before any 
  const src=fs.readFileSync(require.resolve('./honartik-u06-native-root-mariadb-identity-v1.cjs'),'utf8');
  assert.ok(src.indexOf('t.reserveNativeLevel4ReplayFence(F,journal,approval)')>=0);
  assert.ok(src.indexOf('armed=journal.id')>src.indexOf('t.reserveNativeLevel4ReplayFence(F,journal,approval)'));
- assert.ok(src.indexOf('armed=null;return provisionAfterOfficialL4()')>src.indexOf('armed=journal.id'));
+ assert.ok(src.indexOf('armed=null;')>src.indexOf('armed=journal.id'));
+ assert.ok(src.indexOf('const installed=provisionAfterOfficialL4()')>src.indexOf('armed=null;'));
+ assert.ok(src.includes('rollbackOnlyThisTransaction(F,journal)'));
  assert.ok(src.indexOf('preflight();')>=0);
  assert.ok(src.includes('CREATE USER '));
  assert.ok(src.includes('GRANT SELECT, SHOW VIEW, TRIGGER, EVENT ON honartik_db.*'));
