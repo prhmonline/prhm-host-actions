@@ -39,9 +39,7 @@ const BRIDGE=[
  "  throw new Error('u06_full_native_root_handler_not_installed');",
  '}'
 ].join('\n')+'\n';
-function preview(readonlyBuffers){
- const old=Preview.previewExactOwnerSources(readonlyBuffers);
- const p=old.proposed_source_review_only;
+function buildFromReviewed(p){
  let root=p.root_executor;
  once(root,ROUTE,'existing_apply_call');
  once(root,CONSUME,'authorize_consume');
@@ -75,5 +73,13 @@ function preview(readonlyBuffers){
   production_mutated:false
  });
 }
-module.exports=Object.freeze({ACTION,MARK,BRIDGE,ROUTE,CALL,preview,
+function preview(readonlyBuffers){
+ const reviewed=Preview.previewExactOwnerSources(readonlyBuffers);
+ return buildFromReviewed(reviewed.proposed_source_review_only);
+}
+function previewSynthetic(fixture){
+ const reviewed=Preview.previewSyntheticFixture(fixture);
+ return buildFromReviewed(reviewed.source);
+}
+module.exports=Object.freeze({ACTION,MARK,BRIDGE,ROUTE,CALL,preview,previewSynthetic,
  SOURCE_ONLY:true,ROOT_INSTALL_ALLOWED:false});
