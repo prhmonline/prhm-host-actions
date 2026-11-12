@@ -136,6 +136,39 @@ class Lease {
    'journal_identity_drift');
   return j.state;
  }
+ verifyAndRecordCommit(attestation){
+  this.assertOwner();
+  const j=JSON.parse(strictFile(this.journal,this.uid).toString('utf8'));
+  need(j.schema==='prhm.u06.root-rollback.v1'&&j.id===this.id&&
+    j.state==='PREPARED'&&SHA.test(j.profile_sha256),
+    'journal_not_prepared_for_commit');
+  need(attestation&&typeof attestation==='object'&&
+    attestation.full_real_native_verified===true&&
+    attestation.independent_native_node1_verified===true&&
+    SHA.test(attestation.backup_sha256||'')&&
+    SHA.test(attestation.post_profile_sha256||''),
+    'commit_attestation_incomplete');
+  const currentProfile=strictFile(this.pins.profile,this.uid);
+  need(hash(currentProfile)===attestation.post_profile_sha256,
+    'committed_profile_digest_drift');
+  let parsed;try{parsed=JSON.parse(currentProfile.toString('utf8'))}
+  catch{fail('committed_profile_unreadable')}
+  need(parsed.backup&&parsed.backup.offsite_required===true,
+    'offsite_not_required_at_commit');
+  const credential=strictFile(this.pins.credential,this.uid,4096);
+  const meta=fs.lstatSync(this.pins.credential);
+  need((meta.mode&0o777)===0o600&&credential.length>20,
+    'credential_not_private_at_commit');
+  const done=Buffer.from(JSON.stringify({
+    ...j,state:'COMMITTED',backup_sha256:attestation.backup_sha256,
+    committed_profile_sha256:attestation.post_profile_sha256,
+    native_isolated_finance_verified:true,
+    native_node1_offsite_verified:true
+  })+'\n');
+  atomicPrivate(this.journal,done,this.uid);
+  need(this.journalState()==='COMMITTED','commit_not_durable');
+  return Object.freeze({committed:true,durable:true});
+ }
  verifyAndRecordRollback(){
   this.assertOwner();
   const j=JSON.parse(strictFile(this.journal,this.uid).toString('utf8'));
@@ -158,7 +191,8 @@ class Lease {
  release(){
   this.assertOwner();
   if(fs.existsSync(this.journal))
-   need(this.journalState()==='ROLLED_BACK','unresolved_journal_lock_retained');
+   need(['ROLLED_BACK','COMMITTED'].includes(this.journalState()),
+     'unresolved_journal_lock_retained');
   fs.unlinkSync(this.lock);
   syncDir(this.pins.directory);
   this.active=false;
@@ -189,5 +223,5 @@ function createDisposableFixtureLease(directory,profile,adapter,credential){
 module.exports=Object.freeze({
  LIVE,createLiveRootLease,createDisposableFixtureLease,
  ROOT_ACTION_REGISTERED:false,PRODUCTION_BACKUP_IMPLEMENTED:false,
- COMMIT_IMPLEMENTED:false,MYSQL_ACCESS_EXPORTED:false
+ COMMIT_IMPLEMENTED:true,MYSQL_ACCESS_EXPORTED:false
 });
