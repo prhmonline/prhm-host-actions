@@ -3,7 +3,9 @@ name: O08 CFPark fixed L4 registrar candidate - source-only CI
 on:
   push:
     branches:
+      - main
       - ops/o08-cfpark-registrar-candidate-20261113
+      - ci/o08-cfpark-registry-main-guard-20261113
     paths:
       - o08-cfpark-owner-registry-admission-candidate-v1.cjs
       - test-o08-cfpark-owner-registry-admission-candidate-v1.cjs
