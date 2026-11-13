@@ -11,6 +11,14 @@ test('only exact four Root files, fifteen native assets and fixed five systemd u
  assert.equal(Installer.FIXED.host,'prhm-production.prhm.ir');
  assert.equal(Installer.FIXED.ownerPaths,Plan.TARGET);
  assert.equal(Plan.ASSET_NAMES.length,15);
+ assert.deepEqual(Installer.FIXED.privateRuntimeDirs,[
+  '/var/lib/prhm-agent-selfmaint-exec/honartik-u06-native-root',
+  '/var/lib/prhm-agent-selfmaint-exec/honartik-u06-native-root/l4-consumed',
+  '/var/lib/prhm-agent-selfmaint-exec/honartik-u06-native-root/owner-oidc',
+  '/var/backups/prhm-u06-native',
+  '/var/lib/prhm-u06-owner-approvals',
+  '/var/lib/prhm-u06-owner-approvals/consumed'
+ ]);
  assert.equal(Installer.FIXED.action,'honartik_u06_native_backup_register_v1');
  assert.equal(Installer.FIXED.policyAfter,
    'aa1563b168aea2725a0539373c54c45b2317b6320334c80a6d3a5e2723520934');
@@ -67,4 +75,22 @@ test('restart and recovery are hard bound to known services and exact Root owner
  assert.ok(!source.includes('sudo '));
  assert.ok(!source.includes('eval('));
  assert.ok(!source.includes('process.argv[2]'));
+});
+
+test('private native runtime paths can only be created after separately verified signed owner and prepared journal',()=>{
+ const signature=source.indexOf('const evidence=Proof.verify(');
+ const apply=source.indexOf('Tx.executeCore(plan,');
+ const post=source.indexOf('createSignedRuntimeDirs();');
+ const fn=source.indexOf('function createSignedRuntimeDirs()');
+ assert.ok(signature>=0&&apply>signature&&post>apply&&fn>=0);
+ assert.ok(source.includes('assertRuntimeDirsAbsent();'));
+ assert.ok(source.includes('private_runtime_parent_not_root_owned'));
+ assert.ok(source.includes('unreviewed_runtime_dir_race'));
+ assert.ok(source.includes('fs.mkdirSync(item,{mode:0o700})'));
+ assert.ok(source.includes('syncDir(path.dirname(item))'));
+ assert.ok(source.includes('directory(item,0o700,0)'));
+ assert.ok(source.includes('pruneEmptyRuntimeDirsAfterRollback()'));
+ assert.ok(source.includes('rollback_runtime_dir_not_empty_retain_journal'));
+ assert.ok(source.includes('RUNTIME_PRIVATE_DIRS].reverse()'));
+ assert.ok(source.indexOf('burnNonce(m.nonce)')<source.indexOf('Tx.executeCore(plan,'));
 });
