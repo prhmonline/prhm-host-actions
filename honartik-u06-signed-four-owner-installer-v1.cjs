@@ -46,7 +46,28 @@ function rootIdentity(){
  need(process.getuid?.()===0&&process.getgid?.()===0&&
   os.hostname()===FIXED.host,'root_host_required');
  directory(ACTIONS,0o755,0);
+ const parent=path.dirname(WORK_ROOT);
+ const st=fs.lstatSync(parent);
+ need(st.isDirectory()&&!st.isSymbolicLink()&&st.uid===0&&
+  st.gid===0&&(st.mode&0o022)===0,
+  'bootstrap_parent_not_root_trusted');
+}
+function checkPendingIfExists(){
+ let present;
+ try{fs.lstatSync(WORK_ROOT);present=true}
+ catch(e){if(e.code!=='ENOENT')throw e;present=false}
+ if(present){
+  directory(WORK_ROOT,0o700,0);
+  Tx.assertNoPendingTransactions(WORK_ROOT);
+ }
+}
+function createPrivateWorkRootAfterSignature(){
+ const parent=path.dirname(WORK_ROOT);
+ try{fs.mkdirSync(WORK_ROOT,{mode:0o700})}
+ catch(e){if(e.code!=='EEXIST')throw e}
  directory(WORK_ROOT,0o700,0);
+ syncDir(parent);
+ Tx.assertNoPendingTransactions(WORK_ROOT);
 }
 function readOwners(){
  return Object.freeze({
@@ -79,7 +100,7 @@ function review({sourceCommit,stagedPath}){
   assetBuffers:readAssets(stagedPath)});
  Tx.checkPlan(plan);Tx.verifyPreimage(plan.steps);
  Tx.verifyAssetPreimages(plan.assets);
- Tx.assertNoPendingTransactions(WORK_ROOT);
+ checkPendingIfExists();
  return Object.freeze({schema:'prhm.u06.signed-four-owner-review.v1',
   source_commit:sourceCommit,
   manifest_sha256:plan.manifestSha256,
@@ -89,11 +110,12 @@ function review({sourceCommit,stagedPath}){
   official_level4_issued:false});
 }
 function generateFreshOwnerSigningRequest({sourceCommit,stagedPath}){
+ rootIdentity();
  const p=Plan.build({sourceCommit,ownerBuffers:readOwners(),
   assetBuffers:readAssets(stagedPath)});
  Tx.checkPlan(p);Tx.verifyPreimage(p.steps);
  Tx.verifyAssetPreimages(p.assets);
- Tx.assertNoPendingTransactions(WORK_ROOT);
+ checkPendingIfExists();
  const now=Date.now();
  return Buffer.from(JSON.stringify({
   schema:'prhm.u06.owner-signed-root-bootstrap.v1',
@@ -169,7 +191,7 @@ async function applyOwnerSigned({sourceCommit,stagedPath,manifestBytes,
   assetBuffers:readAssets(stagedPath)});
  Tx.checkPlan(plan);Tx.verifyPreimage(plan.steps);
  Tx.verifyAssetPreimages(plan.assets);
- Tx.assertNoPendingTransactions(WORK_ROOT);
+ checkPendingIfExists();
  const reviewedPackage=plan.signedDigestClosure;
  const m=Proof.canonicalManifest(manifestBytes,reviewedPackage);
  const evidence=Proof.verify({manifestBytes,armor:signatureArmor,
@@ -177,8 +199,10 @@ async function applyOwnerSigned({sourceCommit,stagedPath,manifestBytes,
  need(evidence.independent_owner_ssh_ed25519_verified===true&&
   evidence.runtime_official_level4_still_required===true,
   'independent_owner_bootstrap_signature_missing');
- // The only mutation before the journal is a durable one-use nonce fence.
- // An interrupted attempt burns this approval; the owner must sign afresh.
+ // No owner signature, no WorkRoot mutation: first time registration
+ // must never make a self-issued trust anchor.
+ createPrivateWorkRootAfterSignature();
+ // An interrupted attempt burns this signed approval and cannot be replayed.
  burnNonce(m.nonce);
  const out=await Tx.executeCore(plan,{
   workRoot:WORK_ROOT,
