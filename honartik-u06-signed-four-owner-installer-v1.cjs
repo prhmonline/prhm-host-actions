@@ -28,9 +28,18 @@ const UNIT=Object.freeze([
  'prhm-agent-mcp-blue.service',
  'prhm-agent-mcp-green.service'
 ]);
+const RUNTIME_PRIVATE_DIRS=Object.freeze([
+ '/var/lib/prhm-agent-selfmaint-exec/honartik-u06-native-root',
+ '/var/lib/prhm-agent-selfmaint-exec/honartik-u06-native-root/l4-consumed',
+ '/var/lib/prhm-agent-selfmaint-exec/honartik-u06-native-root/owner-oidc',
+ '/var/backups/prhm-u06-native',
+ '/var/lib/prhm-u06-owner-approvals',
+ '/var/lib/prhm-u06-owner-approvals/consumed'
+]);
 const FIXED=Object.freeze({
  workRoot:WORK_ROOT,action:Plan.A,operation:Plan.OP,host:Proof.PIN.host,
  ownerPaths:Plan.TARGET,sourceAllowlist:Plan.ASSET_NAMES,
+ privateRuntimeDirs:RUNTIME_PRIVATE_DIRS,
  namespace:Proof.PIN.namespace,
  policyAfter:Plan.POLICY_SHA
 });
@@ -69,6 +78,55 @@ function createPrivateWorkRootAfterSignature(){
  syncDir(parent);
  Tx.assertNoPendingTransactions(WORK_ROOT);
 }
+
+function assertTrustedAncestry(file){
+ let current=path.dirname(file),n=0;
+ while(current!=='/'&&n++<30){
+  let st;
+  try{st=fs.lstatSync(current)}
+  catch(e){if(e.code==='ENOENT'){current=path.dirname(current);continue}
+    throw e}
+  need(st.isDirectory()&&!st.isSymbolicLink()&&st.uid===0&&st.gid===0&&
+    (st.mode&0o022)===0,'private_runtime_parent_not_root_owned');
+  current=path.dirname(current);
+ }
+ need(n<30,'private_runtime_ancestry_loop');
+}
+function assertRuntimeDirsAbsent(){
+ for(const item of RUNTIME_PRIVATE_DIRS){
+  assertTrustedAncestry(item);
+  try{fs.lstatSync(item);die('private_runtime_dir_already_exists')}
+  catch(e){if(e.code!=='ENOENT')throw e}
+ }
+}
+function createSignedRuntimeDirs(){
+ // This is ONLY called from the post-install callback after owner SSHSIG
+ // verification and fsynced Root transaction INSTALLING journal.
+ for(const item of RUNTIME_PRIVATE_DIRS){
+  assertTrustedAncestry(item);
+  let st;
+  try{st=fs.lstatSync(item)}
+  catch(e){if(e.code!=='ENOENT')throw e}
+  need(st===undefined,'unreviewed_runtime_dir_race');
+  fs.mkdirSync(item,{mode:0o700});
+  directory(item,0o700,0);
+  syncDir(path.dirname(item));
+ }
+}
+function pruneEmptyRuntimeDirsAfterRollback(){
+ // SIGKILL recovery uses this same strict inverse; never delete files
+ // created by another process or any nonempty unverified directory.
+ for(const item of [...RUNTIME_PRIVATE_DIRS].reverse()){
+  let st;
+  try{st=fs.lstatSync(item)}
+  catch(e){if(e.code==='ENOENT')continue;throw e}
+  directory(item,0o700,0);
+  need(fs.readdirSync(item).length===0,
+    'rollback_runtime_dir_not_empty_retain_journal');
+  fs.rmdirSync(item);
+  syncDir(path.dirname(item));
+ }
+}
 function readOwners(){
  return Object.freeze({
   agent_api:fs.readFileSync(Plan.TARGET.base),
@@ -101,6 +159,7 @@ function review({sourceCommit,stagedPath}){
  Tx.checkPlan(plan);Tx.verifyPreimage(plan.steps);
  Tx.verifyAssetPreimages(plan.assets);
  checkPendingIfExists();
+ assertRuntimeDirsAbsent();
  return Object.freeze({schema:'prhm.u06.signed-four-owner-review.v1',
   source_commit:sourceCommit,
   manifest_sha256:plan.manifestSha256,
@@ -116,6 +175,7 @@ function generateFreshOwnerSigningRequest({sourceCommit,stagedPath}){
  Tx.checkPlan(p);Tx.verifyPreimage(p.steps);
  Tx.verifyAssetPreimages(p.assets);
  checkPendingIfExists();
+ assertRuntimeDirsAbsent();
  const now=Date.now();
  return Buffer.from(JSON.stringify({
   schema:'prhm.u06.owner-signed-root-bootstrap.v1',
@@ -192,6 +252,7 @@ async function applyOwnerSigned({sourceCommit,stagedPath,manifestBytes,
  Tx.checkPlan(plan);Tx.verifyPreimage(plan.steps);
  Tx.verifyAssetPreimages(plan.assets);
  checkPendingIfExists();
+ assertRuntimeDirsAbsent();
  const reviewedPackage=plan.signedDigestClosure;
  const m=Proof.canonicalManifest(manifestBytes,reviewedPackage);
  const evidence=Proof.verify({manifestBytes,armor:signatureArmor,
@@ -206,11 +267,17 @@ async function applyOwnerSigned({sourceCommit,stagedPath,manifestBytes,
  burnNonce(m.nonce);
  const out=await Tx.executeCore(plan,{
   workRoot:WORK_ROOT,
-  postInstall:async()=>restartAndHealth()&&attestRegistration(
-    plan.signedDigestClosure.postimage_sha256),
-  postRollback:async()=>restartAndHealth()&&
-    Object.entries(Plan.TARGET).every(([k,filename])=>
-      sha(fs.readFileSync(filename))===Plan.BEFORE[k])
+  postInstall:async()=>{
+    createSignedRuntimeDirs();
+    return restartAndHealth()&&attestRegistration(
+      plan.signedDigestClosure.postimage_sha256);
+  },
+  postRollback:async()=>{
+    const healthy=restartAndHealth();
+    pruneEmptyRuntimeDirsAfterRollback();
+    return healthy&&Object.entries(Plan.TARGET).every(([k,filename])=>
+      sha(fs.readFileSync(filename))===Plan.BEFORE[k]);
+  }
  });
  need(out.status==='COMMITTED','root_install_not_committed');
  return Object.freeze({
@@ -232,9 +299,12 @@ async function recoverInterruptedInstall({transaction}={}){
   workRoot:WORK_ROOT,transaction,
   expectedTargets:Object.values(Plan.TARGET),
   expectedAssets:Plan.ASSET_NAMES.map(n=>path.join(ACTIONS,n)),
-  postRollback:async()=>restartAndHealth()&&
-    Object.entries(Plan.TARGET).every(([k,filename])=>
-      sha(fs.readFileSync(filename))===Plan.BEFORE[k])
+  postRollback:async()=>{
+    const healthy=restartAndHealth();
+    pruneEmptyRuntimeDirsAfterRollback();
+    return healthy&&Object.entries(Plan.TARGET).every(([k,filename])=>
+      sha(fs.readFileSync(filename))===Plan.BEFORE[k]);
+  }
  });
 }
 module.exports=Object.freeze({
