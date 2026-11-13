@@ -27,7 +27,7 @@ test('fixed owner operation is explicitly critical, not L3 and source-only',()=>
   const out=p.patchBase(base);
   assert.match(out,/host_action\.universal_existing_stateful_service_observe_adoption_v2/);
   assert.doesNotMatch(out.split('HOST_ACTION_V2_LEVEL3')[1],/universal_existing_stateful_service_observe_adoption_v2/);
-  assert.equal(out.split(p.ACTION).length,2);
+  assert.equal(out.split(p.ACTION).length,3); // key plus operation value
 });
 
 test('executor action delegates exclusively to reviewed existing canonical root driver',()=>{
