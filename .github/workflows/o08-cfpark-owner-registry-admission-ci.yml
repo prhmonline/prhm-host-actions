@@ -1,0 +1,32 @@
+name: O08 CFPark fixed L4 registrar candidate - source-only CI
+
+on:
+  push:
+    branches:
+      - ops/o08-cfpark-registrar-candidate-20261113
+    paths:
+      - o08-cfpark-owner-registry-admission-candidate-v1.cjs
+      - test-o08-cfpark-owner-registry-admission-candidate-v1.cjs
+      - .github/workflows/o08-cfpark-owner-registry-admission-ci.yml
+      - docs/o08-cfpark-owner-registry-onboarding-gate.md
+  pull_request:
+    paths:
+      - o08-cfpark-owner-registry-admission-candidate-v1.cjs
+      - test-o08-cfpark-owner-registry-admission-candidate-v1.cjs
+      - .github/workflows/o08-cfpark-owner-registry-admission-ci.yml
+      - docs/o08-cfpark-owner-registry-onboarding-gate.md
+
+permissions:
+  contents: read
+
+jobs:
+  source-only:
+    name: CFPark registration dossier and fail-closed negative fixtures
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Node native test - no privileged execution
+        run: node --test test-o08-cfpark-owner-registry-admission-candidate-v1.cjs
