@@ -1,0 +1,67 @@
+# Solo Universal v2 — signed release gate and exact production handoff
+
+**Status: SOURCE_ONLY / NO-GO for production mutation.** This release is strictly for *read-only registration and observation* of an already-running stateful Solo Runtime. It does not transfer authority to deploy, stop, restart, migrate, roll back, expose, or modify the service or `/var/lib/private/prhm-solo-company`.
+
+## Pin and operation
+
+| Invariant | Expected |
+| --- | --- |
+| Operation | `universal.existing_stateful_service_observe_adoption_v2` |
+| Role | One-use critical Level-4 signed owner (or separately designed Provider) authorization |
+| Owner issuer | `prhm-owner-root-of-trust` (**not** Provider) |
+| Owner SPKI SHA256 | `d161f17f3d3446185e9b106b459b693eb3f453653d8221fc7d8e3f6b987f477b` |
+| Immutable source anchor | `prhmonline/deploy-control@9df0cab4d4d75a81fb4ba1e5982915584fc8a727` |
+| Installed v1 bundle | `08889c18a570cc2bff408dfbe78b7e5f4f8da24f465b4fdd445640cd7f89d17d` |
+| Installed `installation.json` SHA256 | `b11c7f601307b702f3c7380485851ecf9a23e15fd91c93b7796373f817a2a2a3` |
+| Candidate v2 bundle | `20d8a4f5a972fcfb33812c67e935b38a65d9b71be8a4c7cf21d9f7b4999b929a` |
+| New v2 profile digest | `f767738f3059650e22c137c22e9b4c93f6f28db14ebe8ee3d20eb9c99e7a6df4` |
+| Existing Solo release | `0eb43d72aab3f10db22172c8be4c0411cf22d074` |
+| Profile to create after permit only | `/etc/deploy-control/projects/solo_company.production.json` |
+
+The owner signature from `host_action.solo_company_runtime_registration_v1` is a **different operation** and must never be accepted. The prior Owner review waiver binds a different source commit; no reuse. A future acceptance receipt must include this PR's **frozen, reviewed final Git commit SHA**, together with the exact pinned fields above, a unique request ID/JTI, Ed25519 signature, and expiry within 180 seconds.
+
+## Evidence and new code
+
+- `solo-universal-v2-signed-release-contract-v1.cjs`: source-only EdDSA compact JWS verifier, strict canonical header and claims, owner key pin and Level-4 scope, fail-closed transaction coordinator requiring a **separately verified and durably consumed** grant.
+- `solo-universal-v2-live-readonly-preflight-v1.cjs`: local read-only fixed-path witness; checks real on-disk installed Python bundle digest, manifest SHA, exact versioned symlink, default v1 registry validation (six entries), private loopback listener, Solo unit hardening, status, and root-owned pinned owner public key.
+- Offline GitHub-hosted tests use *synthetic* Ed25519 fixture keys; never production key material. All mutations are simulated with a fake root capability interface. Green CI does not establish a production root adapter.
+- 2026-11-09 latest **direct server** read-only witness result: `LIVE_V2_RELEASE_PREIMAGE_PASS_NO_PERMIT`; current v1 bundle and manifest both exact, all six registry profiles valid, Solo private loopback and owner public key verified, `l4_release_receipt_present=false`, `signed_release_permit_validated=false`, `source_bundle_installed=false`, `production_modified=false`. Only disposable `/var/tmp` review sources were used and cleaned up.
+
+## Critical remaining root implementation and acceptance gates
+
+1. Root installer maintainers independently review the frozen source in `prhmonline/deploy-control#70` and this gate PR. The release driver must be built as a **new pinned and separately authorized** operation. Do not add the owner key to Provider trust anchors.
+2. Build/root-own the exact v2 staged candidate from the reviewed source closure and independently attest its bytes. The existing server Git/SSH remote did **not** reliably expose the source anchor in the recent check. Do not select moving branch names or silently fetch a substitute. An independent source-provenance fix or exactly pinned bundle artifact is needed.
+3. Implement a trusted native root adapter, not caller-supplied capability booleans: verify current host preimage and the fixed owner public key; create, fsync and prove a durable recovery snapshot covering the *current symlink*, `deploy-project` wrapper, `installation.json` and absent Solo profile. Signed permit must be verified against final reviewed driver SHA and durably consumed once **before** activating v2. A crash-recovery command must work after interrupted pointer/profile writes.
+4. Roll out v2 using the root-owned versioned `install_bundle()` contract with exact expected old bundle+manifest preimages. Create the pinned v2 profile only after candidate installation; strictly verify `observe-existing solo_company production`, all existing v1 profiles, unchanged runtime PID/state dir, and read-only-only authorization. On any error, restore exact binary symlink, wrapper, manifest and previous absent profile with verified, durable rollback; do not rollback the existing Solo runtime.
+5. Only after frozen source and real-root rollback exercise succeed may the owner generate a **NEW** short-lived Ed25519 signed Level-4 receipt for *this* operation. Private key stays on the owner-controlled signing device. Never mint it on the server, ask user to paste private key into chat, or reuse a test key/receipt.
+6. Independently verify the signed transaction journal, live registry and existing project validation before setting the task to complete. A v2 observation entry still does **not** mean the Solo application is managed for deployment.
+
+## Current status
+
+`SOURCE_GATE=PASS`, `LIVE_READ_ONLY_PREFLIGHT=PASS`, `TRUSTED_NATIVE_ROOT_ADAPTER=NOT_INSTALLED`, `FRESH_SIGNED_V2_LEVEL4=NOT_ISSUED`, `PRODUCTION_UNIVERSAL_V2=NOT_INSTALLED`, `SOLO_PROFILE_REGISTERED=FALSE`.
+
+**No production mutation permitted until the distinct signed release, reviewed root driver and crash recovery are ready.**
+
+## 2026-11-09 — Native durable recovery implementation and direct host tests
+
+The new SOURCE-ONLY `solo-universal-v2-native-recovery-v1.cjs` implements a real fsync-backed four-asset PREPARED/APPLYING/COMMITTED/ROLLING_BACK/ROLLED_BACK journal for the existing Universal `current` symlink, exact `deploy-project` wrapper, exact `installation.json`, and initially absent `solo_company.production.json` profile. The original wrapper SHA-256 is independently pinned to `4c67a86046d0f2eb511a5fabe81b14e35ab9c17aaadf33c2064fa9d68e8989ce`; old manifest digest and canonical v2 profile digest are pinned. It requires an externally trusted, fixed-root driver and exposes **NO executable installer or signer CLI**.
+
+`test-solo-universal-v2-native-recovery-v1.cjs` includes actual Linux filesystem fixtures using exact production wrapper+manifest bytes and the reviewed v2 profile, durable snapshot and lock, successful commit, three levels of partial rollback, foreign-file and pointer refusal, and **two real child-process SIGKILL tests** (after pointer flip and after durable COMMITTED before releasing lock).
+
+**Verified on the actual `prhm-production` Linux kernel via RDC**, from disposable `/var/tmp/prhm-solo-v2-crash-lab-*` only, cleaned afterward: `SOLO_V2_NATIVE_REAL_LINUX_TESTS=13 PASS`, `SERVER_NATIVE_SIGKILL_TESTS=PASS`. Installed Universal pointer still `08889c18a570cc2bff408dfbe78b7e5f4f8da24f465b4fdd445640cd7f89d17d`, production Solo profile ABSENT, Solo Runtime systemd active, health HTTP 200. The corresponding source GitHub Actions tests passed.
+
+**Critical distinction:** this is an **auditable native transaction core**, not yet the production-owned root dispatcher integrating source provenance, live receipt verification/consumption and a signed Python `install_bundle()` activation. Test and production have no authorization equivalence. A fresh one-time L4 signed permit and a separately reviewed/installed root driver remain blockers. No production install was attempted.
+
+## 2026-11-09 — Native Root Dispatcher source integration and live veto
+
+New source-only modules: `solo-universal-v2-native-root-dispatcher-v1.cjs` and `solo-universal-v2-root-permit-ledger-v1.cjs`. These are NOT installed or registered Root Actions, contain no signer/private key and expose no executable CLI.
+
+Production bridge checks a clean root-owned Git checkout at a fixed root path with the driver SHA bound to a NEW Owner Ed25519 Level-4 signed JWS. It validates the pinned v2 bundle using the already-installed Universal v1 Python verifier BEFORE loading candidate code. The immutable owner public key SHA is fixed, never token-selected.
+
+The rollback snapshots four exact assets: `current` symlink, `deploy-project`, `installation.json`, initially absent `solo_company.production.json`. The consumed JTI ledger is created with `wx` + file/dir fsync and bound into the durable transaction journal before any protected install/profile change. Native `APPLYING` now requires this persisted permit binding. Signed activation delegates to the installed versioned Python `install_bundle`; success additionally requires read-only `observe-existing`, seven valid registry profiles and identical Solo runtime PID. `reconcileInterruptedRelease` requires a matching consumed JTI and exact Git SHA before replaying rollback; uncertain locks stay in place.
+
+**Direct actual `prhm-production` Linux tests, all in cleaned disposable `/var/tmp` directories:** Native recovery **15 PASS** including 2 real `SIGKILL` scenarios, unsigned journal cancellation and forged-asset denials; Ed25519 synthetic-key/replay-ledger **6 PASS**; L4 signed-release coordinator **27 PASS**. Root dispatcher has no CLI and an unauthorized apply attempt was denied before any protected write because the independently reviewed source checkout is absent.
+
+**Still absent from Production:** reviewed source checkout; root-owned pinned v2 payload; Root journal directory; Root replay ledger directory; fresh `universal-stateful-v2-l4.jws`; official Solo v2 registry profile. Universal v1 current pointer unchanged; Solo `active`, `/health` and `/status` HTTP 200. Source-only driver is NOT a trusted installed Host Action. Requires independent final SHA/code review, authorized fixed-scope registration, genuine Owner-issued fresh one-time L4 signature and signed root activation. Existing Solo Root registration permit cannot be reused.
+
+STATUS: SOURCE_NATIVE_DRIVER_AND_RECOVERY_TESTS_PASS; PRODUCTION_INSTALL_NO_GO; PRODUCTION_MODIFICATION_NONE.

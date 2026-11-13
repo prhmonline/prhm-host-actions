@@ -1,0 +1,67 @@
+name: Solo Universal v2 Signed Release Gate (source-only)
+
+on:
+  push:
+    branches:
+      - feat/solo-universal-v2-signed-release-gate-20261109
+  pull_request:
+    paths:
+      - solo-universal-v2-signed-release-contract-v1.cjs
+      - test-solo-universal-v2-signed-release-contract-v1.cjs
+      - solo-universal-v2-live-readonly-preflight-v1.cjs
+      - solo-universal-v2-native-recovery-v1.cjs
+      - test-solo-universal-v2-native-recovery-v1.cjs
+      - solo-universal-v2-root-permit-ledger-v1.cjs
+      - test-solo-universal-v2-root-permit-ledger-v1.cjs
+      - solo-universal-v2-native-root-dispatcher-v1.cjs
+      - solo-universal-v2-host-actions-four-file-registration-plan-v1.cjs
+      - test-solo-universal-v2-host-actions-four-file-registration-plan-v1.cjs
+      - .github/workflows/solo-universal-v2-signed-release-ci.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-source-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Syntax check and negative authorization tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check solo-universal-v2-signed-release-contract-v1.cjs
+          node --check test-solo-universal-v2-signed-release-contract-v1.cjs
+          node --check solo-universal-v2-live-readonly-preflight-v1.cjs
+          node --check solo-universal-v2-native-recovery-v1.cjs
+          node --check test-solo-universal-v2-native-recovery-v1.cjs
+          node test-solo-universal-v2-native-recovery-v1.cjs
+          node --check solo-universal-v2-root-permit-ledger-v1.cjs
+          node --check test-solo-universal-v2-root-permit-ledger-v1.cjs
+          node test-solo-universal-v2-root-permit-ledger-v1.cjs
+          node --check solo-universal-v2-native-root-dispatcher-v1.cjs
+          node --check solo-universal-v2-host-actions-four-file-registration-plan-v1.cjs
+          node --test test-solo-universal-v2-host-actions-four-file-registration-plan-v1.cjs
+          if node solo-universal-v2-native-root-dispatcher-v1.cjs >/dev/null 2>&1; then echo 'Unsafe root CLI'; exit 1; fi
+          node test-solo-universal-v2-signed-release-contract-v1.cjs
+          if node solo-universal-v2-live-readonly-preflight-v1.cjs >/dev/null 2>&1; then echo 'Unsafe CLI default'; exit 1; fi
+      - name: Confirm no live-release entrypoint or signing authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const code=fs.readFileSync('solo-universal-v2-signed-release-contract-v1.cjs','utf8');
+          for(const marker of ['generateKeyPairSync','createPrivateKey(','sign(', 'execSync(', 'spawnSync(', 'writeFileSync(','renameSync(','unlinkSync(']){
+            if(code.includes(marker))throw Error('prohibited release capability '+marker);
+          }
+          if(!code.includes('SOURCE_ONLY_NO_CLI_NO_APPROVAL_ISSUER_NO_ROOT_INSTALL'))throw Error('missing no-CLI marker');
+          console.log('SOURCE_ONLY_NO_ROOT_MUTATION=PASS');
+          NODE
