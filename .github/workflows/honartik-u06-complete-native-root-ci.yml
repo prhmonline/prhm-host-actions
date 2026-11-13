@@ -1,0 +1,70 @@
+name: U06 complete Root callbacks + independent full-data Native & Node1 worker
+on:
+  pull_request:
+    paths:
+      - 'honartik-u06-real-root-callback-adapter-v1.cjs'
+      - 'honartik-u06-real-four-owner-registration-plan-v1.cjs'
+      - 'honartik-u06-signed-four-owner-installer-v1.cjs'
+      - 'test-honartik-u06-signed-four-owner-installer-v1.cjs'
+      - 'honartik-u06-owner-signed-bootstrap-proof-v1.cjs'
+      - 'test-honartik-u06-owner-signed-bootstrap-proof-v1.cjs'
+      - 'honartik-u06-owner-signed-bootstrap-proof-v1.cjs'
+      - 'test-honartik-u06-owner-signed-bootstrap-proof-v1.cjs'
+      - 'honartik-u06-native-root-lease-v1.cjs'
+      - 'honartik-u06-native-root-mariadb-identity-v1.cjs'
+      - 'scripts/u06/u06_live_native_root_worker_v1.py'
+      - 'test-honartik-u06-real-root-callback-adapter-v1.cjs'
+      - 'test-honartik-u06-native-root-lease-v1.cjs'
+      - '.github/workflows/honartik-u06-complete-native-root-ci.yml'
+  push:
+    paths:
+      - 'honartik-u06-real-root-callback-adapter-v1.cjs'
+      - 'honartik-u06-real-four-owner-registration-plan-v1.cjs'
+      - 'honartik-u06-signed-four-owner-installer-v1.cjs'
+      - 'test-honartik-u06-signed-four-owner-installer-v1.cjs'
+      - 'honartik-u06-native-root-lease-v1.cjs'
+      - 'honartik-u06-native-root-mariadb-identity-v1.cjs'
+      - 'scripts/u06/u06_live_native_root_worker_v1.py'
+      - 'test-honartik-u06-real-root-callback-adapter-v1.cjs'
+      - 'test-honartik-u06-native-root-lease-v1.cjs'
+      - '.github/workflows/honartik-u06-complete-native-root-ci.yml'
+permissions:
+  contents: read
+jobs:
+  root-contract-and-fail-closed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: node --check honartik-u06-real-root-callback-adapter-v1.cjs
+      - run: node --check honartik-u06-real-four-owner-registration-plan-v1.cjs
+      - run: node --check honartik-u06-signed-four-owner-installer-v1.cjs
+      - run: node --check honartik-u06-owner-signed-bootstrap-proof-v1.cjs
+      - run: node --check honartik-u06-native-root-lease-v1.cjs
+      - run: node --check honartik-u06-native-root-mariadb-identity-v1.cjs
+      - run: python3 -m py_compile scripts/u06/u06_live_native_root_worker_v1.py
+      - run: node --test test-honartik-u06-real-root-callback-adapter-v1.cjs test-honartik-u06-native-root-lease-v1.cjs test-honartik-u06-native-root-mariadb-identity-v1.cjs test-honartik-u06-owner-signed-bootstrap-proof-v1.cjs test-honartik-u06-signed-four-owner-installer-v1.cjs
+      - name: Imported Python has no direct Root mutating command
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import pathlib,subprocess,sys
+          p='scripts/u06/u06_live_native_root_worker_v1.py'
+          x=subprocess.run([sys.executable,p],capture_output=True,text=True)
+          assert x.returncode!=0
+          assert 'NO DIRECT ROOT WORKER CLI' in (x.stdout+x.stderr)
+          s=pathlib.Path(p).read_text()
+          assert 'require_active(run_id,approval_id)' in s
+          assert 'DURABLE_LEVEL4_FENCE_MISSING' in s
+          assert 'SOURCE_SHA_DRIFT' in s
+          assert 'restic forget' not in s and 'restic prune' not in s
+          print('NO_DIRECT_PRODUCTION_APPLY=PASS')
+          PY

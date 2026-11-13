@@ -154,7 +154,7 @@ function provisionAfterOfficialL4(){
 }
 function createLiveBoundProvider(requestId,loadSealedToken){
  const t=Trust.createLiveRootL4Callbacks(requestId,loadSealedToken);
- let proof=null,armed=null;
+ let proof=null,armed=null,owned=null;
  return Object.freeze({
   readOnlyPreflight:preflight,
   verifyNativeConsumedSignedLevel4(F,journal){
@@ -169,7 +169,36 @@ function createLiveBoundProvider(requestId,loadSealedToken){
    must(armed!==null&&journal&&journal.id===armed&&F&&
     F.operation==='honartik_back.production.native_backup',
     'approval_and_journal_required');
-   armed=null;return provisionAfterOfficialL4();
+   armed=null;
+   const installed=provisionAfterOfficialL4();
+   owned=journal.id;
+   return installed;
+  },
+  rollbackOnlyThisTransaction(F,journal){
+   must(owned!==null&&journal&&journal.id===owned&&
+     F&&F.operation==='honartik_back.production.native_backup',
+     'rollback_requires_owned_account_and_matching_journal');
+   // A separately created preexisting account must never be dropped.
+   // The account was confirmed ABSENT before CREATE by this transaction.
+   // Retain the Root journal on an ambiguous drop or changed grant.
+   grantsExact();
+   const st=fs.lstatSync(P.credential);
+   must(st.isFile()&&!st.isSymbolicLink()&&st.uid===0&&
+     (st.mode&0o777)===0o600,'rollback_credential_not_ours');
+   const secret=fs.readFileSync(P.credential,'utf8');
+   must(secret.includes('user='+P.account+'\n')&&
+        secret.includes('host=127.0.0.1\n'),
+        'rollback_credential_scope_drift');
+   fs.unlinkSync(P.credential);
+   const parent=fs.openSync(path.dirname(P.credential),
+     fs.constants.O_RDONLY|fs.constants.O_DIRECTORY|fs.constants.O_NOFOLLOW);
+   try{fs.fsyncSync(parent)}finally{fs.closeSync(parent)}
+   sql('DROP USER '+Q+';');
+   must(sql('SELECT COUNT(*) FROM mysql.user WHERE User='+HEX_USER+
+      ' AND Host='+HEX_HOST+';')==='0'&&fileAbsent(P.credential),
+      'rollback_account_not_absent');
+   owned=null;
+   return true;
   }
  });
 }
