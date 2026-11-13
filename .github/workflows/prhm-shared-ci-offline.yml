@@ -1,0 +1,87 @@
+name: PRHM Shared CI Offline Contracts
+
+on:
+  pull_request:
+    paths:
+      - "infra/shared-ci/**"
+      - ".github/workflows/prhm-shared-ci-offline.yml"
+  push:
+    branches:
+      - "infra/prhm-shared-ci-gitfirst-preflight-20261014"
+    paths:
+      - "infra/shared-ci/**"
+      - ".github/workflows/prhm-shared-ci-offline.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: shared-ci-contract-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  offline-safety-contracts:
+    name: Read-only offline contracts (no environment/secrets)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Checkout untrusted PR source only
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Python syntax and offline contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m compileall -q infra/shared-ci
+          python3 -m unittest discover -s infra/shared-ci -p 'test_*.py' -v
+      - name: Verify draft nftables grammar on disposable GitHub runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq nftables
+          # --check validates grammar/evaluation without installing any rules.
+          sudo nft --check --file infra/shared-ci/ci-isolation.nft.review
+      - name: Verify archival Ubuntu cloud image signature and digest
+        shell: bash
+        run: bash infra/shared-ci/verify-ubuntu-archive.sh
+      - name: Ensure vendor verification fails closed with no keyring
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          python3 infra/shared-ci/image-signature.py > /tmp/prhm-shared-ci-image-report.json
+          result=$?
+          set -e
+          cat /tmp/prhm-shared-ci-image-report.json
+          if [ "$result" -ne 2 ]; then
+            echo "::error::Unsigned image unexpectedly trusted or script failed unusually."
+            exit 1
+          fi
+          python3 -c 'import json; r=json.load(open("/tmp/prhm-shared-ci-image-report.json")); assert r["authentic_signature"] is False'
+
+# This workflow does NOT run Node1 host probes, configure nftables,
+# enroll self-hosted runners, connect to Production or access environment secrets.
+
+  disposable-nft-dataplane-lab:
+    name: Disposable Linux network namespace dataplane proof (no production)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/infra/prhm-shared-ci-gitfirst-preflight-20261014' && github.repository == 'prhmonline/prhm-host-actions'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout review-only network test
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Run nft dataplane denial, public HTTPS, and guard rollback against synthetic targets
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq nftables iproute2
+          bash -n infra/shared-ci/test_nft_dataplane_lab.sh
+          sudo env GITHUB_ACTIONS="$GITHUB_ACTIONS" RUNNER_ENVIRONMENT="$RUNNER_ENVIRONMENT" PRHM_CI_DISPOSABLE_LAB=yes \
+            bash infra/shared-ci/test_nft_dataplane_lab.sh
