@@ -86,7 +86,13 @@ function checkPlan(plan){
  if(!Array.isArray(assets)||assets.length>32||assets.some(a=>
    !a||typeof a.path!=='string'||!path.isAbsolute(a.path)||
    !Buffer.isBuffer(a.nextBytes)||!/^[a-f0-9]{64}$/.test(a.afterSha)||
-   HASH(a.nextBytes)!==a.afterSha))
+   HASH(a.nextBytes)!==a.afterSha||
+   (Object.hasOwn(a,'expectedBeforeSha')&&
+     a.expectedBeforeSha!==null&&
+     !/^[a-f0-9]{64}$/.test(a.expectedBeforeSha))||
+   (Object.hasOwn(a,'expectedPostMode')&&
+     (!Number.isInteger(a.expectedPostMode)||a.expectedPostMode<0o400||
+      a.expectedPostMode>0o755||(a.expectedPostMode&0o022)!==0))))
    fail('asset_plan_invalid');
  const targets=[...plan.steps.map(s=>s.path),...assets.map(a=>a.path)];
  if(new Set(targets).size!==targets.length)fail('duplicate_target');
@@ -115,17 +121,30 @@ function verifyAssetPreimages(assets){
      dir.uid!==process.getuid())fail('asset_parent_unsafe:'+i);
   let st;
   try{st=fs.lstatSync(a.path)}catch(e){
-   if(e.code==='ENOENT')return {key:'asset-'+i,path:a.path,
-    existed:false,beforeSha:null,uid:process.getuid(),
-    gid:process.getgid(),mode:0o600,bytes:null,afterSha:a.afterSha};
+   if(e.code==='ENOENT'){
+    // Opt-in exact preimage pin: an expected existing asset may not disappear.
+    if(Object.hasOwn(a,'expectedBeforeSha')&&a.expectedBeforeSha!==null)
+      fail('asset_missing_pinned_preimage:'+i);
+    return {key:'asset-'+i,path:a.path,
+      existed:false,beforeSha:null,uid:process.getuid(),
+      gid:process.getgid(),mode:a.expectedPostMode??0o600,
+      bytes:null,afterSha:a.afterSha};
+   }
    throw e;
   }
   if(!st.isFile()||st.isSymbolicLink()||
      fs.realpathSync(a.path)!==a.path||(st.mode&0o022)!==0)
    fail('asset_file_unsafe:'+i);
-  const before=fs.readFileSync(a.path);
+  const before=fs.readFileSync(a.path),beforeSha=HASH(before);
+  // Fail first on the exact content/absence pin, before mode validation.
+  // This also identifies unexpected pre-existing worker assets unambiguously.
+  if(Object.hasOwn(a,'expectedBeforeSha')&&beforeSha!==a.expectedBeforeSha)
+    fail('asset_pinned_preimage_mismatch:'+i);
+  if(Object.hasOwn(a,'expectedPostMode')&&
+     (st.mode&0o777)!==a.expectedPostMode)
+    fail('asset_existing_mode_mismatch:'+i);
   return {key:'asset-'+i,path:a.path,existed:true,
-   beforeSha:HASH(before),uid:st.uid,gid:st.gid,mode:st.mode&0o777,
+   beforeSha,uid:st.uid,gid:st.gid,mode:st.mode&0o777,
    bytes:before,afterSha:a.afterSha};
  });
 }

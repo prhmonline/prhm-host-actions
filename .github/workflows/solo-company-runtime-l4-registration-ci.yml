@@ -1,0 +1,76 @@
+name: Solo Runtime L4 registration contract
+on:
+  push:
+    paths:
+      - 'solo-company-runtime-l4-registration-manifest-v1.json'
+      - 'solo-company-runtime-l4-registration-candidate-v1.js'
+      - 'test-solo-company-runtime-l4-registration-candidate-v1.js'
+      - 'solo-company-runtime-root-action-v1.js'
+      - 'test-solo-company-runtime-root-action-v1.js'
+      - 'solo-company-runtime-signed-registration-transaction-v1.js'
+      - 'test-solo-company-runtime-signed-registration-transaction-v1.js'
+      - 'test-solo-company-runtime-sixfile-native-rollback-v1.cjs'
+      - 'solo-company-runtime-provider-signed-receipt-v1.js'
+      - 'test-solo-company-runtime-provider-signed-receipt-v1.js'
+      - 'solo-company-runtime-native-registration-bridge-v1.js'
+      - 'test-solo-company-runtime-native-registration-bridge-v1.js'
+      - 'solo-company-runtime-owner-root-admission-v1.cjs'
+      - 'test-solo-company-runtime-owner-root-admission-v1.cjs'
+      - 'solo-company-runtime-owner-plan-readonly-v1.cjs'
+      - 'test-solo-company-runtime-owner-plan-readonly-v1.cjs'
+      - 'solo-company-runtime-root-cutover-contract-v1.cjs'
+      - 'test-solo-company-runtime-root-cutover-contract-v1.cjs'
+      - 'solo-company-runtime-root-live-health-v1.cjs'
+      - 'test-solo-company-runtime-root-live-health-v1.cjs'
+      - 'solo-company-runtime-owner-root-dispatcher-v1.cjs'
+      - 'test-solo-company-runtime-owner-root-dispatcher-v1.cjs'
+      - 'test-solo-company-runtime-root-dispatch-crash-recovery-v1.cjs'
+      - '.github/workflows/solo-company-runtime-l4-registration-ci.yml'
+  pull_request:
+    paths:
+      - 'solo-company-runtime-l4-registration-manifest-v1.json'
+      - 'solo-company-runtime-l4-registration-candidate-v1.js'
+      - 'test-solo-company-runtime-l4-registration-candidate-v1.js'
+      - 'solo-company-runtime-root-action-v1.js'
+      - 'test-solo-company-runtime-root-action-v1.js'
+      - 'solo-company-runtime-signed-registration-transaction-v1.js'
+      - 'test-solo-company-runtime-signed-registration-transaction-v1.js'
+      - 'solo-company-runtime-sixfile-native-rollback-v1.cjs'
+      - 'solo-company-runtime-provider-signed-receipt-v1.js'
+      - 'test-solo-company-runtime-provider-signed-receipt-v1.js'
+      - 'solo-company-runtime-native-registration-bridge-v1.js'
+      - 'test-solo-company-runtime-native-registration-bridge-v1.js'
+      - 'solo-company-runtime-owner-root-admission-v1.cjs'
+      - 'test-solo-company-runtime-owner-root-admission-v1.cjs'
+      - 'solo-company-runtime-owner-plan-readonly-v1.cjs'
+      - 'test-solo-company-runtime-owner-plan-readonly-v1.cjs'
+      - 'solo-company-runtime-root-cutover-contract-v1.cjs'
+      - 'test-solo-company-runtime-root-cutover-contract-v1.cjs'
+      - 'solo-company-runtime-root-live-health-v1.cjs'
+      - 'test-solo-company-runtime-root-live-health-v1.cjs'
+      - 'solo-company-runtime-owner-root-dispatcher-v1.cjs'
+      - 'test-solo-company-runtime-owner-root-dispatcher-v1.cjs'
+      - 'test-solo-company-runtime-root-dispatch-crash-recovery-v1.cjs'
+      - '.github/workflows/solo-company-runtime-l4-registration-ci.yml'
+jobs:
+  source-only-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node --check solo-company-runtime-l4-registration-candidate-v1.js
+      - run: node --check solo-company-runtime-root-action-v1.js
+      - run: node --check solo-company-runtime-signed-registration-transaction-v1.js
+      - run: node --check solo-company-runtime-provider-signed-receipt-v1.js
+      - run: node --check solo-company-runtime-native-registration-bridge-v1.js
+      - run: node --check solo-company-runtime-owner-root-admission-v1.cjs
+      - run: node --check solo-company-runtime-owner-plan-readonly-v1.cjs
+      - run: node --check solo-company-runtime-root-cutover-contract-v1.cjs
+      - run: node --check solo-company-runtime-root-live-health-v1.cjs
+      - run: node --check solo-company-runtime-owner-root-dispatcher-v1.cjs
+      - run: node --test test-solo-company-runtime-l4-registration-candidate-v1.js test-solo-company-runtime-root-action-v1.js test-solo-company-runtime-signed-registration-transaction-v1.js test-solo-company-runtime-sixfile-native-rollback-v1.cjs test-solo-company-runtime-provider-signed-receipt-v1.js test-solo-company-runtime-native-registration-bridge-v1.js test-solo-company-runtime-owner-root-admission-v1.cjs test-solo-company-runtime-owner-plan-readonly-v1.cjs test-solo-company-runtime-root-cutover-contract-v1.cjs test-solo-company-runtime-root-live-health-v1.cjs test-solo-company-runtime-owner-root-dispatcher-v1.cjs test-solo-company-runtime-root-dispatch-crash-recovery-v1.cjs
+      - name: Verify registration tool exposes no operational execution API
+        run: |
+          node -e "const x=require('./solo-company-runtime-l4-registration-candidate-v1.js'); if(typeof x.run==='function'||typeof x.install==='function'||typeof x.apply==='function'||typeof x.deploy==='function')process.exit(1)"
