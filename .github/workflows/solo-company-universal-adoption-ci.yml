@@ -1,0 +1,64 @@
+name: Solo existing stateful service adoption (source-only)
+on:
+  push:
+    paths:
+      - 'solo-company-universal-existing-service-adoption-v1.js'
+      - 'solo-universal-v2-host-action-binding-candidate-v1.cjs'
+      - 'test-solo-universal-v2-host-action-binding-candidate-v1.cjs'
+      - 'solo-universal-v2-owner-permit-v1.cjs'
+      - 'test-solo-universal-v2-owner-permit-v1.cjs'
+      - 'solo-universal-v2-owner-ledger-fixture-v1.cjs'
+      - 'test-solo-universal-v2-owner-ledger-fixture-v1.cjs'
+      - 'solo-universal-v2-root-transaction-contract-v1.cjs'
+      - 'test-solo-universal-v2-root-transaction-contract-v1.cjs'
+      - 'solo-company-universal-adoption.production.candidate.json'
+      - 'test-solo-company-universal-existing-service-adoption-v1.js'
+      - 'docs/runbooks/solo-company-universal-adoption-v1.md'
+      - '.github/workflows/solo-company-universal-adoption-ci.yml'
+  pull_request:
+    paths:
+      - 'solo-company-universal-existing-service-adoption-v1.js'
+      - 'solo-universal-v2-host-action-binding-candidate-v1.cjs'
+      - 'test-solo-universal-v2-host-action-binding-candidate-v1.cjs'
+      - 'solo-universal-v2-owner-permit-v1.cjs'
+      - 'test-solo-universal-v2-owner-permit-v1.cjs'
+      - 'solo-universal-v2-owner-ledger-fixture-v1.cjs'
+      - 'test-solo-universal-v2-owner-ledger-fixture-v1.cjs'
+      - 'solo-universal-v2-root-transaction-contract-v1.cjs'
+      - 'test-solo-universal-v2-root-transaction-contract-v1.cjs'
+      - 'solo-company-universal-adoption.production.candidate.json'
+      - 'test-solo-company-universal-existing-service-adoption-v1.js'
+      - 'docs/runbooks/solo-company-universal-adoption-v1.md'
+      - '.github/workflows/solo-company-universal-adoption-ci.yml'
+permissions:
+  contents: read
+jobs:
+  review-only:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Validate source and exact candidate manifest
+        run: |
+          node --check solo-company-universal-existing-service-adoption-v1.js
+          node -e "const a=require('./solo-company-universal-existing-service-adoption-v1.js'); a.verifyCandidate(require('./solo-company-universal-adoption.production.candidate.json'))"
+      - name: Test preservation, rollback non-mutation, loopback and dark-mode refusal
+        run: node --test test-solo-company-universal-existing-service-adoption-v1.js
+      - name: Test fixed Host Action v2 binding as SOURCE-ONLY
+        run: |
+          node --check solo-universal-v2-host-action-binding-candidate-v1.cjs
+          node --test test-solo-universal-v2-host-action-binding-candidate-v1.cjs
+      - name: Validate independently scoped owner Ed25519 permits in offline fixture
+        run: |
+          node --check solo-universal-v2-owner-permit-v1.cjs
+          node --test test-solo-universal-v2-owner-permit-v1.cjs
+      - name: Verify durable one-use receipt ledger and recovery test fixture
+        run: |
+          node --check solo-universal-v2-owner-ledger-fixture-v1.cjs
+          node --test test-solo-universal-v2-owner-ledger-fixture-v1.cjs
+      - name: Validate exact-pinned signed root transaction contract and rollback failure paths
+        run: |
+          node --check solo-universal-v2-root-transaction-contract-v1.cjs
+          node --test test-solo-universal-v2-root-transaction-contract-v1.cjs
