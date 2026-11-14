@@ -51,3 +51,18 @@ Linked work: prhmonline/deploy-control#75 and prhmonline/prhm-host-actions#294.
 4. Run installed Universal Native DB backup; independent networkless restore plus 69-table/49-FK and finance/wallet integrity; independently fetch and recover encrypted offsite snapshot. No U03/U05 deploy.
 
 No Production change, secret handling, L4 grant, live challenge reset, or backup execution is authorized by this review document.
+
+
+## Source-only five-actor integration CI (2026-11-14)
+
+A dedicated source-only dispatcher, honartik-u06-shared-actor-integration-v1.cjs, now first obtains the shared lock, checks lease ownership, invokes exactly one of five fixture callbacks, rechecks lease, requires a typed terminal evidence shape and only then releases the fixture lock. Failures retain the blocking lock. Its constructor is strictly unprivileged and fixture-path-only. The callbacks and terminal evidence are **synthetic**; they do not carry owner identity, an L4 receipt or any privileged Root authority.
+
+- actor owner_challenge_issuance: intended installed source honartik-u06-root-owner-proof-bridge-v1.cjs / prepareOwnerChallenge; NOT YET guarded on live Root
+- actor owner_evidence_staging: intended encrypted GitHub artifact transfer into private 0600 envelope; no trusted installed, shared-locked staging handler reviewed yet
+- actor owner_evidence_consumption: intended honartik-u06-root-owner-proof-bridge-v1.cjs / consumeStagedOwnerProof plus honartik-u06-owner-oidc-once-fence-v1.cjs / consumeVerifiedOwnerEvidence; NOT YET guarded on live Root
+- actor expired_challenge_reconciliation: fixture-only honartik-u06-expired-owner-challenge-reconcile-v1.cjs; NO LIVE ROOT ENTRYPOINT
+- actor native_backup_transaction: intended honartik-u06-native-root-lease-v1.cjs / createLiveRootLease and the trusted U06 coordinator; NOT YET guarded on live Root
+
+GitHub CI: https://github.com/prhmonline/prhm-host-actions/actions/runs/43600763982 — 30/30 tests passed (including eight simultaneous independent fixture actor processes and fail-closed SIGKILL). Shared Agent 3 gate: https://github.com/prhmonline/prhm-host-actions/actions/runs/43600763942 — success.
+
+**Go/no-go:** This is integration-contract verification of synthetic callbacks, not a test that existing Root code paths cannot bypass the lock. The real file writers, cryptographic verifier, replay fence and Native transaction must each be independently refactored or wrapped in one trusted, owner-authorized Root release using a shared exclusive lock, including explicit terminal-journal verification, and tested in an isolated production-equivalent environment. No current Production operation is disabled or protected by this draft alone. Keep PR DRAFT and Production NO-GO.
