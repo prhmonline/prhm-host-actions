@@ -150,8 +150,31 @@ function createUnprivilegedFixtureSharedGate(root,{failureHook=null}={}){
  trustDir(history,uid);
  return new FixtureSharedGate(root,uid,failureHook);
 }
+/**
+ * Guard for imported actual source functions. A caller passing arbitrary
+ * {assertHeld:()=>true} cannot satisfy this guard: the lease must be checked
+ * against the concrete fixture gate object and its private on-disk lock.
+ * This intentionally refuses all Root invocations pending a separately
+ * signed and installed production Root gate. No live bypass is exported.
+ */
+function assertSourceBoundLease(binding,kind){
+ need(KINDS.includes(kind),'operation_not_allowed');
+ need(typeof process.getuid==='function'&&process.getuid()!==0,
+   'live_root_gate_not_installed');
+ need(binding&&typeof binding==='object'&&
+   Object.keys(binding).sort().join('|')==='gate|lease'&&
+   binding.gate instanceof FixtureSharedGate,'untrusted_binding');
+ const gate=binding.gate;
+ // Require the constructor to have validated its private fixture path
+ // (including owner, symlink, 0700 path and fixed /tmp prefix).
+ need(typeof gate.root==='string'&&
+   /^\/tmp\/u06-owner-shared-test-[a-f0-9]{12}$/.test(gate.root)&&
+   fs.realpathSync(gate.root)===gate.root,'binding_path_invalid');
+ return gate.assertHeld(binding.lease,kind);
+}
+
 module.exports=Object.freeze({
- KINDS,LOCK_NAME,RECEIPTS,createUnprivilegedFixtureSharedGate,
+ KINDS,LOCK_NAME,RECEIPTS,createUnprivilegedFixtureSharedGate,assertSourceBoundLease,
  ROOT_ENTRYPOINT:false,PRODUCTION_AUTHORIZED:false,LEVEL4_ISSUER:false
 });
 if(require.main===module){
