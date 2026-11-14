@@ -16,6 +16,7 @@ const DIR='/var/lib/prhm-agent-selfmaint-exec/honartik-u06-native-root/owner-oid
 const CHALLENGE=DIR+'/challenge.json';
 const PRIVATE=DIR+'/host-private.pem';
 const ENVELOPE=DIR+'/encrypted-gh-evidence.json';
+const RECOVERY=DIR+'/reconciliation.journal.json';
 const PINNED_REPO='prhmonline/prhm-host-actions';
 const FAIL=x=>{throw Error('u06_owner_sealed_root_'+x)};
 const must=(v,x)=>{if(!v)FAIL(x)};
@@ -65,7 +66,7 @@ function readOfficialSha(){
 }
 async function prepareOwnerChallenge(){
  requireDir();
- for(const file of [CHALLENGE,PRIVATE,ENVELOPE]){
+ for(const file of [CHALLENGE,PRIVATE,ENVELOPE,RECOVERY]){
   must(!fs.existsSync(file),'prior_owner_challenge_requires_reconciliation');
  }
  const expectedRunSha=await readOfficialSha();
