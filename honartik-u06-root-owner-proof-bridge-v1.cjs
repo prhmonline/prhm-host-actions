@@ -12,10 +12,12 @@ const fs=require('node:fs'),path=require('node:path'),os=require('node:os');
 const crypto=require('node:crypto'),https=require('node:https');
 const Owner=require('./honartik-u06-owner-oidc-identity-gate-v1.cjs');
 const Sealed=require('./universal-owner-oidc-sealed-transport-v1.cjs');
+const Shared=require('./honartik-u06-shared-exclusive-lock-v1.cjs');
 const DIR='/var/lib/prhm-agent-selfmaint-exec/honartik-u06-native-root/owner-oidc';
 const CHALLENGE=DIR+'/challenge.json';
 const PRIVATE=DIR+'/host-private.pem';
 const ENVELOPE=DIR+'/encrypted-gh-evidence.json';
+const RECOVERY=DIR+'/reconciliation.journal.json';
 const PINNED_REPO='prhmonline/prhm-host-actions';
 const FAIL=x=>{throw Error('u06_owner_sealed_root_'+x)};
 const must=(v,x)=>{if(!v)FAIL(x)};
@@ -63,12 +65,14 @@ function readOfficialSha(){
   req.on('timeout',()=>req.destroy(Error('github_sha_timeout')));req.on('error',reject);
  });
 }
-async function prepareOwnerChallenge(){
+async function prepareOwnerChallenge(sharedBinding){
+ Shared.assertSourceBoundLease(sharedBinding,'owner_challenge_issuance');
  requireDir();
- for(const file of [CHALLENGE,PRIVATE,ENVELOPE]){
+ for(const file of [CHALLENGE,PRIVATE,ENVELOPE,RECOVERY]){
   must(!fs.existsSync(file),'prior_owner_challenge_requires_reconciliation');
  }
  const expectedRunSha=await readOfficialSha();
+ Shared.assertSourceBoundLease(sharedBinding,'owner_challenge_issuance');
  const challenge=crypto.randomBytes(32).toString('hex');
  const pair=crypto.generateKeyPairSync('x25519');
  const publicB64=pair.publicKey.export({format:'der',type:'spki'}).toString('base64');
@@ -89,7 +93,8 @@ async function prepareOwnerChallenge(){
   root_action_registered:false,level4_issued:false,production_mutated:false
  });
 }
-async function consumeStagedOwnerProof(){
+async function consumeStagedOwnerProof(sharedBinding){
+ Shared.assertSourceBoundLease(sharedBinding,'owner_evidence_consumption');
  requireDir();
  const c=JSON.parse(readOwned(CHALLENGE).toString('utf8'));
  must(c.schema==='prhm.u06.root-owner-identity-challenge.v1'&&
@@ -107,6 +112,7 @@ async function consumeStagedOwnerProof(){
  const proof=await Owner.verifyFromOfficialGitHub({
    token,challenge:c.challenge,expectedRunSha:c.expectedRunSha
  });
+ Shared.assertSourceBoundLease(sharedBinding,'owner_evidence_consumption');
  must(Owner.proofVerifiedInCurrentProcess(proof)&&
   proof.intent_digest===Owner.intentDigest()&&
   proof.backend_deploy_authorized===false&&

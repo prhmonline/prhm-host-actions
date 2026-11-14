@@ -31,8 +31,9 @@ test('live construction requires Root and in-process cryptographic owner proof',
    sealedToken:'token'.repeat(50),
    authoritativeConsumed:{valid:true,consumed:true},
    ownerProof:{owner_identity_verified:true}
-  }),/trusted_root_host_required/);
+  }),/u06_shared_lock_untrusted_binding/);
  }
+ assert.match(src,/Shared\.assertSourceBoundLease\(sharedBinding,'native_backup_transaction'\)/);
  assert.match(src,/Owner\.proofVerifiedInCurrentProcess\(ownerProof\)/);
  assert.match(src,/authoritativeConsumed\.consumed===true/);
  assert.match(src,/Identity\.createLiveBoundProvider\(requestId,\(\)=>sealedToken\)/);

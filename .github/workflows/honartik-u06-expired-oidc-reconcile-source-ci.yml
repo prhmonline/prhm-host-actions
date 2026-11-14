@@ -1,0 +1,72 @@
+name: U06 expired owner OIDC reconciliation — SOURCE ONLY
+on:
+  push:
+    branches:
+      - feature/u06-expired-owner-oidc-reconcile-20261114
+  pull_request:
+    paths:
+      - 'honartik-u06-expired-owner-challenge-reconcile-v1.cjs'
+      - 'honartik-u06-shared-exclusive-lock-v1.cjs'
+      - 'honartik-u06-shared-actor-integration-v1.cjs'
+      - 'honartik-u06-root-sealed-evidence-staging-v1.cjs'
+      - 'test-honartik-u06-real-root-actor-lock-guards-v1.cjs'
+      - 'honartik-u06-native-root-lease-v1.cjs'
+      - 'honartik-u06-real-root-callback-adapter-v1.cjs'
+      - 'honartik-u06-owner-oidc-once-fence-v1.cjs'
+      - 'honartik-u06-owner-native-transaction-v1.cjs'
+      - 'test-honartik-u06-shared-actor-integration-v1.cjs'
+      - 'test-honartik-u06-shared-exclusive-lock-v1.cjs'
+      - 'test-honartik-u06-expired-owner-challenge-reconcile-v1.cjs'
+      - 'honartik-u06-root-owner-proof-bridge-v1.cjs'
+      - '.github/workflows/honartik-u06-expired-oidc-reconcile-source-ci.yml'
+permissions:
+  contents: read
+jobs:
+  unprivileged-filesystem-and-sigkill:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax and unprivileged crash-recovery tests
+        run: |
+          set -euo pipefail
+          test "$(id -u)" != 0
+          node --check honartik-u06-expired-owner-challenge-reconcile-v1.cjs
+          node --check honartik-u06-shared-exclusive-lock-v1.cjs
+          node --check honartik-u06-shared-actor-integration-v1.cjs
+          node --check honartik-u06-root-sealed-evidence-staging-v1.cjs
+          node --check honartik-u06-native-root-lease-v1.cjs
+          node --check honartik-u06-real-root-callback-adapter-v1.cjs
+          node --check honartik-u06-owner-oidc-once-fence-v1.cjs
+          node --check honartik-u06-owner-native-transaction-v1.cjs
+          node --check honartik-u06-root-owner-proof-bridge-v1.cjs
+          node --test test-honartik-u06-expired-owner-challenge-reconcile-v1.cjs test-honartik-u06-shared-exclusive-lock-v1.cjs test-honartik-u06-shared-actor-integration-v1.cjs test-honartik-u06-real-root-actor-lock-guards-v1.cjs
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const assert=require('node:assert/strict');
+          const bridge=fs.readFileSync('honartik-u06-root-owner-proof-bridge-v1.cjs','utf8');
+          assert.match(bridge,/const RECOVERY=DIR\+'\/reconciliation\.journal\.json'/);
+          assert.match(bridge,/\[CHALLENGE,PRIVATE,ENVELOPE,RECOVERY\]/);
+          const stage=require('./honartik-u06-root-sealed-evidence-staging-v1.cjs');
+          assert.equal(stage.PRODUCTION_AUTHORIZED,false);
+          assert.equal(stage.ROOT_HANDLER_REGISTERED,false);
+          const integrated=require('./honartik-u06-shared-actor-integration-v1.cjs');
+          assert.equal(integrated.PRODUCTION_AUTHORIZED,false);
+          assert.equal(integrated.ROOT_ENTRYPOINT,false);
+          assert.equal(integrated.KINDS.length,5);
+          const shared=require('./honartik-u06-shared-exclusive-lock-v1.cjs');
+          assert.equal(shared.PRODUCTION_AUTHORIZED,false);
+          assert.equal(shared.ROOT_ENTRYPOINT,false);
+          assert.equal(shared.KINDS.length,5);
+          const r=require('./honartik-u06-expired-owner-challenge-reconcile-v1.cjs');
+          assert.equal(r.LIVE_RECONCILIATION_EXPORTED,false);
+          assert.equal(r.ROOT_HANDLER_REGISTERED,false);
+          assert.equal(r.PRODUCTION_MUTATION_AUTHORIZED,false);
+          console.log('SOURCE_ONLY=PASS');
+          console.log('PRODUCTION_DEPLOY_AUTHORIZED=FALSE');
+          NODE
