@@ -8,6 +8,12 @@ on:
       - 'honartik-u06-expired-owner-challenge-reconcile-v1.cjs'
       - 'honartik-u06-shared-exclusive-lock-v1.cjs'
       - 'honartik-u06-shared-actor-integration-v1.cjs'
+      - 'honartik-u06-root-sealed-evidence-staging-v1.cjs'
+      - 'test-honartik-u06-real-root-actor-lock-guards-v1.cjs'
+      - 'honartik-u06-native-root-lease-v1.cjs'
+      - 'honartik-u06-real-root-callback-adapter-v1.cjs'
+      - 'honartik-u06-owner-oidc-once-fence-v1.cjs'
+      - 'honartik-u06-owner-native-transaction-v1.cjs'
       - 'test-honartik-u06-shared-actor-integration-v1.cjs'
       - 'test-honartik-u06-shared-exclusive-lock-v1.cjs'
       - 'test-honartik-u06-expired-owner-challenge-reconcile-v1.cjs'
@@ -33,14 +39,22 @@ jobs:
           node --check honartik-u06-expired-owner-challenge-reconcile-v1.cjs
           node --check honartik-u06-shared-exclusive-lock-v1.cjs
           node --check honartik-u06-shared-actor-integration-v1.cjs
+          node --check honartik-u06-root-sealed-evidence-staging-v1.cjs
+          node --check honartik-u06-native-root-lease-v1.cjs
+          node --check honartik-u06-real-root-callback-adapter-v1.cjs
+          node --check honartik-u06-owner-oidc-once-fence-v1.cjs
+          node --check honartik-u06-owner-native-transaction-v1.cjs
           node --check honartik-u06-root-owner-proof-bridge-v1.cjs
-          node --test test-honartik-u06-expired-owner-challenge-reconcile-v1.cjs test-honartik-u06-shared-exclusive-lock-v1.cjs test-honartik-u06-shared-actor-integration-v1.cjs
+          node --test test-honartik-u06-expired-owner-challenge-reconcile-v1.cjs test-honartik-u06-shared-exclusive-lock-v1.cjs test-honartik-u06-shared-actor-integration-v1.cjs test-honartik-u06-real-root-actor-lock-guards-v1.cjs
           node - <<'NODE'
           const fs=require('node:fs');
           const assert=require('node:assert/strict');
           const bridge=fs.readFileSync('honartik-u06-root-owner-proof-bridge-v1.cjs','utf8');
           assert.match(bridge,/const RECOVERY=DIR\+'\/reconciliation\.journal\.json'/);
           assert.match(bridge,/\[CHALLENGE,PRIVATE,ENVELOPE,RECOVERY\]/);
+          const stage=require('./honartik-u06-root-sealed-evidence-staging-v1.cjs');
+          assert.equal(stage.PRODUCTION_AUTHORIZED,false);
+          assert.equal(stage.ROOT_HANDLER_REGISTERED,false);
           const integrated=require('./honartik-u06-shared-actor-integration-v1.cjs');
           assert.equal(integrated.PRODUCTION_AUTHORIZED,false);
           assert.equal(integrated.ROOT_ENTRYPOINT,false);
