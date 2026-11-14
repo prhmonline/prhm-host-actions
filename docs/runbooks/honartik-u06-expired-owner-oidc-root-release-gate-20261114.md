@@ -66,3 +66,20 @@ A dedicated source-only dispatcher, honartik-u06-shared-actor-integration-v1.cjs
 GitHub CI: https://github.com/prhmonline/prhm-host-actions/actions/runs/43600763982 — 30/30 tests passed (including eight simultaneous independent fixture actor processes and fail-closed SIGKILL). Shared Agent 3 gate: https://github.com/prhmonline/prhm-host-actions/actions/runs/43600763942 — success.
 
 **Go/no-go:** This is integration-contract verification of synthetic callbacks, not a test that existing Root code paths cannot bypass the lock. The real file writers, cryptographic verifier, replay fence and Native transaction must each be independently refactored or wrapped in one trusted, owner-authorized Root release using a shared exclusive lock, including explicit terminal-journal verification, and tested in an isolated production-equivalent environment. No current Production operation is disabled or protected by this draft alone. Keep PR DRAFT and Production NO-GO.
+
+## 2026-11-14 — Real-source entrypoint shared-lock guards, fail-closed (NOT INSTALLED)
+
+Committed source-only gating changes across actual, existing Root source functions rather than synthetic callbacks alone:
+
+- Root OIDC bridge `prepareOwnerChallenge(sharedBinding)` and `consumeStagedOwnerProof(sharedBinding)` require the shared lease before any work; both recheck lease ownership after async GitHub network calls.
+- Root native adapter `makeRootCallbacks`, `runOnlyFromTrustedRootBridge` and live Native lease constructor `createLiveRootLease` reject before privileged operations unless a verified shared Native lease is present.
+- Owner one-use proof fence checks a shared lock for Root-owned consumed-ledger writes; when nested inside Native it accepts ONLY the Native owning lease or the owner-evidence-consumption lease, and the coordinator passes the binding explicitly.
+- Added fixed-path encrypted proof staging source `honartik-u06-root-sealed-evidence-staging-v1.cjs`, with a mandatory staging lease and 0600 root-owned directory checks. It has no installed Root handler or direct CLI.
+- Added direct real-source negative tests `test-honartik-u06-real-root-actor-lock-guards-v1.cjs`; tests invoke actual OIDC, staging, native adapter, native lease and proof fence exports and verify missing/counterfeit leases are denied before side effects.
+- Found and fixed `EEXIST` race in fixture receipt-directory creation; reattests directory ownership and 0700 mode after concurrent creation.
+
+**Verification:** GitHub Actions source-only CI [#43601900455](https://github.com/prhmonline/prhm-host-actions/actions/runs/43601900455) 38/38 PASS, zero failures. Seven further U06 component workflows plus Agent3 gate all SUCCESS for code head `fbf631dc5ccf266b3cfbb53604c8afec1ec0b8cd`.
+
+**CRITICAL RELEASE BLOCKER:** The shared-lock assertion intentionally uses an unprivileged fixture-only gate, refusing Root execution even when a caller passes a handcrafted context. A separately authorized fixed and pinned **production Root gate issuer/consumer** has not been installed or independently reviewed. Merging the current guarded source as a drop-in production replacement would break existing Root entrypoints; therefore deployment is NO-GO. No promise of live interception or atomicity is implied by source tests. The independent reviewer must inspect file/lock ownership, exclusive initialization, pinned paths, the existing trust boundaries, and signed one-use approval. Do not reuse expired OIDC or original owner-bootstrap signature.
+
+Source-only safeguards are necessary but not sufficient: a malicious or legacy unguarded installed binary, detached subprocess, or out-of-tree script can still bypass the common gate until the exact Root release is complete; Native worker invocation and staging transfer must be audited under the single lock. Do NOT merge PR #294, register a new Root handler or issue any new challenge without a separate approved release.
