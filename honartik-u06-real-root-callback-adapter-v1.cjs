@@ -306,7 +306,7 @@ async function runOnlyFromTrustedRootBridge(input){
   'trusted_invocation_shape');
  Shared.assertSourceBoundLease(input.sharedBinding,'native_backup_transaction');
  const native=makeRootCallbacks(input);
- return Coordinator.coordinateOwnerU06(native,input.ownerProof);
+ return Coordinator.coordinateOwnerU06(native,input.ownerProof,{sharedBinding:input.sharedBinding});
 }
 module.exports=Object.freeze({
  WORKER,WORKER_SHA,makeRootCallbacks,runOnlyFromTrustedRootBridge,
