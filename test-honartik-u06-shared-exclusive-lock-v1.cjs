@@ -4,7 +4,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
 const crypto=require('node:crypto');
-const {spawnSync}=require('node:child_process');
+const {spawnSync,spawn}=require('node:child_process');
 const lock=require('./honartik-u06-shared-exclusive-lock-v1.cjs');
 const moduleFile=path.join(__dirname,'honartik-u06-shared-exclusive-lock-v1.cjs');
 const mk=()=>{
@@ -52,6 +52,28 @@ test('multiple processes refuse challenge issue / stage / consume / native actio
  assert.equal(other.status,0,other.stderr);
  assert.match(other.stdout,/RELEASED/);
 }));
+test('eight truly concurrent child processes share a single atomic O_EXCL winner',async()=>{
+ const f=mk();
+ try {
+  const code="const g=require("+JSON.stringify(moduleFile)+").createUnprivilegedFixtureSharedGate("+JSON.stringify(f.root)+");"+
+   "try{g.begin('owner_challenge_issuance');process.stdout.write('WIN\\n');setTimeout(()=>process.exit(0),400)}"+
+   "catch(e){if(e.message==='u06_shared_lock_busy_or_unrecovered'){process.stdout.write('BUSY\\n');process.exit(0)}throw e}";
+  const actors=Array.from({length:8},()=>new Promise((resolve,reject)=>{
+   const proc=spawn(process.execPath,['-e',code],{stdio:['ignore','pipe','pipe']});
+   let out='',err='';
+   proc.stdout.on('data',b=>out+=b.toString());
+   proc.stderr.on('data',b=>err+=b.toString());
+   proc.on('error',reject);
+   proc.on('close',exit=>resolve({exit,out,err}));
+  }));
+  const answers=await Promise.all(actors);
+  assert.ok(answers.every(x=>x.exit===0),JSON.stringify(answers));
+  assert.equal(answers.filter(x=>x.out.includes('WIN')).length,1);
+  assert.equal(answers.filter(x=>x.out.includes('BUSY')).length,7);
+  assert.equal(f.gate().inspect().locked,true);
+ } finally { f.wipe(); }
+});
+
 test('lock file is O_EXCL, 0600 and a durable receipt is private',()=>fixture(f=>{
  const g=f.gate(),l=g.begin('owner_challenge_issuance');
  const lockFile=path.join(f.root,lock.LOCK_NAME);
@@ -97,7 +119,7 @@ test('SIGKILL immediately after durable terminal receipt allows exact one-time f
  error('busy_or_unrecovered',()=>f.gate().begin('owner_challenge_issuance'));
  assert.equal(f.gate().resumeTerminalRelease(l,l.kind).released,true);
  assert.equal(f.gate().inspect().locked,false);
- error('untrusted_file',()=>f.gate().resumeTerminalRelease(l,l.kind));
+ assert.throws(()=>f.gate().resumeTerminalRelease(l,l.kind),{code:'ENOENT'});
 }));
 test('SIGKILL immediately after lock acquisition cannot be resumed by another actor',()=>fixture(f=>{
  const r=spawnSync(process.execPath,['-e',
