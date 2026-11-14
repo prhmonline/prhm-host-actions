@@ -96,6 +96,42 @@ test('durable PREPARED journal forces explicit resume after a crash at every ste
     assert.equal(fs.existsSync(f.p('host-private.pem')),false,step);
   });
 });
+
+test('refuses a newly consumed owner proof after durable PREPARED before any key move',()=>withFixture(f=>{
+  const consumed=path.join(f.root,'consumed','f'.repeat(64)+'.'+sha(nonce)+'.used');
+  error('already_consumed',()=>f.engine({failureHook:step=>{
+    if(step==='journal_prepared')fs.writeFileSync(consumed,'newly-consumed',{mode:0o600});
+  }}).start());
+  assert.equal(fs.existsSync(f.p('host-private.pem')),true);
+  assert.equal(fs.existsSync(f.p('challenge.json')),true);
+  assert.equal(fs.existsSync(f.p('reconciliation.journal.json')),true);
+  assert.equal(fs.existsSync(path.join(f.root,'owner-oidc','abandoned')),false);
+}));
+test('refuses native lease introduced after challenge archival but before private-key retirement',()=>withFixture(f=>{
+  const lease=path.join(f.root,'u06-exclusive.lease');
+  error('native_transaction_or_recovery_active',()=>f.engine({failureHook:step=>{
+    if(step==='private_archived')fs.writeFileSync(lease,'acquired',{mode:0o600});
+  }}).start());
+  const archived=path.join(f.root,'owner-oidc','abandoned',sha(nonce));
+  assert.equal(fs.existsSync(path.join(archived,'host-private.pem')),true);
+  assert.equal(fs.existsSync(path.join(archived,'reconciled.json')),false);
+  assert.equal(fs.existsSync(f.p('reconciliation.journal.json')),true);
+  fs.unlinkSync(lease);
+  assert.equal(f.engine().resume().status,'RECONCILED');
+}));
+test('refuses a new consumed receipt introduced just before ephemeral key retirement',()=>withFixture(f=>{
+  const consumed=path.join(f.root,'consumed','e'.repeat(64)+'.'+sha(nonce)+'.used');
+  error('already_consumed',()=>f.engine({failureHook:step=>{
+    if(step==='retirement_intent_durable')fs.writeFileSync(consumed,'consumed',{mode:0o600});
+  }}).start());
+  const archived=path.join(f.root,'owner-oidc','abandoned',sha(nonce));
+  assert.equal(fs.existsSync(path.join(archived,'host-private.pem')),true);
+  assert.equal(fs.existsSync(path.join(archived,'reconciled.json')),false);
+  assert.equal(fs.existsSync(f.p('reconciliation.journal.json')),true);
+  // Never resume past a newly consumed receipt.
+  error('already_consumed',()=>f.engine().resume());
+}));
+
 test('actual SIGKILL after durable key retirement recovers from disk without reusing key',()=>withFixture(f=>{
   const expression="const m=require("+JSON.stringify(path.join(__dirname,'honartik-u06-expired-owner-challenge-reconcile-v1.cjs'))+");m.createDisposableFixtureReconciler("+JSON.stringify(f.root)+",{clock:()=>"+now+",failureHook:s=>{if(s==='private_retired')process.kill(process.pid,'SIGKILL')}}).start()";
   const child=spawnSync(process.execPath,['-e',expression],{encoding:'utf8',timeout:5000});
