@@ -158,7 +158,8 @@ function createUnprivilegedFixtureSharedGate(root,{failureHook=null}={}){
  * signed and installed production Root gate. No live bypass is exported.
  */
 function assertSourceBoundLease(binding,kind){
- need(KINDS.includes(kind),'operation_not_allowed');
+ const accepted=Array.isArray(kind)?kind:[kind];
+ need(accepted.length>0&&accepted.every(x=>KINDS.includes(x)),'operation_not_allowed');
  need(typeof process.getuid==='function'&&process.getuid()!==0,
    'live_root_gate_not_installed');
  need(binding&&typeof binding==='object'&&
@@ -170,7 +171,8 @@ function assertSourceBoundLease(binding,kind){
  need(typeof gate.root==='string'&&
    /^\/tmp\/u06-owner-shared-test-[a-f0-9]{12}$/.test(gate.root)&&
    fs.realpathSync(gate.root)===gate.root,'binding_path_invalid');
- return gate.assertHeld(binding.lease,kind);
+ need(binding.lease&&accepted.includes(binding.lease.kind),'wrong_operation_kind');
+ return gate.assertHeld(binding.lease,binding.lease.kind);
 }
 
 module.exports=Object.freeze({
