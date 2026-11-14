@@ -146,7 +146,12 @@ function createUnprivilegedFixtureSharedGate(root,{failureHook=null}={}){
  const uid=process.getuid();
  trustDir(root,uid);
  const history=path.join(root,RECEIPTS);
- if(absent(history)){fs.mkdirSync(history,{mode:0o700});sync(root)}
+ if(absent(history)){
+  try{fs.mkdirSync(history,{mode:0o700});sync(root)}
+  catch(e){if(e?.code!=='EEXIST')throw e}
+ }
+ // EEXIST is acceptable ONLY when another process made the exact private
+ // directory; ownership and 0700 mode are reverified before use.
  trustDir(history,uid);
  return new FixtureSharedGate(root,uid,failureHook);
 }
