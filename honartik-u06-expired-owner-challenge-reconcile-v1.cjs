@@ -155,6 +155,10 @@ function onePresent(cfg, name, archive, expectedHash) {
 }
 function complete(cfg, j, hook) {
   ownedDir(cfg.directory, cfg.uid);
+  // A native transaction or owner-proof consumption can appear between
+  // inspect() and durable PREPARED creation. Re-attest before any rename.
+  // A production binding MUST additionally hold the trusted exclusive lock.
+  ensureNoActiveOrConsumed(cfg, j.challenge_sha256);
   const archivedRoot = path.join(cfg.directory, 'abandoned');
   if (ABSENT(archivedRoot)) {
     fs.mkdirSync(archivedRoot, {mode: 0o700});
@@ -215,6 +219,10 @@ function complete(cfg, j, hook) {
           marker.challenge_sha256 === j.challenge_sha256 &&
           marker.private_file_sha256 === j.private_file_sha256, 'retirement_intent_drift');
       }
+      // Re-attest immediately before irreversible key retirement. This
+      // closes a source-level journal/crash hook window, but only the future
+      // trusted Root exclusive lock can eliminate real concurrent races.
+      ensureNoActiveOrConsumed(cfg, j.challenge_sha256);
       fs.unlinkSync(archiveKey); // ephemeral key retired; no secret in the receipt
       dirSync(archived);
       hook?.('private_retired');
