@@ -13,6 +13,7 @@ on:
       - 'honartik-u06-root-signed-shared-lock-candidate-v1.cjs'
       - 'honartik-u06-isolated-root-native-path-v1.cjs'
       - 'test-honartik-u06-isolated-root-native-path-v1.cjs'
+      - 'test-honartik-u06-ephemeral-root-cryptographic-sandbox-v1.cjs'
       - 'test-honartik-u06-root-signed-shared-lock-candidate-v1.cjs'
       - 'test-honartik-u06-expired-owner-policy-postimage-v1.cjs'
       - 'test-honartik-u06-expired-owner-reconcile-l4-consumed-v1.cjs'
@@ -113,6 +114,7 @@ jobs:
           NODE
 
       - name: Root-UID deny proof on isolated GitHub-hosted runner (NO live Root)
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         run: |
           set -euo pipefail
           test "$(id -u)" != 0
@@ -139,3 +141,14 @@ jobs:
           console.log('ISOLATED_CI_ROOT_UID_DENIED=PASS');
           console.log('LIVE_ROOT_RELEASE_TESTED=FALSE');
           NODE
+
+      - name: Positive ephemeral UID0 signed-L4 filesystem sandbox (NO live Root)
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          set -euo pipefail
+          test "$(id -u)" != 0
+          sudo -n env \
+            GITHUB_ACTIONS=true \
+            GITHUB_REPOSITORY=prhmonline/prhm-host-actions \
+            RUNNER_ENVIRONMENT=github-hosted \
+            "$(command -v node)" --test test-honartik-u06-ephemeral-root-cryptographic-sandbox-v1.cjs
