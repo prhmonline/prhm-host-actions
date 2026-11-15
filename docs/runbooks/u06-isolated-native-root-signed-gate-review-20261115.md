@@ -59,3 +59,23 @@ The source CI runs `sudo -n node` on disposable GitHub-hosted Ubuntu and asserts
 Latest source-only CI: [run 43710512875](https://github.com/prhmonline/prhm-host-actions/actions/runs/43710512875) — **90 tests PASS, 0 FAIL**; Agent3 registration gate also PASS. GitHub reviewers at this checkpoint: **none submitted**. The author is the only observed contributor in the repository's recent PR history and no CODEOWNERS file was found at the standard paths; an independent reviewer was not inferred or impersonated.
 
 **Release status remains NO-GO:** An independent human security review and explicit approval are still required. Source-only checks with an isolated UID0 refusal test must NOT be represented as a real privileged Root end-to-end test or authorization to install.
+
+## 2026-11-15 next review gate — Root sandbox and journal binding
+
+The independent reviewer requirement remains unfulfilled: no GitHub review is recorded on Draft PR #295, and no specific authorized second reviewer is known. **No self-approval, fabricated reviewer or installation authorization is allowed.** An eligible human reviewer must approve the exact fixed commit SHA after analyzing the following findings and verifying the evidence.
+
+### Finding U06-S3 (HIGH): terminal journal from another Native transaction
+
+The fixture lock session was not tied to the ID of the actual Native `PREPARED` journal; a valid-looking terminal file (and matching digest supplied by the caller) could potentially be substituted during a later Root implementation. The signed gate now calls `attestPreparedNativeJournal(session,journal)`, reopens the actual owned 0600, `O_NOFOLLOW` journal, validates its id/state/original-profile hash and binds its id into a session-scoped WeakMap. Terminal release requires that same id/profile SHA in the actual `ROLLED_BACK` file, and still requires no live Native lease and an exact terminal journal SHA match.
+
+### Finding U06-S4 (HIGH): change of PREPARED journal before L4 burn
+
+A new injected tampering test found that after a first successful `PREPARED` attestation a subsequent change in journal ID could still allow the fixture path to record the official Native one-use fence before the Native lease detects journal mismatch. To prevent premature consumption, the integration performs a second on-disk `PREPARED` attestation **immediately before** official Native L4 receipt verification/reservation. If the journal has changed, it stops without burning the official fence and retains the common lock for reviewed recovery. This is a source-only mitigation, not a claim to eliminate all filesystem TOCTOU when integrating the future production Root adapter; code review must examine open descriptor/inode binding.
+
+### UID0 positive / negative sandbox boundary
+
+`test-honartik-u06-ephemeral-root-cryptographic-sandbox-v1.cjs` runs only on a disposable GitHub-hosted Linux runner as actual UID0. It creates *only* fresh root-owned private /tmp files, builds **synthetic** locally signed Ed25519 L4 claims and consumed ledger, runs the **actual U06 pure signed/consumed verifier**, and exercises root-owned 0700/0600 O_EXCL/fsynced locks and anti-replay. The production signing key is **not** involved. The test does not export or invoke live Root Host Action handlers, does not grant Production approval and does not perform a Native backup or restore. The preceding UID0 negative test still proves the live shared gate has **no Root constructor**.
+
+### Independent security reviewer acceptance conditions
+
+An eligible human reviewer, other than the PR author, must examine the exact SHA of this PR (including the newly added journal-ID binding and reattestation before consumption), record a review directly in GitHub, and confirm (1) challenge/OIDC actor closure, (2) Root file and approval trust ancestry, (3) post-fsync crash/rollback and one-use semantics, (4) possible symlink, TOCTOU, hardlink, and replaced inode cases, (5) end-to-end real Root Host Action admission and offsite recovery, and (6) no alternative unguarded privileged handler. **Until an authorized reviewer is identified and the signed production release separately approved, this is NO-GO.**
