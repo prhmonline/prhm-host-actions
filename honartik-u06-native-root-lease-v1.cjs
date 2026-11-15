@@ -11,6 +11,7 @@
  */
 const fs=require('node:fs'),path=require('node:path'),os=require('node:os');
 const crypto=require('node:crypto');
+const Shared=require('./honartik-u06-shared-exclusive-lock-v1.cjs');
 const LIVE=Object.freeze({
  host:'prhm-production.prhm.ir',
  directory:'/var/lib/prhm-agent-selfmaint-exec/honartik-u06-native-root',
@@ -199,7 +200,8 @@ class Lease {
   return Object.freeze({released:true});
  }
 }
-function createLiveRootLease(){
+function createLiveRootLease(sharedBinding){
+ Shared.assertSourceBoundLease(sharedBinding,'native_backup_transaction');
  need(process.getuid?.()===0,'root_required');
  need(os.hostname()===LIVE.host,'host_mismatch');
  // The trusted installer must pre-create the root:root 0700 directory.

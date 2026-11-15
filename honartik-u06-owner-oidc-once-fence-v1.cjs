@@ -11,10 +11,16 @@
 const fs=require('node:fs');
 const path=require('node:path');
 const gate=require('./honartik-u06-owner-oidc-identity-gate-v1.cjs');
+const Shared=require('./honartik-u06-shared-exclusive-lock-v1.cjs');
 const LEDGER='/var/lib/prhm-u06-owner-approvals/consumed';
 const HASH=/^[0-9a-f]{64}$/;
 const fail=(x)=>{throw Error('u06_owner_fence_'+x)};
-function consumeVerifiedOwnerEvidence(proof,{directory=LEDGER,trustedUid=0}={}){
+function consumeVerifiedOwnerEvidence(proof,{directory=LEDGER,trustedUid=0,sharedBinding=null}={}){
+  // Real Root ledger writes require the shared gate; fixture-owned ledgers
+  // remain available for isolated cryptographic tests.
+  if(trustedUid===0||process.getuid?.()===0)
+    Shared.assertSourceBoundLease(sharedBinding,
+      ['owner_evidence_consumption','native_backup_transaction']);
   if(!gate.proofVerifiedInCurrentProcess(proof))fail('not_cryptographically_verified_in_process');
   if(proof.schema!=='prhm.u06.honartik.owner-identity-evidence.v1'||
      proof.intent_digest!==gate.intentDigest()||

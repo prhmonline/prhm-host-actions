@@ -17,6 +17,7 @@ const Coordinator=require('./honartik-u06-owner-native-transaction-v1.cjs');
 const Owner=require('./honartik-u06-owner-oidc-identity-gate-v1.cjs');
 const Lease=require('./honartik-u06-native-root-lease-v1.cjs');
 const Identity=require('./honartik-u06-native-root-mariadb-identity-v1.cjs');
+const Shared=require('./honartik-u06-shared-exclusive-lock-v1.cjs');
 const F=Coordinator.F;
 const WORKER='/opt/prhm-agent-selfmaint-exec/actions/u06_live_native_root_worker_v1.py';
 const WORKER_SHA='71fe3cd424289896fa7ee7033dbe6ac2508518b89deeebd8584fa4d930e43b89';
@@ -148,7 +149,8 @@ function workerCall(step,runId,approvalId){
  catch{fail('worker_response_not_json_'+step)}
  return record;
 }
-function makeRootCallbacks({requestId,sealedToken,authoritativeConsumed,ownerProof}){
+function makeRootCallbacks({requestId,sealedToken,authoritativeConsumed,ownerProof,sharedBinding}={}){
+ Shared.assertSourceBoundLease(sharedBinding,'native_backup_transaction');
  need(process.getuid?.()===0&&os.hostname()===F.host,'trusted_root_host_required');
  need(Owner.proofVerifiedInCurrentProcess(ownerProof),
    'official_github_owner_oidc_not_verified');
@@ -157,7 +159,7 @@ function makeRootCallbacks({requestId,sealedToken,authoritativeConsumed,ownerPro
   sealedToken.length>=120&&sealedToken.length<=16384,
   'trusted_official_l4_consume_context_missing');
  rootDir(ROOT);rootDir(path.join(ROOT,'l4-consumed'));rootDir(BACKUPS);
- const lease=Lease.createLiveRootLease();
+ const lease=Lease.createLiveRootLease(sharedBinding);
  const identity=Identity.createLiveBoundProvider(requestId,()=>sealedToken);
  let original=null,locked=false,journal=null,approval=null,created=false;
  let native=null,restored=null,node1=null,profilePost=null;
@@ -300,10 +302,11 @@ function makeRootCallbacks({requestId,sealedToken,authoritativeConsumed,ownerPro
 }
 async function runOnlyFromTrustedRootBridge(input){
  need(input&&typeof input==='object'&&Object.keys(input).sort().join('|')===
-  ['requestId','sealedToken','authoritativeConsumed','ownerProof'].sort().join('|'),
+  ['requestId','sealedToken','authoritativeConsumed','ownerProof','sharedBinding'].sort().join('|'),
   'trusted_invocation_shape');
+ Shared.assertSourceBoundLease(input.sharedBinding,'native_backup_transaction');
  const native=makeRootCallbacks(input);
- return Coordinator.coordinateOwnerU06(native,input.ownerProof);
+ return Coordinator.coordinateOwnerU06(native,input.ownerProof,{sharedBinding:input.sharedBinding});
 }
 module.exports=Object.freeze({
  WORKER,WORKER_SHA,makeRootCallbacks,runOnlyFromTrustedRootBridge,

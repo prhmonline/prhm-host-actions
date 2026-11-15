@@ -89,7 +89,7 @@ function checkPostflight(v){
     'native_backup_postflight_not_proven');
   return v;
 }
-async function coordinateOwnerU06(native,proof,{ledgerDir=fence.LEDGER,ledgerOwnerUid=0}={}){
+async function coordinateOwnerU06(native,proof,{ledgerDir=fence.LEDGER,ledgerOwnerUid=0,sharedBinding=null}={}){
   need(owner.proofVerifiedInCurrentProcess(proof),'owner_identity_not_cryptographically_verified');
   need(proof.intent_digest===owner.intentDigest()&&
     proof.backend_deploy_authorized===false&&
@@ -136,7 +136,7 @@ async function coordinateOwnerU06(native,proof,{ledgerDir=fence.LEDGER,ledgerOwn
     // before the first MySQL/account/credential operation. Failure burns
     // whichever proof was already consumed, never silently refunds it.
     fence.consumeVerifiedOwnerEvidence(proof,{
-      directory:ledgerDir,trustedUid:ledgerOwnerUid
+      directory:ledgerDir,trustedUid:ledgerOwnerUid,sharedBinding
     });
     mutationAttempted=true;
     await native.provisionBackupOnlyIdentityAndPrivateCredential(F,journal);
