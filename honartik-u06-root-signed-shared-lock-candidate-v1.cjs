@@ -4,7 +4,9 @@
  *
  * Reconciliation and Native backup have separate, exact Action/L4 signed
  * receipt verifiers. Only an independently verified, already CONSUMED
- * Approval Center Ed25519 receipt can issue a fixture lock session. All
+ * Approval Center Ed25519 receipt can issue a fixture lock session.
+ * Native official L4 replay-fence reservation is deferred EXCLUSIVELY to
+ * the existing Native coordinator, AFTER its durable PREPARED journal. All
  * other actor kinds are denied until independently reviewed scoped actions
  * exist. This module never signs, registers, issues L4, connects Root or
  * runs Native / owner-identity work.
@@ -27,12 +29,10 @@ const ALLOWED=Object.freeze({
  native_backup_transaction:NativeScope.OPERATION
 });
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const HEX40=/^[a-f0-9]{40}$/;
 const HEX64=/^[a-f0-9]{64}$/;
 const H=x=>crypto.createHash('sha256').update(x).digest('hex');
 const fail=x=>{throw Error('u06_signed_root_lock_'+x)};
 const need=(v,x)=>{if(!v)fail(x)};
-const absent=p=>{try{fs.lstatSync(p);return false}catch(e){if(e.code==='ENOENT')return true;throw e}};
 const dSync=dir=>{
  const fd=fs.openSync(dir,fs.constants.O_RDONLY|fs.constants.O_DIRECTORY|fs.constants.O_NOFOLLOW);
  try{fs.fsyncSync(fd)}finally{fs.closeSync(fd)}
@@ -115,9 +115,11 @@ function createUnprivilegedSignedLockFixture({sharedRoot,authRoot}={}){
   need(UUID.test(requestId||''),'native_request_id_invalid');
   const admit=Native.createDisposableRootL4Fixture(requestId,()=>token,paths);
   const verified=admit.verifyNativeConsumedSignedLevel4(F,journal);
-  // Reuse the existing real 0600 O_EXCL / fsync authoritative no-replay
-  // fence. Passing a forged "signature_verified:true" cannot satisfy it.
-  admit.reserveNativeLevel4ReplayFence(F,journal,verified);
+  // CRITICAL: verify ONLY. Reserving the Native fence here would burn the
+  // same approval a second time when Coordinator.coordinateOwnerU06 invokes
+  // the existing native.reserveNativeLevel4ReplayFence AFTER its durable
+  // PREPARED journal. The single authoritative Native fence owner is the
+  // Native coordinator, not this shared lock admission candidate.
   return verified;
  }
  function beginAuthorized(kind,authorization){
@@ -151,7 +153,9 @@ function createUnprivilegedSignedLockFixture({sharedRoot,authRoot}={}){
   exclusive(file,Buffer.from(JSON.stringify({
    schema:'prhm.u06.shared-root-signed-fence.fixture.v1',
    approval_id:verified.approval_id,operation:verified.operation,
-   kind,shared_lease_id:lease.id,spent:true
+   kind,shared_lease_id:lease.id,spent:true,
+   native_l4_fence_reserved_by_gate:false,
+   native_l4_fence_owner:'native_coordinator_only'
   })+'\n'),uid);
   const session=Object.freeze({kind,approval_id:verified.approval_id,
    operation:verified.operation,binding:Object.freeze({gate:shared,lease})});
@@ -166,7 +170,9 @@ function createUnprivilegedSignedLockFixture({sharedRoot,authRoot}={}){
   const record=JSON.parse(fixedOwned(path.join(fenceDir,
     session.approval_id+'.used'),uid,8192).toString('utf8'));
   need(record.kind===kind&&record.approval_id===session.approval_id&&
-   record.shared_lease_id===session.binding.lease.id&&record.spent===true,
+   record.shared_lease_id===session.binding.lease.id&&record.spent===true&&
+   record.native_l4_fence_reserved_by_gate===false&&
+   record.native_l4_fence_owner==='native_coordinator_only',
    'signed_fence_drift');
   return true;
  }
