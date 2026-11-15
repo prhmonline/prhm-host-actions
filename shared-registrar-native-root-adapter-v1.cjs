@@ -30,13 +30,20 @@ function rootOnly(){
   fail('root_required');
  safeRootDir(ROOT);
 }
+// The actual installer runs as root. Matching bytes are insufficient if a
+// target executable or policy has been made writable by a different owner.
+function ownerMetadataTrusted(st){
+ return !!st&&typeof st.isFile==='function'&&st.isFile()&&
+   typeof st.isSymbolicLink==='function'&&!st.isSymbolicLink()&&
+   st.uid===0&&st.gid===0&&(st.mode&0o022)===0;
+}
 function stablePreimage(){
  const out={};
  for(const [id,expected] of Object.entries(gate.OWNERS)){
   const st=fs.lstatSync(expected.path);
-  if(!st.isFile()||st.isSymbolicLink()||
-      fs.realpathSync(expected.path)!==expected.path||
-      (st.mode&0o022)!==0)fail('owner_unsafe:'+id);
+  if(!ownerMetadataTrusted(st)||
+      fs.realpathSync(expected.path)!==expected.path)
+    fail('owner_unsafe:'+id);
   const bytes=fs.readFileSync(expected.path);
   if(native.HASH(bytes)!==expected.sha256)fail('owner_drift:'+id);
   out[id]={bytes,mode:st.mode&0o777,uid:st.uid,gid:st.gid};
@@ -182,7 +189,7 @@ async function applyFromTrustedRootDispatcher({args,approvalToken,hooks}={}){
   manifestCommit:args.manifest_commit,requestId:approval.request_id});
 }
 module.exports=Object.freeze({
- ROOT,RECEIPTS,stablePreimage,createBoundPlan,
+ ROOT,RECEIPTS,ownerMetadataTrusted,stablePreimage,createBoundPlan,
  applyFromTrustedRootDispatcher
 });
 if(require.main===module){
