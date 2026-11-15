@@ -9,6 +9,7 @@ on:
       - 'shared-registrar-pending-store-v1.cjs'
       - 'shared-registrar-approval-center-bridge-v1.cjs'
       - 'test-registrar-four-owner-preimage-v1.cjs'
+      - 'test-registrar-current-owner-pins-20261116.cjs'
       - 'shared-registrar-policy-candidate-builder-v1.cjs'
       - 'shared-registrar-three-owner-candidate-builder-v1.cjs'
       - 'test-registrar-private-four-owner-package-v1.cjs'
@@ -64,6 +65,7 @@ jobs:
           node --check test-shared-registrar-policy-candidate-builder-v1.cjs
           node --test test-shared-registrar-policy-candidate-builder-v1.cjs
           node --check test-registrar-four-owner-preimage-v1.cjs
+          node --test test-registrar-current-owner-pins-20261116.cjs
           node --check test-registrar-four-owner-preimage-contract-v1.cjs
           node --test test-registrar-four-owner-preimage-contract-v1.cjs
           node --check shared-registrar-approval-center-bridge-v1.cjs

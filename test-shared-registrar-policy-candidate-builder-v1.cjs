@@ -9,7 +9,7 @@ test('builder pins reviewed existing policy and new critical registrar version',
 });
 test('no arbitrary input can replace current production policy preimage',()=>{
  for(const content of [
-  Buffer.alloc(30333),
+  Buffer.alloc(32036),
   Buffer.from(JSON.stringify({version:b.OLD_VERSION})),
   Buffer.from(JSON.stringify({version:b.NEW_VERSION}))
  ])assert.throws(()=>b.build(content),/registrar_policy_candidate_baseline_sha_mismatch/);

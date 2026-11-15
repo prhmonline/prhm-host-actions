@@ -5,9 +5,9 @@
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const HASH=b=>crypto.createHash('sha256').update(b).digest('hex');
 const INPUTS=Object.freeze({
- 'base.server.js':['4c29d01a248d59ee85754dfa5a59e8132fe22e6b34ef04324228c16c88727406',34422],
- 'executor.server.js':['410406ba0965ef3a5cad6da6306a85335e38acc3637fb6ed60fa42200a10c2e0',112811],
- 'mcp.hostActionsV2.js':['bd768f992dab75710558e3f47187c311c2ee5b5ec6f5751a74e0bbfa64729166',12287]
+ 'base.server.js':['649941e1a2f77a9a1515327e47fa7176a0ae8f4602042750d53847e568deed0e',34802],
+ 'executor.server.js':['34ce844008fbb7763250cdfa7859ca16360db1aa414fff77d107ffb0ccfa4121',120352],
+ 'mcp.hostActionsV2.js':['01eb930e8e9177b8754ab5cf36a004cb69141d44b74e70b4d42dc3f0f33f1c56',12362]
 });
 function stop(x){throw Error('registrar_owner_candidate_'+x)}
 function inject(s,anchor,code){

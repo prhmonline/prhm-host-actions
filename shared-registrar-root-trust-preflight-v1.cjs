@@ -17,16 +17,16 @@ const ACTION='prhm_action_registry_install_v1';
 const OPERATION='host_action.'+ACTION;
 const VERSION='2026-10-27.2-shared-registrar-bootstrap-proposal';
 const PBCINEMA_SOURCE_MERGE_SHA='70a51f7ddc00136863904873ab2a146b6227b7c2';
-const BACKUP_DIR='/var/backups/prhm-host-actions-registration/preinstall.EHclsBk3';
+const BACKUP_DIR='/var/backups/prhm-host-actions-registration/preinstall.20261116-649941e1';
 const OWNERS=Object.freeze({
   base:Object.freeze({path:'/opt/prhm-agent-selfmaint/server.js',
-    sha256:'4c29d01a248d59ee85754dfa5a59e8132fe22e6b34ef04324228c16c88727406'}),
+    sha256:'649941e1a2f77a9a1515327e47fa7176a0ae8f4602042750d53847e568deed0e'}),
   executor:Object.freeze({path:'/opt/prhm-agent-selfmaint-exec/server.js',
-    sha256:'410406ba0965ef3a5cad6da6306a85335e38acc3637fb6ed60fa42200a10c2e0'}),
+    sha256:'34ce844008fbb7763250cdfa7859ca16360db1aa414fff77d107ffb0ccfa4121'}),
   mcp:Object.freeze({path:'/home/agent/ssh-mcp-server/src/plugins/hostActionsV2.js',
-    sha256:'bd768f992dab75710558e3f47187c311c2ee5b5ec6f5751a74e0bbfa64729166'}),
+    sha256:'01eb930e8e9177b8754ab5cf36a004cb69141d44b74e70b4d42dc3f0f33f1c56'}),
   policy:Object.freeze({path:'/opt/prhm-company-control-plane/config/approval-policy.json',
-    sha256:'148fe2a724befc15cd8c731b0195d83e254d39215792a5084b70dd5b5c178174'})
+    sha256:'aa1563b168aea2725a0539373c54c45b2317b6320334c80a6d3a5e2723520934'})
 });
 const SERVICES=Object.freeze([
  'prhm-agent-selfmaint.service','prhm-agent-selfmaint-exec.service',

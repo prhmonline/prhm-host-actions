@@ -7,7 +7,7 @@
  * This candidate is INERT until independently approved trusted bootstrap.
  */
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
-const ORIGINAL_SHA='148fe2a724befc15cd8c731b0195d83e254d39215792a5084b70dd5b5c178174';
+const ORIGINAL_SHA='aa1563b168aea2725a0539373c54c45b2317b6320334c80a6d3a5e2723520934';
 const OLD_VERSION='2026-10-02.1-control-plane-current-owner-bootstrap-repair-v1';
 const NEW_VERSION='2026-10-27.2-shared-registrar-bootstrap-proposal';
 const ACTION='prhm_action_registry_install_v1';

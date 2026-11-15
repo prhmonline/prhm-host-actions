@@ -8,10 +8,10 @@
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const assert=require('node:assert/strict');
 const SPECS=Object.freeze([
- {name:'base.server.js',owner:'base',sha:'4c29d01a248d59ee85754dfa5a59e8132fe22e6b34ef04324228c16c88727406',bytes:34422,mode:'0644'},
- {name:'executor.server.js',owner:'executor',sha:'410406ba0965ef3a5cad6da6306a85335e38acc3637fb6ed60fa42200a10c2e0',bytes:112811,mode:'0755'},
- {name:'mcp.hostActionsV2.js',owner:'mcp',sha:'bd768f992dab75710558e3f47187c311c2ee5b5ec6f5751a74e0bbfa64729166',bytes:12287,mode:'0600'},
- {name:'approval-policy.json',owner:'policy',sha:'148fe2a724befc15cd8c731b0195d83e254d39215792a5084b70dd5b5c178174',bytes:30333,mode:'0644'}
+ {name:'base.server.js',owner:'base',sha:'649941e1a2f77a9a1515327e47fa7176a0ae8f4602042750d53847e568deed0e',bytes:34802,mode:'0644'},
+ {name:'executor.server.js',owner:'executor',sha:'34ce844008fbb7763250cdfa7859ca16360db1aa414fff77d107ffb0ccfa4121',bytes:120352,mode:'0755'},
+ {name:'mcp.hostActionsV2.js',owner:'mcp',sha:'01eb930e8e9177b8754ab5cf36a004cb69141d44b74e70b4d42dc3f0f33f1c56',bytes:12362,mode:'0600'},
+ {name:'approval-policy.json',owner:'policy',sha:'aa1563b168aea2725a0539373c54c45b2317b6320334c80a6d3a5e2723520934',bytes:32036,mode:'0644'}
 ]);
 const VERSION='2026-10-02.1-control-plane-current-owner-bootstrap-repair-v1';
 const NEW_ACTION='prhm_action_registry_install_v1';
