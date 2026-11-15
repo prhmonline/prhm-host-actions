@@ -35,3 +35,27 @@ Dedicated source-only CI runs the module plus `test-honartik-u06-isolated-root-n
 - [ ] Obtain independent reviewer acceptance and fresh scope-specific, signed one-use installation approval before any Production changes.
 
 **Do not** retire the existing expired challenge, issue a replacement, replay a consumed bootstrap signature, register Root handlers, alter approval policy, or execute Native backup from this source-only work.
+
+## 2026-11-15 code-security findings and remediation — internal review, NOT independent approval
+
+### Finding U06-S1: unsound terminal-journal attestation (HIGH, source-only candidate)
+
+The earlier `finishFixture(session, terminalRecord)` accepted any 64-hex `journal_sha256` and allowed Native shared-lock release without independently verifying a real Native terminal journal or absence of the Native lease. On a future privileged integration this would be an unsafe trust-boundary pattern.
+
+**Fixed in source:** Native admission binds an exact canonical 0700 `/tmp/u06-root-lease-test-XXXXXX` fixture directory and persists that binding in its signed shared admission fence. `finishFixture` for Native now reopens the fixed 0600 `u06-rollback.json` with `O_NOFOLLOW`, checks ownership/inode, requires `state=ROLLED_BACK` and rollback/credential-absence fields, checks no Native lease remains, and verifies `SHA256(actual bytes) === supplied journal_sha256`. A synthetic but correctly formatted digest now fails.
+
+Tests: `security review: 64-hex terminal receipt mismatching disk journal cannot unlock`; `security review: active Native lease after rollback blocks shared unlock`. Importantly, this is still **fixture-only**, not a Root terminal-authorization solution. A future live adapter must also tie the journal ID and source SHA to the trusted installed Native transaction and verify both COMMITTED and ROLLED_BACK outcomes appropriately.
+
+### Finding U06-S2: dangling symlink interpreted as nonexistent (HIGH, source-only candidate)
+
+Node.js `fs.existsSync` follows symbolic links and returns false for dangling links, which could misclassify a malicious Native lease or journal leaf as absent during preflight or common-lock release. A future Root implementation must not assume an unresolvable symlink is an absent object.
+
+**Fixed in source:** The signed gate now uses `lstatSync`-based `absent()` checks that treat any existing leaf (including dangling symlink) as a blocker. Negative tests cover a dangling Native lease both at admission and after journal rollback before shared-lock release.
+
+### Additional isolated UID0 check (not full privileged Root integration)
+
+The source CI runs `sudo -n node` on disposable GitHub-hosted Ubuntu and asserts that `createUnprivilegedSignedLockFixture`, `Shared.assertSourceBoundLease`, and `createIsolatedNativeRootPath` **refuse UID0**. It prints `ISOLATED_CI_ROOT_UID_DENIED=PASS` and `LIVE_ROOT_RELEASE_TESTED=FALSE`; it never calls the installed PRHM Root Executor.
+
+Latest source-only CI: [run 43710512875](https://github.com/prhmonline/prhm-host-actions/actions/runs/43710512875) — **90 tests PASS, 0 FAIL**; Agent3 registration gate also PASS. GitHub reviewers at this checkpoint: **none submitted**. The author is the only observed contributor in the repository's recent PR history and no CODEOWNERS file was found at the standard paths; an independent reviewer was not inferred or impersonated.
+
+**Release status remains NO-GO:** An independent human security review and explicit approval are still required. Source-only checks with an isolated UID0 refusal test must NOT be represented as a real privileged Root end-to-end test or authorization to install.
