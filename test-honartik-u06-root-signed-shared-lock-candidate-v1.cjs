@@ -317,6 +317,18 @@ test('coordinator owns exactly one official Native replay-fence reservation AFTE
  assert.equal(gateCandidate.includes('createDisposableRootL4Fixture'),false);
 });
 
+test('dangling Native lease symlink is not treated as an absent transaction before signed admission',()=>{
+ const f=setup('native');try{
+  fs.symlinkSync('/definitely-nonexistent-u06-native-lease',
+   path.join(f.nativeRoot,'u06-exclusive.lease'));
+  const g=f.create();
+  assert.throws(()=>g.beginAuthorized('native_backup_transaction',f.grant()),
+   /prior_native_transaction_present/);
+  assert.equal(g.inspect().locked,true);
+  assert.equal(fs.readdirSync(path.join(f.nRoot,'fence')).length,0);
+ }finally{f.clean()}
+});
+
 test('no Root constructor, no Root CLI, no approval issuer, and exactly two L4 operations enabled',()=>{
  assert.equal(Gate.ROOT_HANDLER_REGISTERED,false);
  assert.equal(Gate.LIVE_ROOT_CONSTRUCTOR_EXPORTED,false);
