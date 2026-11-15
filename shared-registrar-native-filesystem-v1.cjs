@@ -89,11 +89,17 @@ function checkPlan(plan){
   !/^[0-9a-f]{64}$/.test(plan.manifestSha256||''))
   fail('git_identity_missing');
 }
+function expectedOwnerMetadata(st,uid,gid){
+ return !!st&&Number.isInteger(uid)&&Number.isInteger(gid)&&
+   st.uid===uid&&st.gid===gid;
+}
 function verifyPreimage(steps){
  return steps.map(s=>{
   const st=statFile(s.path);
   const before=fs.readFileSync(s.path);
   if(HASH(before)!==s.beforeSha)fail('preimage_sha_drift:'+s.key);
+  if(!expectedOwnerMetadata(st,process.getuid(),process.getgid()))
+    fail('unsafe_source_owner:'+s.key);
   if((st.mode&0o022)!==0)fail('unsafe_source_mode:'+s.key);
   return {key:s.key,path:s.path,mode:st.mode&0o777,uid:st.uid,gid:st.gid,
     bytes:before,sha:s.beforeSha};
@@ -398,7 +404,7 @@ async function recoverAfterCrash({workRoot,transaction,expectedTargets,expectedA
   return result;
  }finally{unlock(newLock)}
 }
-module.exports=Object.freeze({KEYS,HASH,checkPlan,verifyPreimage,verifyAssetPreimages,
+module.exports=Object.freeze({KEYS,HASH,checkPlan,expectedOwnerMetadata,verifyPreimage,verifyAssetPreimages,
   executeCore,recoverAfterCrash,restoreFromJournal,assertNoPendingTransactions});
 // Deliberately no CLI entrypoint: the live Host Action must supply the
 // separately authenticated, one-time Ed25519 consumed authorization.
