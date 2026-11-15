@@ -49,7 +49,8 @@ function setup(kind='reconcile'){
  const nRoot=fs.mkdtempSync('/tmp/u06-root-l4-test-');fs.chmodSync(nRoot,0o700);
  const nativePaths={policy:path.join(nRoot,'policy.json'),issuer:path.join(nRoot,'issuer.pem'),
   consumed:path.join(nRoot,'consumed'),fence:path.join(nRoot,'fence'),policy_sha256:null};
- const roots=[sharedRoot,authRoot,nRoot];
+ const nativeRoot=fs.mkdtempSync('/tmp/u06-root-lease-test-');fs.chmodSync(nativeRoot,0o700);
+ const roots=[sharedRoot,authRoot,nRoot,nativeRoot];
  fs.mkdirSync(path.join(authRoot,'consumed'),{mode:0o700});
  const ledgerDir=kind==='reconcile'?path.join(authRoot,'consumed'):nativePaths.consumed;
  if(kind==='native')fs.mkdirSync(ledgerDir,{mode:0o700});
@@ -91,12 +92,12 @@ function setup(kind='reconcile'){
  const nativeContext={requestId,paths:nativePaths,
   F:{operation:'honartik_back.production.native_backup',reviewed_l4_policy_sha256:policyHash},
   journal:{id:'u06_signed_shared_native_test_journal_01'}};
- return {kind,sharedRoot,authRoot,nRoot,roots,token,approvalId,requestId,
+ return {kind,sharedRoot,authRoot,nRoot,nativeRoot,roots,token,approvalId,requestId,
   policyHash,pair,claims,ledger,ledgerFile,nativeContext,
   create:()=>Gate.createUnprivilegedSignedLockFixture({sharedRoot,authRoot}),
   grant:(tokenValue=token)=>kind==='reconcile'?
    {token:tokenValue,reviewedPolicySha256:policyHash}:
-   {token:tokenValue,requestId,paths:nativePaths,F:nativeContext.F},
+   {token:tokenValue,requestId,paths:nativePaths,F:nativeContext.F,nativeRoot},
   clean:()=>roots.forEach(d=>fs.rmSync(d,{recursive:true,force:true}))
  };
 }
@@ -175,7 +176,8 @@ test('Native admission verifies signed/consumed L4 but ONLY prepared-journal coo
   const again=NativeGate.createDisposableRootL4Fixture(requestId,()=>f.token,paths);
   const anotherProof=again.verifyNativeConsumedSignedLevel4(F,journal);
   assert.throws(()=>again.reserveNativeLevel4ReplayFence(F,journal,anotherProof),/EEXIST/);
-  assert.equal(g.finishFixture(s,terminal(s)).released,true);
+  assert.throws(()=>g.finishFixture(s,terminal(s)),/ENOENT|native_rollback_disk_not_verified/);
+  assert.equal(g.inspect().locked,true);
   assert.throws(()=>g.beginAuthorized('native_backup_transaction',f.grant()),/EEXIST|busy_or_unrecovered/);
  }finally{f.clean()}
 });
