@@ -32,6 +32,8 @@ const HEX64=/^[a-f0-9]{64}$/;
 const H=x=>crypto.createHash('sha256').update(x).digest('hex');
 const fail=x=>{throw Error('u06_signed_root_lock_'+x)};
 const need=(v,x)=>{if(!v)fail(x)};
+// lstat, not existsSync: a dangling symlink is still an untrusted leaf.
+const absent=p=>{try{fs.lstatSync(p);return false}catch(e){if(e.code==='ENOENT')return true;throw e}};
 const dSync=dir=>{
  const fd=fs.openSync(dir,fs.constants.O_RDONLY|fs.constants.O_DIRECTORY|fs.constants.O_NOFOLLOW);
  try{fs.fsyncSync(fd)}finally{fs.closeSync(fd)}
@@ -115,8 +117,8 @@ function createUnprivilegedSignedLockFixture({sharedRoot,authRoot}={}){
    /^\/tmp\/u06-root-lease-test-[A-Za-z0-9]{6}$/.test(nativeRoot)&&
    fs.realpathSync(nativeRoot)===nativeRoot,'native_root_untrusted');
   dir(nativeRoot,uid);
-  need(!fs.existsSync(path.join(nativeRoot,'u06-exclusive.lease'))&&
-   !fs.existsSync(path.join(nativeRoot,'u06-rollback.json')),
+  need(absent(path.join(nativeRoot,'u06-exclusive.lease'))&&
+   absent(path.join(nativeRoot,'u06-rollback.json')),
    'prior_native_transaction_present');
   need(UUID.test(requestId||''),'native_request_id_invalid');
   // Native's authoritative replay reservation requires a PREPARED journal.
@@ -224,7 +226,7 @@ function createUnprivilegedSignedLockFixture({sharedRoot,authRoot}={}){
     /^\/tmp\/u06-root-lease-test-[A-Za-z0-9]{6}$/.test(root)&&
     fs.realpathSync(root)===root,'native_root_not_bound');
    dir(root,uid);
-   need(!fs.existsSync(path.join(root,'u06-exclusive.lease')),
+   need(absent(path.join(root,'u06-exclusive.lease')),
      'native_lease_must_be_released');
    const bytes=fixedOwned(path.join(root,'u06-rollback.json'),uid,2000000);
    let j;try{j=JSON.parse(bytes.toString('utf8'))}catch{fail('native_journal_invalid')}
