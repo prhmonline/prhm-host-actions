@@ -20,7 +20,6 @@ const path=require('node:path');
 const crypto=require('node:crypto');
 const Shared=require('./honartik-u06-shared-exclusive-lock-v1.cjs');
 const Reconcile=require('./honartik-u06-expired-owner-reconcile-l4-consumed-v1.cjs');
-const Native=require('./honartik-u06-native-root-l4-admission-v1.cjs');
 const NativeScope=require('./honartik-u06-native-l4-consumed-receipt-v1.cjs');
 const {decodeJws}=require('./honartik-universal-installer-l4-approval-verify-v1.cjs');
 
@@ -111,16 +110,44 @@ function createUnprivilegedSignedLockFixture({sharedRoot,authRoot}={}){
    reviewedPolicySha256:policySha,nowSec:Math.floor(Date.now()/1000)
   });
  }
- function verifyNative(token,requestId,paths,F,journal){
+ function verifyNative(token,requestId,paths,F){
   need(UUID.test(requestId||''),'native_request_id_invalid');
-  const admit=Native.createDisposableRootL4Fixture(requestId,()=>token,paths);
-  const verified=admit.verifyNativeConsumedSignedLevel4(F,journal);
-  // CRITICAL: verify ONLY. Reserving the Native fence here would burn the
-  // same approval a second time when Coordinator.coordinateOwnerU06 invokes
-  // the existing native.reserveNativeLevel4ReplayFence AFTER its durable
-  // PREPARED journal. The single authoritative Native fence owner is the
-  // Native coordinator, not this shared lock admission candidate.
-  return verified;
+  // Native's authoritative replay reservation requires a PREPARED journal.
+  // A new shared lock must be acquired BEFORE that journal can exist:
+  // pre-admission verifies signed/consumed L4 without pretending a journal
+  // already exists or modifying the Native fence. Only the coordinator may
+  // later bind its REAL prepared journal and durably spend the Native fence.
+  need(paths&&typeof paths==='object'&&!Array.isArray(paths)&&
+    Object.keys(paths).sort().join('|')===
+      ['policy','issuer','consumed','fence','policy_sha256'].sort().join('|'),
+    'native_preflight_paths_invalid');
+  const root=path.dirname(paths.policy);
+  need(/^\/tmp\/u06-root-l4-test-[A-Za-z0-9]{6}$/.test(root)&&
+    fs.realpathSync(root)===root&&
+    paths.issuer===path.join(root,'issuer.pem')&&
+    paths.consumed===path.join(root,'consumed')&&
+    paths.fence===path.join(root,'fence'),'native_fixture_scope_invalid');
+  dir(root,uid);dir(paths.consumed,uid);dir(paths.fence,uid);
+  need(F&&F.operation==='honartik_back.production.native_backup'&&
+    F.reviewed_l4_policy_sha256===paths.policy_sha256&&
+    HEX64.test(paths.policy_sha256||''),'native_policy_scope_invalid');
+  const policyBytes=fixedOwned(paths.policy,uid);
+  const issuerPublicKey=fixedOwned(paths.issuer,uid,8192);
+  need(H(policyBytes)===paths.policy_sha256,'native_policy_preimage_drift');
+  const claims=decodeJws(token,issuerPublicKey);
+  need(UUID.test(claims.approval_id||'')&&
+    claims.request_id===requestId,'native_signed_request_drift');
+  const consumedLedger=JSON.parse(fixedOwned(path.join(paths.consumed,
+    claims.approval_id+'.json'),uid,16384).toString('utf8'));
+  const proof=NativeScope.verifySignedConsumedL4({
+    token,issuerPublicKey,consumedLedger,policyBytes,
+    reviewedPolicySha256:paths.policy_sha256,
+    nowSec:Math.floor(Date.now()/1000)
+  });
+  need(proof.operation===NativeScope.OPERATION&&
+    proof.request_id===requestId&&proof.signature_verified===true&&
+    proof.consumed_ledger_verified===true,'native_preflight_invalid');
+  return proof;
  }
  function beginAuthorized(kind,authorization){
   preflight(kind);
@@ -138,10 +165,10 @@ function createUnprivilegedSignedLockFixture({sharedRoot,authRoot}={}){
    verified=verifyReconciliation(authorization.token,authorization.reviewedPolicySha256);
   }else{
    need(Object.keys(authorization).sort().join('|')===
-    ['token','requestId','paths','F','journal'].sort().join('|'),
+    ['token','requestId','paths','F'].sort().join('|'),
     'native_authorization_shape');
    verified=verifyNative(authorization.token,authorization.requestId,
-     authorization.paths,authorization.F,authorization.journal);
+     authorization.paths,authorization.F);
   }
   need(verified.operation===ALLOWED[kind]&&
     verified.signature_verified===true&&
