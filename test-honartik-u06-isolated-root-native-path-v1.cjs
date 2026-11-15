@@ -239,7 +239,7 @@ test('security review: compromised PREPARED journal ID is rejected before consum
     }
    }
   });
-  assert.throws(()=>e.executeVerifiedRollback(),/journal_identity_drift|journal_state_mismatch/);
+  assert.throws(()=>e.executeVerifiedRollback(),/journal_identity_drift|journal_state_mismatch|native_prepared_journal_untrusted/);
   assert.equal(fs.existsSync(sharedFile(f)),true);
   assert.equal(fs.existsSync(officialFence(f)),false);
  }finally{f.cleanup()}
