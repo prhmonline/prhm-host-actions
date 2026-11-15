@@ -79,3 +79,29 @@ A new injected tampering test found that after a first successful `PREPARED` att
 ### Independent security reviewer acceptance conditions
 
 An eligible human reviewer, other than the PR author, must examine the exact SHA of this PR (including the newly added journal-ID binding and reattestation before consumption), record a review directly in GitHub, and confirm (1) challenge/OIDC actor closure, (2) Root file and approval trust ancestry, (3) post-fsync crash/rollback and one-use semantics, (4) possible symlink, TOCTOU, hardlink, and replaced inode cases, (5) end-to-end real Root Host Action admission and offsite recovery, and (6) no alternative unguarded privileged handler. **Until an authorized reviewer is identified and the signed production release separately approved, this is NO-GO.**
+
+## 2026-11-15 12:28:38 UTC — independently remeasured Production source preimages (READ-ONLY)
+
+The authorized Remote Desktop Commander session to `prhm-production.prhm.ir` performed **SHA256, stat, systemd status and bounded policy JSON metadata only**. It did not write files, issue credentials, execute Root actions, restart services, change DB/DNS, or read private key material.
+
+| File / source owner | Observed SHA-256 | Matches reviewed preimage |
+|---|---|---|
+| Agent API `/opt/prhm-agent-selfmaint/server.js` | `649941e1a2f77a9a1515327e47fa7176a0ae8f4602042750d53847e568deed0e` | Yes |
+| Root executor `/opt/prhm-agent-selfmaint-exec/server.js` | `34ce844008fbb7763250cdfa7859ca16360db1aa414fff77d107ffb0ccfa4121` | Yes |
+| Agent3 `/home/agent/ssh-mcp-server/src/plugins/hostActionsV2.js` | `01eb930e8e9177b8754ab5cf36a004cb69141d44b74e70b4d42dc3f0f33f1c56` | Yes |
+| Approval policy `/opt/prhm-company-control-plane/config/approval-policy.json` | `aa1563b168aea2725a0539373c54c45b2317b6320334c80a6d3a5e2723520934` | Yes |
+| Installed owner bridge `/opt/prhm-agent-selfmaint-exec/actions/honartik-u06-root-owner-proof-bridge-v1.cjs` | `35f1f79c397d66008b017014a3141d5518ff416f34fc18fbdaebc9087ecd449d` | Yes |
+
+Other bounded observed facts: Root service `prhm-agent-selfmaint-exec.service` **active**; native action `honartik_u06_native_backup_register_v1` present in installed policy and typed scopes and string-located in Root Executor and Agent3 sources; reconciliation action `honartik_u06_expired_owner_oidc_reconcile_v1` absent from those policy/source checks. Approval Center `/var/lib/private/prhm-company-approval` and its consumed directory are owned by UID/GID **65039** mode 0700; issuer public key UID/GID 65039 mode 0600. Native Root runtime and `owner-oidc` directories are UID/GID 0 mode 0700. The old owner challenge is root-owned 0600; its `expires_at_ms=1794650615085` corresponds to **2026-11-14 10:03:35.085Z**. No sealed evidence, reconciliation journal, native exclusive lease or native rollback journal was present at observation time.
+
+### Release-readiness verdict
+
+`honartik-u06-live-root-readonly-snapshot-v1.cjs` and its negative tests pin these measured baseline values. Its output is **NO-GO even when the exact snapshot matches**: a matching preimage only establishes a candidate *starting state* for future reviewed changes. Unexpected source SHA drift, identity/permission drift, unplanned registration, leftover evidence/journal/lease, unexpired/missing challenge or an observation older than 15 minutes fail closed. The test fixture is a **historical snapshot**; refreshing it does not remotely inspect Production and a future deploy must remeasure independently.
+
+**Current decisive blockers:**
+1. Recovery action is not registered on the installed Approval Center/Root/Agent3 sources; the expired challenge must not be silently overwritten or replayed.
+2. The signed full Root shared lock is not installed; the fixture-only gate refuses UID0.
+3. No independent GitHub security reviewer has approved PR #295, and no fresh per-scope owner-signed one-use L4 permit authorizes a specific installation.
+4. No end-to-end Production-equivalent Native backup/isolated restore/independent offsite financial recovery has yet passed for this proposed integration.
+
+**Release remains strictly NO-GO.** This source-only preflight does not issue or infer authorization, mutate the live approval policy, register a Host Action, install files, reset an owner challenge, or invoke a backup.
