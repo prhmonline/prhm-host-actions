@@ -194,6 +194,21 @@ test('security review: active Native lease after rollback blocks shared unlock',
  }finally{f.cleanup()}
 });
 
+test('security review: dangling Native lease symlink also blocks signed shared unlock',()=>{
+ const f=fixture();try{
+  const e=Entry.createIsolatedNativeRootPath({...f.cfg,
+   checkpoint:mark=>{
+    if(mark==='native_unlocked'){
+     fs.symlinkSync('/nonexistent-u06-lock-target',nativeFile(f));
+    }
+   }
+  });
+  assert.throws(()=>e.executeVerifiedRollback(),/native_lease_must_be_released/);
+  assert.equal(fs.existsSync(sharedFile(f)),true);
+  assert.equal(fs.lstatSync(nativeFile(f)).isSymbolicLink(),true);
+ }finally{f.cleanup()}
+});
+
 test('no Root action, DB backup, network or production CLI is exported',()=>{
  assert.equal(Entry.ROOT_ACTION_REGISTERED,false);
  assert.equal(Entry.PRODUCTION_APPLY,false);
