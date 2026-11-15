@@ -11,7 +11,7 @@ const ID='11111111-1111-4111-8111-111111111111';
 const RID='22222222-2222-4222-8222-222222222222';
 const uuid=()=>crypto.randomUUID();
 const modulePath=path.join(__dirname,'honartik-u06-root-signed-shared-lock-candidate-v1.cjs');
-const sourceError=/u06_signed_root_lock_|u06_shared_lock_|u06_expired_reconcile_l4_|u06_native_root_l4_|prhm_u06_l4_/;
+const sourceError=/u06_signed_root_lock_|u06_shared_lock_|u06_expired_reconcile_l4_|u06_native_root_l4_|prhm_u06_l4_|honartik_l4_receipt_/;
 function write600(f,body){fs.writeFileSync(f,body,{mode:0o600});}
 function signed(pair,claims){
  const pub=pair.publicKey.export({format:'der',type:'spki'});
@@ -49,8 +49,9 @@ function setup(kind='reconcile'){
  const nativePaths={policy:path.join(nRoot,'policy.json'),issuer:path.join(nRoot,'issuer.pem'),
   consumed:path.join(nRoot,'consumed'),fence:path.join(nRoot,'fence'),policy_sha256:null};
  const roots=[sharedRoot,authRoot,nRoot];
+ fs.mkdirSync(path.join(authRoot,'consumed'),{mode:0o700});
  const ledgerDir=kind==='reconcile'?path.join(authRoot,'consumed'):nativePaths.consumed;
- fs.mkdirSync(ledgerDir,{mode:0o700});
+ if(kind==='native')fs.mkdirSync(ledgerDir,{mode:0o700});
  if(kind==='native')fs.mkdirSync(nativePaths.fence,{mode:0o700});
  const policyDoc=policy(kind,'2026-11-15-signed-root-gate-test');
  const p=Buffer.from(JSON.stringify(policyDoc,null,2)+'\n');
