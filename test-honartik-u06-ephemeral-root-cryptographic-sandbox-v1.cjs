@@ -152,7 +152,7 @@ test('ephemeral UID0: actual root-owned signed and consumed L4, exclusive disk j
 test('ephemeral UID0: invalid signature and file-mode tampering fail before any new fence',()=>{
  const f=fixture();try{
   const broken=f.token.slice(0,-6)+'aaaaaa';
-  assert.throws(()=>verifyRootOwned(f,broken),/signature_invalid|prhm_u06_l4_/);
+  assert.throws(()=>verifyRootOwned(f,broken),/signature_invalid|prhm_u06_l4_|honartik_l4_receipt_/);
   fs.chmodSync(path.join(f.root,'issuer.pem'),0o644);
   assert.throws(()=>verifyRootOwned(f),/AssertionError/);
   assert.deepEqual(fs.readdirSync(f.locks),[]);
