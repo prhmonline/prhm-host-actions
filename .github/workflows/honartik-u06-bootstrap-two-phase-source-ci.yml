@@ -1,0 +1,42 @@
+name: U06 Two-Phase Bootstrap Source Closure — NO GO
+on:
+  pull_request:
+    paths:
+      - 'honartik-u06-bootstrap-two-phase-review-v1.cjs'
+      - 'test-honartik-u06-bootstrap-two-phase-review-v1.cjs'
+      - '.github/workflows/honartik-u06-bootstrap-two-phase-source-ci.yml'
+permissions:
+  contents: read
+jobs:
+  exact-git-sha25-review-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Refuse release without independent review and two separate signed stages
+        run: |
+          set -euo pipefail
+          test "$(id -u)" != 0
+          node --check honartik-u06-bootstrap-two-phase-review-v1.cjs
+          node --check test-honartik-u06-bootstrap-two-phase-review-v1.cjs
+          node --test test-honartik-u06-bootstrap-two-phase-review-v1.cjs
+          node - <<'NODE'
+          const assert=require('node:assert/strict');
+          const r=require('./honartik-u06-bootstrap-two-phase-review-v1.cjs');
+          assert.equal(r.PRODUCTION_RELEASE_AUTHORIZED,false);
+          assert.equal(r.ROOT_ENTRYPOINT,false);
+          assert.equal(r.REGISTRATION_HANDLER,false);
+          assert.equal(r.POLICY_APPLY,false);
+          assert.equal(r.LEVEL4_ISSUER,false);
+          assert.equal(Object.keys(r.BLOB_SHA1).length,25);
+          console.log('U06_SOURCE_CLOSURE_25=PASS');
+          console.log('TWO_PHASE_OWNER_SIGNED_REGISTRATION=NOT_AUTHORIZED');
+          console.log('INDEPENDENT_REVIEW=NOT_RECORDED');
+          console.log('RECOVERY_LEVEL4=NOT_CONSUMED');
+          console.log('PRODUCTION_DEPLOY_AUTHORIZED=FALSE');
+          NODE
