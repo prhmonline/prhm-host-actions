@@ -2,11 +2,6 @@ name: U06 Independent Current-SHA Reviewer — BLOCKING NO-GO
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
-    paths:
-      - 'honartik-u06-root-signed-shared-lock-candidate-v1.cjs'
-      - 'honartik-u06-bootstrap-two-phase-review-v1.cjs'
-      - 'honartik-u06-independent-review-evidence-v1.cjs'
-      - '.github/workflows/honartik-u06-independent-review-gate.yml'
   pull_request_review:
     types: [submitted, dismissed]
 permissions:
