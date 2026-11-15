@@ -89,7 +89,7 @@ function auditReadOnly({host,ownerBytes,policy}={}){
  });
 }
 module.exports=Object.freeze({
- PATHS,SHA256,KIND,NATIVE_ACTION,NATIVE_OPERATION,auditReadOnly,
+ PATHS,SHA256,KIND,NATIVE_ACTION,NATIVE_OPERATION,strictPolicy,auditReadOnly,
  ROOT_INSTALLER_EXPORTED:false,LEVEL4_ISSUER:false,PRODUCTION_AUTHORIZED:false
 });
 if(require.main===module){
