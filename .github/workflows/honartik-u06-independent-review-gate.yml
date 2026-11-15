@@ -1,0 +1,93 @@
+name: U06 Independent Current-SHA Reviewer — BLOCKING NO-GO
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'honartik-u06-root-signed-shared-lock-candidate-v1.cjs'
+      - 'honartik-u06-bootstrap-two-phase-review-v1.cjs'
+      - 'honartik-u06-independent-review-evidence-v1.cjs'
+      - '.github/workflows/honartik-u06-independent-review-gate.yml'
+  pull_request_review:
+    types: [submitted, dismissed]
+permissions:
+  contents: read
+  pull-requests: read
+jobs:
+  independent-writer-review:
+    if: ${{ github.event.pull_request.number }} == 295
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Actual GitHub review and collaborator permission at exact PR SHA
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          node --check honartik-u06-independent-review-evidence-v1.cjs
+          node - <<'NODE'
+          'use strict';
+          const fs=require('node:fs');
+          const Gate=require('./honartik-u06-independent-review-evidence-v1.cjs');
+          const api='https://api.github.com';
+          const token=process.env.GITHUB_TOKEN;
+          const head=process.env.EXPECTED_HEAD_SHA;
+          const event=JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH,'utf8'));
+          if(!token||!event.pull_request||event.pull_request.number!==295||
+             event.pull_request.head.sha!==head||
+             event.repository?.full_name!==Gate.REPO||
+             event.pull_request.user?.login!==Gate.AUTHOR)throw Error('invalid_live_review_event');
+          async function getJson(path){
+            const r=await fetch(api+path,{headers:{
+              Authorization:'Bearer '+token,Accept:'application/vnd.github+json',
+              'X-GitHub-Api-Version':'2022-11-28'
+            },redirect:'error'});
+            if(!r.ok)throw Error('github_review_api_failed_'+r.status);
+            return r.json();
+          }
+          (async()=>{
+            let raw=[];
+            for(let n=1;n<=5;n++){
+              const chunk=await getJson('/repos/prhmonline/prhm-host-actions/pulls/295/reviews?per_page=100&page='+n);
+              if(!Array.isArray(chunk))throw Error('review_response_not_array');
+              raw.push(...chunk);
+              if(chunk.length<100)break;
+            }
+            const reviews=raw.filter(r=>
+              typeof r.submitted_at==='string'&&
+              /^[a-f0-9]{40}$/.test(r.commit_id||'')&&
+              r.user?.login&&
+              ['APPROVED','CHANGES_REQUESTED','COMMENTED','DISMISSED'].includes(r.state)
+            ).map(r=>({
+              user:r.user.login,state:r.state,commit_id:r.commit_id,
+              submitted_at:r.submitted_at
+            }));
+            const perms={};
+            const candidates=[...new Set(reviews.filter(r=>r.state==='APPROVED')
+               .map(r=>r.user.toLowerCase()))].filter(u=>
+                u!==Gate.AUTHOR&&/^[a-z0-9][a-z0-9-]{0,38}$/.test(u)&&
+                !u.endsWith('-bot')&&!u.includes('[bot]')
+               );
+            for(const login of candidates){
+              const p=await getJson('/repos/prhmonline/prhm-host-actions/collaborators/'+login+'/permission');
+              perms[login]=p.permission;
+            }
+            const result=Gate.assess({repository:Gate.REPO,prNumber:Gate.PR,
+              author:Gate.AUTHOR,headSha:head,reviews,permissions:perms});
+            console.log('GITHUB_SAME_SHA_INDEPENDENT_WRITER_REVIEW='+
+              (result.independent_same_sha_collaborator_approval?'RECORDED':'MISSING'));
+            console.log('ROOT_STAGE_A_INSTALL_AUTHORIZED=FALSE');
+            console.log('PRODUCTION_RELEASE_AUTHORIZED=FALSE');
+            if(!result.independent_same_sha_collaborator_approval){
+              console.error('U06 REVIEW BLOCKED: another GitHub collaborator with write access must approve exact current PR SHA. This check alone never authorizes Root.');
+              process.exitCode=1;
+            }
+          })().catch(e=>{console.error('U06 review verification failed: '+e.message);process.exitCode=1});
+          NODE
