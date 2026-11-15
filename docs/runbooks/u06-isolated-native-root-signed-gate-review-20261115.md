@@ -105,3 +105,22 @@ Other bounded observed facts: Root service `prhm-agent-selfmaint-exec.service` *
 4. No end-to-end Production-equivalent Native backup/isolated restore/independent offsite financial recovery has yet passed for this proposed integration.
 
 **Release remains strictly NO-GO.** This source-only preflight does not issue or infer authorization, mutate the live approval policy, register a Host Action, install files, reset an owner challenge, or invoke a backup.
+
+## 2026-11-15 13:00 UTC — immutable 25-asset review handoff, bootstrap circularity resolved (SOURCE ONLY)
+
+A targeted **read-only** inspection of the installed Approval Center and Root Dispatcher showed:
+
+- The installed policy contains **77 operation names** and the U06 Native critical L4 action `host_action.honartik_u06_native_backup_register_v1` with its typed scope, but no `host_action.honartik_u06_expired_owner_oidc_reconcile_v1` operation or scope.
+- The installed Root Executor `applyHostActionV2` has an explicit fail-closed stub for Native: `throw new Error('u06_native_root_dispatch_not_installed')`. Policy/Agent3 recognition alone is therefore **not an installed Native backup executor**.
+- The installed generic `host_action_v2_installer_v1` is **Level 3**; its Root helper verifies a fixed result target `honartik_git_worktree_fixed_v1`. That legacy installer is **not authorized as a general-purpose U06 Root/Approval-policy registrar**, and must not be reused to work around U06's Level-4 policy.
+- An existing L4 operation for Native is scoped to Native only; it cannot be substituted as approval to register recovery.
+
+**Two distinct security stages are necessary:**
+
+**Stage A — registration/bootstrap**: Independently review a complete exact-SHA bundle of Root Executor, Agent API, Agent3 source, Approval Center policy postimage and all transitive Root shared-lock logic. Establish a separately authorized and independently signed **installation/registration operation** with an explicit, eligible bootstrap authority. **The recovery operation being introduced cannot authorize its own registration.** No such specific Stage-A authority was verified in the current live baseline.
+
+**Stage B — expired-challenge reconciliation**: Only after Stage A is fully installed, verified and journaled, issue and consume **a new one-use critical Level-4 approval for the newly registered exact reconciliation operation**, verify source/policy/rollback, run with the same Root shared lock, and archive/retire the old expired challenge without replay. Fresh GitHub owner OIDC comes **after** successful reconciliation, and Native backup has an entirely separate L4 and recovery gate.
+
+`honartik-u06-bootstrap-two-phase-review-v1.cjs` records the **25 original Git blobs from source commit `f2ec0e22f91ef5ef18e0e8606a9dec5c31d3434d`**, rejects any byte drift, changed source closure, extra source or mismatched host/commit, and returns **NO-GO regardless of caller-supplied approval booleans**. It is a *baseline review pack*, not a full registration patch: real Agent API, Root Executor, Agent3 and policy postimages remain unimplemented/uninstalled. The review pack and CI files themselves are newer than the pinned baseline commit and must be separately reviewed at the actual PR head.
+
+**No signature issued, no Production installation, no Native dispatch enablement, and no challenge reset were performed.** The independent reviewer remains unassigned, and the PR is Draft/unmerged. The next legitimate release-planning milestone is a concrete **separately authorized Stage-A installer design and second-person review**, not activation using Level 3 or replay of the already consumed bootstrap.
