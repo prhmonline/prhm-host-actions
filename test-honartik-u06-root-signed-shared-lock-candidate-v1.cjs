@@ -6,6 +6,7 @@ const {spawn,spawnSync}=require('node:child_process');
 const Gate=require('./honartik-u06-root-signed-shared-lock-candidate-v1.cjs');
 const Recon=require('./honartik-u06-expired-owner-reconcile-l4-consumed-v1.cjs');
 const Native=require('./honartik-u06-native-l4-consumed-receipt-v1.cjs');
+const NativeGate=require('./honartik-u06-native-root-l4-admission-v1.cjs');
 const H=x=>crypto.createHash('sha256').update(x).digest('hex');
 const ID='11111111-1111-4111-8111-111111111111';
 const RID='22222222-2222-4222-8222-222222222222';
@@ -95,7 +96,7 @@ function setup(kind='reconcile'){
   create:()=>Gate.createUnprivilegedSignedLockFixture({sharedRoot,authRoot}),
   grant:(tokenValue=token)=>kind==='reconcile'?
    {token:tokenValue,reviewedPolicySha256:policyHash}:
-   {token:tokenValue,...nativeContext},
+   {token:tokenValue,requestId,paths:nativePaths,F:nativeContext.F},
   clean:()=>roots.forEach(d=>fs.rmSync(d,{recursive:true,force:true}))
  };
 }
@@ -152,12 +153,28 @@ test('one signed reconciliation L4 cannot authorize Native or any of three unreg
     /native_authorization_shape/);
  }finally{f.clean()}
 });
-test('Native uses real independent L4 verifier and durable consumed fence, without reusing reconcile approval',()=>{
+test('Native admission verifies signed/consumed L4 but ONLY prepared-journal coordinator spends authoritative fence',()=>{
  const f=setup('native');try{
   const g=f.create(),s=g.beginAuthorized('native_backup_transaction',f.grant());
+  const nativeFence=path.join(f.nRoot,'fence',f.approvalId+'.json');
+  const sharedFence=path.join(f.sharedRoot,'u06-owner-shared-signed-fences',f.approvalId+'.used');
   assert.equal(s.operation,Native.OPERATION);
   assert.equal(g.assertAuthorized(s,'native_backup_transaction'),true);
-  assert.equal(fs.statSync(path.join(f.nRoot,'fence',f.approvalId+'.json')).mode&0o777,0o600);
+  assert.equal(fs.existsSync(nativeFence),false,
+    'pre-admission must NEVER consume the official Native replay fence');
+  const admitted=JSON.parse(fs.readFileSync(sharedFence,'utf8'));
+  assert.equal(admitted.native_l4_fence_reserved_by_gate,false);
+  assert.equal(admitted.native_l4_fence_owner,'native_coordinator_only');
+  // Simulate the coordinator AFTER it has prepared a durable journal:
+  // reuse the unchanged native verifier and fsynced O_EXCL replay fence ONCE.
+  const {requestId,paths,F,journal}=f.nativeContext;
+  const native=NativeGate.createDisposableRootL4Fixture(requestId,()=>f.token,paths);
+  const proof=native.verifyNativeConsumedSignedLevel4(F,journal);
+  assert.equal(native.reserveNativeLevel4ReplayFence(F,journal,proof),true);
+  assert.equal(fs.statSync(nativeFence).mode&0o777,0o600);
+  const again=NativeGate.createDisposableRootL4Fixture(requestId,()=>f.token,paths);
+  const anotherProof=again.verifyNativeConsumedSignedLevel4(F,journal);
+  assert.throws(()=>again.reserveNativeLevel4ReplayFence(F,journal,anotherProof),/EEXIST/);
   assert.equal(g.finishFixture(s,terminal(s)).released,true);
   assert.throws(()=>g.beginAuthorized('native_backup_transaction',f.grant()),/EEXIST|busy_or_unrecovered/);
  }finally{f.clean()}
