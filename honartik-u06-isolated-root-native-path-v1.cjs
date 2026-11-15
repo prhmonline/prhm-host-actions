@@ -95,6 +95,10 @@ function createIsolatedNativeRootPath({
   need(shared.attestPreparedNativeJournal(session,journal)===true,
    'prepared_journal_not_session_bound');
   step('prepared_journal');
+  // Re-attest the real PREPARED journal immediately before consuming L4:
+  // a change after the first attestation must not burn the official fence.
+  need(shared.attestPreparedNativeJournal(session,journal)===true,
+   'prepared_journal_changed_before_l4');
   const l4=NativeL4.createDisposableRootL4Fixture(requestId,()=>token,nativePolicy);
   const F=requested.F;
   const proof=l4.verifyNativeConsumedSignedLevel4(F,journal);
