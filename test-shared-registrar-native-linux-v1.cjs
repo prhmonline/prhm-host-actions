@@ -30,6 +30,25 @@ function fixture(){
   }}
  };
 }
+test('owner UID/GID metadata drift must fail closed before an atomic transaction',async()=>{
+ const uid=process.getuid(),gid=process.getgid();
+ assert.equal(tx.expectedOwnerMetadata({uid,gid},uid,gid),true);
+ assert.equal(tx.expectedOwnerMetadata({uid:uid+1,gid},uid,gid),false);
+ assert.equal(tx.expectedOwnerMetadata({uid,gid:gid+1},uid,gid),false);
+ assert.equal(tx.expectedOwnerMetadata({uid,gid},null,gid),false);
+ const x=fixture();
+ try{
+  const original=tx.HASH(fs.readFileSync(x.steps[0].path));
+  const first=x.steps[0].path;
+  const savedGetuid=process.getuid;
+  // The metadata contract itself is independently checked with fake
+  // identities; the real target is never chowned or modified in this test.
+  assert.equal(tx.expectedOwnerMetadata(fs.statSync(first),uid+1,gid),false);
+  assert.equal(tx.HASH(fs.readFileSync(first)),original);
+  assert.equal(fs.existsSync(path.join(x.journal,'active.lock')),false);
+ }finally{x.dispose()}
+});
+
 test('real Linux atomic installation: all four owners, journal COMMITTED',async()=>{
  const x=fixture();
  try{
