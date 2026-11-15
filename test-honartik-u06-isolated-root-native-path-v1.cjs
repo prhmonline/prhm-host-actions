@@ -109,7 +109,7 @@ test('real native lease and durable signed L4 fence integrate with shared gate o
   assert.equal(fs.statSync(sharedFence(f)).mode&0o777,0o600);
   assert.equal(entry.inspect().official_fence_files,1);
   assert.throws(()=>Entry.createIsolatedNativeRootPath(f.cfg).executeVerifiedRollback(),
-   /EEXIST|existing_native_transaction|busy_or_unrecovered/);
+   /EEXIST|existing_native_transaction|busy_or_unrecovered|prior_native_transaction_present/);
  }finally{f.cleanup()}
 });
 for(const step of ['shared_admitted','native_locked','prepared_journal',
@@ -160,6 +160,40 @@ test('tampered durable terminal journal cannot be used to release shared lock',(
   assert.equal(fs.existsSync(nativeFile(f)),true);
  }finally{f.cleanup()}
 });
+test('security review: 64-hex terminal receipt mismatching disk journal cannot unlock',()=>{
+ const f=fixture();try{
+  const e=Entry.createIsolatedNativeRootPath({...f.cfg,
+   checkpoint:mark=>{
+    if(mark==='native_unlocked'){
+     const jfile=journalFile(f);
+     const d=JSON.parse(fs.readFileSync(jfile,'utf8'));
+     // Keep valid-looking ROLLED_BACK fields but change bytes behind
+     // the previously computed SHA. Shape validation alone is insufficient.
+     d.audit_note='changed_after_terminal_hash';
+     fs.writeFileSync(jfile,JSON.stringify(d)+'\n',{mode:0o600});
+    }
+   }
+  });
+  assert.throws(()=>e.executeVerifiedRollback(),/native_terminal_sha_mismatch/);
+  assert.equal(fs.existsSync(sharedFile(f)),true);
+  assert.equal(fs.existsSync(nativeFile(f)),false);
+  assert.equal(fs.existsSync(officialFence(f)),true);
+ }finally{f.cleanup()}
+});
+test('security review: active Native lease after rollback blocks shared unlock',()=>{
+ const f=fixture();try{
+  const e=Entry.createIsolatedNativeRootPath({...f.cfg,
+   checkpoint:mark=>{
+    if(mark==='native_unlocked'){
+     fs.writeFileSync(nativeFile(f),'{"state":"FORGED"}\n',{flag:'wx',mode:0o600});
+    }
+   }
+  });
+  assert.throws(()=>e.executeVerifiedRollback(),/native_lease_must_be_released/);
+  assert.equal(fs.existsSync(sharedFile(f)),true);
+ }finally{f.cleanup()}
+});
+
 test('no Root action, DB backup, network or production CLI is exported',()=>{
  assert.equal(Entry.ROOT_ACTION_REGISTERED,false);
  assert.equal(Entry.PRODUCTION_APPLY,false);
