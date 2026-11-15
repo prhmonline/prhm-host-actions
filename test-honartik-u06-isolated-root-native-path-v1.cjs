@@ -209,6 +209,42 @@ test('security review: dangling Native lease symlink also blocks signed shared u
  }finally{f.cleanup()}
 });
 
+test('security review: terminal journal from a different transaction cannot unlock signed Native session',()=>{
+ const f=fixture();try{
+  const e=Entry.createIsolatedNativeRootPath({...f.cfg,
+   checkpoint:mark=>{
+    if(mark==='native_unlocked'){
+     const file=journalFile(f);
+     const j=JSON.parse(fs.readFileSync(file,'utf8'));
+     j.id=crypto.randomBytes(20).toString('hex');
+     fs.writeFileSync(file,JSON.stringify(j)+'\n',{mode:0o600});
+    }
+   }
+  });
+  assert.throws(()=>e.executeVerifiedRollback(),/native_transaction_journal_id_mismatch/);
+  assert.equal(fs.existsSync(sharedFile(f)),true);
+  assert.equal(fs.existsSync(nativeFile(f)),false);
+  assert.equal(fs.existsSync(officialFence(f)),true);
+ }finally{f.cleanup()}
+});
+test('security review: compromised PREPARED journal ID is rejected before consuming official L4',()=>{
+ const f=fixture();try{
+  const e=Entry.createIsolatedNativeRootPath({...f.cfg,
+   checkpoint:mark=>{
+    if(mark==='prepared_journal'){
+     const file=journalFile(f);
+     const j=JSON.parse(fs.readFileSync(file,'utf8'));
+     j.id=crypto.randomBytes(20).toString('hex');
+     fs.writeFileSync(file,JSON.stringify(j)+'\n',{mode:0o600});
+    }
+   }
+  });
+  assert.throws(()=>e.executeVerifiedRollback(),/journal_identity_drift/);
+  assert.equal(fs.existsSync(sharedFile(f)),true);
+  assert.equal(fs.existsSync(officialFence(f)),false);
+ }finally{f.cleanup()}
+});
+
 test('no Root action, DB backup, network or production CLI is exported',()=>{
  assert.equal(Entry.ROOT_ACTION_REGISTERED,false);
  assert.equal(Entry.PRODUCTION_APPLY,false);
