@@ -94,6 +94,7 @@ function createUnprivilegedSignedLockFixture({sharedRoot,authRoot}={}){
  dir(ledgerDir,uid);
  createDirectoryOnce(fenceDir,uid);
  const sessions=new WeakSet();
+ const preparedNative=new WeakMap();
  function preflight(kind){
   need(Object.hasOwn(ALLOWED,kind),'independent_signed_l4_scope_not_registered');
   dir(sharedRoot,uid);dir(authRoot,uid);dir(ledgerDir,uid);dir(fenceDir,uid);
@@ -216,6 +217,31 @@ function createUnprivilegedSignedLockFixture({sharedRoot,authRoot}={}){
    'signed_fence_drift');
   return true;
  }
+ // Fixture-only: bind the real on-disk Native PREPARED journal ID to the
+ // already-approved signed session, before the coordinator may consume L4.
+ // A caller-provided {id} alone is insufficient. No Root API is exported.
+ function attestPreparedNativeJournal(session,journal){
+  assertAuthorized(session,'native_backup_transaction');
+  need(session.nativeRoot&&journal&&typeof journal==='object'&&
+   /^[a-f0-9]{40}$/.test(journal.id||'')&&
+   journal.state==='PREPARED'&&journal.durable===true,
+   'native_prepared_journal_shape');
+  const bytes=fixedOwned(path.join(session.nativeRoot,'u06-rollback.json'),uid,2000000);
+  let recorded;try{recorded=JSON.parse(bytes.toString('utf8'))}
+  catch{fail('native_prepared_journal_invalid')}
+  need(recorded.schema==='prhm.u06.root-rollback.v1'&&
+   recorded.id===journal.id&&recorded.state==='PREPARED'&&
+   HEX64.test(recorded.profile_sha256||'')&&
+   HEX64.test(recorded.adapter_sha256||'')&&
+   typeof recorded.original_profile_base64==='string',
+   'native_prepared_journal_untrusted');
+  need(H(Buffer.from(recorded.original_profile_base64,'base64'))===
+   recorded.profile_sha256,'native_prepared_preimage_corrupt');
+  const existing=preparedNative.get(session);
+  need(!existing||existing.id===recorded.id,'prepared_journal_rebound');
+  preparedNative.set(session,Object.freeze({id:recorded.id,profile_sha256:recorded.profile_sha256}));
+  return true;
+ }
  // Fixture only. Production terminal release must validate the real
  // journal and independent Root host recovery, not a caller's boolean.
  function finishFixture(session,terminalRecord){
@@ -230,6 +256,10 @@ function createUnprivilegedSignedLockFixture({sharedRoot,authRoot}={}){
      'native_lease_must_be_released');
    const bytes=fixedOwned(path.join(root,'u06-rollback.json'),uid,2000000);
    let j;try{j=JSON.parse(bytes.toString('utf8'))}catch{fail('native_journal_invalid')}
+   const prepared=preparedNative.get(session);
+   need(prepared&&j.id===prepared.id&&
+    j.profile_sha256===prepared.profile_sha256,
+    'native_transaction_journal_id_mismatch');
    need(j.schema==='prhm.u06.root-rollback.v1'&&
     /^[a-f0-9]{40}$/.test(j.id||'')&&j.state==='ROLLED_BACK'&&
     j.rollback_original_profile_verified===true&&
@@ -251,7 +281,7 @@ function createUnprivilegedSignedLockFixture({sharedRoot,authRoot}={}){
   return shared.finish(session.binding.lease,session.kind,{terminalProof:true});
  }
  return Object.freeze({
-  beginAuthorized,assertAuthorized,finishFixture,
+  beginAuthorized,assertAuthorized,attestPreparedNativeJournal,finishFixture,
   inspect:()=>shared.inspect(),
   authorizedKinds:Object.freeze(Object.keys(ALLOWED)),
   sourceOnly:true
