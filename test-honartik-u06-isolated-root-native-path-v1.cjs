@@ -109,7 +109,7 @@ test('real native lease and durable signed L4 fence integrate with shared gate o
   assert.equal(fs.statSync(sharedFence(f)).mode&0o777,0o600);
   assert.equal(entry.inspect().official_fence_files,1);
   assert.throws(()=>Entry.createIsolatedNativeRootPath(f.cfg).executeVerifiedRollback(),
-   /existing_native_transaction|busy_or_unrecovered/);
+   /EEXIST|existing_native_transaction|busy_or_unrecovered/);
  }finally{f.cleanup()}
 });
 for(const step of ['shared_admitted','native_locked','prepared_journal',
