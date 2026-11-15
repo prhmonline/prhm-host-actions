@@ -105,5 +105,5 @@ test('no installer, signer or privileged mutation entrypoint exposed',()=>{
  assert.deepEqual(Object.keys(m.OWNERS).sort(),
   ['base','executor','mcp','policy']);
  assert.equal(m.BACKUP_DIR,
-  '/var/backups/prhm-host-actions-registration/preinstall.EHclsBk3');
+  '/var/backups/prhm-host-actions-registration/preinstall.20261116-649941e1');
 });

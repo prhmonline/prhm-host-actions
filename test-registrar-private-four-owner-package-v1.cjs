@@ -8,10 +8,10 @@ const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypt
 const assert=require('node:assert/strict');
 const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
 const expect=[
- ['base.server.js','4c29d01a248d59ee85754dfa5a59e8132fe22e6b34ef04324228c16c88727406','d28dc9b45a6ca97a9c8aed0f1b22c684c34b5740a9f116ec7cec12efa22ee5bf'],
- ['executor.server.js','410406ba0965ef3a5cad6da6306a85335e38acc3637fb6ed60fa42200a10c2e0','16dc7df45c8d6dbcf1501a9bdae3445e516faf7b8bef3be2d812263b2869940c'],
- ['mcp.hostActionsV2.js','bd768f992dab75710558e3f47187c311c2ee5b5ec6f5751a74e0bbfa64729166','aceea9d7d53bbe58c164dbacb731fdcec1fd423eea563a37db5edd4983cbfb3c'],
- ['approval-policy.json','148fe2a724befc15cd8c731b0195d83e254d39215792a5084b70dd5b5c178174','eb9c2becba1e65033cde46eceef5f8e76e4545a35f99cb4e45a316277680bda0']
+ ['base.server.js','649941e1a2f77a9a1515327e47fa7176a0ae8f4602042750d53847e568deed0e','452ac7670963c363f644d9625474aa014a4c1597cfd05dde9f0e656a0f8a2860'],
+ ['executor.server.js','34ce844008fbb7763250cdfa7859ca16360db1aa414fff77d107ffb0ccfa4121','cffa9924a926467a0706da51d24d926dc324efd91794289f9bae44955e1cdc5d'],
+ ['mcp.hostActionsV2.js','01eb930e8e9177b8754ab5cf36a004cb69141d44b74e70b4d42dc3f0f33f1c56','2bef3b13bfc7f0609be8e029b1e2f8096c4aa7ea80e56eefbaf93e4a74ea8229'],
+ ['approval-policy.json','aa1563b168aea2725a0539373c54c45b2317b6320334c80a6d3a5e2723520934','8eb49274cdf12d39823a6d39a05a22d24c9909e18748d0ea7bd7fed0956ce8e7']
 ];
 function includedInOrder(a,b){
  let i=0;for(const x of b.split('\n')){if(x===a.split('\n')[i])i++}
