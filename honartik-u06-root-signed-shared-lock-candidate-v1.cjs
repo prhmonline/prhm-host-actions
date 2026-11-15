@@ -110,7 +110,14 @@ function createUnprivilegedSignedLockFixture({sharedRoot,authRoot}={}){
    reviewedPolicySha256:policySha,nowSec:Math.floor(Date.now()/1000)
   });
  }
- function verifyNative(token,requestId,paths,F){
+ function verifyNative(token,requestId,paths,F,nativeRoot){
+  need(typeof nativeRoot==='string'&&
+   /^\/tmp\/u06-root-lease-test-[A-Za-z0-9]{6}$/.test(nativeRoot)&&
+   fs.realpathSync(nativeRoot)===nativeRoot,'native_root_untrusted');
+  dir(nativeRoot,uid);
+  need(!fs.existsSync(path.join(nativeRoot,'u06-exclusive.lease'))&&
+   !fs.existsSync(path.join(nativeRoot,'u06-rollback.json')),
+   'prior_native_transaction_present');
   need(UUID.test(requestId||''),'native_request_id_invalid');
   // Native's authoritative replay reservation requires a PREPARED journal.
   // A new shared lock must be acquired BEFORE that journal can exist:
@@ -157,7 +164,7 @@ function createUnprivilegedSignedLockFixture({sharedRoot,authRoot}={}){
   const lease=shared.begin(kind);
   // On any post-acquisition error, retain this lease for reviewed recovery:
   // NEVER automatically delete it or refund a possibly consumed approval.
-  let verified;
+  let verified,nativeRoot=null;
   if(kind==='expired_challenge_reconciliation'){
    need(Object.keys(authorization).sort().join('|')===
     ['token','reviewedPolicySha256'].sort().join('|'),
@@ -165,10 +172,11 @@ function createUnprivilegedSignedLockFixture({sharedRoot,authRoot}={}){
    verified=verifyReconciliation(authorization.token,authorization.reviewedPolicySha256);
   }else{
    need(Object.keys(authorization).sort().join('|')===
-    ['token','requestId','paths','F'].sort().join('|'),
+    ['token','requestId','paths','F','nativeRoot'].sort().join('|'),
     'native_authorization_shape');
+   nativeRoot=authorization.nativeRoot;
    verified=verifyNative(authorization.token,authorization.requestId,
-     authorization.paths,authorization.F);
+     authorization.paths,authorization.F,nativeRoot);
   }
   need(verified.operation===ALLOWED[kind]&&
     verified.signature_verified===true&&
@@ -182,10 +190,12 @@ function createUnprivilegedSignedLockFixture({sharedRoot,authRoot}={}){
    approval_id:verified.approval_id,operation:verified.operation,
    kind,shared_lease_id:lease.id,spent:true,
    native_l4_fence_reserved_by_gate:false,
-   native_l4_fence_owner:'native_coordinator_only'
+   native_l4_fence_owner:'native_coordinator_only',
+   native_root_sha256:nativeRoot?H(nativeRoot):null
   })+'\n'),uid);
   const session=Object.freeze({kind,approval_id:verified.approval_id,
-   operation:verified.operation,binding:Object.freeze({gate:shared,lease})});
+   operation:verified.operation,nativeRoot,
+   binding:Object.freeze({gate:shared,lease})});
   sessions.add(session);
   return session;
  }
@@ -199,7 +209,8 @@ function createUnprivilegedSignedLockFixture({sharedRoot,authRoot}={}){
   need(record.kind===kind&&record.approval_id===session.approval_id&&
    record.shared_lease_id===session.binding.lease.id&&record.spent===true&&
    record.native_l4_fence_reserved_by_gate===false&&
-   record.native_l4_fence_owner==='native_coordinator_only',
+   record.native_l4_fence_owner==='native_coordinator_only'&&
+   record.native_root_sha256===(session.nativeRoot?H(session.nativeRoot):null),
    'signed_fence_drift');
   return true;
  }
@@ -207,6 +218,24 @@ function createUnprivilegedSignedLockFixture({sharedRoot,authRoot}={}){
  // journal and independent Root host recovery, not a caller's boolean.
  function finishFixture(session,terminalRecord){
   assertAuthorized(session,session.kind);
+  if(session.kind==='native_backup_transaction'){
+   const root=session.nativeRoot;
+   need(typeof root==='string'&&
+    /^\/tmp\/u06-root-lease-test-[A-Za-z0-9]{6}$/.test(root)&&
+    fs.realpathSync(root)===root,'native_root_not_bound');
+   dir(root,uid);
+   need(!fs.existsSync(path.join(root,'u06-exclusive.lease')),
+     'native_lease_must_be_released');
+   const bytes=fixedOwned(path.join(root,'u06-rollback.json'),uid,2000000);
+   let j;try{j=JSON.parse(bytes.toString('utf8'))}catch{fail('native_journal_invalid')}
+   need(j.schema==='prhm.u06.root-rollback.v1'&&
+    /^[a-f0-9]{40}$/.test(j.id||'')&&j.state==='ROLLED_BACK'&&
+    j.rollback_original_profile_verified===true&&
+    j.credential_absent_verified===true,
+    'native_rollback_disk_not_verified');
+   need(terminalRecord&&terminalRecord.journal_sha256===H(bytes),
+    'native_terminal_sha_mismatch');
+  }
   need(terminalRecord&&typeof terminalRecord==='object'&&
     Object.keys(terminalRecord).sort().join('|')===
       ['lease_id','kind','approval_id','terminal','journal_sha256'].sort().join('|')&&
