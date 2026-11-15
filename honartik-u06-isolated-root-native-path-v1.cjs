@@ -92,6 +92,8 @@ function createIsolatedNativeRootPath({
   const journal=lease.prepareJournal();
   need(journal.state==='PREPARED'&&journal.durable===true&&
    lease.journalState()==='PREPARED','native_journal_not_durable');
+  need(shared.attestPreparedNativeJournal(session,journal)===true,
+   'prepared_journal_not_session_bound');
   step('prepared_journal');
   const l4=NativeL4.createDisposableRootL4Fixture(requestId,()=>token,nativePolicy);
   const F=requested.F;
