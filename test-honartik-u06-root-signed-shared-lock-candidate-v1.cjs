@@ -80,8 +80,13 @@ function setup(kind='reconcile'){
  ledger.consumption_hash=H(Buffer.from(JSON.stringify({...ledger,consumption_hash:null})));
  const root=kind==='reconcile'?authRoot:nRoot;
  write600(path.join(root,'policy.json'),p);write600(path.join(root,'issuer.pem'),pub);
+ if(kind==='native'){
+  write600(path.join(authRoot,'policy.json'),p);
+  write600(path.join(authRoot,'issuer.pem'),pub);
+ }
  const ledgerFile=path.join(ledgerDir,approvalId+'.json');
  write600(ledgerFile,JSON.stringify(ledger));
+ if(kind==='native')write600(path.join(authRoot,'consumed',approvalId+'.json'),JSON.stringify(ledger));
  const nativeContext={requestId,paths:nativePaths,
   F:{operation:'honartik_back.production.native_backup',reviewed_l4_policy_sha256:policyHash},
   journal:{id:'u06_signed_shared_native_test_journal_01'}};
