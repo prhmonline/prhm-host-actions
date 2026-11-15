@@ -6,6 +6,16 @@ const path=require('node:path');
 const adapter=require('./shared-registrar-native-root-adapter-v1.cjs');
 const source=require('./shared-registrar-root-trust-preflight-v1.cjs');
 
+test('root-owned live owner preimages are mandatory even with matching SHA',()=>{
+ const good={isFile:()=>true,isSymbolicLink:()=>false,uid:0,gid:0,mode:0o100644};
+ assert.equal(adapter.ownerMetadataTrusted(good),true);
+ assert.equal(adapter.ownerMetadataTrusted({...good,uid:1001}),false);
+ assert.equal(adapter.ownerMetadataTrusted({...good,gid:1001}),false);
+ assert.equal(adapter.ownerMetadataTrusted({...good,mode:0o100666}),false);
+ assert.equal(adapter.ownerMetadataTrusted({...good,isSymbolicLink:()=>true}),false);
+ assert.equal(adapter.ownerMetadataTrusted({...good,isFile:()=>false}),false);
+});
+
 test('candidate is not a standalone installer',()=>{
  const run=cp.spawnSync(process.execPath,
   [path.join(__dirname,'shared-registrar-native-root-adapter-v1.cjs')],
