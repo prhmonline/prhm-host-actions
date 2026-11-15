@@ -269,6 +269,52 @@ test('SIGKILL after signed grant and durable fence leaves shared lock and no rep
    /busy_or_unrecovered/);
  }finally{f.clean()}
 });
+test('a caller cannot supply a fake prepared Native journal during shared gate admission',()=>{
+ const f=setup('native');try{
+  const g=f.create();
+  assert.throws(()=>g.beginAuthorized('native_backup_transaction',{
+   ...f.grant(),journal:{id:'invented_journal_without_disk'}
+  }),/native_authorization_shape/);
+  assert.equal(g.inspect().locked,true,'ambiguous admission remains fail-closed');
+  assert.equal(fs.existsSync(path.join(f.nRoot,'fence',f.approvalId+'.json')),false);
+ }finally{f.clean()}
+});
+test('native SIGKILL between shared signed admission and journal preparation cannot burn official L4 fence',()=>{
+ const f=setup('native');try{
+  const js=[
+   "const Gate=require("+JSON.stringify(modulePath)+");",
+   "const gate=Gate.createUnprivilegedSignedLockFixture("+JSON.stringify({
+    sharedRoot:f.sharedRoot,authRoot:f.authRoot
+   })+");",
+   "gate.beginAuthorized('native_backup_transaction',"+JSON.stringify(f.grant())+");",
+   "process.kill(process.pid,'SIGKILL')"
+  ].join('\n');
+  const child=spawnSync(process.execPath,['-e',js],{encoding:'utf8',timeout:10000});
+  assert.equal(child.signal,'SIGKILL',child.stderr);
+  assert.equal(fs.existsSync(path.join(f.nRoot,'fence',f.approvalId+'.json')),false);
+  assert.equal(fs.existsSync(path.join(f.sharedRoot,
+   'u06-owner-shared-signed-fences',f.approvalId+'.used')),true);
+  const g=f.create();
+  assert.equal(g.inspect().kind,'native_backup_transaction');
+  assert.throws(()=>g.beginAuthorized('native_backup_transaction',f.grant()),
+   /busy_or_unrecovered/);
+ }finally{f.clean()}
+});
+test('coordinator owns exactly one official Native replay-fence reservation AFTER durable journal',()=>{
+ const coordinator=fs.readFileSync(path.join(__dirname,
+  'honartik-u06-owner-native-transaction-v1.cjs'),'utf8');
+ const gateCandidate=fs.readFileSync(path.join(__dirname,
+  'honartik-u06-root-signed-shared-lock-candidate-v1.cjs'),'utf8');
+ const durable=coordinator.indexOf('native.assertRollbackJournalDurable(F,journal)');
+ const verify=coordinator.indexOf('native.verifyNativeConsumedSignedLevel4(F,journal)');
+ const reserve=coordinator.indexOf('native.reserveNativeLevel4ReplayFence(F,journal,approval)');
+ const mutate=coordinator.indexOf('native.provisionBackupOnlyIdentityAndPrivateCredential(F,journal)');
+ assert.ok(durable>=0&&verify>durable&&reserve>verify&&mutate>reserve);
+ assert.equal(coordinator.split('native.reserveNativeLevel4ReplayFence(F,journal,approval)').length,2);
+ assert.equal(gateCandidate.includes('admit.reserveNativeLevel4ReplayFence'),false);
+ assert.equal(gateCandidate.includes('createDisposableRootL4Fixture'),false);
+});
+
 test('no Root constructor, no Root CLI, no approval issuer, and exactly two L4 operations enabled',()=>{
  assert.equal(Gate.ROOT_HANDLER_REGISTERED,false);
  assert.equal(Gate.LIVE_ROOT_CONSTRUCTOR_EXPORTED,false);
