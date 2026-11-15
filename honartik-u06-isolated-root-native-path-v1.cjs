@@ -76,7 +76,7 @@ function createIsolatedNativeRootPath({
   // The actual Native coordinator's fixed journal+fence order is followed,
   // with the real modules (not a boolean fake receipt).
   const requested={
-   token,requestId,paths:nativePolicy,F:{
+   token,requestId,paths:nativePolicy,nativeRoot,F:{
     operation:'honartik_back.production.native_backup',
     reviewed_l4_policy_sha256:reviewedPolicySha256
    }
