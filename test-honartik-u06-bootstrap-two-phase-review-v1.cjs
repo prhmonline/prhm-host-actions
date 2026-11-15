@@ -66,8 +66,12 @@ test('no scalar, wrong-buffer or fabricated preapproval may masquerade as signed
 });
 test('a Native or legacy L3 approval cannot be reused for the absent recovery registration action',()=>{
  const r=M.verifyPinnedReviewClosure(request());
- assert.notEqual(r.separate_native_operation,r.stage_a_registration_action);
- assert.equal(r.stage_a_registration_action,r.stage_b_reconciliation_action);
+ assert.notEqual(r.separate_native_operation,r.stage_a_target_operation_to_register);
+ assert.equal(r.stage_a_target_operation_to_register,r.stage_b_reconciliation_action);
+ // The recovery action is NOT yet registered, so it cannot serve as its
+ // own bootstrap authorization. A reviewed separate bootstrap path is required.
+ assert.equal(r.stage_a_existing_bootstrap_authority_proven,false);
+ assert.equal(r.stage_a_registration_approval_operation,null);
  // The stage A registration authority is NOT implied by the future stage B
  // action that is absent from live policy. Both are blocked independently.
  assert.equal(r.stage_a_registered,false);
