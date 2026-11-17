@@ -1,0 +1,10 @@
+[Unit]
+Description=Hourly PRHM Developer Triage (QA-only, no Git write)
+[Timer]
+OnCalendar=hourly
+Persistent=false
+RandomizedDelaySec=60s
+AccuracySec=1min
+Unit=prhm-developer-triage.service
+[Install]
+WantedBy=timers.target

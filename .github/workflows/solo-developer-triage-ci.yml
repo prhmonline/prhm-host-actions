@@ -1,0 +1,24 @@
+name: Solo Developer Triage Safety CI
+on:
+  push:
+    paths:
+      - 'solo-developer-triage/**'
+      - '.github/workflows/solo-developer-triage-ci.yml'
+  pull_request:
+    paths:
+      - 'solo-developer-triage/**'
+      - '.github/workflows/solo-developer-triage-ci.yml'
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node --check solo-developer-triage/collect.mjs
+      - run: node --check solo-developer-triage/triage.mjs
+      - run: node --check solo-developer-triage/pipeline.mjs
+      - run: node --test solo-developer-triage/test-triage.mjs
