@@ -12,6 +12,24 @@ test('exact SHA and fixed four-service order are non-bypassable',()=>{
  assert.throws(()=>h.checkedServices([...valid].reverse()),/service_set_not_fixed/);
  assert.throws(()=>h.checkedServices([...valid.slice(0,3),'other.service']),/service_set_not_fixed/);
 });
+test('only fixed per-tenant Git manifest paths are eligible, without cross-tenant substitution',()=>{
+ assert.equal(h.fixedProjectManifestPath('cfpark_front'),'manifests/cfpark_front.json');
+ assert.equal(h.fixedProjectManifestPath('pbcinema'),'manifests/pbcinema.json');
+ assert.equal(h.fixedProjectManifestPath('honartik'),'manifests/honartik.json');
+ assert.notEqual(h.fixedProjectManifestPath('cfpark_front'),h.fixedProjectManifestPath('pbcinema'));
+ for(const bad of ['cfpark','pbcinema/production','production/pbcinema',
+  'moeinshow','__proto__','constructor','../cfpark_front','CFPARK_FRONT',''])
+  assert.throws(()=>h.fixedProjectManifestPath(bad),/project_not_registered/);
+ for(const bad of [undefined,null,{},[],1,true])
+  assert.throws(()=>h.fixedProjectManifestPath(bad),/project_not_registered/);
+});
+test('CFPark scoped admission is still incapable of installing or issuing an L4 approval',()=>{
+ assert.equal(typeof h.createTrustedHooks,'function');
+ for(const p of ['install','apply','issueSignedL4','allowArbitraryCommand'])
+  assert.equal(Object.hasOwn(h,p),false);
+ assert.equal(Object.isFrozen(h),true);
+});
+
 test('never bootstraps or issues a root approval from a source-only module',()=>{
  assert.equal(typeof h.createTrustedHooks,'function');
  assert.equal(typeof h.install,'undefined');

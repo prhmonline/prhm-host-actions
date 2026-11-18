@@ -27,7 +27,7 @@ const REPO_ID='prhmonline/prhm-host-actions';
 const POLICY_SERVICE='prhm-company-approval.service';
 const SHA40=/^[a-f0-9]{40}$/;
 const SHA256=/^[a-f0-9]{64}$/;
-const PROJECTS=Object.freeze({pbcinema:'manifests/pbcinema.json',honartik:'manifests/honartik.json'});
+const PROJECTS=Object.freeze({pbcinema:'manifests/pbcinema.json',honartik:'manifests/honartik.json',cfpark_front:'manifests/cfpark_front.json'});
 const ASSET_ROOT='/opt/prhm-agent-selfmaint-exec/actions/';
 const ASSET_NAME=/^[a-z0-9][a-z0-9_.-]{2,120}$/;
 const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
@@ -69,13 +69,17 @@ function rootReady(){
  // Never trust missing unprovisioned bootstrap dependencies.
  if(!fs.existsSync(GIT_DIR))fail('git_object_store_missing');
 }
+function fixedProjectManifestPath(project){
+ if(typeof project!=='string'||
+    !Object.prototype.hasOwnProperty.call(PROJECTS,project))
+   fail('project_not_registered');
+ return PROJECTS[project];
+}
 function fixedManifest({repo,commit,project}){
  rootReady();
- if(repo!==REPO_ID||typeof project!=='string'||
-   !Object.prototype.hasOwnProperty.call(PROJECTS,project))
-   fail('project_not_registered');
+ if(repo!==REPO_ID)fail('source_repo_mismatch');
  fixedRef(commit);
- const manifestPath=PROJECTS[project];
+ const manifestPath=fixedProjectManifestPath(project);
  return Object.freeze({path:manifestPath,bytes:gitObject(commit,manifestPath)});
 }
 function fixedSource({repo,commit,path:sourcePath}){
@@ -199,7 +203,7 @@ function createTrustedHooks(){
 module.exports=Object.freeze({
  createTrustedHooks,
  // Pure guards are exposed for negative contract tests only.
- fixedRef,checkedServices
+ fixedRef,fixedProjectManifestPath,checkedServices
 });
 if(require.main===module){
  process.stderr.write('Native host hooks are not a standalone bootstrap or installer.\n');
