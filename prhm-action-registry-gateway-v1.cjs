@@ -171,9 +171,14 @@ function decodeJws(token,publicKey){
   exactly(claims&&typeof claims==='object'&&!Array.isArray(claims),'signed_claims_invalid');
   return claims;
 }
-function verifyConsumedRegistrationApproval({token,publicKey,ledger,args,nowSec}){
+function verifyConsumedRegistrationApproval({token,publicKey,ledger,args,nowSec,expectedRequestId}){
   exactly(Number.isSafeInteger(nowSec)&&nowSec>0,'trusted_clock_invalid');
   const c=decodeJws(token,publicKey),digest=approvalBindingSha(args);
+  // The exact native pending-request ID must match the independently signed
+  // JWS and consumed ledger, not merely identical five-field argument bytes.
+  if(expectedRequestId!==undefined)
+    exactly(UUID.test(expectedRequestId)&&c.request_id===expectedRequestId,
+      'signed_request_id_mismatch');
   exactly(UUID.test(c.approval_id||'')&&UUID.test(c.request_id||'')&&
     c.jti===c.approval_id&&c.iss==='prhm-company-approval'&&
     c.action===ACTION&&c.operation===OPERATION&&c.project==='control_plane'&&
@@ -214,7 +219,7 @@ function trustedRead(file, maxBytes){
     return fs.readFileSync(fd);
   }finally{fs.closeSync(fd);}
 }
-function verifyLiveConsumedRegistrationApproval({token,args}){
+function verifyLiveConsumedRegistrationApproval({token,args,expectedRequestId}){
   exactly(process.getuid?.()===0,'trusted_root_required');
   const dir=fs.lstatSync(APPROVAL_CONSUMED_DIR);
   exactly(dir.isDirectory()&&!dir.isSymbolicLink()&&
@@ -227,7 +232,7 @@ function verifyLiveConsumedRegistrationApproval({token,args}){
   let ledger;
   try{ledger=JSON.parse(data.toString('utf8'));}catch{stop('consumption_ledger_json');}
   return verifyConsumedRegistrationApproval({token,publicKey,ledger,args,
-    nowSec:Math.floor(Date.now()/1000)});
+    expectedRequestId,nowSec:Math.floor(Date.now()/1000)});
 }
 /**
  * Use explicit phases. Requiring the new target tool during PREINSTALL would
@@ -305,7 +310,7 @@ async function finalizeVerifiedInstall({release,approval,trustedInstaller,truste
   }
   throw new Error('registry_gateway_failed_rollback_verified');
 }
-async function executeAfterTrustedAuthorization({release, signedApprovalToken, args, trustedInstaller,
+async function executeAfterTrustedAuthorization({release, signedApprovalToken, args, expectedRequestId, trustedInstaller,
     trustedRollback, verifyOriginalState, readInstalledTool, audit}) {
   // This method MUST be called only by the previously installed root-owned
   // trusted executor after independent signature verification and consumption.
@@ -317,7 +322,7 @@ async function executeAfterTrustedAuthorization({release, signedApprovalToken, a
   exactly(typeof trustedInstaller==='function' && typeof trustedRollback==='function' &&
     typeof verifyOriginalState==='function' && typeof readInstalledTool==='function' &&
     typeof audit==='function', 'trusted_rollback_capabilities_missing');
-  const approval=verifyLiveConsumedRegistrationApproval({token:signedApprovalToken,args});
+  const approval=verifyLiveConsumedRegistrationApproval({token:signedApprovalToken,args,expectedRequestId});
   exactly(typeof trustedInstaller === 'function' &&
     typeof readInstalledTool === 'function' && typeof audit === 'function',
     'trusted_executor_capabilities_missing');

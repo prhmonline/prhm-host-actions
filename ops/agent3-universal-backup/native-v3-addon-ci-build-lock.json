@@ -1,0 +1,33 @@
+{
+  "schema": "prhm.agent3.native-addon-reproducible-ci-lock.v1",
+  "status": "CI_BINARY_REVIEW_ONLY_NOT_PRODUCTION",
+  "source_path": "ops/agent3-universal-backup/native-linux-so-peercred-addon.c",
+  "first_source_commit": "7141a69dbc7a71a25348316571496c244ab57090",
+  "source_sha256": "9973bebe840689bed9b7cac155e3d0482cfe5d6235450af97fa981c117fc681c",
+  "binary_sha256_for_this_toolchain": "3878d25ee11c2275542f34197b2e0a9825d15784bd30fbd290c6a34e5abf1684",
+  "node_version": "20.20.2",
+  "napi_version": "9",
+  "node_header_sha256": "cf2446da4783a707dc9399321cff3ea28dce86fafdf38746fc47f1b293f5a040",
+  "compiler_identification": "cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+  "platform": "linux",
+  "arch": "x64",
+  "compiler_flags": [
+    "-std=c11",
+    "-O2",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-fPIC",
+    "-shared",
+    "-fstack-protector-strong",
+    "-D_FORTIFY_SOURCE=2",
+    "-Wl,-z,relro",
+    "-Wl,-z,now"
+  ],
+  "evidence_ci_run_url": "https://github.com/prhmonline/prhm-host-actions/actions/runs/39080359926",
+  "production_binary_attested": false,
+  "production_node_fd_api_attested": false,
+  "production_root_listener_installed": false,
+  "approval_consumed": false,
+  "release_ready": false
+}
