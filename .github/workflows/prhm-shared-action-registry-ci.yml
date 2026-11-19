@@ -31,3 +31,10 @@ jobs:
           # The deployment approval, discovery and remote consumer checks must
           # run through the trusted Agent 3/Approval Center path, not this CI.
           test -f PRHM-ACTION-REGISTRY-ONBOARDING-STANDARD.md
+      - name: Honartik cinema checkout SHA-bound candidate (source-only)
+        run: |
+          set -euo pipefail
+          node --check honartik-cinema-checkout-release-contract-v1.cjs
+          node --check test-honartik-cinema-checkout-release-contract-v1.cjs
+          node --test test-honartik-cinema-checkout-release-contract-v1.cjs
+          # A passing source test never means registered or deployed in Production.
