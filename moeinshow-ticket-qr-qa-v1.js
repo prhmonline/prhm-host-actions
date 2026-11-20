@@ -170,10 +170,13 @@ function runFixed() {
   if (process.getuid() !== 0) fail('registered_root_action_required');
   const before = preflight();
   ensureResultRoot();
+  const latest = path.join(RESULT_ROOT, 'latest.json');
+  writeAtomic(latest, JSON.stringify({
+    ok: false, status: 'running', action: ACTION, source_sha: SOURCE_SHA
+  }, null, 2) + '\n');
   const stage = fs.mkdtempSync(path.join(RESULT_ROOT, 'stage-'));
   fs.chownSync(stage, before.production_uid, before.production_gid);
   fs.chmodSync(stage, 0o700);
-  let succeeded = false;
   try {
     directory(stage);
     const workspace = path.join(stage, 'source');
@@ -230,15 +233,18 @@ function runFixed() {
       limits: {cpu: '25%', memory: '512M', tasks: 32, runtime_seconds: 120},
       test_markers: required, artifacts: hashes
     };
-    writeAtomic(path.join(RESULT_ROOT, 'latest.json'), JSON.stringify(result, null, 2) + '\n');
-    succeeded = true;
+    writeAtomic(latest, JSON.stringify(result, null, 2) + '\n');
     return result;
+  } catch (error) {
+    writeAtomic(latest, JSON.stringify({
+      ok: false, status: 'failed', action: ACTION, source_sha: SOURCE_SHA,
+      error_code: String(error && error.message || 'unexpected_failure').slice(0, 160),
+      production_mutation: false
+    }, null, 2) + '\n');
+    throw error;
   } finally {
     if (!stage.startsWith(RESULT_ROOT + path.sep)) fail('unsafe_stage_cleanup');
     fs.rmSync(stage, {recursive: true, force: true});
-    if (!succeeded) {
-      // Failure remains NO-GO; do not claim a successful artifact or Production change.
-    }
   }
 }
 if (require.main === module) {
