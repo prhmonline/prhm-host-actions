@@ -172,6 +172,10 @@ function runFixed() {
   if (process.getuid() !== 0) fail('registered_root_action_required');
   const before = preflight();
   ensureResultRoot();
+  // Refuse overlapping QA operations rather than racing artifact state.
+  const lock = path.join(RESULT_ROOT, '.run-lock');
+  fs.mkdirSync(lock, {mode: 0o700});
+  try {
   const latest = path.join(RESULT_ROOT, 'latest.json');
   writeAtomic(latest, JSON.stringify({
     ok: false, status: 'running', action: ACTION, source_sha: SOURCE_SHA
@@ -247,6 +251,9 @@ function runFixed() {
   } finally {
     if (!stage.startsWith(RESULT_ROOT + path.sep)) fail('unsafe_stage_cleanup');
     fs.rmSync(stage, {recursive: true, force: true});
+  }
+  } finally {
+    fs.rmdirSync(lock);
   }
 }
 if (require.main === module) {
