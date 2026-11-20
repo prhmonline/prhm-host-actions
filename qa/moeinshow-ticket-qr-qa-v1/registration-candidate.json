@@ -1,0 +1,56 @@
+{
+  "schema": "prhm.host-action-registration-candidate.v1",
+  "status": "NOT_INSTALLED_NOT_APPROVED",
+  "action": "moeinshow_ticket_qr_offline_qa_v1",
+  "operation": "host_action.moeinshow_ticket_qr_offline_qa_v1",
+  "scope": {
+    "project": "moeinshow",
+    "environment": "isolated_qa_on_existing_host",
+    "inputs": {}
+  },
+  "risk": {
+    "runtime_level": 3,
+    "installation_level": 4,
+    "request_ttl_seconds": 180,
+    "one_time_use": true,
+    "requires_second_confirmation": true,
+    "owner": "mohammad"
+  },
+  "source_repo": "prhmonline/prhm-host-actions",
+  "source_commit": "47ff37cc6259f9714e3ceb0a8279e8d3306b20ae",
+  "app_source_repo": "prhmonline/moeinshowback",
+  "app_source_commit": "7e670bc6f11267d8b955f1b3671787adecc65c93",
+  "entrypoint": "moeinshow-ticket-qr-qa-v1.js",
+  "entrypoint_export": "runFixed",
+  "source_asset_git_blobs": {
+    "moeinshow-ticket-qr-qa-v1.js": "39e99c913945405613007a2f5c65b0173989af79",
+    "test-moeinshow-ticket-qr-qa-v1.js": "ff65830ae8cda66385e3538eb7cba75d67a31039",
+    "qa/moeinshow-ticket-qr-qa-v1/EmitSyntheticArtifacts.php": "176c611d11c1a68cc21fa36f7d140cce0e372a38",
+    "qa/moeinshow-ticket-qr-qa-v1/manifest.json": "a026b2d0b64b75accbea34aebe8cf293845827a8"
+  },
+  "tool_request_arguments": {},
+  "scope_allowlist": {
+    "qa_root": "/var/lib/prhm-agent-selfmaint-exec/moeinshow-ticket-qr-qa-v1",
+    "vendor_readonly": "/home/moeinshow/domains/dashboard.moeinshow.com/public_html/vendor",
+    "cpu": "25%",
+    "memory": "512M",
+    "tasks": 32,
+    "runtime_seconds": 120,
+    "private_network": true,
+    "no_payment": true,
+    "no_sms": true,
+    "no_db": true,
+    "no_deploy": true
+  },
+  "registration_gate": [
+    "reviewed_source_and_sha_binding",
+    "real_offline_node_and_php_contract_tests",
+    "atomic_install_with_rollback",
+    "explicit_owner_level4_for_control_plane_install",
+    "audit_existing_4_registries",
+    "tool_discovery_verification",
+    "single_scoped_execution"
+  ],
+  "rollback_ref": "remove_only_exact_bound_action_assets_and_registry_entries_and_verify_all_original_SHAs",
+  "note": "Two-commit provenance: this manifest is committed AFTER the fixed source_commit; no circular SHA references."
+}
