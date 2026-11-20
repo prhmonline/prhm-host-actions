@@ -26,6 +26,7 @@ const PROD = '/home/moeinshow/domains/dashboard.moeinshow.com/public_html';
 const PROD_VENDOR = PROD + '/vendor';
 const RESULT_ROOT = '/var/cache/prhm-moeinshow-ticket-qr-qa-v1';
 const TOKEN = 'MOEINSHOW-QA-TICKET-0001';
+const EMITTER_BLOB_SHA = '176c611d11c1a68cc21fa36f7d140cce0e372a38';
 const MAX_VENDOR_BYTES = 850000000;
 const FILES = Object.freeze({
   'composer.json': '73654b0e1186103b70e4f70c268ee3b64c274749',
@@ -59,6 +60,18 @@ function runBinary(exe, args, options) {
   if (result.error || result.status !== 0) fail('fixed_command_failed:' + path.basename(exe));
   return String(result.stdout || '');
 }
+function listPinnedTreeFiles(dir, prefix = '') {
+  const found = [];
+  for (const item of fs.readdirSync(dir, {withFileTypes: true})) {
+    if (item.isSymbolicLink()) fail('unexpected_source_symlink');
+    const rel = prefix ? prefix + '/' + item.name : item.name;
+    const full = path.join(dir, item.name);
+    if (item.isDirectory()) found.push(...listPinnedTreeFiles(full, rel));
+    else if (item.isFile()) found.push(rel);
+    else fail('unexpected_source_item');
+  }
+  return found.sort();
+}
 function verifySource() {
   directory(BUNDLE);
   directory(SOURCE);
@@ -70,6 +83,8 @@ function verifySource() {
     || m.fixed_test_token !== TOKEN
     || m.production_vendor_source !== PROD_VENDOR
     || JSON.stringify(m.source_files) !== JSON.stringify(FILES)) fail('manifest_pin_mismatch');
+  const actualFiles = listPinnedTreeFiles(SOURCE);
+  if (JSON.stringify(actualFiles) !== JSON.stringify(Object.keys(FILES).sort())) fail('unexpected_unpinned_source_file');
   const digests = {};
   for (const [name, pinned] of Object.entries(FILES)) {
     const full = path.join(SOURCE, name);
@@ -79,6 +94,7 @@ function verifySource() {
     digests[name] = sha256(bytes);
   }
   const emitterBytes = fs.readFileSync(EMITTER);
+  if (gitBlobSha(emitterBytes) !== EMITTER_BLOB_SHA) fail('emitter_source_sha_mismatch');
   if (!emitterBytes.includes(Buffer.from(TOKEN))) fail('emitter_token_mismatch');
   if (!emitterBytes.includes(Buffer.from('Zxing\\QrReader'))) fail('emitter_decoder_missing');
   return {
@@ -259,8 +275,8 @@ function runFixed() {
 if (require.main === module) {
   if (process.argv.length !== 3 || process.argv[2] !== '--selftest') fail('direct_execution_not_permitted');
   const v = verifySource();
-  const args = buildSystemdArgs('/var/lib/prhm-agent-selfmaint-exec/moeinshow-ticket-qr-qa-v1/stage-example',
-    '/var/lib/prhm-agent-selfmaint-exec/moeinshow-ticket-qr-qa-v1/stage-example/run-fixed.sh');
+  const args = buildSystemdArgs(RESULT_ROOT + '/stage-example',
+    RESULT_ROOT + '/stage-example/run-fixed.sh');
   if (!args.includes('--property=PrivateNetwork=yes') ||
       !args.includes('--property=MemoryMax=512M') ||
       args.some(x => x.includes('127.0.0.1:3306'))) fail('sandbox_contract_failed');
