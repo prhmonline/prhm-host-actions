@@ -1,6 +1,6 @@
 {
   "schema": "prhm.host-action-registration-candidate.v1",
-  "status": "NOT_INSTALLED_NOT_APPROVED",
+  "status": "BLOCKED_TRUSTED_REGISTRAR_NOT_INSTALLED",
   "action": "moeinshow_ticket_qr_offline_qa_v1",
   "operation": "host_action.moeinshow_ticket_qr_offline_qa_v1",
   "scope": {
@@ -17,7 +17,7 @@
     "owner": "mohammad"
   },
   "source_repo": "prhmonline/prhm-host-actions",
-  "source_commit": "813613d715db9e4cc77ad47c6a9aaeb8589e5c3c",
+  "source_commit": "da76a7d44a1724c683e8eb1a5d39754576bf6b42",
   "app_source_repo": "prhmonline/moeinshowback",
   "app_source_commit": "7e670bc6f11267d8b955f1b3671787adecc65c93",
   "entrypoint": "moeinshow-ticket-qr-qa-v1.js",
@@ -26,7 +26,10 @@
     "moeinshow-ticket-qr-qa-v1.js": "9b0ec90de5ce1e46664a849e234e944eb2f0fdf4",
     "test-moeinshow-ticket-qr-qa-v1.js": "a3e7614cf2675f2a9fbf0f53e142722f19600408",
     "qa/moeinshow-ticket-qr-qa-v1/EmitSyntheticArtifacts.php": "176c611d11c1a68cc21fa36f7d140cce0e372a38",
-    "qa/moeinshow-ticket-qr-qa-v1/manifest.json": "d945ed7187830d58ceb85b36f71b3b79e92ac556"
+    "qa/moeinshow-ticket-qr-qa-v1/manifest.json": "d945ed7187830d58ceb85b36f71b3b79e92ac556",
+    "moeinshow-ticket-qr-fixed-bundle-v1.cjs": "2a273d74d96f9d040dc78111588ff0e1fa69c070",
+    "moeinshow-ticket-qr-registry-installer-v1.cjs": "8461b1758b57a0f4d681b53b80b512315c2b78d4",
+    "test-moeinshow-ticket-qr-registry-installer-v1.cjs": "952a9a4cdc83051aaedb93d84d95efb75621fc83"
   },
   "tool_request_arguments": {},
   "scope_allowlist": {
@@ -52,5 +55,26 @@
     "single_scoped_execution"
   ],
   "rollback_ref": "remove_only_exact_bound_action_assets_and_registry_entries_and_verify_all_original_SHAs",
-  "note": "Two-commit provenance: this manifest is committed AFTER the fixed source_commit; no circular SHA references."
+  "note": "Two-commit provenance: this manifest is committed AFTER the fixed source_commit; no circular SHA references.",
+  "readiness": {
+    "source_code": "READY_FOR_INDEPENDENT_REVIEW",
+    "synthetic_gateway_rollback_contracts": "10/10 PASS in mocked Node fs/hash V8",
+    "real_node_tests": "NOT_EXECUTED",
+    "live_owner_preimages": "NOT_AVAILABLE",
+    "live_owner_postimages": "NOT_ATTESTED",
+    "trusted_shared_registration_gateway": "NOT_REGISTERED",
+    "live_control_plane_mutation": "NONE",
+    "explicit_level4_approval": "NOT_REQUESTED"
+  },
+  "trusted_registrar": "prhm_action_registry_install_v1",
+  "registry_owner_path_count": 4,
+  "specific_installer_file": "moeinshow-ticket-qr-registry-installer-v1.cjs",
+  "required_gate": [
+    "Independent SHA preimage verification of four live owners and ZDT candidate mirrors",
+    "Gateway-compatible release manifest with four exact pre/post SHA-256",
+    "Source/asset SHA256 attestation and fixed registry installer preflight",
+    "Verified byte-preserving backup/restore on isolated owner fixtures",
+    "Trusted single-use Ed25519 Level-4 approval",
+    "Installer + tool discovery and rollback on the active Agent"
+  ]
 }
