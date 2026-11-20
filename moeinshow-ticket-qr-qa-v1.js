@@ -123,7 +123,8 @@ function buildSystemdArgs(stage, script) {
   return [
     '--wait', '--collect', '--pipe', '--quiet',
     '--unit=prhm-moeinshow-ticket-qr-qa-v1',
-    '--property=Type=exec',
+    '--property=Type=oneshot',
+    '--property=TimeoutStartSec=120s',
     '--property=User=moeinshow',
     '--property=Group=moeinshow',
     '--property=NoNewPrivileges=yes',
@@ -154,9 +155,11 @@ function buildSystemdArgs(stage, script) {
 function ensureResultRoot() {
   directory('/var');
   directory('/var/lib');
-  directory('/var/lib/prhm-agent-selfmaint-exec');
+  const resultParent = directory('/var/lib/prhm-agent-selfmaint-exec');
+  if (resultParent.uid !== 0) fail('qa_parent_not_root_owned');
   if (!fs.existsSync(RESULT_ROOT)) fs.mkdirSync(RESULT_ROOT, {mode: 0o711});
-  directory(RESULT_ROOT);
+  const resultStat = directory(RESULT_ROOT);
+  if (resultStat.uid !== 0) fail('qa_result_not_root_owned');
   // Root controls this directory; QA service user may traverse, never list it.
   fs.chmodSync(RESULT_ROOT, 0o711);
 }
