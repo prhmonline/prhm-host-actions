@@ -17,7 +17,7 @@ This package contains the **six strictly required source files** copied byte-for
 - Only the registered Host Actions v2 dispatcher may invoke `runFixed()`. Direct CLI allows `--selftest` only.
 - Check six files against pinned Git blob SHA values and verify the installed Composer vendor dependencies.
 - Read **only** `/home/moeinshow/domains/dashboard.moeinshow.com/public_html/vendor` for package code. Reject vendor symlinks, enforce an 850 MB byte cap, and copy dependencies into a MoeinShow-only temporary directory. Never copy the live application configuration, `_env`, uploads, DB, logs, secrets, payment credentials or customers.
-- Reconstruct the six files in `/var/lib/prhm-agent-selfmaint-exec/moeinshow-ticket-qr-qa-v1/stage-*` plus a fixed synthetic artifact generator.
+- Reconstruct the six files in `/var/cache/prhm-moeinshow-ticket-qr-qa-v1/stage-*` plus a fixed synthetic artifact generator.
 - Run the existing `scripts/verify-ticket-qr-offline.sh` and `EmitSyntheticArtifacts.php` within a **transient systemd sandbox**, with no network and `ProtectHome=tmpfs`; allow writes only to the temporary QA directory. Use `NoNewPrivileges=yes`, `ProtectSystem=strict`, private devices/tmp and excluded MariaDB sockets. Bound CPU to 25%, memory to 512 MB, task count to 32 and runtime to 120 seconds.
 - Test `Da\\QrCode` PNG creation, actual QR decoding, `mPDF` output with an embedded QR, and syntactic/contracts; use the literal synthetic code `MOEINSHOW-QA-TICKET-0001` only.
 - Persist only synthetic PNG/PDF and SHA-256 metadata in the root-owned QA result directory. Remove temporary source and dependency copies after the run, whether it passed or failed.
