@@ -145,7 +145,7 @@ function buildSystemdArgs(stage, script) {
     '--property=MemoryMax=512M',
     '--property=TasksMax=32',
     '--property=RuntimeMaxSec=120',
-    '--property=InaccessiblePaths=/var/lib/mysql /run/mysqld /run/postgresql',
+    '--property=InaccessiblePaths=-/var/lib/mysql -/run/mysqld -/run/postgresql',
     '--property=ReadWritePaths=' + stage,
     '--property=WorkingDirectory=' + path.join(stage, 'source'),
     '/bin/bash', script
@@ -155,9 +155,10 @@ function ensureResultRoot() {
   directory('/var');
   directory('/var/lib');
   directory('/var/lib/prhm-agent-selfmaint-exec');
-  if (!fs.existsSync(RESULT_ROOT)) fs.mkdirSync(RESULT_ROOT, {mode: 0o700});
+  if (!fs.existsSync(RESULT_ROOT)) fs.mkdirSync(RESULT_ROOT, {mode: 0o711});
   directory(RESULT_ROOT);
-  fs.chmodSync(RESULT_ROOT, 0o700);
+  // Root controls this directory; QA service user may traverse, never list it.
+  fs.chmodSync(RESULT_ROOT, 0o711);
 }
 function writeAtomic(file, payload) {
   const temp = file + '.tmp-' + process.pid;
@@ -170,6 +171,8 @@ function runFixed() {
   const before = preflight();
   ensureResultRoot();
   const stage = fs.mkdtempSync(path.join(RESULT_ROOT, 'stage-'));
+  fs.chownSync(stage, before.production_uid, before.production_gid);
+  fs.chmodSync(stage, 0o700);
   let succeeded = false;
   try {
     directory(stage);
