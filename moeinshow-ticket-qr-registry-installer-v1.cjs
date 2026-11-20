@@ -178,11 +178,18 @@ async function preflight(release,io){
   }
   exact(stage[ASSETS.helper].includes(Buffer.from('moeinshow_ticket_qr_offline_qa_v1')),'helper_action');
   const bundleText=stage[ASSETS.bundle].toString('utf8');
-  const open=bundleText.indexOf('Object.freeze(');
-  exact(open>=0,'bundle_format');
-  // The trusted adapter must parse this reviewed CommonJS asset in a
-  // strict sandbox; NEVER eval arbitrary staged code in the root registrar.
-  const bundle=await io.snapshot('read_fixed_bundle_object',ASSETS.bundle);
+  // The reviewed bundle is a static JSON literal wrapped in Object.freeze.
+  // Parse JSON; never execute staged code in the privileged registrar.
+  const marker='module.exports = Object.freeze(';
+  const pos=bundleText.indexOf(marker);
+  const close=bundleText.lastIndexOf(');');
+  exact(pos>=0 && bundleText.indexOf(marker,pos+marker.length)<0 &&
+    close>pos && bundleText.slice(close).trim()===');' &&
+    bundleText.slice(0,pos).trim()==="'use strict';\n// Static, strictly pinned synthetic QA fixtures. No runtime network fetch.",
+    'bundle_wrapper_untrusted');
+  let bundle;
+  try{bundle=JSON.parse(bundleText.slice(pos+marker.length,close))}
+  catch{fail('bundle_json_invalid')}
   const fixtures=verifyFixture(bundle);
   for(const p of Object.keys(fixtures)) await io.assertSafeTarget(p);
   for(const s of release.normalized.health.services)exact(await io.serviceHealthy(s),'service_unhealthy');
