@@ -14,7 +14,7 @@ test('pinned immutable MoeinShow PR #11 fixture passes Git blob checks', () => {
   assert.equal(result.production_writes, false);
 });
 test('sandbox is network and database isolated and strictly resource capped', () => {
-  const stage = '/var/lib/prhm-agent-selfmaint-exec/moeinshow-ticket-qr-qa-v1/stage-test';
+  const stage = '/var/cache/prhm-moeinshow-ticket-qr-qa-v1/stage-test';
   const args = qa.buildSystemdArgs(stage, stage + '/run-fixed.sh');
   for (const check of [
     '--property=PrivateNetwork=yes',
