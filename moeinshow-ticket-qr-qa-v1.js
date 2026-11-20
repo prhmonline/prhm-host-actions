@@ -24,7 +24,7 @@ const MANIFEST = path.join(BUNDLE, 'manifest.json');
 const EMITTER = path.join(BUNDLE, 'EmitSyntheticArtifacts.php');
 const PROD = '/home/moeinshow/domains/dashboard.moeinshow.com/public_html';
 const PROD_VENDOR = PROD + '/vendor';
-const RESULT_ROOT = '/var/lib/prhm-agent-selfmaint-exec/moeinshow-ticket-qr-qa-v1';
+const RESULT_ROOT = '/var/cache/prhm-moeinshow-ticket-qr-qa-v1';
 const TOKEN = 'MOEINSHOW-QA-TICKET-0001';
 const MAX_VENDOR_BYTES = 850000000;
 const FILES = Object.freeze({
@@ -154,9 +154,8 @@ function buildSystemdArgs(stage, script) {
 }
 function ensureResultRoot() {
   directory('/var');
-  directory('/var/lib');
-  const resultParent = directory('/var/lib/prhm-agent-selfmaint-exec');
-  if (resultParent.uid !== 0) fail('qa_parent_not_root_owned');
+  const resultParent = directory('/var/cache');
+  if (resultParent.uid !== 0 || (resultParent.mode & 0o022) !== 0) fail('qa_parent_unsafe');
   if (!fs.existsSync(RESULT_ROOT)) fs.mkdirSync(RESULT_ROOT, {mode: 0o711});
   const resultStat = directory(RESULT_ROOT);
   if (resultStat.uid !== 0) fail('qa_result_not_root_owned');
@@ -191,7 +190,7 @@ function runFixed() {
     fs.chownSync(output, before.production_uid, before.production_gid);
 
     // Vendor dependencies only: NEVER copy app configs, env, database, logs or secrets.
-    runBinary('/usr/bin/cp', ['-a', '--reflink=auto', PROD_VENDOR, path.join(workspace, 'vendor')],
+    runBinary('/usr/bin/cp', ['-R', '--reflink=auto', '--no-preserve=ownership,mode', PROD_VENDOR, path.join(workspace, 'vendor')],
       {uid: before.production_uid, gid: before.production_gid});
     const wrapper = path.join(stage, 'run-fixed.sh');
     const shell = [
