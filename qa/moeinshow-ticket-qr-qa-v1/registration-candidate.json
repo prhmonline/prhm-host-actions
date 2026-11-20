@@ -30,7 +30,7 @@
   },
   "tool_request_arguments": {},
   "scope_allowlist": {
-    "qa_root": "/var/lib/prhm-agent-selfmaint-exec/moeinshow-ticket-qr-qa-v1",
+    "qa_root": "/var/cache/prhm-moeinshow-ticket-qr-qa-v1",
     "vendor_readonly": "/home/moeinshow/domains/dashboard.moeinshow.com/public_html/vendor",
     "cpu": "25%",
     "memory": "512M",
