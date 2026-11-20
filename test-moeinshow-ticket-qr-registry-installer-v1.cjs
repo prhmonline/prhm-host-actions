@@ -187,7 +187,7 @@ test('valid synthetic install calls discovery, audits and changes only fixed pat
   assert.ok(env.log.includes('audit:registered'));
 });
 test('unverified rollback explicitly fails closed',async()=>{
-  const setup=prepare();const env=makeIO(setup,{failAfterWrite:1});
+  const setup=prepare();const env=makeIO(setup,{failAfterWrite:2});
   env.io.restoreSnapshot=async()=>{throw new Error('synthetic_rollback_broken')};
   const c=a.createGatewayCallbacks(setup.release,env.io);
   await assert.rejects(gateway.finalizeVerifiedInstall({release:setup.release,approval:APPROVAL,...c}),
