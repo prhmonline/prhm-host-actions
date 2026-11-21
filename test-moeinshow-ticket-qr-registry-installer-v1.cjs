@@ -80,6 +80,7 @@ function makeIO(setup,opts={}){
   const io={
     readOwner:async p=>setup.store.get(p),
     readStagedAsset:async p=>assetFiles[p],
+    readInstalledAsset:async p=>setup.store.get(p),
     assertSafeTarget:async p=>{
       const allowed=p in keyMap || Object.values(a.ASSETS).includes(p) ||
         p.startsWith(a.FIXTURE_ROOT);
@@ -191,7 +192,15 @@ test('valid synthetic install calls discovery, audits and changes only fixed pat
   assert.equal(result.registry_visible,true);
   assert.equal(setup.store.get(a.OWNER_PATHS.base).toString().includes(a.ACTION),true);
   assert.equal([...setup.store.keys()].filter(x=>x.startsWith(a.FIXTURE_ROOT)).length,8);
+  for(const [p,bytes] of Object.entries(assetFiles)) assert.ok(setup.store.get(p).equals(bytes));
+  assert.ok(env.log.filter(x=>x==='fixture').length>=10);
   assert.ok(env.log.includes('audit:registered'));
+});
+test('tampered staged action asset refuses to install before any write',async()=>{
+  const setup=prepare();const env=makeIO(setup);
+  env.io.readStagedAsset=async p=>Buffer.from(assetFiles[p].toString()+'tampered');
+  await assert.rejects(a.preflight(setup.release,env.io),/staged_asset_sha/);
+  assert.equal(env.log.length,0);
 });
 test('unverified rollback explicitly fails closed',async()=>{
   const setup=prepare();const env=makeIO(setup,{failAfterWrite:2});
