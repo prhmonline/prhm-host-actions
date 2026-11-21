@@ -165,6 +165,7 @@ async function preflight(release,io){
   ensureRelease(release);
   exact(io && ['readOwner','readStagedAsset','assertSafeTarget',
     'serviceHealthy','snapshot','writeOwnerAtomic','writeFixtureAtomic',
+    'readInstalledAsset',
     'removeFixture','restoreSnapshot','verifySnapshot','restartServices',
     'discoverTool','audit'].every(k=>typeof io[k]==='function'),'trusted_io_missing');
   const current={},preimageHash={};
@@ -223,8 +224,17 @@ function createGatewayCallbacks(release,io){
       for(const [key,p] of Object.entries(OWNER_PATHS)){
         changed=true;await io.writeOwnerAtomic(p,Buffer.from(context.modified[key],'utf8'));
       }
+      // Both fixed action assets must be installed, not just the fixture tree.
+      // Otherwise discovery could succeed while execution fails at require().
+      for(const [p,bytes] of Object.entries(context.stage)){
+        changed=true;await io.writeFixtureAtomic(p,bytes);
+      }
       for(const [p,bytes] of Object.entries(context.fixtures)){
         changed=true;await io.writeFixtureAtomic(p,bytes);
+      }
+      for(const x of release.normalized.assets){
+        const installed=await io.readInstalledAsset(x.path);
+        exact(Buffer.isBuffer(installed)&&sha(installed)===x.sha256,'installed_asset_sha');
       }
       await io.restartServices(Object.freeze(release.normalized.health.services.slice()));
       for(const [key,p] of Object.entries(OWNER_PATHS)){
