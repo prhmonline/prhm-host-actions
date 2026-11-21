@@ -127,11 +127,18 @@ test('four registry transforms bounded, deterministic and not generic',()=>{
     assert.ok(v.includes(a.ACTION),k);
     assert.notEqual(a.sha(Buffer.from(v)),a.sha(Buffer.from(SAMPLE[k])));
   }
+  const level3=x.base.match(/const HOST_ACTION_V2_LEVEL3 = new Set\((\[[^;]+\])\);/);
+  assert.ok(level3,'new action must be registered in base Level-3 set');
+  assert.ok(JSON.parse(level3[1]).includes(a.ACTION),'Level-3 classification missing');
   const p=JSON.parse(x.policy);
   assert.equal(p.operations[a.OPERATION].level,3);
   assert.equal(p.operations[a.OPERATION].expires_seconds,180);
   assert.equal(p.typed_scopes.at(-1).action,a.ACTION);
   assert.equal(p.version,'source-fixture-v1');
+});
+test('missing Level-3 classification set aborts source generation',()=>{
+  const base=SAMPLE.base.replace(/const HOST_ACTION_V2_LEVEL3[^\n]+/, '');
+  assert.throws(()=>a.candidateBase(base),/anchor_base_level3_set/);
 });
 test('second install is blocked by preimage and duplicate action guards',()=>{
   const modified=a.candidateOwners(SAMPLE);
