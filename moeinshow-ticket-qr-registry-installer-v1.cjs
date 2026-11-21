@@ -40,10 +40,22 @@ function guardNoAction(source,label){
 }
 function candidateBase(source) {
   guardNoAction(source,'base');
-  return replaceOne(source,
+  const next=replaceOne(source,
     /(\bmcp_candidate_schema_compare_v1\s*:\s*\{\s*operation\s*:\s*['"]host_action\.mcp_candidate_schema_compare_v1['"][^\n]*\},)/,
     m=>m+'\n  '+ACTION+": { operation: '"+OPERATION+"', rollback: 'host-action-v2:moeinshow-ticket-qr-qa-v1:rollback-verified' },",
     'base_spec');
+  // Host Actions v2 has a separate Level-3 classification set. The action
+  // MUST be registered here as well as in Approval Center policy; otherwise
+  // a high-risk QA request may be misclassified as critical/Level-4.
+  return replaceOne(next,
+    /const HOST_ACTION_V2_LEVEL3\s*=\s*new Set\((\[[^;]*?\])\);/,
+    (full,listJson)=>{
+      let names;
+      try{names=JSON.parse(listJson)}catch{fail('level3_set_json')}
+      exact(Array.isArray(names) && names.every(x=>typeof x==='string') &&
+        !names.includes(ACTION),'level3_set_invalid');
+      return 'const HOST_ACTION_V2_LEVEL3 = new Set('+JSON.stringify([...names,ACTION])+');';
+    },'base_level3_set');
 }
 function candidateExecutor(source){
   guardNoAction(source,'executor');
