@@ -1,0 +1,87 @@
+{
+  "schema": "prhm.host-action-registration-candidate.v1",
+  "status": "BLOCKED_TRUSTED_REGISTRAR_NOT_INSTALLED",
+  "action": "moeinshow_ticket_qr_offline_qa_v1",
+  "operation": "host_action.moeinshow_ticket_qr_offline_qa_v1",
+  "scope": {
+    "project": "moeinshow",
+    "environment": "isolated_qa_on_existing_host",
+    "inputs": {}
+  },
+  "risk": {
+    "runtime_level": 3,
+    "installation_level": 4,
+    "request_ttl_seconds": 180,
+    "one_time_use": true,
+    "requires_second_confirmation": true,
+    "owner": "mohammad"
+  },
+  "source_repo": "prhmonline/prhm-host-actions",
+  "source_commit": "dae8b2499c83a3a904e6866ed8f3fef24b52117a",
+  "app_source_repo": "prhmonline/moeinshowback",
+  "app_source_commit": "7e670bc6f11267d8b955f1b3671787adecc65c93",
+  "entrypoint": "moeinshow-ticket-qr-qa-v1.js",
+  "entrypoint_export": "runFixed",
+  "source_asset_git_blobs": {
+    "moeinshow-ticket-qr-qa-v1.js": "9b0ec90de5ce1e46664a849e234e944eb2f0fdf4",
+    "test-moeinshow-ticket-qr-qa-v1.js": "a3e7614cf2675f2a9fbf0f53e142722f19600408",
+    "qa/moeinshow-ticket-qr-qa-v1/EmitSyntheticArtifacts.php": "176c611d11c1a68cc21fa36f7d140cce0e372a38",
+    "qa/moeinshow-ticket-qr-qa-v1/manifest.json": "d945ed7187830d58ceb85b36f71b3b79e92ac556",
+    "moeinshow-ticket-qr-fixed-bundle-v1.cjs": "2a273d74d96f9d040dc78111588ff0e1fa69c070",
+    "moeinshow-ticket-qr-registry-installer-v1.cjs": "625e1e9fbe711c1e7db2f9f038ac121625466d24",
+    "test-moeinshow-ticket-qr-registry-installer-v1.cjs": "1120684f831b68b05a590ed092171970abb628d4"
+  },
+  "tool_request_arguments": {},
+  "scope_allowlist": {
+    "qa_root": "/var/cache/prhm-moeinshow-ticket-qr-qa-v1",
+    "vendor_readonly": "/home/moeinshow/domains/dashboard.moeinshow.com/public_html/vendor",
+    "cpu": "25%",
+    "memory": "512M",
+    "tasks": 32,
+    "runtime_seconds": 120,
+    "private_network": true,
+    "no_payment": true,
+    "no_sms": true,
+    "no_db": true,
+    "no_deploy": true
+  },
+  "registration_gate": [
+    "reviewed_source_and_sha_binding",
+    "real_offline_node_and_php_contract_tests",
+    "atomic_install_with_rollback",
+    "explicit_owner_level4_for_control_plane_install",
+    "audit_existing_4_registries",
+    "tool_discovery_verification",
+    "single_scoped_execution"
+  ],
+  "rollback_ref": "remove_only_exact_bound_action_assets_and_registry_entries_and_verify_all_original_SHAs",
+  "note": "Two-commit provenance: this manifest is committed AFTER the fixed source_commit; no circular SHA references.",
+  "readiness": {
+    "source_code": "READY_FOR_INDEPENDENT_REVIEW",
+    "synthetic_gateway_rollback_contracts": "PASS: 12/12 native Node tests using mocked filesystem/services; no live host rollback",
+    "real_node_tests": "PASS: 12 registrar gateway Node tests + 4 QA handler Node tests on Node.js v24.22.1 in temporary isolated remote sandbox",
+    "live_owner_preimages": "NOT_AVAILABLE",
+    "live_owner_postimages": "NOT_ATTESTED",
+    "trusted_shared_registration_gateway": "NOT_REGISTERED",
+    "live_control_plane_mutation": "NONE",
+    "explicit_level4_approval": "NOT_REQUESTED",
+    "fixture_sha_pins": "PASS: 8/8 original Git blob SHA-1 independently verified with native Node crypto",
+    "gateway_source_test": "PASS: common gateway imported and exercised in 12/12 native Node tests",
+    "real_php_vendor_integration": "NOT_EXECUTED: no PHP installed in temporary Node sandbox; host QA action not registered",
+    "live_registry_preflight": "BLOCKED: fixed read-only registration installer preflight fails contract test 15; no installation attempted",
+    "zdt_candidate_registry_mirrors": "NOT_ATTESTED: legacy host installer updates both fast and instant MCP candidate files; shared gateway expects 4 owners, active topology requires proof",
+    "foreign_payment": "NONE",
+    "new_vm_on_user_host": "NONE"
+  },
+  "trusted_registrar": "prhm_action_registry_install_v1",
+  "registry_owner_path_count": 4,
+  "specific_installer_file": "moeinshow-ticket-qr-registry-installer-v1.cjs",
+  "required_gate": [
+    "Independent SHA preimage verification of four live owners and ZDT candidate mirrors",
+    "Gateway-compatible release manifest with four exact pre/post SHA-256",
+    "Source/asset SHA256 attestation and fixed registry installer preflight",
+    "Verified byte-preserving backup/restore on isolated owner fixtures",
+    "Trusted single-use Ed25519 Level-4 approval",
+    "Installer + tool discovery and rollback on the active Agent"
+  ]
+}
