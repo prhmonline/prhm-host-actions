@@ -20,3 +20,13 @@ Global inventory: [fast-git-global-registry.json](docs/fast-git-global-registry.
 - The PRHM owner's chosen target for Production approvals is **owner-controlled GitHub protected-environment/OIDC with audited, SHA-pinned, rollback-capable privileged execution**, not an external Provider signature. The GitHub OIDC workflow is identity evidence, not automatic root authority. Any installed legacy trust guard must be transitioned through a reviewed, explicitly authorized and reversible migration, never bypassed.
 - Until the replacement runtime is independently implemented and validated, fail closed on Production credentials, database writes, privileged profile edits and deployments. Routine development should continue while this infrastructure gate is resolved.
 - Owner-path decision and U06 handoff: [docs/runbooks/prhm-owner-controlled-delivery-no-provider-20261110.md](docs/runbooks/prhm-owner-controlled-delivery-no-provider-20261110.md).
+
+## PRHM cloud/mobile and low-token policy (2026-11-23)
+
+- **Mobile-first, cloud-first:** accept requests from phone; GitHub is the source of truth. Do not require a powered-on PC, persistent VM, or local checkout for ordinary Git work.
+- **Minimum useful tokens:** read the project's required technical map and only task-relevant files; reuse established context; avoid repeated repository scans, unnecessary builds, retries, or long explanations. Never skip essential financial/security/regression checks to save tokens.
+- **Output:** report in concise Persian, preferably at most 4 lines: outcome; files + branch/PR/SHA; focused tests and real CI status; blocker/next action. Use short English technical instructions when more efficient.
+- **Git safety:** fetch/verify latest default-branch SHA, preserve approved behavior and unrelated work, use a task branch and draft PR. No force-push, hard reset, branch deletion, direct default-branch push, merge, deploy, or Production/data change without separately scoped owner authorization.
+- **Environment:** Save/Publish is for cloud-environment settings, not code updates; code uses commit, push and PR. Distinguish successful offline tests from unavailable CI and never claim unseen changes deployed.
+- **Precedence:** retain all existing repository-specific instructions, release gates, permissions, recovery safeguards and required approvals; these override efficiency shortcuts.
+
