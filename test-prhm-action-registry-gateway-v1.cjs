@@ -131,6 +131,26 @@ test('signed one-time Ed25519 registration binding verifies cryptographically',(
  const fixture=signedFixture(args);
  assert.equal(g.verifyConsumedRegistrationApproval(fixture).request_id,fixture.ledger.request_id);
 });
+test('signed request identity is bound to the native pending ID as well as identical five fields',()=>{
+ const args={action:g.ACTION,project:'honartik',source_commit:'a'.repeat(40),
+  manifest_commit:'b'.repeat(40),manifest_sha256:'1'.repeat(64)};
+ const f=signedFixture(args);
+ const id=f.ledger.request_id;
+ assert.equal(g.verifyConsumedRegistrationApproval({...f,expectedRequestId:id}).request_id,id);
+ const alternate='33333333-3333-4333-8333-333333333333';
+ // Same manifest and same canonical five-field hash is NOT authorization
+ // to redeem another pending native request's signed JWS.
+ assert.throws(()=>g.verifyConsumedRegistrationApproval({
+  ...f,expectedRequestId:alternate
+ }),/signed_request_id_mismatch/);
+ assert.throws(()=>g.verifyConsumedRegistrationApproval({
+  ...f,expectedRequestId:'not-uuid'
+ }),/signed_request_id_mismatch/);
+ const reissued=signedFixture(args,{request_id:alternate});
+ assert.throws(()=>g.verifyConsumedRegistrationApproval({
+  ...reissued,expectedRequestId:alternate
+ }),/consumption_ledger_invalid_or_replayed/);
+});
 test('forged approval boolean, altered signature and wrong consumption hash rejected',()=>{
  const args={action:g.ACTION,project:'honartik',source_commit:'a'.repeat(40),manifest_commit:'b'.repeat(40),manifest_sha256:'1'.repeat(64)};
  const f=signedFixture(args);
