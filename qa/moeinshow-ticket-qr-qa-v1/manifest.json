@@ -1,0 +1,39 @@
+{
+  "schema": "prhm.moeinshow-ticket-qr-qa.v1",
+  "status": "SOURCE_ONLY_NOT_REGISTERED",
+  "action": "moeinshow_ticket_qr_offline_qa_v1",
+  "source_repository": "prhmonline/moeinshowback",
+  "source_commit": "7e670bc6f11267d8b955f1b3671787adecc65c93",
+  "source_pull_request": 11,
+  "isolated_fixture_root": "qa/moeinshow-ticket-qr-qa-v1/source",
+  "source_files": {
+    "composer.json": "73654b0e1186103b70e4f70c268ee3b64c274749",
+    "app/tests/contract/TicketQrContract.php": "e16fce7ab7557f67157f7aeb4c2185e348a0541e",
+    "app/views/admin-reserve/print-ticket-new.php": "d51b8d96504b76c41d36e6a43992d67720eea4e6",
+    "app/views/admin-reserve/_print-ticket-mpdf.php": "63679ed5e2d129f9fc30ef5bd95f9e89b4fb4900",
+    "app/modules/api/views/public/print-ticket-new.php": "cc9a89b7457d174b841b54c97af96bb107374d95",
+    "scripts/verify-ticket-qr-offline.sh": "20206454a5614b113ba18c1445fa6c708275b9a2"
+  },
+  "fixed_test_token": "MOEINSHOW-QA-TICKET-0001",
+  "qa_result_root": "/var/cache/prhm-moeinshow-ticket-qr-qa-v1",
+  "production_vendor_source": "/home/moeinshow/domains/dashboard.moeinshow.com/public_html/vendor",
+  "network": "private_offline",
+  "resource_limits": {
+    "CPUQuota": "25%",
+    "MemoryMax": "512M",
+    "TasksMax": 32,
+    "RuntimeMaxSec": 120,
+    "max_vendor_bytes": 850000000
+  },
+  "prohibitions": [
+    "no arbitrary command or path inputs",
+    "no deployment/merge",
+    "no production source/config writes",
+    "no database connection or socket",
+    "no SMS",
+    "no payment gateway",
+    "no virtual machines",
+    "no GitHub-hosted Actions",
+    "no privileged execution without the dedicated reviewed registry registration and approval"
+  ]
+}
